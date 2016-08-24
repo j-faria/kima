@@ -1,6 +1,6 @@
 #include <iostream>
 #include "Data.h"
-#include "MultiSite2.h"
+//#include "MultiSite2.h"
 #include "Start.h"
 #include "MyModel.h"
 
@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 	//cout<<endl;
 
 	//Data::get_instance().load("fake_data.txt");
-	Data::get_instance().loadnew("data/k10_harpsn.dat");
+	Data::get_instance().loadnew("data/PlSy14.rdb");
 
     //return 0;
 

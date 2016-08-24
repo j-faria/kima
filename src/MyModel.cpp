@@ -2,7 +2,7 @@
 #include "RNG.h"
 #include "Utils.h"
 #include "Data.h"
-#include "MultiSite2.h"
+//#include "MultiSite2.h"
 #include <cmath>
 #include <fstream>
 #include <chrono>
@@ -21,7 +21,7 @@ using namespace DNest4;
 #define DONEW false  
 
 MyModel::MyModel()
-:objects(5, 5, false, MyConditionalPrior())
+:objects(5, 0, true, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
@@ -58,10 +58,20 @@ void MyModel::from_prior(RNG& rng)
     //eta5 = exp(tan(M_PI*(0.97*rng.rand() - 0.485)));
 
     // Log-uniform prior from 10^(-1) to 50 m/s
-    eta1 = exp(log(1E-1) + log(5E1)*rng.rand());
+    //eta1 = exp(log(1E-1) + log(5E2)*rng.rand());
+    // Log-uniform prior from 10^(-4) to 0.05 km/s
+    eta1 = exp(log(1E-4) + log(5E2)*rng.rand());
+    
 
     // Log-uniform prior from 10^(0) to 100 days
-    eta2 = exp(log(20.) + log(1E2)*rng.rand());
+    eta2 = exp(log(1.) + log(1E2)*rng.rand());
+
+    // or uniform prior between 10 and 40 days
+    eta3 = 10. + 30.*rng.rand();
+
+    // Log-uniform prior from 10^(-1) to 10 (fraction of eta3)
+    // Log-uniform prior from 10^(-1) to 2 (fraction of eta3)
+    eta4 = exp(log(1E-1) + log(1E2)*rng.rand());
 
 
     calculate_mu();
@@ -105,7 +115,9 @@ void MyModel::calculate_C()
         {
             for(size_t j=i; j<N; j++)
             {
-                C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) );
+                //C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) );
+                C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) 
+                           -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
 
                 if(i==j)
                     C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma; //+ eta5*t[i]*t[i];
@@ -187,19 +199,31 @@ double MyModel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5)
     {
-        if(rng.rand() <= 0.5)
+        if(rng.rand() <= 0.25)
         {
             eta1 = log(eta1);
-            eta1 += log(49.9)*rng.randh(); // range of prior support
-            wrap(eta1, log(1E-1), log(50.)); // wrap around inside prior
+            eta1 += log(5E2)*rng.randh(); // range of prior support
+            wrap(eta1, log(1E-4), log(0.05)); // wrap around inside prior
             eta1 = exp(eta1);
+        }
+        else if(rng.rand() <= 0.33330)
+        {
+            eta2 = log(eta2);
+            eta2 += log(1E2)*rng.randh(); // range of prior support
+            wrap(eta2, log(1.), log(1E2)); // wrap around inside prior
+            eta2 = exp(eta2);
+        }
+        else if(rng.rand() <= 0.5)
+        {
+            eta3 += 30.*rng.randh(); // range of prior support
+            wrap(eta3, 10., 40.); // wrap around inside prior
         }
         else
         {
-            eta2 = log(eta2);
-            eta2 += log(80.)*rng.randh(); // range of prior support
-            wrap(eta2, log(20.), log(1E2)); // wrap around inside prior
-            eta2 = exp(eta2);
+            eta4 = log(eta4);
+            eta4 += log(1E2)*rng.randh(); // range of prior support
+            wrap(eta4, log(1E-1), log(10.)); // wrap around inside prior
+            eta4 = exp(eta4);
         }
 
         calculate_C();
@@ -207,14 +231,6 @@ double MyModel::perturb(RNG& rng)
     }
     else if(rng.rand() <= 0.5)
     {
-        // data in m/s
-/*        extra_sigma = log(extra_sigma);
-        extra_sigma = (atan(extra_sigma)/M_PI + 0.485)/0.97;
-        extra_sigma += rng.randh();
-        wrap(extra_sigma, 0., 1.);
-        extra_sigma = tan(M_PI*(0.97*extra_sigma - 0.485));
-        extra_sigma = exp(extra_sigma);
-*/
         // data in km/s
         extra_sigma = log(extra_sigma);
         extra_sigma = (atan(extra_sigma + 6.908)/M_PI + 0.485)/0.97;
@@ -222,7 +238,6 @@ double MyModel::perturb(RNG& rng)
         wrap(extra_sigma, 0., 1.);
         extra_sigma = -6.908 + tan(M_PI*(0.97*extra_sigma - 0.485));
         extra_sigma = exp(extra_sigma);
-
 
         calculate_C();
     }
@@ -367,8 +382,8 @@ void MyModel::print(std::ostream& out) const
     out.precision(8);
 
     //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t'<<eta5<<'\t';
-    //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
-    out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t';
+    //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t';
+    out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
   
     objects.print(out); out<<' '<<staleness<<' ';
     out<<background<<' ';
@@ -376,8 +391,8 @@ void MyModel::print(std::ostream& out) const
 
 string MyModel::description() const
 {
-    //return string("signal extra_sigma     eta1    eta2    eta3    eta4    objects.print   staleness   background");
-    return string("extra_sigma  eta1    eta2    objects.print   staleness   background");
+    return string("extra_sigma   eta1   eta2   eta3   eta4   objects.print   staleness   background");
+    //return string("extra_sigma  eta1    eta2    objects.print   staleness   background");
     //return string("extra_sigma  eta1    eta2    eta3    eta4    eta5    offsets    objects.print   staleness   background");
 }
 
