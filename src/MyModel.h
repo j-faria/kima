@@ -9,11 +9,11 @@
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
 
-#include "HODLR_Matrix.hpp"
-#include "HODLR_Tree.hpp"
+//#include "HODLR_Matrix.hpp"
+//#include "HODLR_Tree.hpp"
 
-class QPkernel : public HODLR_Matrix {
-	/* This implements the quasi-periodic kernel */
+/*class QPkernel : public HODLR_Matrix {
+	// This implements the quasi-periodic kernel
 	friend class MyModel;
 
     public:
@@ -41,7 +41,7 @@ class QPkernel : public HODLR_Matrix {
     	double eta1_, eta2_, eta3_, eta4_;
         vector<double> time_;
 };
-
+*/
 
 
 class MyModel
@@ -71,8 +71,8 @@ class MyModel
 		Eigen::MatrixXd C;
 		void calculate_C();
 
-		QPkernel *kernel;
-		HODLR_Tree<QPkernel> *A;
+		//QPkernel *kernel;
+		//HODLR_Tree<QPkernel> *A;
 
 		unsigned int staleness;
 
