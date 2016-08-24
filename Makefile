@@ -5,9 +5,9 @@ EIGEN_PATH = /usr/include/eigen3
 
 includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH)
 
-CXX = g++-4.9
-CXXFLAGS = -std=c++11 -O3 -DNDEBUG -w
-LIBS = -ldnest4 -lpthread -L/usr/local/lib
+CXX = g++
+CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w
+LIBS = -ldnest4 -L/usr/local/lib
 
 
 SRCDIR = ./src
@@ -27,7 +27,7 @@ all: main
 
 
 main: $(OBJS)
-	$(CXX) -o main $(OBJS) -L$(DNEST4_PATH) $(LIBS)
+	$(CXX) -o main $(OBJS) -L$(DNEST4_PATH) $(LIBS) $(CXXFLAGS)
 
 clean:
 	rm -f main $(OBJS)
