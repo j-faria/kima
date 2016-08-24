@@ -16,21 +16,20 @@ using namespace Eigen;
 using namespace DNest4;
 
 // get the instance for the full dataset
-DataSet& full = DataSet::getRef("full");
+//DataSet& full = DataSet::getRef("full");
 
 #define DONEW false  
 
 MyModel::MyModel()
 :objects(5, 5, false, MyConditionalPrior())
-,mu(full.N)
-,offsets(DataSet().nsites()-1)
-,C(full.N, full.N)
+,mu(Data::get_instance().get_t().size())
+,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
-    setupHODLR();
+    //setupHODLR();
 }
 
 
-void MyModel::setupHODLR()
+/*void MyModel::setupHODLR()
 {
     const vector<double>& t = full.get_t();
     
@@ -38,13 +37,18 @@ void MyModel::setupHODLR()
     kernel->set_hyperpars(1., 1., 1., 1.);  // not sure if this is needed
 
     A = new HODLR_Tree<QPkernel>(kernel, full.N, 150);
-}
+}*/
 
 void MyModel::from_prior(RNG& rng)
 {
     objects.from_prior(rng);
     objects.consolidate_diff();
-    background = full.get_y_min() + (full.get_y_max() - full.get_y_min())*rng.rand();
+    
+    double ymin, ymax;
+    ymin = Data::get_instance().get_y_min();
+    ymax = Data::get_instance().get_y_max();
+
+    background = ymin + (ymax - ymin)*rng.rand();
 
     // centered at 1 (data in m/s)
     /*extra_sigma = exp(tan(M_PI*(0.97*rng.rand() - 0.485)));*/
@@ -67,8 +71,8 @@ void MyModel::from_prior(RNG& rng)
 void MyModel::calculate_C()
 {
     // Get the data
-    const vector<double>& t = full.get_t();
-    const vector<double>& sig = full.get_sig();
+    const vector<double>& t = Data::get_instance().get_t();
+    const vector<double>& sig = Data::get_instance().get_sig();
 
     #if DONEW
         //auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -95,12 +99,12 @@ void MyModel::calculate_C()
     #else
 
         //auto begin = std::chrono::high_resolution_clock::now();  // start timing
+        int N = Data::get_instance().get_t().size();
 
-        for(size_t i=0; i<full.N; i++)
+        for(size_t i=0; i<N; i++)
         {
-            for(size_t j=i; j<full.N; j++)
+            for(size_t j=i; j<N; j++)
             {
-
                 C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) );
 
                 if(i==j)
@@ -123,7 +127,7 @@ void MyModel::calculate_C()
 void MyModel::calculate_mu()
 {
     // Get the times from the data
-    const vector<double>& t = full.get_t();
+    const vector<double>& t = Data::get_instance().get_t();
 
     // Update or from scratch?
     bool update = (objects.get_added().size() < objects.get_components().size()) &&
@@ -144,39 +148,22 @@ void MyModel::calculate_mu()
 
     //auto begin = std::chrono::high_resolution_clock::now();  // start timing
 
-    double P, A, phi, ecc, viewing_angle, f, v, ti;
-    //vector<double> arg, evaluations;
+    double P, K, phi, ecc, viewing_angle, f, v, ti;
     for(size_t j=0; j<components.size(); j++)
     {
         P = exp(components[j][0]);
-        A = components[j][1];
+        K = components[j][1];
         phi = components[j][2];
         ecc = components[j][3];
-        //v0 = sqrt(1. - components[j][3]);
         viewing_angle = components[j][4];
-        //arg = t;
-        //for(size_t i=0; i<arg.size(); i++)
-        //    arg[i] = 2.*M_PI*t[i]/P + phi;
-        //evaluations = Lookup::get_instance().evaluate(arg, v0, viewing_angle);
-        //for(size_t i=0; i<t.size(); i++)
-        //    mu[i] += A*evaluations[i];
 
-        //ofstream myfile;
-        //myfile.open("test_rv.txt");
-        //myfile.setf(ios::fixed,ios::floatfield);
-        //myfile.precision(8);
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
             f = true_anomaly(ti, P, ecc, t[0]-(P*phi)/(2.*M_PI));
-            v = background + A*(cos(f+viewing_angle) + ecc*cos(viewing_angle));
-
-            //myfile<<ti<<'\t'<<v<<'\t'<<mu[i]<<endl;
-
-            //cout<<i<<'\t'<<f<<'\t'<<v<<'\t'<<mu[i]<<endl;
+            v = background + K*(cos(f+viewing_angle) + ecc*cos(viewing_angle));
             mu[i] = v;
         }
-        //myfile.close();
     }
 
     //auto end = std::chrono::high_resolution_clock::now();
@@ -206,15 +193,6 @@ double MyModel::perturb(RNG& rng)
             eta1 += log(49.9)*rng.randh(); // range of prior support
             wrap(eta1, log(1E-1), log(50.)); // wrap around inside prior
             eta1 = exp(eta1);
-
-            /*eta5 += 2.*rng.randh();
-            wrap(eta5, 0., 2.);*/
-
-/*            eta5 = log(eta5);
-            eta5 += log(1E6)*rng.randh(); // range of prior support
-            wrap(eta5, log(1E-5), log(10.)); // wrap around inside prior
-            eta5 = exp(eta5);*/
-
         }
         else
         {
@@ -245,13 +223,6 @@ double MyModel::perturb(RNG& rng)
         extra_sigma = -6.908 + tan(M_PI*(0.97*extra_sigma - 0.485));
         extra_sigma = exp(extra_sigma);
 
-    /*  eta5 = log(eta5);
-        eta5 = (atan(eta5)/M_PI + 0.485)/0.97;
-        eta5 += randh();
-        wrap(eta5, 0., 1.);
-        eta5 = tan(M_PI*(0.97*eta5 - 0.485));
-        eta5 = exp(eta5);*/
-
 
         calculate_C();
     }
@@ -260,8 +231,12 @@ double MyModel::perturb(RNG& rng)
         for(size_t i=0; i<mu.size(); i++)
             mu[i] -= background;
 
-        background += (full.get_y_max() - full.get_y_min())*rng.randh();
-        wrap(background, full.get_y_min(), full.get_y_max());
+        double ymin, ymax;
+        ymin = Data::get_instance().get_y_min();
+        ymax = Data::get_instance().get_y_max();
+
+        background += (ymax - ymin)*rng.randh();
+        wrap(background, ymin, ymax);
 
         for(size_t i=0; i<mu.size(); i++)
             mu[i] += background;
@@ -273,12 +248,12 @@ double MyModel::perturb(RNG& rng)
 
 double MyModel::log_likelihood() const
 {
-    int N = full.N;
+    int N = Data::get_instance().get_y().size();
 
     /** The following code calculates the log likelihood in the case of a GP model */
 
     // Get the data
-    const vector<double>& y = full.get_y();
+    const vector<double>& y = Data::get_instance().get_y();
 
     //auto begin = std::chrono::high_resolution_clock::now();  // start timing
 
@@ -394,11 +369,7 @@ void MyModel::print(std::ostream& out) const
     //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t'<<eta5<<'\t';
     //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
     out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t';
-    if (offsets.size() > 0)
-    {
-        for(size_t i=1; i<offsets.size(); i++)
-            out<<offsets[i]<<'\t';
-    }    
+  
     objects.print(out); out<<' '<<staleness<<' ';
     out<<background<<' ';
 }

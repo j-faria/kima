@@ -50,7 +50,7 @@ class MyModel
 		DNest4::RJObject<MyConditionalPrior> objects;
 
 		double background;
-		std::vector<double> offsets;
+		//std::vector<double> offsets;
 
 		double extra_sigma;
 

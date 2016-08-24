@@ -10,7 +10,7 @@ using namespace DNest4;
 int main(int argc, char** argv)
 {
 
-	DataSet& full = DataSet::getRef("full");
+	//DataSet& full = DataSet::getRef("full");
 	//full.load("data/k10_harpsn.dat", "kms", 0);
 
 	//DataSet& harps = DataSet::getRef("HARPS");
@@ -23,12 +23,12 @@ int main(int argc, char** argv)
 	//cout<<endl;
 
 	//Data::get_instance().load("fake_data.txt");
-	Data::get_instance().loadnew("data/PlSy2.rdb");
+	Data::get_instance().loadnew("data/k10_harpsn.dat");
 
     //return 0;
 
 
 
-	//start<MyModel>(argc, argv);
+	start<MyModel>(argc, argv);
 	return 0;
 }
