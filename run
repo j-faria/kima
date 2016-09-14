@@ -1,0 +1,11 @@
+#!/bin/sh
+start=`date +%s.%N`
+
+./main -t 4
+
+end=`date +%s.%N`
+
+#runtime=$((end-start))
+runtime=$( echo "$end - $start" | bc -l )
+echo 
+echo Took $runtime seconds
