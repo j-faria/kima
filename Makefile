@@ -5,7 +5,7 @@ EIGEN_PATH = /usr/include/eigen3
 
 includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH)
 
-CXX = g++
+CXX = g++-4.9
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w
 LIBS = -ldnest4 -L/usr/local/lib
 
