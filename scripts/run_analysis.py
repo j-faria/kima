@@ -99,12 +99,37 @@ for line in fileinput.input(options_file, inplace=True, backup='.bak'):
         print line.strip()
 
 
+
 if cluster:
-    pass
+    slurm_file = path.join(top_level, 'slurm-run-main.sh')
+    print 'Creating the slurm script %s' % slurm_file
+    with open(slurm_file, 'w') as f:
+        f.write('#!/bin/bash\n')
+        f.write("srun echo \"I'm running on: $(hostname)\"\n")
+        f.write("srun echo \"My working directory is: $(pwd)\"\n")
+        f.write("srun echo\n")
+
+        nthreads = 1
+        cmd = ['./main', '-t', str(nthreads), '-o', options_file]
+        f.write(' '.join(cmd) + '\n')
+        print ' '.join(cmd)
+
+    print 'Submitting job...'
+    slurm_output_file = path.join(results_now_dir, 'slurm.out')
+    os.chdir(top_level)
+    cmd = ['sbatch', 
+           '--job-name=ps%d' % system_number, 
+           '--output=%s' % slurm_output_file, 
+           # '--mail-type=ALL',
+           # '--mail-user=joao.faria@astro.up.pt',
+           'slurm-run-main.sh']
+    print ' '.join(cmd)
+    subprocess.check_call(cmd)
+    os.chdir(old_cwd)
+
 else:
     nthreads = 1
     print 'Starting "main" with %d threads...' % nthreads
-
     os.chdir(top_level)
     cmd = ['./main', '-t', str(nthreads), '-o', options_file]
     print ' '.join(cmd)
