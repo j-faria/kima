@@ -32,5 +32,8 @@ main: $(OBJS)
 clean:
 	rm -f main $(OBJS)
 
+cleanout:
+	rm -f sample.txt sample_info.txt levels.txt weights.txt posterior_sample.txt sampler_state.txt
+
 cleanall: clean
-	rm sample.txt sample_info.txt levels.txt weights.txt posterior_sample.txt
+	rm -f sample.txt sample_info.txt levels.txt weights.txt posterior_sample.txt sampler_state.txt
