@@ -38,9 +38,10 @@ elif hostname == 'cnode0':
     cluster = True
 
 ## define some paths
-old_cwd = path.dirname(__file__)
-print 'This file is "%s" and is in %s' % (path.basename(__file__), old_cwd)
-top_level = path.dirname(path.dirname(__file__))
+path_to_this_file = path.abspath(__file__)
+old_cwd = path.dirname(path_to_this_file)
+print 'This file is "%s" and is in %s' % (path.basename(path_to_this_file), old_cwd)
+top_level = path.dirname(path.dirname(path_to_this_file))
 print 'Then, top-level directory is %s' % top_level
 
 ## check data file in main.cpp
