@@ -4,7 +4,7 @@ import numpy as np
 from scipy.stats import gaussian_kde
 import sys
 import re
-# from lookup import Lookup
+import os
 import george
 from george import kernels
 
@@ -48,13 +48,17 @@ class DisplayResults(object):
         self.options = options
 
         if data_file is None:
-            with open('src/main.cpp') as f:
+            path_to_this_file = os.path.abspath(__file__)
+            top_level = os.path.dirname(os.path.dirname(path_to_this_file))
+            print top_level
+            with open(os.path.join(top_level, 'src', 'main.cpp')) as f:
                 c = f.readlines()
             for line in c:
                 if 'loadnew' in line and '/*' not in line: l = line
             data_file = re.findall('"(.*?)"', l, re.DOTALL)[0]
 
         print 'Loading data file %s' % data_file
+        data_file = os.path.join(top_level, data_file)
 
         # self.data = np.loadtxt('1planet_plus_gp.rv')
         # self.data = np.loadtxt('HD41248_harps_mean_corr.rdb')
