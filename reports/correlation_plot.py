@@ -101,7 +101,13 @@ def make_correlation_plot(system):
     plt.show()
 
 
-
+if __name__ == '__main__':
+    try:
+        i = int(sys.argv[1])
+        system = get_system(number=i)
+        make_correlation_plot(system)
+    except IndexError, e:
+        print __file__, 'system_number'
 # system_numbers = [i for i in range(1, 16) if i!=6]
 # for i in system_numbers:
 #     system = get_system(number=i)
