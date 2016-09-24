@@ -173,8 +173,8 @@ void MyModel::calculate_mu()
         {
             ti = t[i];
             f = true_anomaly(ti, P, ecc, t[0]-(P*phi)/(2.*M_PI));
-            v = background + K*(cos(f+viewing_angle) + ecc*cos(viewing_angle));
-            mu[i] = v;
+            v = K*(cos(f+viewing_angle) + ecc*cos(viewing_angle));
+            mu[i] += v;
         }
     }
 
