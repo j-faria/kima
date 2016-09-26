@@ -30,12 +30,12 @@ print separator
 
 ## where are we?
 hostname = subprocess.check_output('hostname').strip()
-if hostname == 'joao-caup':
-    print 'We are running in the desktop, hostname=%s' % hostname
-    cluster = False
-elif hostname == 'cnode0':
-    print 'We are running in the cluster! hostname=%s' % hostname
+if hostname == 'cnode0':
+    print 'We are running in the cluster, hostname=%s' % hostname
     cluster = True
+else:
+    print 'We are running on a desktop! hostname=%s' % hostname
+    cluster = False
 
 ## define some paths
 path_to_this_file = path.abspath(__file__)
