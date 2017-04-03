@@ -84,6 +84,8 @@ class DisplayResults(object):
             name = 'eta' + str(i+1)
             setattr(self, name, self.posterior_sample[:, start_parameters+1+i])
 
+        self.eta1 *= 1e3
+
         # if n_hyperparameters == 4:
         #     self.eta1, self.eta2, self.eta3, self.eta4 = self.posterior_sample[:, start_parameters+1:start_parameters+5].T
         # elif n_hyperparameters == 5:
@@ -312,14 +314,25 @@ class DisplayResults(object):
     def make_plot2(self):
         T = self.T
         plt.figure()
-        plt.hist(np.exp(T), bins=np.logspace(min(T), max(T), base=np.e, num=1000), alpha=0.5)
+
+        year = 365.25
+        plt.axvline(x=year, ls='--', color='r', lw=3, alpha=0.6)
+        plt.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
+        # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
+
+        plt.axvline(x=self.data[:,0].ptp(), ls='--', color='b', lw=4, alpha=0.5)
+
+        bins = 10 ** np.linspace(np.log10(1e-1), np.log10(1e7), 100)
+        plt.hist(np.exp(T), bins=bins, alpha=0.5)
+
         plt.xlabel(r'(Period/days)')
         plt.gca().set_xscale("log")
-        plt.gca().set_yscale("symlog")
+        # plt.gca().set_yscale("symlog")
         #for i in xrange(1009, 1009 + int(truth[1008])):
         #  axvline(truth[i]/log(10.), color='r')
         plt.ylabel('Number of Posterior Samples')
         plt.show()
+
 
     def make_plot3(self, paper=False, points=True):
 
@@ -435,8 +448,8 @@ class DisplayResults(object):
         # self.periods = np.exp(self.Tall[:,0])
         # self.periods[self.periods == 1.] = -99
         # self.periods = np.ma.masked_invalid(self.periods)
-        self.pmin = 20. #self.periods.mean() - 2*self.periods.std()
-        self.pmax = 100. #self.periods.mean() + 2*self.periods.std()
+        self.pmin = 10. #self.periods.mean() - 2*self.periods.std()
+        self.pmax = 40. #self.periods.mean() + 2*self.periods.std()
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
         labels = ['$s$'] + ['$\eta_%d$' % (i+1) for i in range(len(available_etas))]
@@ -509,7 +522,7 @@ class DisplayResults(object):
         plot data with maximum likelihood solution and optionally
         random posterior samples
         """
-        l = Lookup(cache=True)
+        # l = Lookup(cache=True)
         data = self.data
         t = self.data[:,0]
         tt = np.linspace(t[0], t[-1], 3000)
