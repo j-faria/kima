@@ -1,3 +1,4 @@
+
 import matplotlib.pyplot as plt
 # import matplotlib
 import numpy as np
@@ -13,11 +14,11 @@ from OPEN.classes import params as params_paper
 # from OPEN.classes import MyFormatter
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 
-sys.path.append('/home/joao/Work/corner/build/lib')
+# sys.path.append('/home/joao/Work/corner/build/lib')
 import corner
-reload(corner)
-import corner_analytic
-reload(corner_analytic)
+# reload(corner)
+# import corner_analytic
+# reload(corner_analytic)
 
 plt.rc("font", size=14, family="serif", serif="Computer Sans")
 plt.rc("text", usetex=True)
