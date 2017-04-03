@@ -31,5 +31,6 @@ if log:
 	data = data[np.nonzero(data)[0]]
 	data = np.log(data)
 
-hist(data, bins='knuth', color='black', histtype='step', normed=True)
+plt.hist(data, bins=100, color='black', histtype='step', normed=True)
+# hist(data, bins='knuth', color='black', histtype='step', normed=True)
 plt.show()
