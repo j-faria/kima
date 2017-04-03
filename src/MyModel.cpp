@@ -21,10 +21,10 @@ using namespace DNest4;
 //DataSet& full = DataSet::getRef("full");
 
 #define DONEW false  
-#define DOCEL false
+#define DOCEL true
 
 MyModel::MyModel()
-:objects(5, 0, true, MyConditionalPrior())
+:objects(5, 3, false, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
@@ -63,19 +63,19 @@ void MyModel::from_prior(RNG& rng)
 
     // Log-uniform prior from 10^(-1) to 50 m/s
     //eta1 = exp(log(1E-1) + log(5E2)*rng.rand());
-    // Log-uniform prior from 10^(-4) to 0.05 km/s
-    eta1 = exp(log(1E-4) + log(5E2)*rng.rand());
-    
+    // Log-uniform prior from 10^(-5) to 0.05 km/s
+    eta1 = exp(log(1E-5) + log(5E2)*rng.rand());
+
 
     // Log-uniform prior from 10^(0) to 100 days
     eta2 = exp(log(1.) + log(1E2)*rng.rand());
 
     // or uniform prior between 10 and 40 days
-    eta3 = 10. + 30.*rng.rand();
+    eta3 = 15. + 15.*rng.rand();
 
     // Log-uniform prior from 10^(-1) to 10 (fraction of eta3)
     // Log-uniform prior from 10^(-1) to 2 (fraction of eta3)
-    eta4 = exp(log(1E-1) + log(1E2)*rng.rand());
+    eta4 = exp(log(1E-1) + log(1E1)*rng.rand());
 
 
     calculate_mu();
@@ -110,6 +110,53 @@ void MyModel::calculate_C()
         //timerfile.setf(ios::fixed,ios::floatfield);
         //timerfile << t.size() << '\t' << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
 
+    #elif DOCEL
+        // celerite!
+        // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
+
+        /*
+        This implements the kernel in Eq (61) of Foreman-Mackey et al. (2017)
+        The kernel has parameters a, b, c and P
+        corresponding to an amplitude, factor, decay timescale and period.
+        */
+
+        VectorXd alpha_real(1),
+                 beta_real(1),
+                 alpha_complex_real(1),
+                 alpha_complex_imag(1),
+                 beta_complex_real(1),
+                 beta_complex_imag(1);
+        
+        a = eta1*eta1;
+        b = eta4;
+        P = eta3;
+        c = P/(2.*eta2*eta2);
+
+        alpha_real << a*(1.+b)/(2.+b);
+        beta_real << 1./c;
+        alpha_complex_real << a/(2.+b);
+        alpha_complex_imag << 0.;
+        beta_complex_real << 1./c;
+        beta_complex_imag << 2.*M_PI / P;
+
+
+        VectorXd yvar(t.size()), tt(t.size());
+        for (int i = 0; i < t.size(); ++i){
+            yvar(i) = sig[i] * sig[i] + extra_sigma * extra_sigma;
+            tt(i) = t[i];
+        }
+
+        solver.compute(
+            alpha_real, beta_real,
+            alpha_complex_real, alpha_complex_imag,
+            beta_complex_real, beta_complex_imag,
+            tt, yvar  // Note: this is the measurement _variance_
+        );
+
+
+        // auto end1 = std::chrono::high_resolution_clock::now();
+        // cout << "new GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
+        
     #else
 
         int N = Data::get_instance().get_t().size();
@@ -134,51 +181,6 @@ void MyModel::calculate_C()
         // cout << "old GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << "\t"; // << std::endl;
 
 
-        // celerite!
-        // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
-
-        /*
-        This implements the kernel in Eq (61) of Foreman-Mackey et al. (2017)
-        The kernel has parameters a, b, c and P
-        corresponding to an amplitude, factor, decay timescale and period.
-        */
-
-        VectorXd alpha_real(1),
-                 beta_real(1),
-                 alpha_complex_real(1),
-                 alpha_complex_imag(1),
-                 beta_complex_real(1),
-                 beta_complex_imag(1);
-        
-        a = eta1*eta1;
-        b = eta4;
-        P = eta3;
-        c = P/(2.*eta2*eta2);
-
-        alpha_real << a*(1.+b)/(2.+b);
-        beta_real << c;
-        alpha_complex_real << a/(2.+b);
-        alpha_complex_imag << 0.;
-        beta_complex_real << c;
-        beta_complex_imag << 2.*M_PI / P;
-
-
-        VectorXd yvar(t.size()), tt(t.size());
-        for (int i = 0; i < t.size(); ++i){
-            yvar(i) = sig[i] * sig[i] + extra_sigma * extra_sigma;
-            tt(i) = t[i];
-        }
-
-        solver.compute(
-            alpha_real, beta_real,
-            alpha_complex_real, alpha_complex_imag,
-            beta_complex_real, beta_complex_imag,
-            tt, yvar  // Note: this is the measurement _variance_
-        );
-
-
-        // auto end1 = std::chrono::high_resolution_clock::now();
-        // cout << "new GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
 
         //ofstream timerfile;
         //timerfile.open("timings.txt", std::ios_base::app);
@@ -254,7 +256,7 @@ double MyModel::perturb(RNG& rng)
         if(rng.rand() <= 0.25)
         {
             eta1 = log(eta1);
-            eta1 += log(5E2)*rng.randh(); // range of prior support
+            eta1 += log(5E3)*rng.randh(); // range of prior support
             wrap(eta1, log(1E-4), log(0.05)); // wrap around inside prior
             eta1 = exp(eta1);
         }
@@ -267,14 +269,14 @@ double MyModel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5)
         {
-            eta3 += 30.*rng.randh(); // range of prior support
-            wrap(eta3, 10., 40.); // wrap around inside prior
+            eta3 += 15.*rng.randh(); // range of prior support
+            wrap(eta3, 15., 30.); // wrap around inside prior
         }
         else
         {
             eta4 = log(eta4);
             eta4 += log(1E2)*rng.randh(); // range of prior support
-            wrap(eta4, log(1E-1), log(10.)); // wrap around inside prior
+            wrap(eta4, log(1E-1), log(1E1)); // wrap around inside prior
             eta4 = exp(eta4);
         }
 
@@ -352,29 +354,31 @@ double MyModel::log_likelihood() const
         for(size_t i=0; i<y.size(); i++)
             residual(i) = y[i] - mu[i];
 
-        // perform the cholesky decomposition of C
-        Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
-        // get the lower triangular matrix L
-        MatrixXd L = cholesky.matrixL();
-
         double logDeterminant = 0.;
-        // for(size_t i=0; i<y.size(); i++)
-        //     logDeterminant += 2.*log(L(i,i));
+        #if DOCEL
+            logDeterminant = solver.log_determinant();
+            VectorXd solution = solver.solve(residual);
+        #else
+            // perform the cholesky decomposition of C
+            Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
+            // get the lower triangular matrix L
+            MatrixXd L = cholesky.matrixL();
 
+            for(size_t i=0; i<y.size(); i++)
+                logDeterminant += 2.*log(L(i,i));
 
-        logDeterminant = solver.log_determinant();
+            VectorXd solution = cholesky.solve(residual);
+        #endif
 
         // cout << "old GP log_det: " << logDeterminant << "\t"; // << std::endl;
         // cout << "new GP log_det: " << solver.log_determinant() << std::endl;
 
         // calculate C^-1*(y-mu)
         // auto begin = std::chrono::high_resolution_clock::now();  // start timing
-        // VectorXd solution = cholesky.solve(residual);
         // auto end = std::chrono::high_resolution_clock::now();
         // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns \t";// <<  std::endl;
 
         // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
-        VectorXd solution = solver.solve(residual);
         // auto end1 = std::chrono::high_resolution_clock::now();
         // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
     #endif
