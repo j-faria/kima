@@ -9,6 +9,8 @@
 #include <typeinfo>  //for 'typeid' to work  
 
 //#include "HODLR_Tree.hpp"
+// #include <Eigen/Core>
+#include "celerite/celerite.h"
 
 
 using namespace std;
@@ -19,6 +21,7 @@ using namespace DNest4;
 //DataSet& full = DataSet::getRef("full");
 
 #define DONEW false  
+#define DOCEL false
 
 MyModel::MyModel()
 :objects(5, 0, true, MyConditionalPrior())
@@ -26,6 +29,7 @@ MyModel::MyModel()
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
     //setupHODLR();
+    // celerite::solver::BandSolver<double> solver;
 }
 
 
@@ -108,8 +112,8 @@ void MyModel::calculate_C()
 
     #else
 
-        //auto begin = std::chrono::high_resolution_clock::now();  // start timing
         int N = Data::get_instance().get_t().size();
+        // auto begin = std::chrono::high_resolution_clock::now();  // start timing
 
         for(size_t i=0; i<N; i++)
         {
@@ -126,7 +130,55 @@ void MyModel::calculate_C()
             }
         }
 
-        //auto end = std::chrono::high_resolution_clock::now();
+        // auto end = std::chrono::high_resolution_clock::now();
+        // cout << "old GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << "\t"; // << std::endl;
+
+
+        // celerite!
+        // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
+
+        /*
+        This implements the kernel in Eq (61) of Foreman-Mackey et al. (2017)
+        The kernel has parameters a, b, c and P
+        corresponding to an amplitude, factor, decay timescale and period.
+        */
+
+        VectorXd alpha_real(1),
+                 beta_real(1),
+                 alpha_complex_real(1),
+                 alpha_complex_imag(1),
+                 beta_complex_real(1),
+                 beta_complex_imag(1);
+        
+        a = eta1*eta1;
+        b = eta4;
+        P = eta3;
+        c = P/(2.*eta2*eta2);
+
+        alpha_real << a*(1.+b)/(2.+b);
+        beta_real << c;
+        alpha_complex_real << a/(2.+b);
+        alpha_complex_imag << 0.;
+        beta_complex_real << c;
+        beta_complex_imag << 2.*M_PI / P;
+
+
+        VectorXd yvar(t.size()), tt(t.size());
+        for (int i = 0; i < t.size(); ++i){
+            yvar(i) = sig[i] * sig[i] + extra_sigma * extra_sigma;
+            tt(i) = t[i];
+        }
+
+        solver.compute(
+            alpha_real, beta_real,
+            alpha_complex_real, alpha_complex_imag,
+            beta_complex_real, beta_complex_imag,
+            tt, yvar  // Note: this is the measurement _variance_
+        );
+
+
+        // auto end1 = std::chrono::high_resolution_clock::now();
+        // cout << "new GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
 
         //ofstream timerfile;
         //timerfile.open("timings.txt", std::ios_base::app);
@@ -306,11 +358,25 @@ double MyModel::log_likelihood() const
         MatrixXd L = cholesky.matrixL();
 
         double logDeterminant = 0.;
-        for(size_t i=0; i<y.size(); i++)
-            logDeterminant += 2.*log(L(i,i));
+        // for(size_t i=0; i<y.size(); i++)
+        //     logDeterminant += 2.*log(L(i,i));
 
-        // C^-1*(y-mu)
-        VectorXd solution = cholesky.solve(residual);
+
+        logDeterminant = solver.log_determinant();
+
+        // cout << "old GP log_det: " << logDeterminant << "\t"; // << std::endl;
+        // cout << "new GP log_det: " << solver.log_determinant() << std::endl;
+
+        // calculate C^-1*(y-mu)
+        // auto begin = std::chrono::high_resolution_clock::now();  // start timing
+        // VectorXd solution = cholesky.solve(residual);
+        // auto end = std::chrono::high_resolution_clock::now();
+        // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns \t";// <<  std::endl;
+
+        // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
+        VectorXd solution = solver.solve(residual);
+        // auto end1 = std::chrono::high_resolution_clock::now();
+        // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
     #endif
 
 

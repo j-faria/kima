@@ -6,8 +6,12 @@
 #include "RJObject/RJObject.h"
 #include "RNG.h"
 #include "Data.h"
+#include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
+#include "celerite/celerite.h"
+
+// using Eigen::VectorXd;
 
 //#include "HODLR_Matrix.hpp"
 //#include "HODLR_Tree.hpp"
@@ -56,6 +60,15 @@ class MyModel
 
 		// Parameters for the quasi-periodic extra noise
 		double eta1, eta2, eta3, eta4, eta5;
+		double a,b,c,P;
+
+		celerite::solver::BandSolver<double> solver;
+		// Eigen::VectorXd<int, 1> alpha_real,
+  //                beta_real,
+  //                alpha_complex_real,
+  //                alpha_complex_imag,
+  //                beta_complex_real,
+  //                beta_complex_imag;
 
 		// The signal
 		std::vector<long double> mu;

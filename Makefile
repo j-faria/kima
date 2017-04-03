@@ -3,9 +3,12 @@ DNEST4_PATH = /home/joao/Software/DNest4/code
 
 EIGEN_PATH = /usr/include/eigen3
 
-includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH)
+CELERITE_PATH = /home/joao/Work/celerite/cpp/include
 
-CXX = g++-4.9
+
+includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH)
+
+CXX = g++
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w
 LIBS = -ldnest4 -L/usr/local/lib
 
