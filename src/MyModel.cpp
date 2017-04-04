@@ -24,7 +24,7 @@ using namespace DNest4;
 #define DOCEL true
 
 MyModel::MyModel()
-:objects(5, 3, false, MyConditionalPrior())
+:objects(5, 0, true, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
