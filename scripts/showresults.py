@@ -11,7 +11,13 @@ if 'no' in options:
 	plot = False
 else:
 	plot = True
-logz_estimate, H_estimate, logx_samples, posterior_sample = postprocess(plot=plot)
+
+if 'pvc' in options:
+	while True:
+		logz_estimate, H_estimate, logx_samples, posterior_sample = postprocess(plot=plot)
+else:
+	logz_estimate, H_estimate, logx_samples, posterior_sample = postprocess(plot=plot)
+
 # diffusion_plot()
 
 if posterior_sample.shape[0] > 5:
