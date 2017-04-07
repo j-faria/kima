@@ -351,6 +351,27 @@ double MyModel::log_likelihood() const
             b(i, 0) = y[i] - mu[i];
         }
 
+        //auto begin = std::chrono::high_resolution_clock::now();  // start timing
+        A->solve(b, x);
+        double determinant;
+        A->compute_Determinant(determinant);
+        //auto end = std::chrono::high_resolution_clock::now();
+        //cout << "solve and determinant took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
+
+        //cout << logDeterminant << "   " << determinant << endl;
+        //assert (logDeterminant == determinant);
+        double exponent2 = 0.;
+        for(int i = 0; i < y.size(); ++i)
+            exponent2 += b(i,0)*x(i);
+
+
+        double logL = -0.5*y.size()*log(2*M_PI)
+                        - 0.5*determinant - 0.5*exponent2;
+
+        //cout << logL << endl;
+        //cout << logL << "   " << logL2 << endl;    
+        //assert (logL == logL2);
+
 
     #else
         // residual vector (observed y minus model y)
@@ -358,20 +379,32 @@ double MyModel::log_likelihood() const
         for(size_t i=0; i<y.size(); i++)
             residual(i) = y[i] - mu[i];
 
-        double logDeterminant = 0.;
         #if DOCEL
-            logDeterminant = solver.log_determinant();
-            VectorXd solution = solver.solve(residual);
+            // logDeterminant = solver.log_determinant();
+            // VectorXd solution = solver.solve(residual);
+
+            double logL = -0.5 * (solver.dot_solve(residual) +
+                                  solver.log_determinant() +
+                                  y.size()*log(2*M_PI)); 
         #else
             // perform the cholesky decomposition of C
             Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
             // get the lower triangular matrix L
             MatrixXd L = cholesky.matrixL();
 
+            double logDeterminant = 0.;
             for(size_t i=0; i<y.size(); i++)
                 logDeterminant += 2.*log(L(i,i));
 
             VectorXd solution = cholesky.solve(residual);
+
+            // y*solution
+            double exponent = 0.;
+            for(size_t i=0; i<y.size(); i++)
+                exponent += residual(i)*solution(i);
+
+            double logL = -0.5*y.size()*log(2*M_PI)
+                            - 0.5*logDeterminant - 0.5*exponent;
         #endif
 
         // cout << "old GP log_det: " << logDeterminant << "\t"; // << std::endl;
@@ -385,42 +418,6 @@ double MyModel::log_likelihood() const
         // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
         // auto end1 = std::chrono::high_resolution_clock::now();
         // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
-    #endif
-
-
-    #if DONEW
-        //auto begin = std::chrono::high_resolution_clock::now();  // start timing
-        A->solve(b, x);
-        double determinant;
-        A->compute_Determinant(determinant);
-        //auto end = std::chrono::high_resolution_clock::now();
-        //cout << "solve and determinant took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-
-        //cout << logDeterminant << "   " << determinant << endl;
-        //assert (logDeterminant == determinant);
-
-    #else
-        // y*solution
-        double exponent = 0.;
-        for(size_t i=0; i<y.size(); i++)
-            exponent += residual(i)*solution(i);
-
-        double logL = -0.5*y.size()*log(2*M_PI)
-                        - 0.5*logDeterminant - 0.5*exponent;
-    #endif
-    
-    #if DONEW
-        double exponent2 = 0.;
-        for(int i = 0; i < y.size(); ++i)
-            exponent2 += b(i,0)*x(i);
-
-
-        double logL = -0.5*y.size()*log(2*M_PI)
-                        - 0.5*determinant - 0.5*exponent2;
-
-        //cout << logL << endl;
-        //cout << logL << "   " << logL2 << endl;    
-        //assert (logL == logL2);
     #endif
 
     if(std::isnan(logL) || std::isinf(logL))
