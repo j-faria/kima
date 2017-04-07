@@ -134,7 +134,7 @@ if cluster:
     os.chdir(old_cwd)
 
 else:
-    nthreads = 1
+    nthreads = 4
     print 'Starting "main" with %d threads...' % nthreads
     os.chdir(top_level)
     cmd = ['./main', '-t', str(nthreads), '-o', options_file]

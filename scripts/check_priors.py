@@ -13,6 +13,7 @@ except IndexError:
 	log = False
 
 with open('sample.txt') as f:
+# with open('posterior_sample.txt') as f:
 	firstline = f.readline()
 firstline = firstline.strip().replace('#','')
 names = firstline.split()
@@ -31,6 +32,11 @@ if log:
 	data = data[np.nonzero(data)[0]]
 	data = np.log(data)
 
-plt.hist(data, bins=100, color='black', histtype='step', normed=True)
+# if log:
+	# bins = np.logspace(np.log(data.min()), np.log(data.max()), 100)
+# else:
+bins = 100 #np.linspace(data.min(), data.max(), 100)
+plt.hist(data, bins=bins, color='black', histtype='step', normed=True)
+# if log: plt.xscale('log')
 # hist(data, bins='knuth', color='black', histtype='step', normed=True)
 plt.show()
