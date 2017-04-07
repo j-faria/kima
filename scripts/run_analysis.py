@@ -83,6 +83,12 @@ options_file = path.join(results_now_dir, 'OPTIONS')
 shutil.copy(path.join(top_level, 'OPTIONS'), options_file)
 
 
+print 'Creating file data_file.txt with data file.'
+with open(path.join(results_now_dir, 'data_file.txt'), 'w') as f:
+    print >>f, data_file
+
+# sys.exit(0)
+
 print 'Setting the right paths in the OPTIONS file.'
 for line in fileinput.input(options_file, inplace=True, backup='.bak'):
     if 'samples file' in line:
