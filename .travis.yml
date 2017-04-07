@@ -5,9 +5,7 @@ before_install:
 - sudo apt-get install -y latexmk
 script:
 - cd paper
-- latexmk -bibtex -f -pdf -pdflatex="pdflatex -synctex=1 -interaction=nonstopmode" paper.tex
-- latexmk -c paper.tex 
-- rm paper.synctex.gz paper.llt
+- buid_paper.sh
 
 
 # deploy:
