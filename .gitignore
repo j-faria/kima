@@ -2,11 +2,15 @@
 __init__.py
 
 .sync
+*sublime*
 
 *.o
 *.d
 
 *.txt
 *.log
+reports
+results
+
 
 *.rdb
