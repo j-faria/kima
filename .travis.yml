@@ -5,7 +5,7 @@ before_install:
 - sudo apt-get install -y latexmk
 script:
 - cd paper
-- buid_paper.sh
+- ./buid_paper.sh
 
 
 # deploy:
