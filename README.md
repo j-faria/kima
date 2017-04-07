@@ -9,7 +9,9 @@ Right now the repository has a template implementation of the RJ-DNest code, whi
 
 - [x] implement a linear trend  
       went ahead and added a quadratic trend. So far so good but I'm not sure about the interaction with the GP
-- [ ] implement HODLR inversion (issue [#1](https://github.com/j-faria/bicerin/issues/1))
+- [ ] implement HODLR inversion (issue [#1](https://github.com/j-faria/bicerin/issues/1))  
+      issue is closed
+- [x] implement celerite
 
 
 All data is in the `data` folder and some metadata is in the `docs` and `reports` folders. 
@@ -18,5 +20,5 @@ All data is in the `data` folder and some metadata is in the `docs` and `reports
 
 - Compile with `make`
 - Change `OPTIONS`
-- Run `./main`
-- Analyse with `scripts/showresults.py`
+- Run `./main` or `./run`
+- Analyse with `scripts/showresults.py` and `scripts/display.py`
