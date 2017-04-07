@@ -64,18 +64,19 @@ void MyModel::from_prior(RNG& rng)
     // Log-uniform prior from 10^(-1) to 50 m/s
     //eta1 = exp(log(1E-1) + log(5E2)*rng.rand());
     // Log-uniform prior from 10^(-5) to 0.05 km/s
-    eta1 = exp(log(1E-5) + log(5E2)*rng.rand());
+    eta1 = exp(log(1E-5) + log(1E-1)*rng.rand());
 
 
-    // Log-uniform prior from 10^(0) to 100 days
-    eta2 = exp(log(1.) + log(1E2)*rng.rand());
+    // Log-uniform prior
+    eta2 = exp(log(1E-3) + log(1E2)*rng.rand());
 
     // or uniform prior between 10 and 40 days
-    eta3 = 15. + 15.*rng.rand();
+    eta3 = 20. + 10.*rng.rand();
 
     // Log-uniform prior from 10^(-1) to 10 (fraction of eta3)
     // Log-uniform prior from 10^(-1) to 2 (fraction of eta3)
-    eta4 = exp(log(1E-1) + log(1E1)*rng.rand());
+    eta4 = exp(log(1E-5) + log(1E1)*rng.rand());
+    // eta4 = rng.rand();
 
 
     calculate_mu();
@@ -127,10 +128,10 @@ void MyModel::calculate_C()
                  beta_complex_real(1),
                  beta_complex_imag(1);
         
-        a = eta1*eta1;
+        a = eta1;
         b = eta4;
         P = eta3;
-        c = P/(2.*eta2*eta2);
+        c = eta2;
 
         alpha_real << a*(1.+b)/(2.+b);
         beta_real << 1./c;
@@ -256,28 +257,31 @@ double MyModel::perturb(RNG& rng)
         if(rng.rand() <= 0.25)
         {
             eta1 = log(eta1);
-            eta1 += log(5E3)*rng.randh(); // range of prior support
-            wrap(eta1, log(1E-4), log(0.05)); // wrap around inside prior
+            eta1 += log(1E4)*rng.randh(); // range of prior support
+            wrap(eta1, log(1E-5), log(1E-1)); // wrap around inside prior
             eta1 = exp(eta1);
         }
         else if(rng.rand() <= 0.33330)
         {
             eta2 = log(eta2);
-            eta2 += log(1E2)*rng.randh(); // range of prior support
-            wrap(eta2, log(1.), log(1E2)); // wrap around inside prior
+            eta2 += log(1E5)*rng.randh(); // range of prior support
+            wrap(eta2, log(1E-3), log(1E2)); // wrap around inside prior
             eta2 = exp(eta2);
         }
         else if(rng.rand() <= 0.5)
         {
-            eta3 += 15.*rng.randh(); // range of prior support
-            wrap(eta3, 15., 30.); // wrap around inside prior
+            eta3 += 10.*rng.randh(); // range of prior support
+            wrap(eta3, 20., 30.); // wrap around inside prior
         }
         else
         {
             eta4 = log(eta4);
-            eta4 += log(1E2)*rng.randh(); // range of prior support
-            wrap(eta4, log(1E-1), log(1E1)); // wrap around inside prior
+            eta4 += log(1E6)*rng.randh(); // range of prior support
+            wrap(eta4, log(1E-5), log(1E1)); // wrap around inside prior
             eta4 = exp(eta4);
+
+            // eta4 += rng.randh();
+            // wrap(eta4, 0., 1.);
         }
 
         calculate_C();
