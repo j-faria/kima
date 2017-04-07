@@ -55,6 +55,7 @@ class MyModel
 
 		double background;
 		//std::vector<double> offsets;
+		double slope, quad;
 
 		double extra_sigma;
 

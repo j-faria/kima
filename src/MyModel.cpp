@@ -22,6 +22,7 @@ using namespace DNest4;
 
 #define DONEW false  
 #define DOCEL true
+#define trend true
 
 MyModel::MyModel()
 :objects(5, 0, true, MyConditionalPrior())
@@ -48,11 +49,25 @@ void MyModel::from_prior(RNG& rng)
     objects.from_prior(rng);
     objects.consolidate_diff();
     
-    double ymin, ymax;
+    double ymin, ymax, tmin, tmax;
+    tmin = Data::get_instance().get_t_min();
+    tmax = Data::get_instance().get_t_max();
     ymin = Data::get_instance().get_y_min();
     ymax = Data::get_instance().get_y_max();
 
     background = ymin + (ymax - ymin)*rng.rand();
+
+    #if trend
+        // double max_slope = Data::get_instance().get_max_slope();
+        // slope = -1E-4 + 2E-4*rng.rand();
+        // quad = -1E-4 + 2E-4*rng.rand();
+        double topslope = abs(ymax-ymin) / (tmax - tmin);
+        slope = -topslope + 2.*topslope*rng.rand();
+        double topquad = abs(ymax-ymin) / ((tmax - tmin)*(tmax - tmin));
+        quad = -topquad + 2.*topquad*rng.rand();
+    #endif
+
+
 
     // centered at 1 (data in m/s)
     /*extra_sigma = exp(tan(M_PI*(0.97*rng.rand() - 0.485)));*/
@@ -233,6 +248,18 @@ void MyModel::calculate_mu()
         }
     }
 
+
+    #if trend
+        for(size_t i=0; i<t.size(); i++)
+            mu[i] += slope*(t[i] - t[0]) + quad*(t[i] - t[0])*(t[i] - t[0]);
+        
+        // cout << slope << "\t" << quad << endl;
+    #endif
+
+
+
+    // cout << background << endl;
+
     //auto end = std::chrono::high_resolution_clock::now();
     //ofstream timerfile;
     //timerfile.open("timings.txt", std::ios_base::app);
@@ -301,6 +328,43 @@ double MyModel::perturb(RNG& rng)
     }
     else
     {
+
+    #if trend
+
+        // Get the times from the data
+        const vector<double>& t = Data::get_instance().get_t();
+
+        for(size_t i=0; i<mu.size(); i++)
+            mu[i] = mu[i] - background - slope*(t[i]-t[0]) - quad*(t[i]-t[0])*(t[i]-t[0]);
+
+        double ymin, ymax, tmin, tmax;
+        tmin = Data::get_instance().get_t_min();
+        tmax = Data::get_instance().get_t_max();
+        ymin = Data::get_instance().get_y_min();
+        ymax = Data::get_instance().get_y_max();
+        double topslope = abs(ymax-ymin) / (tmax - tmin);
+        double topquad = abs(ymax-ymin) / ((tmax - tmin)*(tmax - tmin));
+
+        // propose new offset
+        background += (ymax - ymin)*rng.randh();
+        wrap(background, ymin, ymax);
+
+        // propose new slope and quad 
+        slope += 2.*topslope*rng.randh();
+        wrap(slope, -topslope, topslope);
+        quad += 2.*topquad*rng.randh();
+        wrap(quad, -topquad, topquad);
+        // slope += 2E-6*rng.randh();
+        // wrap(slope, -3E-6, -1E-6);
+        // quad += 2E-9*rng.randh();
+        // wrap(quad, 8E-9, 1E-8);
+
+
+        // add it back again
+        for(size_t i=0; i<mu.size(); i++)
+            mu[i] = mu[i] + background + slope*(t[i]-t[0]) + quad*(t[i]-t[0])*(t[i]-t[0]);
+
+    #else
         for(size_t i=0; i<mu.size(); i++)
             mu[i] -= background;
 
@@ -313,7 +377,10 @@ double MyModel::perturb(RNG& rng)
 
         for(size_t i=0; i<mu.size(); i++)
             mu[i] += background;
+    #endif
+
     }
+
 
     return logH;
 }
@@ -454,7 +521,14 @@ void MyModel::print(std::ostream& out) const
 
     //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t'<<eta5<<'\t';
     //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t';
-    out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+    // out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+
+    #if trend
+        out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t'<<slope<<'\t'<<quad*1E8<<'\t';
+    #else
+        out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+    #endif
+
   
     objects.print(out); out<<' '<<staleness<<' ';
     out<<background<<' ';

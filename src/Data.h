@@ -16,10 +16,15 @@ class Data
 
 		// Getters
 		const std::vector<double>& get_t() const { return t; }
+		double get_t_min() const { return *min_element(t.begin(), t.end()); }
+		double get_t_max() const { return *max_element(t.begin(), t.end()); }
+
 		const std::vector<double>& get_y() const { return y; }
-		const std::vector<double>& get_sig() const { return sig; }
 		double get_y_min() const { return *min_element(y.begin(), y.end()); }
 		double get_y_max() const { return *max_element(y.begin(), y.end()); }
+		
+		const std::vector<double>& get_sig() const { return sig; }
+		// double get_y_span() const {return abs(get_y_max() - get_y_min());}
 
 	// Singleton
 	private:
