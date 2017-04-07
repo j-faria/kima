@@ -48,10 +48,13 @@ class DisplayResults(object):
     def __init__(self, options, data_file=None, posterior_samples_file='posterior_sample.txt'):
         self.options = options
 
+        debug = 'debug' in self.options
+
+        path_to_this_file = os.path.abspath(__file__)
+        top_level = os.path.dirname(os.path.dirname(path_to_this_file))
+
         if data_file is None:
-            path_to_this_file = os.path.abspath(__file__)
-            top_level = os.path.dirname(os.path.dirname(path_to_this_file))
-            print top_level
+            if debug: print top_level
             with open(os.path.join(top_level, 'src', 'main.cpp')) as f:
                 c = f.readlines()
             for line in c:
@@ -79,12 +82,20 @@ class DisplayResults(object):
 
         self.extra_sigma = self.posterior_sample[:, start_parameters]
 
-        n_hyperparameters = 4
-        for i in range(n_hyperparameters):
-            name = 'eta' + str(i+1)
-            setattr(self, name, self.posterior_sample[:, start_parameters+1+i])
 
-        self.eta1 *= 1e3
+        with open(os.path.join(top_level, 'src', 'MyModel.cpp')) as f:
+            self.GPmodel = '#define GP true' in f.read()
+            if debug: print 'GP model:', self.GPmodel
+
+        if self.GPmodel:
+            n_hyperparameters = 4
+            for i in range(n_hyperparameters):
+                name = 'eta' + str(i+1)
+                setattr(self, name, self.posterior_sample[:, start_parameters+1+i])
+
+            self.eta1 *= 1e3
+        else:
+            n_hyperparameters = 0
 
         # if n_hyperparameters == 4:
         #     self.eta1, self.eta2, self.eta3, self.eta4 = self.posterior_sample[:, start_parameters+1:start_parameters+5].T
@@ -94,10 +105,18 @@ class DisplayResults(object):
         #     self.nu = self.posterior_sample[:, start_parameters+n_hyperparameters].T
         # self.eta1, self.eta2, self.eta3, self.eta4, self.eta5 = self.posterior_sample[:, start_parameters+1:start_parameters+6].T
 
-        n_offsets = 0
-        self.offset = self.posterior_sample[:, start_parameters+n_hyperparameters+n_offsets]
 
-        start_objects_print = start_parameters + n_offsets + n_hyperparameters + 1
+        with open(os.path.join(top_level, 'src', 'MyModel.cpp')) as f:
+            self.trend = 'define trend true' in f.read()
+            if debug: print 'trend:', self.trend
+
+
+        n_trend = 2 if self.trend else 0
+        i1 = start_parameters + n_hyperparameters + 1
+        i2 = start_parameters + n_hyperparameters + n_trend + 1
+        self.trendpars = self.posterior_sample[:, i1:i2]
+
+        start_objects_print = start_parameters + n_trend + n_hyperparameters + 1
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
         # maximum number of components

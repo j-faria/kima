@@ -22,7 +22,9 @@ using namespace DNest4;
 
 #define DONEW false  
 #define DOCEL true
-#define trend true
+
+#define trend false
+#define GP true
 
 MyModel::MyModel()
 :objects(5, 0, true, MyConditionalPrior())
@@ -76,30 +78,35 @@ void MyModel::from_prior(RNG& rng)
 
     //eta5 = exp(tan(M_PI*(0.97*rng.rand() - 0.485)));
 
-    // Log-uniform prior from 10^(-1) to 50 m/s
-    //eta1 = exp(log(1E-1) + log(5E2)*rng.rand());
-    // Log-uniform prior from 10^(-5) to 0.05 km/s
-    eta1 = exp(log(1E-5) + log(1E-1)*rng.rand());
+    #if GP
+        // Log-uniform prior from 10^(-1) to 50 m/s
+        //eta1 = exp(log(1E-1) + log(5E2)*rng.rand());
+        // Log-uniform prior from 10^(-5) to 0.05 km/s
+        eta1 = exp(log(1E-5) + log(1E-1)*rng.rand());
 
 
-    // Log-uniform prior
-    eta2 = exp(log(1E-3) + log(1E2)*rng.rand());
+        // Log-uniform prior
+        eta2 = exp(log(1E-3) + log(1E2)*rng.rand());
 
-    // or uniform prior between 10 and 40 days
-    eta3 = 20. + 10.*rng.rand();
+        // or uniform prior between 10 and 40 days
+        eta3 = 20. + 10.*rng.rand();
 
-    // Log-uniform prior from 10^(-1) to 10 (fraction of eta3)
-    // Log-uniform prior from 10^(-1) to 2 (fraction of eta3)
-    eta4 = exp(log(1E-5) + log(1E1)*rng.rand());
-    // eta4 = rng.rand();
-
+        // Log-uniform prior from 10^(-1) to 10 (fraction of eta3)
+        // Log-uniform prior from 10^(-1) to 2 (fraction of eta3)
+        eta4 = exp(log(1E-5) + log(1E1)*rng.rand());
+        // eta4 = rng.rand();
+    #endif
 
     calculate_mu();
-    calculate_C();
+
+    #if GP
+        calculate_C();
+    #endif
 }
 
 void MyModel::calculate_C()
 {
+
     // Get the data
     const vector<double>& t = Data::get_instance().get_t();
     const vector<double>& sig = Data::get_instance().get_sig();
@@ -279,6 +286,8 @@ double MyModel::perturb(RNG& rng)
         objects.consolidate_diff();
         calculate_mu();
     }
+
+    #if GP
     else if(rng.rand() <= 0.5)
     {
         if(rng.rand() <= 0.25)
@@ -314,6 +323,8 @@ double MyModel::perturb(RNG& rng)
         calculate_C();
 
     }
+    #endif // GP
+
     else if(rng.rand() <= 0.5)
     {
         // data in km/s
@@ -324,7 +335,9 @@ double MyModel::perturb(RNG& rng)
         extra_sigma = -6.908 + tan(M_PI*(0.97*extra_sigma - 0.485));
         extra_sigma = exp(extra_sigma);
 
-        calculate_C();
+        #if GP
+            calculate_C();
+        #endif
     }
     else
     {
@@ -396,6 +409,7 @@ double MyModel::log_likelihood() const
     const vector<double>& y = Data::get_instance().get_y();
 
     //auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #if GP
 
     #if DONEW
         // Set up the kernel.
@@ -487,8 +501,6 @@ double MyModel::log_likelihood() const
         // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
     #endif
 
-    if(std::isnan(logL) || std::isinf(logL))
-        logL = -1E300;
 
     //auto end = std::chrono::high_resolution_clock::now();
     ////cout << "Likelihood took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
@@ -498,8 +510,11 @@ double MyModel::log_likelihood() const
     //timerfile.setf(ios::fixed,ios::floatfield);
     //timerfile << y.size() << '\t' << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
 
+    // cout << "finished log_likelihood!" << endl;
+    // return logL;
 
-    return logL;
+
+    #else
 
     /** The following code calculates the log likelihood in the case of a t-Student model without correlated noise*/
     //  for(size_t i=0; i<y.size(); i++)
@@ -510,7 +525,25 @@ double MyModel::log_likelihood() const
     //          - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
     //  }
 
-    // return logL;
+    /** The following code calculates the log likelihood in the case of a Gaussian likelihood*/
+    const vector<double>& sig = Data::get_instance().get_sig();
+
+    double halflog2pi = 0.5*log(2.*M_PI);
+    double logL = 0.;
+    double var;
+    for(size_t i=0; i<y.size(); i++)
+    {
+        var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+        logL += - halflog2pi - 0.5*log(var)
+                - 0.5*(pow(y[i] - mu[i], 2)/var);
+    }
+
+    #endif // GP
+
+
+    if(std::isnan(logL) || std::isinf(logL))
+        logL = -1E300;
+    return logL;
 }
 
 void MyModel::print(std::ostream& out) const
@@ -523,10 +556,13 @@ void MyModel::print(std::ostream& out) const
     //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t';
     // out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
 
+    out<<extra_sigma<<'\t';
+
+    #if GP
+        out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+    #endif
     #if trend
-        out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t'<<slope<<'\t'<<quad*1E8<<'\t';
-    #else
-        out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+        out<<slope<<'\t'<<quad*1E8<<'\t';
     #endif
 
   
@@ -536,7 +572,15 @@ void MyModel::print(std::ostream& out) const
 
 string MyModel::description() const
 {
-    return string("extra_sigma   eta1   eta2   eta3   eta4   objects.print   staleness   background");
+    #if #GP
+        #if trend
+            return string("extra_sigma   eta1   eta2   eta3   eta4  slope   quad   objects.print   staleness   background");
+        #else
+            return string("extra_sigma   eta1   eta2   eta3   eta4  objects.print   staleness   background");
+        #endif
+    #else
+        return string("extra_sigma   objects.print   staleness   background");
+    #endif
     //return string("extra_sigma  eta1    eta2    objects.print   staleness   background");
     //return string("extra_sigma  eta1    eta2    eta3    eta4    eta5    offsets    objects.print   staleness   background");
 }
