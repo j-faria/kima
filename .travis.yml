@@ -1,28 +1,30 @@
 sudo: required
 dist: trusty
+
 before_install:
-- sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-fonts-recommended texlive-latex-extra dvipng texlive-latex-recommended
+- sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra dvipng texlive-latex-recommended
 - sudo apt-get install -y latexmk
+
+
 script:
 - cd paper
-- latexmk -quiet -bibtex -f -pdf -pdflatex="pdflatex -synctex=1 -interaction=nonstopmode" paper.tex
-- latexmk -quiet -c paper.tex 
-- rm paper.synctex.gz paper.llt
-- ls
-- echo $GITHUB_USER
+- mkdir _build
+- latexmk -quiet -pdf -interaction=nonstopmode -outdir=_build paper.tex
+# - pdflatex -interaction=nonstopmode -halt-on-error -output-directory _build paper.tex
 
-# deploy:
-#   provider: releases
-#   api_key:
-#     secure: [YOUR KEY]
-#   file:
-#   - _build/your_file_1.pdf
-#   - _build/your_file_2.pdf
-#   skip_cleanup: true
-#   on:
-#     tags: true
+
+deploy:
+  provider: releases
+  api_key:
+    secure: Hvng8gLiip5GdWSf8FALPdqClRilUorPWt0Q3kgGDtLoqJtfbrlug1AjRXEq+rAZ8S1Q2V/80XCi8CfM9b6jIjtXAsAAT9F1R3NRAzchVOQOSJBgigF18yGkTkQHlLY+P+rb8lueAfrkrRO/xLyh5lcOEh79XR9ihP/IMxpSXFGLaWJ6Ql3d1vwhgnBC3J/N72ans4tKrZ9M5Jib0O0dkwfwHxVlAAOmhzHEj0YCqhW/XuWZ6FPkZ3j5qfacFlIwCIEY2rWMx74e8YngnRTt+KR6vrI49ksRAPr+A/Q2J40+wOK2tN1zv7b1LaNARiJQYFK7oC4fYLb6MgWT1lu3YsqiXtOtYsd3uMbP1BSB4K+wx4JX6tAUf4FXwWg2UDlW7TNzhg+7FNCDTt6vwMgnFGB9CPt8Gm/AyCvnd+eMAtuXKgCvJqqC70N98oRASqH9KIMruK1A+eqAKtvcc2qg4vtTx0u6oz6um0MvoMk+vBk3ecP8Nr03/VXI27DvczPU0pVC1V44bIudjcIH4GRMQHD2d+IYnNC/zSkZfGaONjLPFszayLi9NEZHV3dYwJ0/h+iZFZa9bwi9zcQgnWvi2g11ad2wC6MQbP7bN170GQ520Vqm7UfNIEJ0oi/pIg+9MeUp6ujAVzzgkfSWsnOTj/1eWAoN/H8f9YvUBizvdqI=
+  file: _build/paper.pdf
+  skip_cleanup: true
+  on:
+    tags: true
+    # repo: j-faria/bicerin
+
 
 notifications:
   email:
-    on_success: never # default: change
-    on_failure: change # default: always
+    on_success: never
+    on_failure: change
