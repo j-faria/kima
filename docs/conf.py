@@ -139,11 +139,11 @@ html_theme = 'alabaster'
 # The name for this set of Sphinx documents.
 # "<project> v<release> documentation" by default.
 #
-# html_title = u'bicerin v0.1'
+html_title = u'v0.1'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #
-# html_short_title = None
+html_short_title = 'bicerin'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
@@ -189,11 +189,11 @@ html_static_path = ['_static']
 
 # If false, no module index is generated.
 #
-# html_domain_indices = True
+html_domain_indices = False
 
 # If false, no index is generated.
 #
-# html_use_index = True
+html_use_index = False
 
 # If true, the index is split into individual pages for each letter.
 #
