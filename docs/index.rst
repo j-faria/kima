@@ -1,22 +1,31 @@
-.. bicerin documentation master file, created by
-   sphinx-quickstart on Sun Apr  9 09:47:09 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+bicerin
+=======
 
-Welcome to bicerin's documentation!
-===================================
+Bicerin is a traditional hot drink native to Turin, Italy, made of espresso, drinking chocolate and whole milk served layered in a small rounded glass.
+It's delicious!
+
+
+The goal of this project is to analyse the data from the RV challenge
+Dumusque (2016), Dumusque et al. (2016), 
+using a new version of the method proposed in 
+`Faria et al. (2016) <http://dx.doi.org/10.1051/0004-6361/201527899>`_.
+
+
+.. warning:: This is work in progress, half of it doesn't work!
+             Or if it works we are not sure why...
+
+
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: DNest4 sampler
 
+   cpp/start.rst
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Analysis of the results
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+   python/start.rst

@@ -22,3 +22,6 @@ All data is in the `data` folder and some metadata is in the `docs` and `reports
 - Change `OPTIONS`
 - Run `./main` or `./run`
 - Analyse with `scripts/showresults.py` and `scripts/display.py`
+
+
+[![Documentation](https://readthedocs.org/projects/bicerin/badge/?version=latest)](http://bicerin.readthedocs.io/?badge=latest)
