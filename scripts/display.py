@@ -9,6 +9,9 @@ import os
 import george
 from george import kernels
 
+import celerite
+from celerite import terms
+
 sys.path.append('/home/joao/Work/OPEN')
 from OPEN.classes import params as params_paper
 # from OPEN.classes import MyFormatter
@@ -62,15 +65,15 @@ class DisplayResults(object):
             data_file = re.findall('"(.*?)"', l, re.DOTALL)[0]
 
         print 'Loading data file %s' % data_file
-        data_file = os.path.join(top_level, data_file)
+        self.data_file = os.path.join(top_level, data_file)
 
         # self.data = np.loadtxt('1planet_plus_gp.rv')
         # self.data = np.loadtxt('HD41248_harps_mean_corr.rdb')
         # self.data = np.loadtxt('BT1.txt')
-        self.data = np.loadtxt(data_file, skiprows=2)
+        self.data = np.loadtxt(self.data_file, skiprows=2)
         mean_vrad = self.data[:, 1].mean()
-        self.data[:, 1] = (self.data[:, 1] - mean_vrad)*1e3 + mean_vrad
-        self.data[:, 2] *= 1e3
+        # self.data[:, 1] = (self.data[:, 1] - mean_vrad)*1e3 + mean_vrad
+        # self.data[:, 2] *= 1e3
 
         # self.truth = np.loadtxt('fake_data_like_nuoph.truth')
         # posterior_samples_file = 'resultsCorot7/upto10/posterior_sample.txt'
