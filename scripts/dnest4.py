@@ -194,6 +194,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], \
 	# Resample to uniform weight
 	N = int(moreSamples*ESS)
 	posterior_sample = np.zeros((N, sample.shape[1]))
+	likelihoods = np.zeros((N, 1))
 	w = P_samples
 	w = w/np.max(w)
 	if save:
@@ -204,8 +205,11 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], \
 			if np.random.rand() <= w[which]:
 				break
 		posterior_sample[i,:] = sample[which,:]
+		# print sample_info.shape
+		likelihoods[i,0] = sample_info[which,1]
 	if save:
 		np.savetxt("posterior_sample.txt", posterior_sample)
+		np.savetxt("posterior_sample_lnlikelihoods.txt", likelihoods)
 
 	if plot:
 		plt.show()
