@@ -52,11 +52,17 @@ with open(path.join(top_level, 'src', 'main.cpp')) as f:
 
 print 'Data file in "main.cpp" seems to be: %s' % data_file
 
-
-system_number = int(re.findall('\d+', data_file)[0])
-results_path = path.join('results', 'PlSy%d' % system_number)
-print 'This is system number %d, so results will go to %s' % (system_number, results_path)
-
+try:
+    star = re.findall('HD\d+', data_file)[0]
+    results_path = path.join('results', star)
+    print 'This is star %s, so results will go to %s' % (star, results_path)
+except IndexError:
+    system_number = int(re.findall('\d+', data_file)[0])
+    results_path = path.join('results', 'PlSy%d' % system_number)
+    print 'This is system number %d, so results will go to %s' % (system_number, results_path)
+# system_number = int(re.findall('\d+', data_file)[0])
+# results_path = path.join('results', 'PlSy%d' % system_number)
+# print 'This is system number %d, so results will go to %s' % (system_number, results_path)
 
 results_path = path.join(top_level, results_path)
 dir_exists_or_create(results_path)
