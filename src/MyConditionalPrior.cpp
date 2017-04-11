@@ -4,6 +4,9 @@
 
 using namespace DNest4;
 
+#define hyperperiod true 
+
+
 MyConditionalPrior::MyConditionalPrior()
 {
 
@@ -12,11 +15,15 @@ MyConditionalPrior::MyConditionalPrior()
 void MyConditionalPrior::from_prior(RNG& rng)
 // these are the quantile functions (inverse of the cdf)
 {
-	// Cauchy prior centered on 5.901 = log(365 days), scale=1
-	// truncated to (-15.3, 27.1)
-	center = 5.901 + tan(M_PI*(0.97*rng.rand() - 0.485));
-	// uniform prior between 0.1 and 3
-	width = 0.1 + 2.9*rng.rand();
+	#if hyperperiod
+		// Cauchy prior centered on 5.901 = log(365 days), scale=1
+		// truncated to (-15.3, 27.1)
+		center = 5.901 + tan(M_PI*(0.97*rng.rand() - 0.485));
+
+		// uniform prior between 0.1 and 3
+		width = 0.1 + 2.9*rng.rand();
+	#endif
+
 	// standard Cauchy prior for log(mu)
 	// truncated to (-21.2, 21.2)
 	/*mu = exp(tan(M_PI*(0.97*rng.rand() - 0.485)));*/
