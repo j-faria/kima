@@ -23,11 +23,11 @@ using namespace DNest4;
 #define DONEW false  
 #define DOCEL true
 
-#define trend false
+#define trend true
 #define GP true
 
 MyModel::MyModel()
-:objects(5, 0, true, MyConditionalPrior())
+:objects(5, 10, false, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
@@ -86,14 +86,15 @@ void MyModel::from_prior(RNG& rng)
 
 
         // Log-uniform prior
-        eta2 = exp(log(1E-3) + log(1E2)*rng.rand());
+        eta2 = exp(log(1E-6) + log(1E6)*rng.rand());
 
         // or uniform prior between 10 and 40 days
-        eta3 = 20. + 10.*rng.rand();
+        eta3 = 10. + 30.*rng.rand();
 
         // Log-uniform prior from 10^(-1) to 10 (fraction of eta3)
         // Log-uniform prior from 10^(-1) to 2 (fraction of eta3)
-        eta4 = exp(log(1E-5) + log(1E1)*rng.rand());
+        // eta4 = 1.; 
+        exp(log(1E-5) + log(1E5)*rng.rand());
         // eta4 = rng.rand();
     #endif
 
@@ -156,10 +157,10 @@ void MyModel::calculate_C()
         c = eta2;
 
         alpha_real << a*(1.+b)/(2.+b);
-        beta_real << 1./c;
+        beta_real << c;
         alpha_complex_real << a/(2.+b);
         alpha_complex_imag << 0.;
-        beta_complex_real << 1./c;
+        beta_complex_real << c;
         beta_complex_imag << 2.*M_PI / P;
 
 
@@ -225,14 +226,23 @@ void MyModel::calculate_mu()
     // Get the components
     const vector< vector<double> >& components = (update)?(objects.get_added()):
                 (objects.get_components());
+    // at this point, components has:
+    //  if updating: only the added planets' parameters
+    //  if from scratch: all the planets' parameters
 
     // Zero the signal
-    if(!update)
+    if(!update) // not updating, means recalculate everything
     {
         mu.assign(mu.size(), background);
         staleness = 0;
+        #if trend
+            for(size_t i=0; i<t.size(); i++)
+                mu[i] += slope*(t[i] - t[0]) + quad*(t[i] - t[0])*(t[i] - t[0]);
+            
+            // cout << slope << "\t" << quad << endl;
+        #endif
     }
-    else
+    else // just updating (adding) planets
         staleness++;
 
     //auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -256,12 +266,6 @@ void MyModel::calculate_mu()
     }
 
 
-    #if trend
-        for(size_t i=0; i<t.size(); i++)
-            mu[i] += slope*(t[i] - t[0]) + quad*(t[i] - t[0])*(t[i] - t[0]);
-        
-        // cout << slope << "\t" << quad << endl;
-    #endif
 
 
 
@@ -300,20 +304,22 @@ double MyModel::perturb(RNG& rng)
         else if(rng.rand() <= 0.33330)
         {
             eta2 = log(eta2);
-            eta2 += log(1E5)*rng.randh(); // range of prior support
-            wrap(eta2, log(1E-3), log(1E2)); // wrap around inside prior
+            eta2 += log(1E12)*rng.randh(); // range of prior support
+            wrap(eta2, log(1E-6), log(1E6)); // wrap around inside prior
             eta2 = exp(eta2);
         }
         else if(rng.rand() <= 0.5)
         {
-            eta3 += 10.*rng.randh(); // range of prior support
-            wrap(eta3, 20., 30.); // wrap around inside prior
+            eta3 += 30.*rng.randh(); // range of prior support
+            wrap(eta3, 10., 40.); // wrap around inside prior
         }
         else
         {
+            // eta4 = 1.0;
+
             eta4 = log(eta4);
-            eta4 += log(1E6)*rng.randh(); // range of prior support
-            wrap(eta4, log(1E-5), log(1E1)); // wrap around inside prior
+            eta4 += log(1E10)*rng.randh(); // range of prior support
+            wrap(eta4, log(1E-5), log(1E5)); // wrap around inside prior
             eta4 = exp(eta4);
 
             // eta4 += rng.randh();
