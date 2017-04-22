@@ -16,6 +16,13 @@ Right now the repository has a template implementation of the RJ-DNest code, whi
 
 All data is in the `data` folder and some metadata is in the `docs` and `reports` folders. 
 
+### submodule update
+
+On Apr 22 I decided to include `DNest4`, `eigen` and `celerite` as submodules within the bicerin tree.
+Hopefully this makes it easier and faster to get this project set up and running.
+
+
+
 ## To run
 
 - Compile with `make`
