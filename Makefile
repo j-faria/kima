@@ -3,7 +3,7 @@ DNEST4_PATH = /home/joao/Software/DNest4/code
 
 EIGEN_PATH = /usr/include/eigen3
 
-CELERITE_PATH = /home/joao/Work/celerite/cpp/include
+CELERITE_PATH = celerite/cpp/include
 
 
 includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH)

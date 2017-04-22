@@ -1,0 +1,3 @@
+[submodule "celerite"]
+	path = celerite
+	url = https://github.com/dfm/celerite.git
