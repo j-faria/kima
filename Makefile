@@ -1,7 +1,7 @@
 # Put the directory of 'DNest4/code' into this variable
 DNEST4_PATH = DNest4/code
 
-EIGEN_PATH = /usr/include/eigen3
+EIGEN_PATH = eigen
 
 CELERITE_PATH = celerite/cpp/include
 
