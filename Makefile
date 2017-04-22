@@ -1,5 +1,5 @@
 # Put the directory of 'DNest4/code' into this variable
-DNEST4_PATH = /home/joao/Software/DNest4/code
+DNEST4_PATH = DNest4/code
 
 EIGEN_PATH = /usr/include/eigen3
 

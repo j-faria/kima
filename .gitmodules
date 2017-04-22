@@ -1,3 +1,6 @@
 [submodule "celerite"]
 	path = celerite
 	url = https://github.com/dfm/celerite.git
+[submodule "DNest4"]
+	path = DNest4
+	url = https://github.com/eggplantbren/DNest4.git
