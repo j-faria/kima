@@ -121,7 +121,7 @@ if cluster:
         f.write("srun echo \"My working directory is: $(pwd)\"\n")
         f.write("srun echo\n")
 
-        nthreads = 1
+        nthreads = 4
         cmd = ['./main', '-t', str(nthreads), '-o', options_file]
         f.write(' '.join(cmd) + '\n')
         print ' '.join(cmd)
@@ -132,8 +132,8 @@ if cluster:
     cmd = ['sbatch', 
            '--job-name=ps%d' % system_number, 
            '--output=%s' % slurm_output_file, 
-           # '--mail-type=ALL',
-           # '--mail-user=joao.faria@astro.up.pt',
+           '--mail-type=ALL',
+           '--mail-user=joao.faria@astro.up.pt',
            'slurm-run-main.sh']
     print ' '.join(cmd)
     subprocess.check_call(cmd)

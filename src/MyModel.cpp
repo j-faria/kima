@@ -89,7 +89,7 @@ void MyModel::from_prior(RNG& rng)
         eta2 = exp(log(1E-6) + log(1E6)*rng.rand());
 
         // or uniform prior between 10 and 40 days
-        eta3 = 10. + 30.*rng.rand();
+        eta3 = 15. + 35.*rng.rand();
 
         // Log-uniform prior from 10^(-1) to 10 (fraction of eta3)
         // Log-uniform prior from 10^(-1) to 2 (fraction of eta3)
@@ -310,8 +310,8 @@ double MyModel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5)
         {
-            eta3 += 30.*rng.randh(); // range of prior support
-            wrap(eta3, 10., 40.); // wrap around inside prior
+            eta3 += 35.*rng.randh(); // range of prior support
+            wrap(eta3, 15., 50.); // wrap around inside prior
         }
         else
         {
