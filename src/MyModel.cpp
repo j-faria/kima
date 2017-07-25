@@ -1,4 +1,5 @@
 #include "MyModel.h"
+#include "DNest4.h"
 #include "RNG.h"
 #include "Utils.h"
 #include "Data.h"
@@ -10,7 +11,7 @@
 
 //#include "HODLR_Tree.hpp"
 // #include <Eigen/Core>
-#include "celerite/celerite.h"
+// #include "celerite/celerite.h"
 
 
 using namespace std;
@@ -21,30 +22,21 @@ using namespace DNest4;
 //DataSet& full = DataSet::getRef("full");
 
 #define DONEW false  
-#define DOCEL true
+#define DOCEL false
 
-#define trend true
+#define trend false
 #define GP true
 
+// Uniform Cprior(-1000., 1000.);
+ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
+
+
 MyModel::MyModel()
-:objects(5, 10, false, MyConditionalPrior())
+:objects(5, 1, true, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
-{
-    //setupHODLR();
-    // celerite::solver::BandSolver<double> solver;
-}
+{}
 
-
-/*void MyModel::setupHODLR()
-{
-    const vector<double>& t = full.get_t();
-    
-    kernel = new QPkernel(t);
-    kernel->set_hyperpars(1., 1., 1., 1.);  // not sure if this is needed
-
-    A = new HODLR_Tree<QPkernel>(kernel, full.N, 150);
-}*/
 
 void MyModel::from_prior(RNG& rng)
 {
@@ -54,48 +46,28 @@ void MyModel::from_prior(RNG& rng)
     double ymin, ymax, tmin, tmax;
     tmin = Data::get_instance().get_t_min();
     tmax = Data::get_instance().get_t_max();
-    ymin = Data::get_instance().get_y_min();
-    ymax = Data::get_instance().get_y_max();
+    // ymin = Data::get_instance().get_y_min();
+    // ymax = Data::get_instance().get_y_max();
+    ymin = -1000.;
+    ymax = 1000.;
 
+    // background = Cprior.rvs(rng);
     background = ymin + (ymax - ymin)*rng.rand();
 
-    #if trend
-        // double max_slope = Data::get_instance().get_max_slope();
-        // slope = -1E-4 + 2E-4*rng.rand();
-        // quad = -1E-4 + 2E-4*rng.rand();
-        double topslope = abs(ymax-ymin) / (tmax - tmin);
-        slope = -topslope + 2.*topslope*rng.rand();
-        double topquad = abs(ymax-ymin) / ((tmax - tmin)*(tmax - tmin));
-        quad = -topquad + 2.*topquad*rng.rand();
-    #endif
-
-
-
-    // centered at 1 (data in m/s)
-    /*extra_sigma = exp(tan(M_PI*(0.97*rng.rand() - 0.485)));*/
-    // centered at 0.001 (data in km/s)
-    extra_sigma = exp(-6.908 + tan(M_PI*(0.97*rng.rand() - 0.485)));
-
-    //eta5 = exp(tan(M_PI*(0.97*rng.rand() - 0.485)));
+    extra_sigma = Jprior.rvs(rng);
 
     #if GP
-        // Log-uniform prior from 10^(-1) to 50 m/s
-        //eta1 = exp(log(1E-1) + log(5E2)*rng.rand());
-        // Log-uniform prior from 10^(-5) to 0.05 km/s
-        eta1 = exp(log(1E-5) + log(1E-1)*rng.rand());
+        // eta1 = exp(log(1E-5) + log(1E-1)*rng.rand());
+        eta1 = sqrt(3.); // m/s
 
+        // eta2 = exp(log(1E-6) + log(1E6)*rng.rand());
+        eta2 = 50.; //days
 
-        // Log-uniform prior
-        eta2 = exp(log(1E-6) + log(1E6)*rng.rand());
+        // eta3 = 15. + 35.*rng.rand();
+        eta3 = 20.; // days
 
-        // or uniform prior between 10 and 40 days
-        eta3 = 15. + 35.*rng.rand();
-
-        // Log-uniform prior from 10^(-1) to 10 (fraction of eta3)
-        // Log-uniform prior from 10^(-1) to 2 (fraction of eta3)
-        // eta4 = 1.; 
-        exp(log(1E-5) + log(1E5)*rng.rand());
-        // eta4 = rng.rand();
+        // exp(log(1E-5) + log(1E5)*rng.rand());
+        eta4 = 0.5;
     #endif
 
     calculate_mu();
@@ -204,13 +176,6 @@ void MyModel::calculate_C()
         // auto end = std::chrono::high_resolution_clock::now();
         // cout << "old GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << "\t"; // << std::endl;
 
-
-
-        //ofstream timerfile;
-        //timerfile.open("timings.txt", std::ios_base::app);
-        //timerfile.setf(ios::fixed,ios::floatfield);
-        //timerfile << t.size() << '\t' << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-
     #endif
 }
 
@@ -265,19 +230,7 @@ void MyModel::calculate_mu()
         }
     }
 
-
-
-
-
-    // cout << background << endl;
-
-    //auto end = std::chrono::high_resolution_clock::now();
-    //ofstream timerfile;
-    //timerfile.open("timings.txt", std::ios_base::app);
-    //timerfile.setf(ios::fixed,ios::floatfield);
-    //timerfile << components.size() << '\t' << ecc << '\t' << viewing_angle << '\t' << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-    
-    //cout<<Ea<<endl;
+    //cout<<something<<endl;
 }
 
 double MyModel::perturb(RNG& rng)
@@ -292,54 +245,48 @@ double MyModel::perturb(RNG& rng)
     }
 
     #if GP
-    else if(rng.rand() <= 0.5)
-    {
-        if(rng.rand() <= 0.25)
-        {
-            eta1 = log(eta1);
-            eta1 += log(1E4)*rng.randh(); // range of prior support
-            wrap(eta1, log(1E-5), log(1E-1)); // wrap around inside prior
-            eta1 = exp(eta1);
-        }
-        else if(rng.rand() <= 0.33330)
-        {
-            eta2 = log(eta2);
-            eta2 += log(1E12)*rng.randh(); // range of prior support
-            wrap(eta2, log(1E-6), log(1E6)); // wrap around inside prior
-            eta2 = exp(eta2);
-        }
-        else if(rng.rand() <= 0.5)
-        {
-            eta3 += 35.*rng.randh(); // range of prior support
-            wrap(eta3, 15., 50.); // wrap around inside prior
-        }
-        else
-        {
-            // eta4 = 1.0;
+        // else if(rng.rand() <= 0.5)
+        // {
+        //     if(rng.rand() <= 0.25)
+        //     {
+        //         eta1 = log(eta1);
+        //         eta1 += log(1E4)*rng.randh(); // range of prior support
+        //         wrap(eta1, log(1E-5), log(1E-1)); // wrap around inside prior
+        //         eta1 = exp(eta1);
+        //     }
+        //     else if(rng.rand() <= 0.33330)
+        //     {
+        //         eta2 = log(eta2);
+        //         eta2 += log(1E12)*rng.randh(); // range of prior support
+        //         wrap(eta2, log(1E-6), log(1E6)); // wrap around inside prior
+        //         eta2 = exp(eta2);
+        //     }
+        //     else if(rng.rand() <= 0.5)
+        //     {
+        //         eta3 += 35.*rng.randh(); // range of prior support
+        //         wrap(eta3, 15., 50.); // wrap around inside prior
+        //     }
+        //     else
+        //     {
+        //         // eta4 = 1.0;
 
-            eta4 = log(eta4);
-            eta4 += log(1E10)*rng.randh(); // range of prior support
-            wrap(eta4, log(1E-5), log(1E5)); // wrap around inside prior
-            eta4 = exp(eta4);
+        //         eta4 = log(eta4);
+        //         eta4 += log(1E10)*rng.randh(); // range of prior support
+        //         wrap(eta4, log(1E-5), log(1E5)); // wrap around inside prior
+        //         eta4 = exp(eta4);
 
-            // eta4 += rng.randh();
-            // wrap(eta4, 0., 1.);
-        }
+        //         // eta4 += rng.randh();
+        //         // wrap(eta4, 0., 1.);
+        //     }
 
-        calculate_C();
+        //     calculate_C();
 
-    }
+        // }
     #endif // GP
 
     else if(rng.rand() <= 0.5)
     {
-        // data in km/s
-        extra_sigma = log(extra_sigma);
-        extra_sigma = (atan(extra_sigma + 6.908)/M_PI + 0.485)/0.97;
-        extra_sigma += rng.randh();
-        wrap(extra_sigma, 0., 1.);
-        extra_sigma = -6.908 + tan(M_PI*(0.97*extra_sigma - 0.485));
-        extra_sigma = exp(extra_sigma);
+        extra_sigma = Jprior.rvs(rng);
 
         #if GP
             calculate_C();
@@ -348,58 +295,22 @@ double MyModel::perturb(RNG& rng)
     else
     {
 
-    #if trend
-
-        // Get the times from the data
-        const vector<double>& t = Data::get_instance().get_t();
-
-        for(size_t i=0; i<mu.size(); i++)
-            mu[i] = mu[i] - background - slope*(t[i]-t[0]) - quad*(t[i]-t[0])*(t[i]-t[0]);
-
-        double ymin, ymax, tmin, tmax;
-        tmin = Data::get_instance().get_t_min();
-        tmax = Data::get_instance().get_t_max();
-        ymin = Data::get_instance().get_y_min();
-        ymax = Data::get_instance().get_y_max();
-        double topslope = abs(ymax-ymin) / (tmax - tmin);
-        double topquad = abs(ymax-ymin) / ((tmax - tmin)*(tmax - tmin));
-
-        // propose new offset
-        background += (ymax - ymin)*rng.randh();
-        wrap(background, ymin, ymax);
-
-        // propose new slope and quad 
-        slope += 2.*topslope*rng.randh();
-        wrap(slope, -topslope, topslope);
-        quad += 2.*topquad*rng.randh();
-        wrap(quad, -topquad, topquad);
-        // slope += 2E-6*rng.randh();
-        // wrap(slope, -3E-6, -1E-6);
-        // quad += 2E-9*rng.randh();
-        // wrap(quad, 8E-9, 1E-8);
-
-
-        // add it back again
-        for(size_t i=0; i<mu.size(); i++)
-            mu[i] = mu[i] + background + slope*(t[i]-t[0]) + quad*(t[i]-t[0])*(t[i]-t[0]);
-
-    #else
         for(size_t i=0; i<mu.size(); i++)
             mu[i] -= background;
 
         double ymin, ymax;
-        ymin = Data::get_instance().get_y_min();
-        ymax = Data::get_instance().get_y_max();
+        ymin = -1000.;
+        ymax = 1000.;
+        // ymin = Data::get_instance().get_y_min();
+        // ymax = Data::get_instance().get_y_max();
 
         background += (ymax - ymin)*rng.randh();
         wrap(background, ymin, ymax);
 
         for(size_t i=0; i<mu.size(); i++)
             mu[i] += background;
-    #endif
 
     }
-
 
     return logH;
 }
@@ -494,9 +405,6 @@ double MyModel::log_likelihood() const
                             - 0.5*logDeterminant - 0.5*exponent;
         #endif
 
-        // cout << "old GP log_det: " << logDeterminant << "\t"; // << std::endl;
-        // cout << "new GP log_det: " << solver.log_determinant() << std::endl;
-
         // calculate C^-1*(y-mu)
         // auto begin = std::chrono::high_resolution_clock::now();  // start timing
         // auto end = std::chrono::high_resolution_clock::now();
@@ -510,15 +418,6 @@ double MyModel::log_likelihood() const
 
     //auto end = std::chrono::high_resolution_clock::now();
     ////cout << "Likelihood took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-
-    //ofstream timerfile;
-    //timerfile.open("timings_logL.txt", std::ios_base::app);
-    //timerfile.setf(ios::fixed,ios::floatfield);
-    //timerfile << y.size() << '\t' << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-
-    // cout << "finished log_likelihood!" << endl;
-    // return logL;
-
 
     #else
 
@@ -558,19 +457,11 @@ void MyModel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t'<<eta5<<'\t';
-    //out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t';
-    // out<<extra_sigma<<'\t'<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
-
     out<<extra_sigma<<'\t';
 
     #if GP
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
     #endif
-    #if trend
-        out<<slope<<'\t'<<quad*1E8<<'\t';
-    #endif
-
   
     objects.print(out); out<<' '<<staleness<<' ';
     out<<background<<' ';
@@ -579,16 +470,10 @@ void MyModel::print(std::ostream& out) const
 string MyModel::description() const
 {
     #if #GP
-        #if trend
-            return string("extra_sigma   eta1   eta2   eta3   eta4  slope   quad   objects.print   staleness   background");
-        #else
-            return string("extra_sigma   eta1   eta2   eta3   eta4  objects.print   staleness   background");
-        #endif
+        return string("extra_sigma   eta1   eta2   eta3   eta4  objects.print   staleness   background");
     #else
         return string("extra_sigma   objects.print   staleness   background");
     #endif
-    //return string("extra_sigma  eta1    eta2    objects.print   staleness   background");
-    //return string("extra_sigma  eta1    eta2    eta3    eta4    eta5    offsets    objects.print   staleness   background");
 }
 
 

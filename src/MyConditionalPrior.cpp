@@ -6,7 +6,8 @@
 using namespace std;
 using namespace DNest4;
 
-ModifiedJeffreys Pprior(1.0, 9999.); // days
+// ModifiedJeffreys Pprior(1.0, 9999.); // days
+Jeffreys Pprior(1.0, 1E4); // days
 ModifiedJeffreys Kprior(1.0, 999.); // m/s
 
 MyConditionalPrior::MyConditionalPrior()

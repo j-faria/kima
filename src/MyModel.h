@@ -63,7 +63,7 @@ class MyModel
 		double eta1, eta2, eta3, eta4, eta5;
 		double a,b,c,P;
 
-		celerite::solver::BandSolver<double> solver;
+		// celerite::solver::BandSolver<double> solver;
 		// Eigen::VectorXd<int, 1> alpha_real,
   //                beta_real,
   //                alpha_complex_real,
