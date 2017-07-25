@@ -10,7 +10,7 @@ __init__.py
 *.txt
 *.log
 reports
-results
+
 
 
 *.rdb
