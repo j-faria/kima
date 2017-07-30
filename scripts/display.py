@@ -345,7 +345,7 @@ class DisplayResults(object):
         plt.axvline(x=self.data[:,0].ptp(), ls='--', color='b', lw=4, alpha=0.5)
 
         bins = 10 ** np.linspace(np.log10(1e-1), np.log10(1e7), 100)
-        plt.hist(np.exp(T), bins=bins, alpha=0.5)
+        plt.hist(T, bins=bins, alpha=0.5)
 
         plt.xlabel(r'(Period/days)')
         plt.gca().set_xscale("log")
