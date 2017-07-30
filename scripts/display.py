@@ -96,7 +96,7 @@ class DisplayResults(object):
                 name = 'eta' + str(i+1)
                 setattr(self, name, self.posterior_sample[:, start_parameters+1+i])
 
-            self.eta1 *= 1e3
+            # self.eta1 *= 1e3
         else:
             n_hyperparameters = 0
 
@@ -125,7 +125,7 @@ class DisplayResults(object):
         # maximum number of components
         self.max_components = int(self.posterior_sample[0, start_objects_print+1])
 
-        n_dist_print = 3
+        n_dist_print = 0
 
         self.index_component = start_objects_print + 1 + n_dist_print + 1
 
@@ -780,27 +780,27 @@ class DisplayResults(object):
         # hasplanets = self.posterior_sample[:, self.index_component] > 0.
 
 
-        def exp2_kernel(tau, dt):
-            return np.exp(-0.5 * dt ** 2 / tau)
+        # def exp2_kernel(tau, dt):
+        #     return np.exp(-0.5 * dt ** 2 / tau)
 
-        def expsine2_kernel(gamma, period, dt):
-            return np.exp(- 2. * (np.sin(np.pi * dt / period) / gamma) ** 2)
+        # def expsine2_kernel(gamma, period, dt):
+        #     return np.exp(- 2. * (np.sin(np.pi * dt / period) / gamma) ** 2)
 
-        def linear_kernel(dt):
-            return dt
+        # def linear_kernel(dt):
+        #     return dt
 
-        def kernel(params, dt):
-            # amp, tau, gamma, period = np.exp(params)
-            eta1, eta2, eta3, eta4, eta5 = params
-            K = eta1*eta1 * exp2_kernel(eta2, dt) * expsine2_kernel(eta4, eta3, dt) + eta5 * linear_kernel(dt)
-            return K
+        # def kernel(params, dt):
+        #     # amp, tau, gamma, period = np.exp(params)
+        #     eta1, eta2, eta3, eta4, eta5 = params
+        #     K = eta1*eta1 * exp2_kernel(eta2, dt) * expsine2_kernel(eta4, eta3, dt) + eta5 * linear_kernel(dt)
+        #     return K
 
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
         netas = len(available_etas)
 
         # choose 10 random posterior samples
-        ch = np.random.choice(self.posterior_sample.shape[0], size=50, replace=False)
+        ch = np.random.choice(self.posterior_sample.shape[0], size=10, replace=False)
         # ch = [25]*10
 
         for i in ch:
@@ -808,10 +808,10 @@ class DisplayResults(object):
             
             nplanets = int(pars[self.index_component])
             print nplanets, 'planets'
-            if nplanets != 1:
-                continue
+            # if nplanets != 1:
+                # continue
 
-            # vel = np.zeros_like(tt)
+            vel = np.zeros_like(tt)
             # print pars
 
             # pp = pars
@@ -821,38 +821,38 @@ class DisplayResults(object):
             # yy = np.random.multivariate_normal(pars[-2] + np.zeros_like(tt), K)
 
             extra_sigma = pars[0]
-            if netas == 4:
-                eta1 = pars[1]
-                eta2 = pars[2]
-                eta3 = pars[3]
-                eta4 = pars[4]
-                print 'GP pars: ', extra_sigma, eta1, eta2, eta3, eta4
-                self.kernel = eta1 * kernels.ExpSquaredKernel(eta2) * kernels.ExpSine2Kernel(eta4, eta3)
-            elif netas == 5:
-                eta1 = pars[1]
-                eta2 = pars[2]
-                eta3 = pars[3]
-                eta4 = pars[4]
-                eta5 = pars[5]
-                print 'GP pars: ', extra_sigma, eta1, eta2, eta3, eta4, eta5
-                self.kernel = eta1 * kernels.ExpSquaredKernel(eta2) * kernels.ExpSine2Kernel(eta4, eta3) + eta5 * kernels.DotProductKernel()
-            elif netas == 2:
-                eta1 = pars[1]
-                eta2 = pars[2]
-                print 'GP pars: ', extra_sigma, eta1, eta2
-                self.kernel = eta1 * kernels.ExpSquaredKernel(eta2)
+            eta1 = pars[1]
+            eta2 = pars[2]
+            eta3 = pars[3]
+            eta4 = pars[4]
+            print 'GP pars: ', extra_sigma, eta1, eta2, eta3, eta4
+            self.kernel = eta1 * kernels.ExpSquaredKernel(eta2) * kernels.ExpSine2Kernel(eta4, eta3)
+            
+            # elif netas == 5:
+            #     eta1 = pars[1]
+            #     eta2 = pars[2]
+            #     eta3 = pars[3]
+            #     eta4 = pars[4]
+            #     eta5 = pars[5]
+            #     print 'GP pars: ', extra_sigma, eta1, eta2, eta3, eta4, eta5
+            #     self.kernel = eta1 * kernels.ExpSquaredKernel(eta2) * kernels.ExpSine2Kernel(eta4, eta3) + eta5 * kernels.DotProductKernel()
+            # elif netas == 2:
+            #     eta1 = pars[1]
+            #     eta2 = pars[2]
+            #     print 'GP pars: ', extra_sigma, eta1, eta2
+            #     self.kernel = eta1 * kernels.ExpSquaredKernel(eta2)
 
 
             self.gp = george.GP(self.kernel, mean=pars[-1])
             self.gp.compute(t, yerr)
 
             gpmean = self.gp.predict(y, tt, mean_only=True)
-            # vel = self.gp.sample(tt)
-            # ax.plot(tt, gpmean, 'k-', alpha=0.2)
-            # ax.plot(tt, yy, 'g')
+            # # vel = self.gp.sample(tt)
+            ax.plot(tt, gpmean, 'k-', alpha=0.05)
+            # # ax.plot(tt, yy, 'g')
 
 
-            v = np.zeros_like(ttt)
+            # v = np.zeros_like(ttt)
             velt = np.zeros_like(t)
 
             for j in range(nplanets):
@@ -865,20 +865,22 @@ class DisplayResults(object):
                 w = planet_pars[4]
                 print 'planet pars:', '\t', '  '.join([str(par) for par in [P, K, ecc, phi, t0]])
                 # vsys = pars[-1]
-                v1 = keplerian(ttt, P, K, ecc, w, t0, 0.)
-                v += v1
+            #     v1 = keplerian(ttt, P, K, ecc, w, t0, 0.)
+            #     v += v1
                 velt += keplerian(t, P, K, ecc, w, t0, 0.) 
-            ax.plot(ttt, v, alpha=0.6, color='g')
+                # vel += keplerian(tt, P, K, ecc, w, t0, 0.) 
+            # ax.plot(ttt, v, alpha=0.6, color='g')
 
-            mu = self.gp.predict(y-velt, ttt, mean_only=True)
-            # mut = self.gp.predict(y-velt, t, mean_only=True)
-            # # mu, cov = self.gp.predict(y-velt, tt)
-            # # std = np.sqrt(np.diag(cov))
+            mu = self.gp.predict(y-velt, tt, mean_only=True)
+            # # mut = self.gp.predict(y-velt, t, mean_only=True)
+            # # # mu, cov = self.gp.predict(y-velt, tt)
+            # # # std = np.sqrt(np.diag(cov))
             
-            mu += v
-            # # std += veltt
+            # mu += v
+            # # # std += veltt
 
-            ax.plot(ttt, mu, 'k-', lw=1.5, alpha=0.05)
+            # ax.plot(tt, vel, 'r-', lw=1.5, alpha=0.1)
+            ax.plot(tt, mu, 'r-', lw=1.5, alpha=0.1)
 
 
         # self.get_medians()
