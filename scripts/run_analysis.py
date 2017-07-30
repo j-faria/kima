@@ -1,4 +1,4 @@
-# import sys
+import sys
 import os
 import os.path as path
 import re
@@ -74,6 +74,7 @@ current_commit = subprocess.check_output("git rev-parse --short HEAD".split()).s
 print 'We are in branch %s, commit %s' % (current_branch, current_commit)
 print
 
+sys.exit(0)
 
 print "Let's do some work!"
 
