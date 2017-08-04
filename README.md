@@ -1,7 +1,6 @@
-### Calculating evidences for EPRV
+### RV analysis with DNest4 and GPs
 
 
-Clone with `git clone --recursive https://github.com/j-faria/EPRVlnZ.git`
+Clone with `git clone --recursive https://github.com/j-faria/kima.git`
 to get the submodules.
 
-[EPRV evidence challenge](https://github.com/EPRV3EvidenceChallenge/Inputs)
