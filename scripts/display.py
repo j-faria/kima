@@ -85,6 +85,10 @@ class DisplayResults(object):
 
         self.extra_sigma = self.posterior_sample[:, start_parameters]
 
+        n_offsets = 3
+        self.offsets = self.posterior_sample[:, start_parameters+1 : start_parameters+n_offsets+1]
+        # print self.offsets
+
 
         with open(os.path.join(top_level, 'src', 'MyModel.cpp')) as f:
             self.GPmodel = '#define GP true' in f.read()
@@ -115,11 +119,11 @@ class DisplayResults(object):
 
 
         n_trend = 2 if self.trend else 0
-        i1 = start_parameters + n_hyperparameters + 1
-        i2 = start_parameters + n_hyperparameters + n_trend + 1
+        i1 = start_parameters + n_offsets + n_hyperparameters + 1
+        i2 = start_parameters + n_offsets + n_hyperparameters + n_trend + 1
         self.trendpars = self.posterior_sample[:, i1:i2]
 
-        start_objects_print = start_parameters + n_trend + n_hyperparameters + 1
+        start_objects_print = start_parameters + n_trend + n_offsets + n_hyperparameters + 1
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
         # maximum number of components
@@ -908,6 +912,30 @@ class DisplayResults(object):
         # np.savetxt('data_minus_GP.txt', zip(t, dmGP, data[:,2]), header='jdb\tvrad\tsvrad\n---\t----\t-----')
 
         plt.show()
+
+
+    def make_plot_RV_offsets(self):
+        # from OPEN.ext.keplerian import keplerian
+        # data = self.data
+        t = self.data[:,0]
+        y = self.data[:,1]
+        yerr = self.data[:,2]
+
+        print 'Data has', y.size, 'points'
+
+        fig = plt.figure(figsize=(10,6))
+        ax = fig.add_subplot(111)
+        for i in np.unique(res.data[:,3]):
+            mask = res.data[:,3] == i
+            ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
+
+
+        bg = self.posterior_sample[:,-1].mean()
+        ax.axhline(bg, color='k')
+        for i in range(self.offsets.shape[1]):
+            ax.axhline(bg + self.offsets[:,i].mean(), color='m')
+
+
 
     def make_plot_priors(self):
 

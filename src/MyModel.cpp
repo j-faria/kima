@@ -25,15 +25,17 @@ using namespace DNest4;
 #define DOCEL false
 
 #define trend false
-#define GP true
+#define GP false
+#define multi true
 
 // Uniform Cprior(-1000., 1000.);
 ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
 
 
 MyModel::MyModel()
-:objects(5, 1, true, MyConditionalPrior())
+:objects(5, 0, true, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
+,offsets(3)
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {}
 
@@ -53,6 +55,12 @@ void MyModel::from_prior(RNG& rng)
 
     // background = Cprior.rvs(rng);
     background = ymin + (ymax - ymin)*rng.rand();
+
+    #if multi
+    for(size_t i=0; i<offsets.size(); i++)
+        offsets[i] = ymin + (ymax - ymin)*rng.rand();
+    #endif
+
 
     extra_sigma = Jprior.rvs(rng);
 
@@ -75,6 +83,7 @@ void MyModel::from_prior(RNG& rng)
     #if GP
         calculate_C();
     #endif
+
 }
 
 void MyModel::calculate_C()
@@ -183,6 +192,9 @@ void MyModel::calculate_mu()
 {
     // Get the times from the data
     const vector<double>& t = Data::get_instance().get_t();
+    #if multi
+        const vector<int>& obsi = Data::get_instance().get_obsi();
+    #endif
 
     // Update or from scratch?
     bool update = (objects.get_added().size() < objects.get_components().size()) &&
@@ -203,9 +215,19 @@ void MyModel::calculate_mu()
         #if trend
             for(size_t i=0; i<t.size(); i++)
                 mu[i] += slope*(t[i] - t[0]) + quad*(t[i] - t[0])*(t[i] - t[0]);
-            
-            // cout << slope << "\t" << quad << endl;
         #endif
+
+        #if multi
+            for(size_t j=0; j<offsets.size(); j++)
+            {
+                for(size_t i=0; i<t.size(); i++){
+                    if (obsi[i] == j+1) mu[i] += offsets[j];
+                    // cout << j << " " << (obsi[i] == j+1) << endl;
+                }
+                // cout << "endedeeefeefefefefef" << endl;
+            }
+        #endif
+        // std::exit(12);
     }
     else // just updating (adding) planets
         staleness++;
@@ -237,6 +259,10 @@ void MyModel::calculate_mu()
 double MyModel::perturb(RNG& rng)
 {
     double logH = 0.;
+
+    #if multi
+        const vector<int>& obsi = Data::get_instance().get_obsi();
+    #endif
 
     if(rng.rand() <= 0.5)
     {
@@ -299,6 +325,14 @@ double MyModel::perturb(RNG& rng)
         for(size_t i=0; i<mu.size(); i++)
             mu[i] -= background;
 
+        #if multi
+            for(size_t j=0; j<offsets.size(); j++)
+            {
+                for(size_t i=0; i<mu.size(); i++)
+                    if (obsi[i] == j+1) mu[i] -= offsets[j];
+            }
+        #endif 
+
         double ymin, ymax;
         ymin = -1000.;
         ymax = 1000.;
@@ -308,8 +342,26 @@ double MyModel::perturb(RNG& rng)
         background += (ymax - ymin)*rng.randh();
         wrap(background, ymin, ymax);
 
+        #if multi
+            for(size_t i=0; i<offsets.size(); i++)
+            {
+                offsets[i] += (ymax - ymin)*rng.randh();
+                wrap(offsets[i], ymin, ymax);
+            }
+        #endif
+
         for(size_t i=0; i<mu.size(); i++)
             mu[i] += background;
+
+
+        #if multi
+            for(size_t j=0; j<offsets.size(); j++)
+            {
+                for(size_t i=0; i<mu.size(); i++)
+                    if (obsi[i] == j+1) mu[i] += offsets[j];
+            }
+        #endif 
+
 
     }
 
@@ -459,6 +511,12 @@ void MyModel::print(std::ostream& out) const
     out.precision(8);
 
     out<<extra_sigma<<'\t';
+
+    if (offsets.size() > 0)
+    {
+        for(size_t i=0; i<offsets.size(); i++)
+        out<<offsets[i]<<'\t';
+    }
 
     #if GP
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';

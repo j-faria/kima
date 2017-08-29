@@ -1,7 +1,7 @@
 #!/bin/sh
 start=`date +%s.%N`
 
-./main -t 4
+./main -t 1
 
 end=`date +%s.%N`
 

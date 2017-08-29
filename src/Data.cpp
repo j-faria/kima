@@ -134,6 +134,8 @@ void Data::loadnew(const char* filename)
   y.clear();
   sig.clear();
 
+  obsi.clear();
+
   // Here is the file containing the data. Read it into data.
   ifstream infile( filename );
   infile >> data;
@@ -152,9 +154,11 @@ void Data::loadnew(const char* filename)
 
   for (unsigned n = 0; n < data.size(); n++)
     {
-	t.push_back(data[n][0]);
-	y.push_back(data[n][1]);
-	sig.push_back(data[n][2]);
+  	t.push_back(data[n][0]);
+  	y.push_back(data[n][1]);
+  	sig.push_back(data[n][2]);
+
+    obsi.push_back(data[n][3]);
     }
 
   }

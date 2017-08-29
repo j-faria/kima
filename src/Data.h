@@ -8,6 +8,7 @@ class Data
 {
 	private:
 		std::vector<double> t, y, sig;
+		std::vector<int> obsi;
 
 	public:
 		Data();
@@ -24,6 +25,7 @@ class Data
 		double get_y_max() const { return *max_element(y.begin(), y.end()); }
 		
 		const std::vector<double>& get_sig() const { return sig; }
+		const std::vector<int>& get_obsi() const { return obsi; }
 		// double get_y_span() const {return abs(get_y_max() - get_y_min());}
 
 	// Singleton
