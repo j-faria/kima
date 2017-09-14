@@ -85,7 +85,7 @@ class DisplayResults(object):
 
         self.extra_sigma = self.posterior_sample[:, start_parameters]
 
-        n_offsets = 3
+        n_offsets = 5
         self.offsets = self.posterior_sample[:, start_parameters+1 : start_parameters+n_offsets+1]
         # print self.offsets
 

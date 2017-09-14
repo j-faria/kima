@@ -35,9 +35,11 @@ ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
 MyModel::MyModel()
 :objects(5, 0, true, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
-,offsets(3)
+,offsets(5)
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
-{}
+{
+    cout << offsets.size() << endl;
+}
 
 
 void MyModel::from_prior(RNG& rng)
@@ -50,8 +52,8 @@ void MyModel::from_prior(RNG& rng)
     tmax = Data::get_instance().get_t_max();
     // ymin = Data::get_instance().get_y_min();
     // ymax = Data::get_instance().get_y_max();
-    ymin = -1000.;
-    ymax = 1000.;
+    ymin = -100.;
+    ymax = 100.;
 
     // background = Cprior.rvs(rng);
     background = ymin + (ymax - ymin)*rng.rand();
@@ -334,8 +336,8 @@ double MyModel::perturb(RNG& rng)
         #endif 
 
         double ymin, ymax;
-        ymin = -1000.;
-        ymax = 1000.;
+        ymin = -100.;
+        ymax = 100.;
         // ymin = Data::get_instance().get_y_min();
         // ymax = Data::get_instance().get_y_max();
 
