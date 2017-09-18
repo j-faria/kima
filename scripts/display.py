@@ -412,11 +412,11 @@ class DisplayResults(object):
             #plot(truth[1009:1009 + int(truth[1008])]/log(10.), log10(truth[1018:1018 + int(truth[1008])]), 'ro', markersize=7)
             #hold(True)
             if points:
-                ax1.loglog(np.exp(T), A, '.', markersize=1)
+                ax1.loglog(T, A, '.', markersize=1)
                 ax1.set_xscale('log')
                 ax1.set_yscale('log')
             else:
-                ax1.hexbin(np.exp(T[::100]), A[::100], gridsize=50, bins='log', xscale='log', yscale='log',
+                ax1.hexbin(T[::100], A[::100], gridsize=50, bins='log', xscale='log', yscale='log',
                            cmap=plt.get_cmap('afmhot_r'))
             # data = np.vstack([np.exp(T[::100]), A[::100]]).T
             # sns.jointplot(x=np.exp(T[::100]), y=A[::100], kind="hex", color="k");
@@ -434,9 +434,9 @@ class DisplayResults(object):
             #plot(truth[1009:1009 + int(truth[1008])]/log(10.), truth[1038:1038 + int(truth[1008])], 'ro', markersize=7)
             #hold(True)
             if points:
-                ax2.semilogx(np.exp(T), E, 'b.', markersize=2)
+                ax2.semilogx(T, E, 'b.', markersize=2)
             else:
-                ax2.hexbin(np.exp(T[::100]), E[::100], gridsize=50, bins='log', xscale='log',
+                ax2.hexbin(T[::100], E[::100], gridsize=50, bins='log', xscale='log',
                            cmap=plt.get_cmap('afmhot_r'))
             # ax.axvline(x=0.85359165, color='r')
             # ax.axvline(x=3.691, color='r')
