@@ -79,14 +79,19 @@ class DisplayResults(object):
         # posterior_samples_file = 'resultsCorot7/upto10/posterior_sample.txt'
         self.posterior_sample = np.atleast_2d(np.loadtxt(posterior_samples_file))
 
+        print 'dividing vsys by 1000'
+        self.posterior_sample[:,-1] /= 1e3
+
         start_parameters = 0
         # (nsamples x 1000)
         self.signals = self.posterior_sample[:, :start_parameters]
 
         self.extra_sigma = self.posterior_sample[:, start_parameters]
 
-        n_offsets = 5
+        n_offsets = 1
         self.offsets = self.posterior_sample[:, start_parameters+1 : start_parameters+n_offsets+1]
+        print 'dividing offsets by 1000'
+        self.offsets /= 1e3
         # print self.offsets
 
 
@@ -937,6 +942,14 @@ class DisplayResults(object):
         for i in range(self.offsets.shape[1]):
             ax.axhline(bg + self.offsets[:,i].mean(), color='m')
 
+
+        fig, axes = plt.subplots(1, 1+self.offsets.shape[1])
+        for i, ax in enumerate(axes):
+            if i==0:
+                ax.hist(self.posterior_sample[:,-1])
+            else:
+                ax.hist(self.offsets[:,i-1])
+        fig.show()
 
 
     def make_plot_priors(self):

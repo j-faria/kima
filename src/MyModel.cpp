@@ -43,12 +43,11 @@ ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
 
 
 MyModel::MyModel()
-:objects(5, 0, true, MyConditionalPrior())
+:objects(5, 1, true, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
-,offsets(5)
+,offsets(1)
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
-    cout << offsets.size() << endl;
 }
 
 
@@ -57,18 +56,19 @@ void MyModel::from_prior(RNG& rng)
     objects.from_prior(rng);
     objects.consolidate_diff();
     
-    double ymin, ymax, tmin, tmax;
+    double ymin, ymax, ptp, tmin, tmax;
     //tmin = Data::get_instance().get_t_min();
     //tmax = Data::get_instance().get_t_max();
     ymin = Data::get_instance().get_y_min();
     ymax = Data::get_instance().get_y_max();
+    ptp = ymax - ymin;
 
     // background = Cprior.rvs(rng);
     background = ymin + (ymax - ymin)*rng.rand();
 
     #if multi
     for(size_t i=0; i<offsets.size(); i++)
-        offsets[i] = ymin + (ymax - ymin)*rng.rand();
+        offsets[i] = -ptp + (2*ptp)*rng.rand();
     #endif
 
 
@@ -329,9 +329,10 @@ double MyModel::perturb(RNG& rng)
             }
         #endif 
 
-        double ymin, ymax;
+        double ymin, ymax, ptp;
         ymin = Data::get_instance().get_y_min();
         ymax = Data::get_instance().get_y_max();
+        ptp = ymax - ymin;
 
         background += (ymax - ymin)*rng.randh();
         wrap(background, ymin, ymax);
@@ -339,8 +340,8 @@ double MyModel::perturb(RNG& rng)
         #if multi
             for(size_t i=0; i<offsets.size(); i++)
             {
-                offsets[i] += (ymax - ymin)*rng.randh();
-                wrap(offsets[i], ymin, ymax);
+                offsets[i] += (2*ptp)*rng.randh();
+                wrap(offsets[i], -ptp, ptp);
             }
         #endif
 
