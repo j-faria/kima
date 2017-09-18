@@ -3,33 +3,43 @@
 #include "RNG.h"
 #include "Utils.h"
 #include "Data.h"
-//#include "MultiSite2.h"
 #include <cmath>
 #include <fstream>
 #include <chrono>
-#include <typeinfo>  //for 'typeid' to work  
-
-//#include "HODLR_Tree.hpp"
-// #include <Eigen/Core>
-// #include "celerite/celerite.h"
 
 
 using namespace std;
 using namespace Eigen;
 using namespace DNest4;
 
-// get the instance for the full dataset
-//DataSet& full = DataSet::getRef("full");
+#define ananas true
+#define maracuja false
+#define limao false
 
-#define DONEW false  
-#define DOCEL false
+
+#if ananas
+    #define DOCEL false
+    #define GP false
+#elif maracuja
+    #define DOCEL false
+    #define GP true
+#elif limao
+    #define DOCEL true
+    #define GP true
+#endif
 
 #define trend false
-#define GP false
 #define multi true
 
 // Uniform Cprior(-1000., 1000.);
 ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
+
+#if GP
+    Uniform log_eta1_prior(-5, 5);
+    Uniform log_eta2_prior(0, 5);
+    Uniform eta3_prior(10., 40.);
+    Uniform log_eta4_prior(-5, 0);
+#endif
 
 
 MyModel::MyModel()
@@ -48,12 +58,10 @@ void MyModel::from_prior(RNG& rng)
     objects.consolidate_diff();
     
     double ymin, ymax, tmin, tmax;
-    tmin = Data::get_instance().get_t_min();
-    tmax = Data::get_instance().get_t_max();
-    // ymin = Data::get_instance().get_y_min();
-    // ymax = Data::get_instance().get_y_max();
-    ymin = -100.;
-    ymax = 100.;
+    //tmin = Data::get_instance().get_t_min();
+    //tmax = Data::get_instance().get_t_max();
+    ymin = Data::get_instance().get_y_min();
+    ymax = Data::get_instance().get_y_max();
 
     // background = Cprior.rvs(rng);
     background = ymin + (ymax - ymin)*rng.rand();
@@ -67,17 +75,21 @@ void MyModel::from_prior(RNG& rng)
     extra_sigma = Jprior.rvs(rng);
 
     #if GP
+        eta1 = exp(log_eta1_prior.rvs(rng)); // m/s
         // eta1 = exp(log(1E-5) + log(1E-1)*rng.rand());
-        eta1 = sqrt(3.); // m/s
+        //eta1 = sqrt(3.); // m/s
 
+        eta2 = exp(log_eta2_prior.rvs(rng)); // days
         // eta2 = exp(log(1E-6) + log(1E6)*rng.rand());
-        eta2 = 50.; //days
+        //eta2 = 50.; //days
 
+        eta3 = eta3_prior.rvs(rng); // days
         // eta3 = 15. + 35.*rng.rand();
-        eta3 = 20.; // days
+        //eta3 = 20.; // days
 
+        eta4 = exp(log_eta4_prior.rvs(rng));
         // exp(log(1E-5) + log(1E5)*rng.rand());
-        eta4 = 0.5;
+        //eta4 = 0.5;
     #endif
 
     calculate_mu();
@@ -95,29 +107,7 @@ void MyModel::calculate_C()
     const vector<double>& t = Data::get_instance().get_t();
     const vector<double>& sig = Data::get_instance().get_sig();
 
-    #if DONEW
-        //auto begin = std::chrono::high_resolution_clock::now();  // start timing
-
-        kernel->set_hyperpars(eta1, eta2, eta3, eta4);
-        cout << eta1 << "   " << eta2 << "   " << eta3 << "   " << eta4 << "   ";
-        VectorXd yvar(t.size());
-        for (int i = 0; i < t.size(); ++i)
-            yvar(i) = eta1*eta1 + sig[i] * sig[i] + extra_sigma * extra_sigma;
-
-        //auto begin = std::chrono::high_resolution_clock::now();  // start timing
-        A->assemble_Matrix(yvar, 1e-14, 's');
-        //auto end = std::chrono::high_resolution_clock::now();
-        //cout << "assembling up took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-        A->compute_Factor();
-
-        //auto end = std::chrono::high_resolution_clock::now();
-
-        //ofstream timerfile;
-        //timerfile.open("timings.txt", std::ios_base::app);
-        //timerfile.setf(ios::fixed,ios::floatfield);
-        //timerfile << t.size() << '\t' << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-
-    #elif DOCEL
+    #if DOCEL
         // celerite!
         // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
 
@@ -134,17 +124,17 @@ void MyModel::calculate_C()
                  beta_complex_real(1),
                  beta_complex_imag(1);
         
-        a = eta1;
-        b = eta4;
-        P = eta3;
-        c = eta2;
+        //a = eta1;
+        //b = eta4;
+        //P = eta3;
+        //c = eta2;
 
-        alpha_real << a*(1.+b)/(2.+b);
-        beta_real << c;
-        alpha_complex_real << a/(2.+b);
+        alpha_real << eta1*(1.+eta4)/(2.+eta4);
+        beta_real << 1./eta2;
+        alpha_complex_real << eta1/(2.+eta4);
         alpha_complex_imag << 0.;
-        beta_complex_real << c;
-        beta_complex_imag << 2.*M_PI / P;
+        beta_complex_real << 1./eta2;
+        beta_complex_imag << 2.*M_PI / eta3;
 
 
         VectorXd yvar(t.size()), tt(t.size());
@@ -154,6 +144,7 @@ void MyModel::calculate_C()
         }
 
         solver.compute(
+            extra_sigma,
             alpha_real, beta_real,
             alpha_complex_real, alpha_complex_imag,
             beta_complex_real, beta_complex_imag,
@@ -274,48 +265,51 @@ double MyModel::perturb(RNG& rng)
     }
 
     #if GP
-        // else if(rng.rand() <= 0.5)
-        // {
-        //     if(rng.rand() <= 0.25)
-        //     {
-        //         eta1 = log(eta1);
-        //         eta1 += log(1E4)*rng.randh(); // range of prior support
-        //         wrap(eta1, log(1E-5), log(1E-1)); // wrap around inside prior
-        //         eta1 = exp(eta1);
-        //     }
-        //     else if(rng.rand() <= 0.33330)
-        //     {
-        //         eta2 = log(eta2);
-        //         eta2 += log(1E12)*rng.randh(); // range of prior support
-        //         wrap(eta2, log(1E-6), log(1E6)); // wrap around inside prior
-        //         eta2 = exp(eta2);
-        //     }
-        //     else if(rng.rand() <= 0.5)
-        //     {
-        //         eta3 += 35.*rng.randh(); // range of prior support
-        //         wrap(eta3, 15., 50.); // wrap around inside prior
-        //     }
-        //     else
-        //     {
-        //         // eta4 = 1.0;
+        else if(rng.rand() <= 0.5)
+        {
+            if(rng.rand() <= 0.25)
+            {
+                eta1 = exp(log_eta1_prior.rvs(rng)); // m/s
+                //eta1 = log(eta1);
+                //eta1 += log(1E4)*rng.randh(); // range of prior support
+                //wrap(eta1, log(1E-5), log(1E-1)); // wrap around inside prior
+                //eta1 = exp(eta1);
+            }
+            else if(rng.rand() <= 0.33330)
+            {
+                eta2 = exp(log_eta2_prior.rvs(rng)); // days
+                //eta2 = log(eta2);
+                //eta2 += log(1E12)*rng.randh(); // range of prior support
+                //wrap(eta2, log(1E-6), log(1E6)); // wrap around inside prior
+                //eta2 = exp(eta2);
+            }
+            else if(rng.rand() <= 0.5)
+            {
+                eta3 = eta3_prior.rvs(rng);
+                //eta3 += 35.*rng.randh(); // range of prior support
+                //wrap(eta3, 15., 50.); // wrap around inside prior
+            }
+            else
+            {
+                // eta4 = 1.0;
+                eta4 = exp(log_eta4_prior.rvs(rng));
+                //eta4 = log(eta4);
+                //eta4 += log(1E10)*rng.randh(); // range of prior support
+                //wrap(eta4, log(1E-5), log(1E5)); // wrap around inside prior
+                //eta4 = exp(eta4);
+            }
 
-        //         eta4 = log(eta4);
-        //         eta4 += log(1E10)*rng.randh(); // range of prior support
-        //         wrap(eta4, log(1E-5), log(1E5)); // wrap around inside prior
-        //         eta4 = exp(eta4);
+            calculate_C();
 
-        //         // eta4 += rng.randh();
-        //         // wrap(eta4, 0., 1.);
-        //     }
-
-        //     calculate_C();
-
-        // }
+        }
     #endif // GP
 
     else if(rng.rand() <= 0.5)
     {
+        // need to change logH
+        logH -= Jprior.log_pdf(extra_sigma);
         extra_sigma = Jprior.rvs(rng);
+        logH += Jprior.log_pdf(extra_sigma);
 
         #if GP
             calculate_C();
@@ -336,10 +330,8 @@ double MyModel::perturb(RNG& rng)
         #endif 
 
         double ymin, ymax;
-        ymin = -100.;
-        ymax = 100.;
-        // ymin = Data::get_instance().get_y_min();
-        // ymax = Data::get_instance().get_y_max();
+        ymin = Data::get_instance().get_y_min();
+        ymax = Data::get_instance().get_y_max();
 
         background += (ymax - ymin)*rng.randh();
         wrap(background, ymin, ymax);
@@ -382,60 +374,12 @@ double MyModel::log_likelihood() const
 
     //auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #if GP
-
-    #if DONEW
-        // Set up the kernel.
-        //auto begin = std::chrono::high_resolution_clock::now();  // start timing
-        //QPkernel kernel;
-        //kernel->set_hyperpars(eta1, eta2, eta3, eta4);
-        //auto end = std::chrono::high_resolution_clock::now();
-        //cout << "set kernel took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-
-        // Setting things up
-        //auto begin = std::chrono::high_resolution_clock::now();  // start timing
-        
-        //auto end = std::chrono::high_resolution_clock::now();
-        //cout << "setting up took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-        
-        MatrixXd b(y.size(), 1), x;
-        //VectorXd yvar(t.size());
-        for (int i = 0; i < y.size(); ++i) {
-            //yvar(i) = eta1*eta1 + sig[i] * sig[i] + extra_sigma * extra_sigma;
-            b(i, 0) = y[i] - mu[i];
-        }
-
-        //auto begin = std::chrono::high_resolution_clock::now();  // start timing
-        A->solve(b, x);
-        double determinant;
-        A->compute_Determinant(determinant);
-        //auto end = std::chrono::high_resolution_clock::now();
-        //cout << "solve and determinant took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
-
-        //cout << logDeterminant << "   " << determinant << endl;
-        //assert (logDeterminant == determinant);
-        double exponent2 = 0.;
-        for(int i = 0; i < y.size(); ++i)
-            exponent2 += b(i,0)*x(i);
-
-
-        double logL = -0.5*y.size()*log(2*M_PI)
-                        - 0.5*determinant - 0.5*exponent2;
-
-        //cout << logL << endl;
-        //cout << logL << "   " << logL2 << endl;    
-        //assert (logL == logL2);
-
-
-    #else
         // residual vector (observed y minus model y)
         VectorXd residual(y.size());
         for(size_t i=0; i<y.size(); i++)
             residual(i) = y[i] - mu[i];
 
         #if DOCEL
-            // logDeterminant = solver.log_determinant();
-            // VectorXd solution = solver.solve(residual);
-
             double logL = -0.5 * (solver.dot_solve(residual) +
                                   solver.log_determinant() +
                                   y.size()*log(2*M_PI)); 
@@ -468,7 +412,6 @@ double MyModel::log_likelihood() const
         // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
         // auto end1 = std::chrono::high_resolution_clock::now();
         // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
-    #endif
 
 
     //auto end = std::chrono::high_resolution_clock::now();
@@ -476,27 +419,27 @@ double MyModel::log_likelihood() const
 
     #else
 
-    /** The following code calculates the log likelihood in the case of a t-Student model without correlated noise*/
-    //  for(size_t i=0; i<y.size(); i++)
-    //  {
-    //      var = sig[i]*sig[i] + extra_sigma*extra_sigma;
-    //      logL += gsl_sf_lngamma(0.5*(nu + 1.)) - gsl_sf_lngamma(0.5*nu)
-    //          - 0.5*log(M_PI*nu) - 0.5*log(var)
-    //          - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
-    //  }
+        /** The following code calculates the log likelihood in the case of a t-Student model without correlated noise*/
+        //  for(size_t i=0; i<y.size(); i++)
+        //  {
+        //      var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+        //      logL += gsl_sf_lngamma(0.5*(nu + 1.)) - gsl_sf_lngamma(0.5*nu)
+        //          - 0.5*log(M_PI*nu) - 0.5*log(var)
+        //          - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
+        //  }
 
-    /** The following code calculates the log likelihood in the case of a Gaussian likelihood*/
-    const vector<double>& sig = Data::get_instance().get_sig();
+        /** The following code calculates the log likelihood in the case of a Gaussian likelihood*/
+        const vector<double>& sig = Data::get_instance().get_sig();
 
-    double halflog2pi = 0.5*log(2.*M_PI);
-    double logL = 0.;
-    double var;
-    for(size_t i=0; i<y.size(); i++)
-    {
-        var = sig[i]*sig[i] + extra_sigma*extra_sigma;
-        logL += - halflog2pi - 0.5*log(var)
-                - 0.5*(pow(y[i] - mu[i], 2)/var);
-    }
+        double halflog2pi = 0.5*log(2.*M_PI);
+        double logL = 0.;
+        double var;
+        for(size_t i=0; i<y.size(); i++)
+        {
+            var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+            logL += - halflog2pi - 0.5*log(var)
+                    - 0.5*(pow(y[i] - mu[i], 2)/var);
+        }
 
     #endif // GP
 

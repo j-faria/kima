@@ -13,7 +13,7 @@ class Data
 	public:
 		Data();
 		void load(const char* filename);
-		void loadnew(const char* filename);
+		void loadnew(const char* filename, const char* fileunits);
 
 		// Getters
 		const std::vector<double>& get_t() const { return t; }

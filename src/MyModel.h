@@ -11,104 +11,68 @@
 #include <Eigen/Cholesky>
 #include "celerite/celerite.h"
 
-// using Eigen::VectorXd;
-
-//#include "HODLR_Matrix.hpp"
-//#include "HODLR_Tree.hpp"
-
-/*class QPkernel : public HODLR_Matrix {
-	// This implements the quasi-periodic kernel
-	friend class MyModel;
-
-    public:
-        QPkernel (vector<double> time) 
-            : time_(time) {};
-
-        void set_hyperpars (double eta1, double eta2, double eta3, double eta4)
-            {
-            	eta1_ = eta1;
-            	eta2_ = eta2;
-            	eta3_ = eta3;
-            	eta4_ = eta4;
-            };
-
-        double get_Matrix_Entry(const unsigned i, const unsigned j) {
-            double d = time_[i] - time_[j];
-            double Cij = eta1_*eta1_*exp(-0.5*pow(d/eta2_, 2) 
-                                        -2.0*pow(sin(M_PI*d/eta3_)/eta4_, 2) );
-            
-            return Cij;
-            //return theta_[0] * exp(-0.5 * d * d / (theta_[0]));
-        }
-
-    private:
-    	double eta1_, eta2_, eta3_, eta4_;
-        vector<double> time_;
-};
-*/
-
 
 class MyModel
 {
-	private:
-		DNest4::RJObject<MyConditionalPrior> objects;
+    private:
+        DNest4::RJObject<MyConditionalPrior> objects;
 
 		double background;
 		std::vector<double> offsets;
 		double slope, quad;
 
-		double extra_sigma;
+        double extra_sigma;
 
-		// Parameters for the quasi-periodic extra noise
-		double eta1, eta2, eta3, eta4, eta5;
-		double a,b,c,P;
+        // Parameters for the quasi-periodic extra noise
+        double eta1, eta2, eta3, eta4, eta5;
+        double a,b,c,P;
 
-		// celerite::solver::BandSolver<double> solver;
-		// Eigen::VectorXd<int, 1> alpha_real,
-  //                beta_real,
-  //                alpha_complex_real,
-  //                alpha_complex_imag,
-  //                beta_complex_real,
-  //                beta_complex_imag;
+        celerite::solver::CholeskySolver<double> solver;
+        Eigen::VectorXd alpha_real,
+                 beta_real,
+                 alpha_complex_real,
+                 alpha_complex_imag,
+                 beta_complex_real,
+                 beta_complex_imag;
 
-		// The signal
-		std::vector<long double> mu;
-		void calculate_mu();
+        // The signal
+        std::vector<long double> mu;
+        void calculate_mu();
 
-		// eccentric and true anomalies
-		double ecc_anomaly(double time, double prd, double ecc, double peri_pass);
-		double eps3(double e, double M, double x);
-		double keplerstart3(double e, double M);
-		double true_anomaly(double time, double prd, double ecc, double peri_pass);
+        // eccentric and true anomalies
+        double ecc_anomaly(double time, double prd, double ecc, double peri_pass);
+        double eps3(double e, double M, double x);
+        double keplerstart3(double e, double M);
+        double true_anomaly(double time, double prd, double ecc, double peri_pass);
 
-		// The covariance matrix for the data
-		Eigen::MatrixXd C;
-		void calculate_C();
+        // The covariance matrix for the data
+        Eigen::MatrixXd C;
+        void calculate_C();
 
-		//QPkernel *kernel;
-		//HODLR_Tree<QPkernel> *A;
+        //QPkernel *kernel;
+        //HODLR_Tree<QPkernel> *A;
 
-		unsigned int staleness;
+        unsigned int staleness;
 
-	public:
-		MyModel();
+    public:
+        MyModel();
 
-		void setupHODLR();
+        void setupHODLR();
 
-		// Generate the point from the prior
-		void from_prior(DNest4::RNG& rng);
+        // Generate the point from the prior
+        void from_prior(DNest4::RNG& rng);
 
-		// Metropolis-Hastings proposals
-		double perturb(DNest4::RNG& rng);
+        // Metropolis-Hastings proposals
+        double perturb(DNest4::RNG& rng);
 
-		// Likelihood function
-		double log_likelihood() const;
+        // Likelihood function
+        double log_likelihood() const;
 
-		// Print to stream
-		void print(std::ostream& out) const;
+        // Print to stream
+        void print(std::ostream& out) const;
 
-		// Return string with column information
-		std::string description() const;
+        // Return string with column information
+        std::string description() const;
 };
 
 #endif

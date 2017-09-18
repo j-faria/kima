@@ -23,50 +23,50 @@ Data::Data()
 
 void Data::load(const char* filename)
 {
-	fstream fin(filename, ios::in);
-	if(!fin)
-	{
-		cerr<<"# Error. Couldn't open file "<<filename<<endl;
-		return;
-	}
+  fstream fin(filename, ios::in);
+  if(!fin)
+  {
+    cerr<<"# Error. Couldn't open file "<<filename<<endl;
+    return;
+  }
 
-	// Empty the vectors
-	t.clear();
-	y.clear();
-	sig.clear();
+  // Empty the vectors
+  t.clear();
+  y.clear();
+  sig.clear();
 
-	int it = 0;
-	double temp1, temp2, temp3;
-	while(fin>>temp1 && fin>>temp2 && fin>>temp3)
-	{
-		/*if (it==0 || it==1) {
-			it++;
-			continue;
-		}*/
-		t.push_back(temp1);
-		y.push_back(temp2);
-		sig.push_back(temp3);
-		it++;
-	}
-	cout<<"# Loaded "<<t.size()<<" data points from file "
-			<<filename<<endl;
-	fin.close();
-	//cout<<it<<endl;
+  int it = 0;
+  double temp1, temp2, temp3;
+  while(fin>>temp1 && fin>>temp2 && fin>>temp3)
+  {
+    /*if (it==0 || it==1) {
+      it++;
+      continue;
+    }*/
+    t.push_back(temp1);
+    y.push_back(temp2);
+    sig.push_back(temp3);
+    it++;
+  }
+  cout<<"# Loaded "<<t.size()<<" data points from file "
+      <<filename<<endl;
+  fin.close();
+  //cout<<it<<endl;
 
-	double mean = std::accumulate(y.begin(), y.end(), 0.0) / y.size();
-	//cout<<mean<<endl;
+  double mean = std::accumulate(y.begin(), y.end(), 0.0) / y.size();
+  //cout<<mean<<endl;
 
-	// this is probably a stupid way to substract the mean and convert to m/s
-	std::transform( y.begin(), y.end(), y.begin(), std::bind2nd( minus<double>(), mean ) );
-	std::transform( y.begin(), y.end(), y.begin(), std::bind2nd( multiplies<double>(), 1000. ) );
-	std::transform( y.begin(), y.end(), y.begin(), std::bind2nd( plus<double>(), mean ) );
+  // this is probably a stupid way to substract the mean and convert to m/s
+  std::transform( y.begin(), y.end(), y.begin(), std::bind2nd( minus<double>(), mean ) );
+  std::transform( y.begin(), y.end(), y.begin(), std::bind2nd( multiplies<double>(), 1000. ) );
+  std::transform( y.begin(), y.end(), y.begin(), std::bind2nd( plus<double>(), mean ) );
 
-	// the errorbars just need to be converted to m/s
-	std::transform( sig.begin(), sig.end(), sig.begin(), std::bind2nd( multiplies<double>(), 1000. ) );
-	
-	//for (std::vector<double>::const_iterator i = sig.begin(); i != sig.end(); ++i)
+  // the errorbars just need to be converted to m/s
+  std::transform( sig.begin(), sig.end(), sig.begin(), std::bind2nd( multiplies<double>(), 1000. ) );
+  
+  //for (std::vector<double>::const_iterator i = sig.begin(); i != sig.end(); ++i)
     //std::cout << *i << '\n';
-	//std::cout << '\n';
+  //std::cout << '\n';
 }
 
 
@@ -88,8 +88,8 @@ istream& operator >> ( istream& ins, record_t& record )
   // convert each field to a double and 
   // add the newly-converted field to the end of the record
   double f;
-  while	(ss >> f)
-  	record.push_back(f);
+  while (ss >> f)
+    record.push_back(f);
   
   // Now we have read a single line, converted into a list of fields, converted the fields
   // from strings to doubles, and stored the results in the argument record, so
@@ -114,9 +114,9 @@ istream& operator >> ( istream& ins, data_t& data )
   record_t record;
   while (ins >> record)
     {
-    	if (i==0 || i==1) header.push_back(record);
-    	else data.push_back(record);
-   	    i++;
+      if (i==0 || i==1) header.push_back(record);
+      else data.push_back(record);
+        i++;
     }
 
   // Again, return the argument stream
@@ -124,7 +124,12 @@ istream& operator >> ( istream& ins, data_t& data )
   }
 
 
-void Data::loadnew(const char* filename)
+void Data::loadnew(const char* filename, const char* fileunits)
+  /* 
+  Read in tab/space separated file `filename` with columns
+  time  vrad  error
+  where vrad and error are in units `fileunits` (either "kms" or "ms")
+  */
   {
   // Here is the data we want.
   data_t data;
@@ -152,13 +157,16 @@ void Data::loadnew(const char* filename)
   cout << "# Loaded " << data.size() << " data points from file "
                  <<filename<<endl;
 
+  double factor = 1.;
+  if(fileunits == "kms") factor = 1E3;
+  
+
   for (unsigned n = 0; n < data.size(); n++)
     {
-  	t.push_back(data[n][0]);
-  	y.push_back(data[n][1]);
-  	sig.push_back(data[n][2]);
-
-    obsi.push_back(data[n][3]);
+      t.push_back(data[n][0]);
+      y.push_back(data[n][1] * factor);
+      sig.push_back(data[n][2] * factor);
+      obsi.push_back(data[n][3]);
     }
 
   }
