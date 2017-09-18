@@ -42,6 +42,9 @@ if __name__ == '__main__':
     data = get_column(column)
     # data = np.loadtxt('sample.txt', unpack=True, usecols=(column-1,))
 
+    print 'max:', data.max()
+    print 'min:', data.min()
+    
     if log:
         data = data[np.nonzero(data)[0]]
         data = np.log(data)
