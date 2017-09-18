@@ -87,7 +87,9 @@ class DisplayResults(object):
 
 
         with open(os.path.join(top_level, 'src', 'MyModel.cpp')) as f:
-            self.GPmodel = '#define GP true' in f.read()
+            r = f.read()
+            self.GPmodel = '#define ananas false' in r or \
+                           '#define limao true' in r
             if debug: print 'GP model:', self.GPmodel
 
         if self.GPmodel:
