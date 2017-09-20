@@ -88,7 +88,7 @@ class DisplayResults(object):
 
         self.extra_sigma = self.posterior_sample[:, start_parameters]
 
-        n_offsets = 1
+        n_offsets = 5
         self.offsets = self.posterior_sample[:, start_parameters+1 : start_parameters+n_offsets+1]
         print 'dividing offsets by 1000'
         self.offsets /= 1e3
@@ -105,7 +105,9 @@ class DisplayResults(object):
             n_hyperparameters = 4
             for i in range(n_hyperparameters):
                 name = 'eta' + str(i+1)
-                setattr(self, name, self.posterior_sample[:, start_parameters+1+i])
+                setattr(self, name, 
+                        self.posterior_sample[:, 
+                                              start_parameters+1+n_offsets+i])
 
             # self.eta1 *= 1e3
         else:
@@ -170,6 +172,8 @@ class DisplayResults(object):
             self.make_plot9()
         if '10' in options:
             self.plot_all_planet_params()
+        if '11' in options:
+            self.make_plot_RV_offsets()
         
 
 
@@ -279,7 +283,7 @@ class DisplayResults(object):
             assert P1.shape == P2.shape
 
         if N == 2:
-            periods = np.exp(res.Tall[mask,:2])
+            periods = np.exp(self.Tall[mask,:2])
             amplitudes = self.Aall[mask, :2]
             eccentricities = self.Eall[mask, :2]
 
@@ -932,8 +936,8 @@ class DisplayResults(object):
 
         fig = plt.figure(figsize=(10,6))
         ax = fig.add_subplot(111)
-        for i in np.unique(res.data[:,3]):
-            mask = res.data[:,3] == i
+        for i in np.unique(self.data[:,3]):
+            mask = self.data[:,3] == i
             ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
 
 
@@ -948,8 +952,15 @@ class DisplayResults(object):
             if i==0:
                 ax.hist(self.posterior_sample[:,-1])
             else:
-                ax.hist(self.offsets[:,i-1])
-        fig.show()
+                ptp = self.data[:,1].ptp()
+                o = self.offsets[:,i-1]
+                ax.hist(o - o.mean(), normed=True)
+                ax.set_title('%6.4f' % o.mean())
+                # ax.set_xlim(-ptp, ptp)
+            ax.set_yticks([])
+        fig.tight_layout()
+
+        plt.show()
 
 
     def make_plot_priors(self):
