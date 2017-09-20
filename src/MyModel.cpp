@@ -45,7 +45,7 @@ ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
 MyModel::MyModel()
 :objects(5, 1, true, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
-,offsets(1)
+,offsets(5)
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
 }
@@ -217,10 +217,8 @@ void MyModel::calculate_mu()
                     if (obsi[i] == j+1) mu[i] += offsets[j];
                     // cout << j << " " << (obsi[i] == j+1) << endl;
                 }
-                // cout << "endedeeefeefefefefef" << endl;
             }
         #endif
-        // std::exit(12);
     }
     else // just updating (adding) planets
         staleness++;
