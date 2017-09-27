@@ -16,7 +16,6 @@ using namespace DNest4;
 #define maracuja false
 #define limao false
 
-
 #if ananas
     #define DOCEL false
     #define GP false
@@ -30,8 +29,9 @@ using namespace DNest4;
 
 #define trend false
 
-// Uniform Cprior(-1000., 1000.);
-ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
+//ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
+Uniform Jprior(0., 20.);
+Uniform Cprior(35530.220842105256-20, 35530.220842105256+20);
 
 #if GP
     Uniform log_eta1_prior(-5, 5);
@@ -45,7 +45,13 @@ MyModel::MyModel()
 :objects(5, 0, true, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
-{}
+{
+    /*
+    double ymin = Data::get_instance().get_y_min();
+    double ymax = Data::get_instance().get_y_max();
+    Cprior = Uniform(ymin, ymax);
+    */
+}
 
 
 void MyModel::from_prior(RNG& rng)
@@ -53,14 +59,9 @@ void MyModel::from_prior(RNG& rng)
     objects.from_prior(rng);
     objects.consolidate_diff();
     
-    double ymin, ymax, tmin, tmax;
-    //tmin = Data::get_instance().get_t_min();
-    //tmax = Data::get_instance().get_t_max();
-    ymin = Data::get_instance().get_y_min();
-    ymax = Data::get_instance().get_y_max();
 
-    // background = Cprior.rvs(rng);
-    background = ymin + (ymax - ymin)*rng.rand();
+    background = Cprior.rvs(rng);
+    //background = ymin + (ymax - ymin)*rng.rand();
 
     extra_sigma = Jprior.rvs(rng);
 
@@ -293,14 +294,7 @@ double MyModel::perturb(RNG& rng)
         for(size_t i=0; i<mu.size(); i++)
             mu[i] -= background;
 
-        double ymin, ymax;
-        //ymin = -1000.;
-        //ymax = 1000.;
-        ymin = Data::get_instance().get_y_min();
-        ymax = Data::get_instance().get_y_max();
-
-        background += (ymax - ymin)*rng.randh();
-        wrap(background, ymin, ymax);
+        background = Cprior.rvs(rng);
 
         for(size_t i=0; i<mu.size(); i++)
             mu[i] += background;
@@ -409,7 +403,12 @@ void MyModel::print(std::ostream& out) const
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
     #endif
   
-    objects.print(out); out<<' '<<staleness<<' ';
+    if (objects.get_fixed() and objects.get_components().size()==0)
+        objects.print0(out);
+    else
+        objects.print(out);
+    //objects.print(out); 
+    out<<' '<<staleness<<' ';
     out<<background<<' ';
 }
 

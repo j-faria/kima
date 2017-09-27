@@ -29,11 +29,14 @@ using namespace DNest4;
     Exponential Kprior;
 
 #else
-    Jeffreys Pprior(1.0, 1E4); // days
-    ModifiedJeffreys Kprior(1.0, 999.); // m/s
+    //Jeffreys Pprior(1.0, 1E4); // days
+    Jeffreys Pprior(1.0, 10*2428.194514); // days
+    //ModifiedJeffreys Kprior(1.0, 999.); // m/s
+    Uniform Kprior(0., 20.); // m/s
 #endif
 
-    TruncatedRayleigh eprior(0.2, 0.0, 1.0);
+    //TruncatedRayleigh eprior(0.2, 0.0, 1.0);
+    TruncatedNormal eprior(0, 0.3, 0., 1.);
     Uniform phiprior(0.0, 2*M_PI);
     Uniform wprior(0.0, 2*M_PI);
 
@@ -157,3 +160,9 @@ void MyConditionalPrior::print(std::ostream& out) const
     #endif
 }
 
+
+void MyConditionalPrior::print0(std::ostream& out) const
+{
+    //cout << "called MyConditionalPrior::print0 !!!" << endl;
+    out<<0.<<' '<<0.<<' '<<0.<<' ';
+}

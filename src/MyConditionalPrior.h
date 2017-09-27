@@ -28,6 +28,7 @@ class MyConditionalPrior:public DNest4::ConditionalPrior
 		void to_uniform(std::vector<double>& vec, int component_id) const;
 
 		void print(std::ostream& out) const;
+		void print0(std::ostream& out) const;
 		static const int weight_parameter = 1;
 
 };
