@@ -10,8 +10,8 @@ using namespace DNest4;
 int main(int argc, char** argv)
 {
 
-	Data::get_instance().loadnew("data/test_offsets.rdb", "kms");
-    // return 0;
+	Data::get_instance().loadnew("/home/joao/phd/free-np-paper/data/HD10180.kms.rv", "kms");
+    //return 0;
 
 	start<MyModel>(argc, argv);
 	return 0;

@@ -15,8 +15,11 @@ def logdiffexp(x1, x2):
     result = np.log(np.exp(xx1) - np.exp(xx2)) + biggest
     return result
 
-def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], \
-            cut=0., save=True, zoom_in=True, compression_bias_min=1., compression_scatter=0., moreSamples=1., compression_assert=None):
+
+def postprocess(
+        temperature=1., numResampleLogX=1, plot=True, loaded=[],
+        cut=0., save=True, zoom_in=True, compression_bias_min=1,
+        compression_scatter=0., moreSamples=1., compression_assert=None):
     if len(loaded) == 0:
         levels_orig = np.atleast_2d(np.loadtxt("levels.txt"))
         sample_info = np.atleast_2d(np.loadtxt("sample_info.txt"))
