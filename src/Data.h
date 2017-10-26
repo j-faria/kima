@@ -13,6 +13,7 @@ class Data
 		Data();
 		void load(const char* filename);
 		void loadnew(const char* filename, const char* fileunits);
+		int index_fibers;
 
 		// Getters
 		const std::vector<double>& get_t() const { return t; }

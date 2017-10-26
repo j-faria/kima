@@ -20,6 +20,7 @@ class MyModel
         double background;
         //std::vector<double> offsets;
         double slope, quad;
+        double fiber_offset;
 
         double extra_sigma;
 

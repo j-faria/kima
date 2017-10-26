@@ -7,31 +7,18 @@
 #include <fstream>
 #include <chrono>
 
+#include "options.h"
 
 using namespace std;
 using namespace Eigen;
 using namespace DNest4;
 
-#define ananas true
-#define maracuja false
-#define limao false
+#define TIMING false
 
-#if ananas
-    #define DOCEL false
-    #define GP false
-#elif maracuja
-    #define DOCEL false
-    #define GP true
-#elif limao
-    #define DOCEL true
-    #define GP true
-#endif
-
-#define trend false
-
-//ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
-Uniform Jprior(0., 20.);
-Uniform Cprior(35530.220842105256-20, 35530.220842105256+20);
+ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
+//Uniform Jprior(0., 20.);
+//Uniform Cprior(35530.220842105256-20, 35530.220842105256+20);
+Uniform Cprior;
 
 #if GP
     Uniform log_eta1_prior(-5, 5);
@@ -46,11 +33,9 @@ MyModel::MyModel()
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
-    /*
     double ymin = Data::get_instance().get_y_min();
     double ymax = Data::get_instance().get_y_max();
     Cprior = Uniform(ymin, ymax);
-    */
 }
 
 
@@ -64,6 +49,11 @@ void MyModel::from_prior(RNG& rng)
     //background = ymin + (ymax - ymin)*rng.rand();
 
     extra_sigma = Jprior.rvs(rng);
+
+    #if obs_after_fibers
+        // between 0 m/s and 50 m/s
+        fiber_offset = 50*rng.rand();
+    #endif
 
     #if GP
         eta1 = exp(log_eta1_prior.rvs(rng)); // m/s
@@ -195,20 +185,31 @@ void MyModel::calculate_mu()
         #if trend
             for(size_t i=0; i<t.size(); i++)
                 mu[i] += slope*(t[i] - t[0]) + quad*(t[i] - t[0])*(t[i] - t[0]);
-            
-            // cout << slope << "\t" << quad << endl;
         #endif
+
+        #if obs_after_fibers
+            for(size_t i=Data::get_instance().index_fibers; i<t.size(); i++)
+                //if (i>=Data::get_instance().index_fibers) mu[i] += fiber_offset;
+                mu[i] += fiber_offset;
+        #endif
+
+
     }
     else // just updating (adding) planets
         staleness++;
 
-    //auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
 
     double P, K, phi, ecc, viewing_angle, f, v, ti;
     for(size_t j=0; j<components.size(); j++)
     {
-        // P = exp(components[j][0]);
+        #if hyperpriors
+        P = exp(components[j][0]);
+        #else
         P = components[j][0];
+        #endif
         K = components[j][1];
         phi = components[j][2];
         ecc = components[j][3];
@@ -223,7 +224,11 @@ void MyModel::calculate_mu()
         }
     }
 
-    //cout<<something<<endl;
+    #if TIMING
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
+    #endif    
+
 }
 
 double MyModel::perturb(RNG& rng)
@@ -292,13 +297,27 @@ double MyModel::perturb(RNG& rng)
     {
 
         for(size_t i=0; i<mu.size(); i++)
+        {
             mu[i] -= background;
+            #if obs_after_fibers
+                if (i >= Data::get_instance().index_fibers) mu[i] -= fiber_offset;
+            #endif
+        }
 
         background = Cprior.rvs(rng);
 
-        for(size_t i=0; i<mu.size(); i++)
-            mu[i] += background;
+        #if obs_after_fibers // propose new fiber offset
+            fiber_offset += 50*rng.randh();
+            wrap(fiber_offset, 0., 50);
+        #endif
 
+        for(size_t i=0; i<mu.size(); i++)
+        {
+            mu[i] += background;
+            #if obs_after_fibers
+                if (i >= Data::get_instance().index_fibers) mu[i] += fiber_offset;
+            #endif
+        }
     }
 
     return logH;
@@ -314,7 +333,10 @@ double MyModel::log_likelihood() const
     // Get the data
     const vector<double>& y = Data::get_instance().get_y();
 
-    //auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
+
     #if GP
         // residual vector (observed y minus model y)
         VectorXd residual(y.size());
@@ -356,8 +378,6 @@ double MyModel::log_likelihood() const
         // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
 
 
-    //auto end = std::chrono::high_resolution_clock::now();
-    ////cout << "Likelihood took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << std::endl;
 
     #else
 
@@ -385,6 +405,10 @@ double MyModel::log_likelihood() const
 
     #endif // GP
 
+    #if TIMING
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "Likelihood took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
+    #endif
 
     if(std::isnan(logL) || std::isinf(logL))
         logL = -1E300;
@@ -398,6 +422,10 @@ void MyModel::print(std::ostream& out) const
     out.precision(8);
 
     out<<extra_sigma<<'\t';
+    
+    #if obs_after_fibers
+        out<<fiber_offset<<'\t';
+    #endif
 
     #if GP
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';

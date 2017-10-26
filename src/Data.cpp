@@ -166,4 +166,13 @@ void Data::loadnew(const char* filename, const char* fileunits)
       sig.push_back(data[n][2] * factor);
     }
 
+  for(unsigned i=0; i<data.size(); i++)
+  {
+      if (t[i] > 57170.)
+      {
+          index_fibers = i;
+          break;
+      }
+  }
+
   }
