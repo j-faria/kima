@@ -26,12 +26,15 @@ HEADERS=$(subst .cpp,.h,$(SRCS))
 
 all: main
 
-%.o: %.cpp
+%.o: %.cpp $(SRCDIR)/options.h
 	$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
 
 
-main: $(OBJS)
+main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 	$(CXX) -o main $(OBJS) -L$(DNEST4_PATH) $(LIBS) $(CXXFLAGS)
+
+$(DNEST4_PATH)/libdnest4.a:
+	make noexamples -C $(DNEST4_PATH)
 
 clean:
 	rm -f main $(OBJS)

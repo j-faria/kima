@@ -126,8 +126,6 @@ double MyConditionalPrior::log_pdf(const std::vector<double>& vec) const
 
 void MyConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
 {
-    //cout << "called MyConditionalPrior::from_uniform !!!" << endl;
-    //cout << id << endl;
     #if hyperpriors
         Pprior = Laplace(center, width);
         Kprior = Exponential(mu);
@@ -141,7 +139,6 @@ void MyConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
 
 void MyConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
 {
-    //cout << "called MyConditionalPrior::to_uniform !!!" << endl;
     #if hyperpriors
         Pprior = Laplace(center, width);
         Kprior = Exponential(mu);
@@ -155,7 +152,6 @@ void MyConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
 
 void MyConditionalPrior::print(std::ostream& out) const
 {
-    //cout << "called MyConditionalPrior::print !!!" << endl;
     #if hyperpriors
         out<<center<<' '<<width<<' '<<mu<<' ';
     #endif
@@ -164,6 +160,5 @@ void MyConditionalPrior::print(std::ostream& out) const
 
 void MyConditionalPrior::print0(std::ostream& out) const
 {
-    //cout << "called MyConditionalPrior::print0 !!!" << endl;
     out<<0.<<' '<<0.<<' '<<0.<<' ';
 }
