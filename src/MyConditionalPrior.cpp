@@ -3,10 +3,11 @@
 #include "Utils.h"
 #include <cmath>
 
+#include "options.h"
+
 using namespace std;
 using namespace DNest4;
 
-#define hyperpriors false
 
 #if hyperpriors
     // Cauchy prior centered on log(365 days), scale=1
@@ -29,14 +30,14 @@ using namespace DNest4;
     Exponential Kprior;
 
 #else
-    //Jeffreys Pprior(1.0, 1E4); // days
-    Jeffreys Pprior(1.0, 10*2428.194514); // days
-    //ModifiedJeffreys Kprior(1.0, 999.); // m/s
-    Uniform Kprior(0., 20.); // m/s
+    Jeffreys Pprior(1.0, 1E7); // days
+    ModifiedJeffreys Kprior(1.0, 1E4); // m/s
+    //Uniform Kprior(0., 20.); // m/s
 #endif
 
     //TruncatedRayleigh eprior(0.2, 0.0, 1.0);
-    TruncatedNormal eprior(0, 0.3, 0., 1.);
+    Uniform eprior(0., 1.);
+    //TruncatedNormal eprior(0, 0.3, 0., 1.);
     Uniform phiprior(0.0, 2*M_PI);
     Uniform wprior(0.0, 2*M_PI);
 
@@ -128,7 +129,7 @@ void MyConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
     //cout << "called MyConditionalPrior::from_uniform !!!" << endl;
     //cout << id << endl;
     #if hyperpriors
-        Pprior = Laplace(center);
+        Pprior = Laplace(center, width);
         Kprior = Exponential(mu);
     #endif
     vec[0] = Pprior.cdf_inverse(vec[0]);
@@ -142,7 +143,7 @@ void MyConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
 {
     //cout << "called MyConditionalPrior::to_uniform !!!" << endl;
     #if hyperpriors
-        Pprior = Laplace(center);
+        Pprior = Laplace(center, width);
         Kprior = Exponential(mu);
     #endif
     vec[0] = Pprior.cdf(vec[0]);
