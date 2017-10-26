@@ -9,7 +9,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
-#include "celerite/celerite.h"
+//#include "celerite/celerite.h"
 
 
 class MyModel
@@ -27,13 +27,13 @@ class MyModel
         double eta1, eta2, eta3, eta4, eta5;
         double a,b,c,P;
 
-        celerite::solver::CholeskySolver<double> solver;
+        /*celerite::solver::CholeskySolver<double> solver;
         Eigen::VectorXd alpha_real,
                  beta_real,
                  alpha_complex_real,
                  alpha_complex_imag,
                  beta_complex_real,
-                 beta_complex_imag;
+                 beta_complex_imag;*/
 
         // The signal
         std::vector<long double> mu;
