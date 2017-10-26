@@ -3,10 +3,11 @@ DNEST4_PATH = DNest4/code
 
 EIGEN_PATH = eigen
 
-CELERITE_PATH = celerite/cpp/include
+# CELERITE_PATH = celerite/cpp/include
 
 
-includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH)
+includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) 
+# -I$(CELERITE_PATH) -I$(REBOUND_PATH)
 
 CXX = g++
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w
