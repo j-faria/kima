@@ -2,6 +2,15 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 
+from time import time
+import pandas as pd
+
+try:
+    from tqdmmm import tqdm
+except ImportError:
+    def tqdm(x, *args):
+        return x
+
 def logsumexp(values):
     biggest = np.max(values)
     x = values - biggest
@@ -16,14 +25,26 @@ def logdiffexp(x1, x2):
     return result
 
 
-def postprocess(
-        temperature=1., numResampleLogX=1, plot=True, loaded=[],
-        cut=0., save=True, zoom_in=True, compression_bias_min=1,
-        compression_scatter=0., moreSamples=1., compression_assert=None):
+def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
+                cut=0., save=True, zoom_in=True, compression_bias_min=1,
+                compression_scatter=0., moreSamples=1., compression_assert=None):
     if len(loaded) == 0:
-        levels_orig = np.atleast_2d(np.loadtxt("levels.txt"))
-        sample_info = np.atleast_2d(np.loadtxt("sample_info.txt"))
-        sample = np.atleast_2d(np.loadtxt("sample.txt"))
+        # t1 = time()
+        # levels_orig1 = np.atleast_2d(np.loadtxt("levels.txt"))
+        # sample_info1 = np.atleast_2d(np.loadtxt("sample_info.txt"))
+        # sample1 = np.atleast_2d(np.loadtxt("sample.txt"))
+        # print 'Took %f sec' % (time() - t1, )
+
+        k = {'delim_whitespace':True, 'header':None, 'comment':'#'}
+        t1 = time()
+        levels_orig = pd.read_csv("levels.txt", **k).values
+        sample_info = pd.read_csv("sample_info.txt", **k).values
+        sample = pd.read_csv("sample.txt", **k).values
+        print 'Took %f sec to read files' % (time() - t1, )
+
+        # assert np.allclose(sample1, sample)
+        # assert np.allclose(sample_info1, sample_info)
+        # assert np.allclose(levels_orig1, levels_orig)
 
         # I believe this is the fastest way to get the 2nd line 
         # and doesn't load the whole file into memory
@@ -104,7 +125,7 @@ def postprocess(
         levels[:, 0] = np.cumsum(levels[:,0])
 
         # For each level
-        for i in range(0, levels.shape[0]):
+        for i in tqdm(range(0, levels.shape[0]), 'monte carlo level compressions'):
             # Find the samples sandwiched by this level
             which = np.nonzero(sandwich == i)[0]
             logl_samples_thisLevel = [] # (logl, tieBreaker, ID)
@@ -202,7 +223,7 @@ def postprocess(
     w = w/np.max(w)
     if save:
         np.savetxt('weights.txt', w) # Save weights
-    for i in range(0, N):
+    for i in tqdm(xrange(0, N), 'buillding posterior samples'):
         while True:
             which = np.random.randint(sample.shape[0])
             if np.random.rand() <= w[which]:
