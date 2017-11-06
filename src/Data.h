@@ -16,6 +16,7 @@ class Data
 		int index_fibers;
 
 		// Getters
+		int N() const {return t.size();}
 		const std::vector<double>& get_t() const { return t; }
 		double get_t_min() const { return *min_element(t.begin(), t.end()); }
 		double get_t_max() const { return *max_element(t.begin(), t.end()); }

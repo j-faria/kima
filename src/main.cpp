@@ -11,8 +11,9 @@ int main(int argc, char** argv)
 {
 
 	Data::get_instance().loadnew("/home/joao/phd/free-np-paper/data/HD10180.kms.rv", "kms");
-    //return 0;
 
-	start<MyModel>(argc, argv);
+	// start<MyModel>(argc, argv);
+	// Sampler<MyModel> sampler = setup<MyModel>(argc, argv);
+	// sampler.run();
 	return 0;
 }
