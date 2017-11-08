@@ -17,9 +17,9 @@ LIBS = -ldnest4 -L/usr/local/lib
 SRCDIR = ./src
 SRCS =\
 $(SRCDIR)/Data.cpp \
-$(SRCDIR)/main.cpp \
 $(SRCDIR)/MyConditionalPrior.cpp \
-$(SRCDIR)/MyModel.cpp
+$(SRCDIR)/MyModel.cpp \
+$(SRCDIR)/main.cpp
 
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
@@ -43,4 +43,6 @@ cleanout:
 	rm -f sample.txt sample_info.txt levels.txt weights.txt posterior_sample.txt sampler_state.txt
 
 cleanall: clean
-	rm -f sample.txt sample_info.txt levels.txt weights.txt posterior_sample.txt sampler_state.txt
+	rm -f sample.txt sample_info.txt \
+		levels.txt weights.txt posterior_sample.txt sampler_state.txt \
+		posterior_sample_lnlikelihoods.txt
