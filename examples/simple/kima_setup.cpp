@@ -1,21 +1,21 @@
 #include <iostream>
 #include "DNest4.h"
 #include "Data.h"
-#include "MyModel.h"
+#include "RVmodel.h"
 
 using namespace std;
 using namespace DNest4;
 
 /* priors */
-//  data-dependent priors should be defined in the MyModel() 
+//  data-dependent priors should be defined in the RVmodel() 
 //  constructor and use Data::get_instance() 
 #include "default_priors.h"
 
 
 // options for the model
 // 
-MyModel::MyModel()
-	:objects(5, 1, true, MyConditionalPrior())
+RVmodel::RVmodel()
+	:objects(5, 1, true, RVConditionalPrior())
 	,mu(Data::get_instance().N())
 	,C(Data::get_instance().N(), Data::get_instance().N())
 {
@@ -33,7 +33,7 @@ int main(int argc, char** argv)
 	Data::get_instance().loadnew(datafile, "kms");
 	
 	// set the sampler and run it!
-	Sampler<MyModel> sampler = setup<MyModel>(argc, argv);
+	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
 	sampler.run();
 
 	return 0;

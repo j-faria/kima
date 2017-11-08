@@ -1,5 +1,5 @@
-#ifndef DNest4_MyConditionalPrior
-#define DNest4_MyConditionalPrior
+#ifndef DNest4_RVConditionalPrior
+#define DNest4_RVConditionalPrior
 
 #include "RNG.h"
 #include "RJObject/ConditionalPriors/ConditionalPrior.h"
@@ -7,7 +7,7 @@
 // Based on ClassicMassInf1D from RJObject
 // Think of "position x" as log-period
 // and mass as amplitude
-class MyConditionalPrior:public DNest4::ConditionalPrior
+class RVConditionalPrior:public DNest4::ConditionalPrior
 {
 	private:
 		// Parameters of bi-exponential distribution for log-periods
@@ -19,7 +19,7 @@ class MyConditionalPrior:public DNest4::ConditionalPrior
 		double perturb_hyperparameters(DNest4::RNG& rng);
 
 	public:
-		MyConditionalPrior();
+		RVConditionalPrior();
 
 		void from_prior(DNest4::RNG& rng);
 

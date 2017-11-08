@@ -1,4 +1,4 @@
-#include "MyConditionalPrior.h"
+#include "RVConditionalPrior.h"
 #include "DNest4.h"
 #include "Utils.h"
 #include <cmath>
@@ -50,15 +50,15 @@ using namespace DNest4;
     // Uniform wprior(0.0, 2*M_PI);
 
 
-MyConditionalPrior::MyConditionalPrior()
+RVConditionalPrior::RVConditionalPrior()
 {
     //cout << "type of Pprior:" << typeid(Pprior).name() << endl;
 }
 
 
-void MyConditionalPrior::from_prior(RNG& rng)
+void RVConditionalPrior::from_prior(RNG& rng)
 {
-    //cout << "called MyConditionalPrior::from_prior !!!" << endl;
+    //cout << "called RVConditionalPrior::from_prior !!!" << endl;
     #if hyperpriors
         center = log_muP_prior.rvs(rng);
         width = wP_prior.rvs(rng);
@@ -66,9 +66,9 @@ void MyConditionalPrior::from_prior(RNG& rng)
     #endif
 }
 
-double MyConditionalPrior::perturb_hyperparameters(RNG& rng)
+double RVConditionalPrior::perturb_hyperparameters(RNG& rng)
 {
-    //cout << "called MyConditionalPrior::perturb_hyperparameters !!!" << endl;
+    //cout << "called RVConditionalPrior::perturb_hyperparameters !!!" << endl;
     double logH = 0.;
 
     #if hyperpriors
@@ -105,10 +105,10 @@ double MyConditionalPrior::perturb_hyperparameters(RNG& rng)
 // vec[3] = ecc
 // vec[4] = viewing angle
 
-double MyConditionalPrior::log_pdf(const std::vector<double>& vec) const
+double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
 {
     //cout << "type of Pprior:" << typeid(Pprior).name() << endl;
-    //cout << "called MyConditionalPrior::log_pdf !!!" << endl;
+    //cout << "called RVConditionalPrior::log_pdf !!!" << endl;
     #if hyperpriors
         if(vec[2] < 0. || vec[2] > 2.*M_PI ||
            vec[3] < 0. || vec[3] >= 1.0 ||
@@ -135,7 +135,7 @@ double MyConditionalPrior::log_pdf(const std::vector<double>& vec) const
            wprior->log_pdf(vec[4]);
 }
 
-void MyConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
+void RVConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
 {
     #if hyperpriors
         Pprior = Laplace(center, width);
@@ -148,7 +148,7 @@ void MyConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
     vec[4] = wprior->cdf_inverse(vec[4]); //2.*M_PI*vec[4];
 }
 
-void MyConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
+void RVConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
 {
     #if hyperpriors
         Pprior = Laplace(center, width);
@@ -161,7 +161,7 @@ void MyConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
     vec[4] = wprior->cdf(vec[4]); //vec[4]/(2.*M_PI);
 }
 
-void MyConditionalPrior::print(std::ostream& out) const
+void RVConditionalPrior::print(std::ostream& out) const
 {
     #if hyperpriors
         out<<center<<' '<<width<<' '<<mu<<' ';
@@ -169,7 +169,7 @@ void MyConditionalPrior::print(std::ostream& out) const
 }
 
 
-void MyConditionalPrior::print0(std::ostream& out) const
+void RVConditionalPrior::print0(std::ostream& out) const
 {
     out<<0.<<' '<<0.<<' '<<0.<<' ';
 }

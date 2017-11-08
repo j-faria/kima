@@ -7,15 +7,15 @@ CELERITE_PATH = $(KIMA_DIR)/celerite/cpp/include
 
 includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH)
 
-CXX = g++
+CXX = g++-4.9
 CXXFLAGS = -pthread -std=c++11 -O3 -w
 LIBS = -ldnest4 -L/usr/local/lib
 
 KIMA_SRCS =\
-$(SRC_DIR)/MyConditionalPrior.cpp \
+$(SRC_DIR)/RVConditionalPrior.cpp \
 $(SRC_DIR)/Data.cpp \
-kima_setup.cpp \
-$(SRC_DIR)/MyModel.cpp
+$(SRC_DIR)/RVmodel.cpp \
+kima_setup.cpp
 
 KIMA_OBJS = $(subst .cpp,.o,$(KIMA_SRCS))
 

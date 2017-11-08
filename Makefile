@@ -9,7 +9,7 @@ EIGEN_PATH = eigen
 includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) 
 # -I$(CELERITE_PATH) -I$(REBOUND_PATH)
 
-CXX = g++
+CXX = g++-4.9
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w
 LIBS = -ldnest4 -L/usr/local/lib
 
@@ -17,8 +17,8 @@ LIBS = -ldnest4 -L/usr/local/lib
 SRCDIR = ./src
 SRCS =\
 $(SRCDIR)/Data.cpp \
-$(SRCDIR)/MyConditionalPrior.cpp \
-$(SRCDIR)/MyModel.cpp \
+$(SRCDIR)/RVConditionalPrior.cpp \
+$(SRCDIR)/RVmodel.cpp \
 $(SRCDIR)/main.cpp
 
 OBJS=$(subst .cpp,.o,$(SRCS))

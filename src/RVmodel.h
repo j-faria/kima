@@ -1,8 +1,8 @@
-#ifndef DNest4_MyModel
-#define DNest4_MyModel
+#ifndef DNest4_RVmodel
+#define DNest4_RVmodel
 
 #include <vector>
-#include "MyConditionalPrior.h"
+#include "RVConditionalPrior.h"
 #include "RJObject/RJObject.h"
 #include "RNG.h"
 #include "Data.h"
@@ -12,10 +12,10 @@
 //#include "celerite/celerite.h"
 
 
-class MyModel
+class RVmodel
 {
     private:
-        DNest4::RJObject<MyConditionalPrior> objects;
+        DNest4::RJObject<RVConditionalPrior> objects;
 
         double background;
         //std::vector<double> offsets;
@@ -56,7 +56,7 @@ class MyModel
         unsigned int staleness;
 
     public:
-        MyModel();
+        RVmodel();
 
         void setupHODLR();
 

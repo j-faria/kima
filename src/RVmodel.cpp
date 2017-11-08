@@ -1,4 +1,4 @@
-#include "MyModel.h"
+#include "RVmodel.h"
 #include "DNest4.h"
 #include "RNG.h"
 #include "Utils.h"
@@ -19,17 +19,6 @@ extern ContinuousDistribution *Cprior; // systematic velocity, m/s
 extern ContinuousDistribution *Jprior; // additional white noise, m/s
 
 
-// Uniform *tmp = new Uniform(-1000, 1000);
-// delete Cprior;
-// Cprior = new Uniform(-1000, 1000);
-
-// Uniform *Cprior = new Uniform(-10, 10);
-
-//Uniform *Cprior = new Uniform(-1000, 1000);
-//Uniform Jprior(0., 20.);
-//Uniform Cprior(35530.220842105256-20, 35530.220842105256+20);
-//extern Uniform Cprior;
-
 #if GP
     Uniform log_eta1_prior(-5, 5);
     Uniform log_eta2_prior(0, 5);
@@ -38,26 +27,13 @@ extern ContinuousDistribution *Jprior; // additional white noise, m/s
 #endif
 
 
-/*MyModel::MyModel()
-:objects(5, 1, false, MyConditionalPrior())
-,mu(Data::get_instance().get_t().size())
-,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
-{
-    double ymin = Data::get_instance().get_y_min();
-    double ymax = Data::get_instance().get_y_max();
-    double ptp = ymax - ymin;
-    Cprior = Uniform(ymin, ymax);
-}*/
-
-
-void MyModel::from_prior(RNG& rng)
+void RVmodel::from_prior(RNG& rng)
 {
     objects.from_prior(rng);
     objects.consolidate_diff();
     
 
     background = Cprior->rvs(rng);
-    //background = ymin + (ymax - ymin)*rng.rand();
 
     extra_sigma = Jprior->rvs(rng);
 
@@ -91,7 +67,7 @@ void MyModel::from_prior(RNG& rng)
     #endif
 }
 
-void MyModel::calculate_C()
+void RVmodel::calculate_C()
 {
 
     // Get the data
@@ -172,7 +148,7 @@ void MyModel::calculate_C()
     #endif
 }
 
-void MyModel::calculate_mu()
+void RVmodel::calculate_mu()
 {
     // Get the times from the data
     const vector<double>& t = Data::get_instance().get_t();
@@ -242,7 +218,7 @@ void MyModel::calculate_mu()
 
 }
 
-double MyModel::perturb(RNG& rng)
+double RVmodel::perturb(RNG& rng)
 {
     double logH = 0.;
 
@@ -335,7 +311,7 @@ double MyModel::perturb(RNG& rng)
 }
 
 
-double MyModel::log_likelihood() const
+double RVmodel::log_likelihood() const
 {
     int N = Data::get_instance().get_y().size();
 
@@ -426,9 +402,9 @@ double MyModel::log_likelihood() const
     return logL;
 }
 
-void MyModel::print(std::ostream& out) const
+void RVmodel::print(std::ostream& out) const
 {
-    // output presision
+    // output precision
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
@@ -451,7 +427,7 @@ void MyModel::print(std::ostream& out) const
     out<<background<<' ';
 }
 
-string MyModel::description() const
+string RVmodel::description() const
 {
     #if #GP
         return string("extra_sigma   eta1   eta2   eta3   eta4  objects.print   staleness   background");
@@ -471,7 +447,7 @@ string MyModel::description() const
     @param t_peri time of periastron passage
     @return eccentric anomaly.
 */
-double MyModel::ecc_anomaly(double t, double period, double ecc, double time_peri)
+double RVmodel::ecc_anomaly(double t, double period, double ecc, double time_peri)
 {
     double tol;
     if (ecc < 0.8) tol = 1e-14;
@@ -505,7 +481,7 @@ double MyModel::ecc_anomaly(double t, double period, double ecc, double time_per
     @param M mean anomaly (in radians)
     @return starting value for the eccentric anomaly.
 */
-double MyModel::keplerstart3(double e, double M)
+double RVmodel::keplerstart3(double e, double M)
 {
     double t34 = e*e;
     double t35 = e*t34;
@@ -523,7 +499,7 @@ double MyModel::keplerstart3(double e, double M)
     @param x starting value for the eccentric anomaly
     @return corrected value for the eccentric anomaly
 */
-double MyModel::eps3(double e, double M, double x)
+double RVmodel::eps3(double e, double M, double x)
 {
     double t1 = cos(x);
     double t2 = -1 + e*t1;
@@ -547,7 +523,7 @@ double MyModel::eps3(double e, double M, double x)
     @param t_peri time of periastron passage
     @return true anomaly.
 */
-double MyModel::true_anomaly(double t, double period, double ecc, double t_peri)
+double RVmodel::true_anomaly(double t, double period, double ecc, double t_peri)
 {
     double E = ecc_anomaly(t, period, ecc, t_peri);
     double f = acos( (cos(E)-ecc)/( 1-ecc*cos(E) ) );
