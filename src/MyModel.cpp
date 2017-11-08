@@ -15,10 +15,20 @@ using namespace DNest4;
 
 #define TIMING false
 
-ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
+extern ContinuousDistribution *Cprior; // systematic velocity, m/s
+extern ContinuousDistribution *Jprior; // additional white noise, m/s
+
+
+// Uniform *tmp = new Uniform(-1000, 1000);
+// delete Cprior;
+// Cprior = new Uniform(-1000, 1000);
+
+// Uniform *Cprior = new Uniform(-10, 10);
+
+//Uniform *Cprior = new Uniform(-1000, 1000);
 //Uniform Jprior(0., 20.);
 //Uniform Cprior(35530.220842105256-20, 35530.220842105256+20);
-Uniform Cprior;
+//extern Uniform Cprior;
 
 #if GP
     Uniform log_eta1_prior(-5, 5);
@@ -28,15 +38,16 @@ Uniform Cprior;
 #endif
 
 
-MyModel::MyModel()
-:objects(5, 0, true, MyConditionalPrior())
+/*MyModel::MyModel()
+:objects(5, 1, false, MyConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
     double ymin = Data::get_instance().get_y_min();
     double ymax = Data::get_instance().get_y_max();
+    double ptp = ymax - ymin;
     Cprior = Uniform(ymin, ymax);
-}
+}*/
 
 
 void MyModel::from_prior(RNG& rng)
@@ -45,10 +56,10 @@ void MyModel::from_prior(RNG& rng)
     objects.consolidate_diff();
     
 
-    background = Cprior.rvs(rng);
+    background = Cprior->rvs(rng);
     //background = ymin + (ymax - ymin)*rng.rand();
 
-    extra_sigma = Jprior.rvs(rng);
+    extra_sigma = Jprior->rvs(rng);
 
     #if obs_after_fibers
         // between 0 m/s and 50 m/s
@@ -285,9 +296,9 @@ double MyModel::perturb(RNG& rng)
     else if(rng.rand() <= 0.5)
     {
         // need to change logH
-        logH -= Jprior.log_pdf(extra_sigma);
-        extra_sigma = Jprior.rvs(rng);
-        logH += Jprior.log_pdf(extra_sigma);
+        logH -= Jprior->log_pdf(extra_sigma);
+        extra_sigma = Jprior->rvs(rng);
+        logH += Jprior->log_pdf(extra_sigma);
 
         #if GP
             calculate_C();
@@ -304,7 +315,7 @@ double MyModel::perturb(RNG& rng)
             #endif
         }
 
-        background = Cprior.rvs(rng);
+        background = Cprior->rvs(rng);
 
         #if obs_after_fibers // propose new fiber offset
             fiber_offset += 50*rng.randh();
@@ -435,7 +446,7 @@ void MyModel::print(std::ostream& out) const
         objects.print0(out);
     else
         objects.print(out);
-    //objects.print(out); 
+
     out<<' '<<staleness<<' ';
     out<<background<<' ';
 }

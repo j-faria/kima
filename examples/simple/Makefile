@@ -12,9 +12,9 @@ CXXFLAGS = -pthread -std=c++11 -O3 -w
 LIBS = -ldnest4 -L/usr/local/lib
 
 KIMA_SRCS =\
-kima_setup.cpp \
-$(SRC_DIR)/Data.cpp \
 $(SRC_DIR)/MyConditionalPrior.cpp \
+$(SRC_DIR)/Data.cpp \
+kima_setup.cpp \
 $(SRC_DIR)/MyModel.cpp
 
 KIMA_OBJS = $(subst .cpp,.o,$(KIMA_SRCS))
@@ -22,8 +22,8 @@ KIMA_OBJS = $(subst .cpp,.o,$(KIMA_SRCS))
 %.o: %.cpp
 	$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
 
-kima: kima_setup.o $(KIMA_OBJS)
-	$(CXX) -o kima $< $(KIMA_OBJS) -L$(DNEST4_PATH) $(LIBS) $(CXXFLAGS)
+kima: $(KIMA_OBJS)
+	$(CXX) -o kima $(KIMA_OBJS) -L$(DNEST4_PATH) $(LIBS) $(CXXFLAGS)
 
 clean:
 	rm -f kima_setup.o kima

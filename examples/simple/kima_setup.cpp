@@ -1,20 +1,15 @@
 #include <iostream>
 #include "DNest4.h"
 #include "Data.h"
-#include "Start.h"
 #include "MyModel.h"
 
 using namespace std;
 using namespace DNest4;
 
-namespace priors
-{
 /* priors */
-//  data-dependent priors should be defined in the MyModel() constructor
-
-// Uniform Cprior(-1000., 1000.); // systematic velocity
-ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
-}
+//  data-dependent priors should be defined in the MyModel() 
+//  constructor and use Data::get_instance() 
+#include "default_priors.h"
 
 
 // options for the model
@@ -22,13 +17,10 @@ ModifiedJeffreys Jprior(1.0, 99.); // additional white noise, m/s
 MyModel::MyModel()
 	:objects(5, 1, true, MyConditionalPrior())
 	,mu(Data::get_instance().N())
-	,offsets(0)
 	,C(Data::get_instance().N(), Data::get_instance().N())
 {
 
 }
-
-
 
 
 int main(int argc, char** argv)
@@ -38,7 +30,11 @@ int main(int argc, char** argv)
 	// and reads the first 3 columns into time, vrad and svrad
 	char* datafile = "corot7.txt";
 
-	Data::get_instance().loadnew(datafile);
-	start<MyModel>(argc, argv);
+	Data::get_instance().loadnew(datafile, "kms");
+	
+	// set the sampler and run it!
+	Sampler<MyModel> sampler = setup<MyModel>(argc, argv);
+	sampler.run();
+
 	return 0;
 }
