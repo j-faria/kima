@@ -6,16 +6,18 @@ import matplotlib.pyplot as plt
 # from astroML.plotting import hist
 
 def do_plot(data, name, column=1, save=None, bins=None, normed=True, logxscale=False):
-    plt.figure()
+    fig, ax = plt.subplots(1,1)
     if bins is None:
         bins = 100 #np.linspace(data.min(), data.max(), 100)
-    plt.hist(data, bins=bins, color='black', histtype='step', normed=normed)
+    ax.hist(data, bins=bins, color='black', histtype='step', normed=normed,
+            range=[data.min() - 0.2*data.ptp(), data.max() + 0.2*data.ptp()],
+            align='mid')
     # hist(data, bins='knuth', color='black', histtype='step', normed=True)
-    if logxscale: plt.xscale('log')
+    if logxscale: ax.set_xscale('log')
     if save:
-        plt.savefig(save)
+        fig.savefig(save)
     else:
-        plt.show()
+        return fig, ax
 
 
 def get_column(column):
