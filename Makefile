@@ -26,7 +26,7 @@ HEADERS=$(subst .cpp,.h,$(SRCS))
 
 all: main
 
-%.o: %.cpp $(SRCDIR)/options.h
+%.o: %.cpp
 	$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
 
 
