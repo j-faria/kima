@@ -3,11 +3,17 @@
 #include "DNest4.h"
 #include "Data.h"
 #include "RVmodel.h"
+#include "RVConditionalPrior.h"
 
 using namespace std;
 using namespace DNest4;
 
 #include "default_priors.h"
+
+const bool obs_after_HARPS_fibers = true;
+const bool GP = false;
+const bool hyperpriors = false;
+
 
 RVmodel::RVmodel()
 :objects(5, 1, true, RVConditionalPrior())

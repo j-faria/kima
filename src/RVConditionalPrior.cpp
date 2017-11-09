@@ -4,14 +4,18 @@
 #include <cmath>
 #include <typeinfo>
 
-#include "options.h"
-
-
 using namespace std;
 using namespace DNest4;
 
 
-#if hyperpriors
+extern ContinuousDistribution *log_muP_prior;
+extern ContinuousDistribution *wP_prior;
+extern ContinuousDistribution *log_muK_prior;
+
+
+/*
+if(hyperpriors)
+{
     // Cauchy prior centered on log(365 days), scale=1
     // for log(muP), with muP in days
     // -- truncated to (~-15.1, ~26.9) --
@@ -31,70 +35,67 @@ using namespace DNest4;
     Laplace Pprior;
     Exponential Kprior;
 
-#else
+}
+else
+{
+*/
     //extern Jeffreys Pprior;
     extern ContinuousDistribution *Pprior;
     extern ContinuousDistribution *Kprior;
     // Jeffreys Pprior(1.0, 1E7); // days
     //ModifiedJeffreys Kprior(1.0, 1E4); // m/s
     //Uniform Kprior(0., 20.); // m/s
-#endif
 
     extern ContinuousDistribution *eprior;
     extern ContinuousDistribution *phiprior;
     extern ContinuousDistribution *wprior;
     //TruncatedRayleigh eprior(0.2, 0.0, 1.0);
-    // Uniform eprior(0., 1.);
     //TruncatedNormal eprior(0, 0.3, 0., 1.);
-    // Uniform phiprior(0.0, 2*M_PI);
-    // Uniform wprior(0.0, 2*M_PI);
 
 
 RVConditionalPrior::RVConditionalPrior()
 {
-    //cout << "type of Pprior:" << typeid(Pprior).name() << endl;
 }
 
 
 void RVConditionalPrior::from_prior(RNG& rng)
 {
     //cout << "called RVConditionalPrior::from_prior !!!" << endl;
-    #if hyperpriors
-        center = log_muP_prior.rvs(rng);
-        width = wP_prior.rvs(rng);
-        mu = exp(log_muK_prior.rvs(rng));
-    #endif
+    if(hyperpriors)
+    {
+        center = log_muP_prior->rvs(rng);
+        width = wP_prior->rvs(rng);
+        muK = exp(log_muK_prior->rvs(rng));
+    }
 }
 
 double RVConditionalPrior::perturb_hyperparameters(RNG& rng)
 {
-    //cout << "called RVConditionalPrior::perturb_hyperparameters !!!" << endl;
     double logH = 0.;
 
-    #if hyperpriors
+    if(hyperpriors)
+    {
         int which = rng.rand_int(3);
 
         if(which == 0)
         {
-            logH -= log_muP_prior.log_pdf(center);
-            center = log_muP_prior.rvs(rng);
-            logH += log_muP_prior.log_pdf(center);
+            logH -= log_muP_prior->log_pdf(center);
+            center = log_muP_prior->rvs(rng);
+            logH += log_muP_prior->log_pdf(center);
         }
         else if(which == 1)
-        {
-            width = wP_prior.rvs(rng);
-        }
+            width = wP_prior->rvs(rng);
         else
         {
-            mu = log(mu);
+            muK = log(muK);
 
-            logH -= log_muK_prior.log_pdf(mu);
-            mu = log_muK_prior.rvs(rng);
-            logH += log_muK_prior.log_pdf(mu);      
+            logH -= log_muK_prior->log_pdf(muK);
+            muK = log_muK_prior->rvs(rng);
+            logH += log_muK_prior->log_pdf(muK);
 
-            mu = exp(mu);
+            muK = exp(muK);
         }
-    #endif
+    }
 
     return logH;
 }
@@ -109,24 +110,25 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
 {
     //cout << "type of Pprior:" << typeid(Pprior).name() << endl;
     //cout << "called RVConditionalPrior::log_pdf !!!" << endl;
-    #if hyperpriors
+    if(hyperpriors)
+    {
         if(vec[2] < 0. || vec[2] > 2.*M_PI ||
            vec[3] < 0. || vec[3] >= 1.0 ||
            vec[4] < 0. || vec[4] > 2.*M_PI)
              return -1E300;
 
-        Pprior = Laplace(center, width);
-        Kprior = Exponential(mu);
-
-    #else
+        Pprior = new Laplace(center, width);
+        Kprior = new Exponential(muK);
+    }
+    else
+    {
         if(vec[0] < 1. || vec[0] > 1E4 ||
            vec[1] < 0. ||
            vec[2] < 0. || vec[2] > 2.*M_PI ||
            vec[3] < 0. || vec[3] >= 1.0 ||
            vec[4] < 0. || vec[4] > 2.*M_PI)
              return -1E300;
-
-    #endif
+    }
 
     return Pprior->log_pdf(vec[0]) + 
            Kprior->log_pdf(vec[1]) + 
@@ -137,10 +139,11 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
 
 void RVConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
 {
-    #if hyperpriors
-        Pprior = Laplace(center, width);
-        Kprior = Exponential(mu);
-    #endif
+    if(hyperpriors)
+    {
+        Pprior = new Laplace(center, width);
+        Kprior = new Exponential(muK);
+    }
     vec[0] = Pprior->cdf_inverse(vec[0]);
     vec[1] = Kprior->cdf_inverse(vec[1]);
     vec[2] = phiprior->cdf_inverse(vec[2]); //2.*M_PI*vec[2];
@@ -150,10 +153,11 @@ void RVConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
 
 void RVConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
 {
-    #if hyperpriors
-        Pprior = Laplace(center, width);
-        Kprior = Exponential(mu);
-    #endif
+    if(hyperpriors)
+    {
+        Pprior = new Laplace(center, width);
+        Kprior = new Exponential(muK);
+    }
     vec[0] = Pprior->cdf(vec[0]);
     vec[1] = Kprior->cdf(vec[1]);
     vec[2] = phiprior->cdf(vec[2]); //vec[2]/(2.*M_PI);
@@ -163,9 +167,8 @@ void RVConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
 
 void RVConditionalPrior::print(std::ostream& out) const
 {
-    #if hyperpriors
-        out<<center<<' '<<width<<' '<<mu<<' ';
-    #endif
+    if(hyperpriors)
+        out<<center<<' '<<width<<' '<<muK<<' ';
 }
 
 

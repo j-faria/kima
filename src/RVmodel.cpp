@@ -7,7 +7,7 @@
 #include <fstream>
 #include <chrono>
 
-#include "options.h"
+//#include "options.h"
 
 using namespace std;
 using namespace Eigen;
@@ -18,13 +18,10 @@ using namespace DNest4;
 extern ContinuousDistribution *Cprior; // systematic velocity, m/s
 extern ContinuousDistribution *Jprior; // additional white noise, m/s
 
-
-#if GP
-    Uniform log_eta1_prior(-5, 5);
-    Uniform log_eta2_prior(0, 5);
-    Uniform eta3_prior(10., 40.);
-    Uniform log_eta4_prior(-5, 0);
-#endif
+extern ContinuousDistribution *log_eta1_prior;
+extern ContinuousDistribution *log_eta2_prior;
+extern ContinuousDistribution *eta3_prior;
+extern ContinuousDistribution *log_eta4_prior;
 
 
 void RVmodel::from_prior(RNG& rng)
@@ -32,39 +29,36 @@ void RVmodel::from_prior(RNG& rng)
     objects.from_prior(rng);
     objects.consolidate_diff();
     
-
     background = Cprior->rvs(rng);
-
     extra_sigma = Jprior->rvs(rng);
 
-    #if obs_after_fibers
+    if(obs_after_HARPS_fibers)
         // between 0 m/s and 50 m/s
         fiber_offset = 50*rng.rand();
-    #endif
 
-    #if GP
-        eta1 = exp(log_eta1_prior.rvs(rng)); // m/s
+    if(GP)
+    {
+        eta1 = exp(log_eta1_prior->rvs(rng)); // m/s
         // eta1 = exp(log(1E-5) + log(1E-1)*rng.rand());
         //eta1 = sqrt(3.); // m/s
 
-        eta2 = exp(log_eta2_prior.rvs(rng)); // days
+        eta2 = exp(log_eta2_prior->rvs(rng)); // days
         // eta2 = exp(log(1E-6) + log(1E6)*rng.rand());
         //eta2 = 50.; //days
 
-        eta3 = eta3_prior.rvs(rng); // days
+        eta3 = eta3_prior->rvs(rng); // days
         // eta3 = 15. + 35.*rng.rand();
         //eta3 = 20.; // days
 
-        eta4 = exp(log_eta4_prior.rvs(rng));
+        eta4 = exp(log_eta4_prior->rvs(rng));
         // exp(log(1E-5) + log(1E5)*rng.rand());
         //eta4 = 0.5;
-    #endif
+    }
 
     calculate_mu();
 
-    #if GP
-        calculate_C();
-    #endif
+    if(GP) calculate_C();
+
 }
 
 void RVmodel::calculate_C()
@@ -174,11 +168,12 @@ void RVmodel::calculate_mu()
                 mu[i] += slope*(t[i] - t[0]) + quad*(t[i] - t[0])*(t[i] - t[0]);
         #endif
 
-        #if obs_after_fibers
+        if(obs_after_HARPS_fibers)
+        {
             for(size_t i=Data::get_instance().index_fibers; i<t.size(); i++)
                 //if (i>=Data::get_instance().index_fibers) mu[i] += fiber_offset;
                 mu[i] += fiber_offset;
-        #endif
+        }
 
 
     }
@@ -221,6 +216,7 @@ void RVmodel::calculate_mu()
 double RVmodel::perturb(RNG& rng)
 {
     double logH = 0.;
+    double fraction = 0.5;
 
     if(rng.rand() <= 0.5)
     {
@@ -229,12 +225,13 @@ double RVmodel::perturb(RNG& rng)
         calculate_mu();
     }
 
-    #if GP
-        else if(rng.rand() <= 0.5)
+    if(GP) 
+    {
+        if(rng.rand() <= 0.25)
         {
             if(rng.rand() <= 0.25)
             {
-                eta1 = exp(log_eta1_prior.rvs(rng)); // m/s
+                eta1 = exp(log_eta1_prior->rvs(rng)); // m/s
                 //eta1 = log(eta1);
                 //eta1 += log(1E4)*rng.randh(); // range of prior support
                 //wrap(eta1, log(1E-5), log(1E-1)); // wrap around inside prior
@@ -242,7 +239,7 @@ double RVmodel::perturb(RNG& rng)
             }
             else if(rng.rand() <= 0.33330)
             {
-                eta2 = exp(log_eta2_prior.rvs(rng)); // days
+                eta2 = exp(log_eta2_prior->rvs(rng)); // days
                 //eta2 = log(eta2);
                 //eta2 += log(1E12)*rng.randh(); // range of prior support
                 //wrap(eta2, log(1E-6), log(1E6)); // wrap around inside prior
@@ -250,14 +247,14 @@ double RVmodel::perturb(RNG& rng)
             }
             else if(rng.rand() <= 0.5)
             {
-                eta3 = eta3_prior.rvs(rng);
+                eta3 = eta3_prior->rvs(rng);
                 //eta3 += 35.*rng.randh(); // range of prior support
                 //wrap(eta3, 15., 50.); // wrap around inside prior
             }
             else
             {
                 // eta4 = 1.0;
-                eta4 = exp(log_eta4_prior.rvs(rng));
+                eta4 = exp(log_eta4_prior->rvs(rng));
                 //eta4 = log(eta4);
                 //eta4 += log(1E10)*rng.randh(); // range of prior support
                 //wrap(eta4, log(1E-5), log(1E5)); // wrap around inside prior
@@ -265,11 +262,12 @@ double RVmodel::perturb(RNG& rng)
             }
 
             calculate_C();
-
         }
-    #endif // GP
+    } // GP
 
-    else if(rng.rand() <= 0.5)
+
+    if(GP) fraction = 0.125;
+    if(rng.rand() <= fraction)
     {
         // need to change logH
         logH -= Jprior->log_pdf(extra_sigma);
@@ -280,30 +278,29 @@ double RVmodel::perturb(RNG& rng)
             calculate_C();
         #endif
     }
-    else
+    if(rng.rand() <= fraction)
     {
 
         for(size_t i=0; i<mu.size(); i++)
         {
             mu[i] -= background;
-            #if obs_after_fibers
+            if (obs_after_HARPS_fibers)
                 if (i >= Data::get_instance().index_fibers) mu[i] -= fiber_offset;
-            #endif
         }
 
         background = Cprior->rvs(rng);
 
-        #if obs_after_fibers // propose new fiber offset
+        if (obs_after_HARPS_fibers) // propose new fiber offset
+        {
             fiber_offset += 50*rng.randh();
             wrap(fiber_offset, 0., 50);
-        #endif
+        }
 
         for(size_t i=0; i<mu.size(); i++)
         {
             mu[i] += background;
-            #if obs_after_fibers
+            if (obs_after_HARPS_fibers)
                 if (i >= Data::get_instance().index_fibers) mu[i] += fiber_offset;
-            #endif
         }
     }
 
@@ -314,7 +311,7 @@ double RVmodel::perturb(RNG& rng)
 double RVmodel::log_likelihood() const
 {
     int N = Data::get_instance().get_y().size();
-
+    double logL = 0.;
     /** The following code calculates the log likelihood in the case of a GP model */
 
     // Get the data
@@ -324,16 +321,17 @@ double RVmodel::log_likelihood() const
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    #if GP
+    if(GP)
+    {
         // residual vector (observed y minus model y)
         VectorXd residual(y.size());
         for(size_t i=0; i<y.size(); i++)
             residual(i) = y[i] - mu[i];
 
         #if DOCEL
-            double logL = -0.5 * (solver.dot_solve(residual) +
-                                  solver.log_determinant() +
-                                  y.size()*log(2*M_PI)); 
+            logL = -0.5 * (solver.dot_solve(residual) +
+                           solver.log_determinant() +
+                           y.size()*log(2*M_PI)); 
         #else
             // perform the cholesky decomposition of C
             Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
@@ -351,8 +349,8 @@ double RVmodel::log_likelihood() const
             for(size_t i=0; i<y.size(); i++)
                 exponent += residual(i)*solution(i);
 
-            double logL = -0.5*y.size()*log(2*M_PI)
-                            - 0.5*logDeterminant - 0.5*exponent;
+            logL = -0.5*y.size()*log(2*M_PI)
+                   - 0.5*logDeterminant - 0.5*exponent;
         #endif
 
         // calculate C^-1*(y-mu)
@@ -364,9 +362,9 @@ double RVmodel::log_likelihood() const
         // auto end1 = std::chrono::high_resolution_clock::now();
         // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
 
-
-
-    #else
+    } 
+    else
+    {
 
         /** The following code calculates the log likelihood in the case of a t-Student model without correlated noise*/
         //  for(size_t i=0; i<y.size(); i++)
@@ -381,7 +379,6 @@ double RVmodel::log_likelihood() const
         const vector<double>& sig = Data::get_instance().get_sig();
 
         double halflog2pi = 0.5*log(2.*M_PI);
-        double logL = 0.;
         double var;
         for(size_t i=0; i<y.size(); i++)
         {
@@ -390,7 +387,7 @@ double RVmodel::log_likelihood() const
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
         }
 
-    #endif // GP
+    } //GP
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -410,13 +407,11 @@ void RVmodel::print(std::ostream& out) const
 
     out<<extra_sigma<<'\t';
     
-    #if obs_after_fibers
+    if (obs_after_HARPS_fibers)
         out<<fiber_offset<<'\t';
-    #endif
 
-    #if GP
+    if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
-    #endif
   
     if (objects.get_fixed() and objects.get_components().size()==0)
         objects.print0(out);
@@ -429,11 +424,10 @@ void RVmodel::print(std::ostream& out) const
 
 string RVmodel::description() const
 {
-    #if #GP
+    if(GP)
         return string("extra_sigma   eta1   eta2   eta3   eta4  objects.print   staleness   background");
-    #else
+    else
         return string("extra_sigma   objects.print   staleness   background");
-    #endif
 }
 
 

@@ -4,17 +4,18 @@
 #include "RNG.h"
 #include "RJObject/ConditionalPriors/ConditionalPrior.h"
 
-// Based on ClassicMassInf1D from RJObject
-// Think of "position x" as log-period
-// and mass as amplitude
+// whether the model includes hyper-priors 
+// for the orbital period and semi-amplitude
+extern const bool hyperpriors;
+
 class RVConditionalPrior:public DNest4::ConditionalPrior
 {
 	private:
-		// Parameters of bi-exponential distribution for log-periods
+		// Parameters of bi-exponential hyper-distribution for log-periods
 		double center, width;
 
-		// Mean of exponential distribution for amplitudes
-		double mu;
+		// Mean of exponential hyper-distribution for semi-amplitudes
+		double muK;
 
 		double perturb_hyperparameters(DNest4::RNG& rng);
 

@@ -9,7 +9,12 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
-//#include "celerite/celerite.h"
+
+// whether the model includes a GP component
+extern const bool GP;
+
+// whether there are observations after the change in HARPS fibers
+extern const bool obs_after_HARPS_fibers;
 
 
 class RVmodel
