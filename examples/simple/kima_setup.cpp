@@ -11,6 +11,9 @@ using namespace DNest4;
 //  constructor and use Data::get_instance() 
 #include "default_priors.h"
 
+const bool obs_after_HARPS_fibers = true;
+const bool GP = false;
+const bool hyperpriors = false;
 
 // options for the model
 // 
