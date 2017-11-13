@@ -16,6 +16,9 @@ extern const bool GP;
 // whether there are observations after the change in HARPS fibers
 extern const bool obs_after_HARPS_fibers;
 
+// whether the model includes a linear trend
+extern const bool trend;
+
 
 class RVmodel
 {

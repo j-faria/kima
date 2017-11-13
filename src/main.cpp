@@ -10,10 +10,10 @@ using namespace DNest4;
 
 #include "default_priors.h"
 
-const bool obs_after_HARPS_fibers = true;
+const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
 const bool hyperpriors = false;
-
+const bool trend = false;
 
 RVmodel::RVmodel()
 :objects(5, 1, true, RVConditionalPrior())
@@ -22,6 +22,10 @@ RVmodel::RVmodel()
 {
     double ymin = Data::get_instance().get_y_min();
     double ymax = Data::get_instance().get_y_max();
+    double topslope = Data::get_instance().topslope();
+    Cprior = new Uniform(ymin, ymax);
+    if(trend)
+    	slope_prior = new Uniform(-topslope, topslope);
 }
 
 int main(int argc, char** argv)

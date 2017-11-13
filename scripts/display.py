@@ -12,6 +12,13 @@ try:
 except ImportError:
     fast_histogram_available = False
 
+try:
+    from astroML.plotting import hist_tools
+    hist_tools_available = True
+except ImportError:
+    hist_tools_available = False
+
+
 import corner
 import george
 from george import kernels
@@ -195,9 +202,12 @@ class DisplayResults(object):
             n_offsets = 0
 
 
-        self.trend = False
-        # with open(os.path.join(top_level, 'src', 'MyModel.cpp')) as f:
-        #     self.trend = 'define trend true' in f.read()
+        try:
+            with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                self.trend = 'bool trend = true' in f.read()
+        except IOError:
+            with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                self.trend = 'bool trend = true' in f.read()
         
         if debug: 
             print 'trend:', self.trend
@@ -1167,9 +1177,19 @@ class DisplayResults(object):
 
         self.planet_samples = self.posterior_sample[:, self.index_component+1:-2]
 
+        if hist_tools_available:
+            bw = hist_tools.freedman_bin_width
+            # bw = hist_tools.knuth_bin_width
+            bins = []
+            for sample in self.planet_samples.T:
+                bins.append(bw(sample, return_bins=True)[1].size)
+        else:
+            bins = None
+
         c = corner.corner
         self.corner2 = c(self.planet_samples, labels=labels, show_titles=True,
                          plot_contours=False, plot_datapoints=True, plot_density=False,
+                         bins=bins,
                          # fill_contours=True, smooth=True,
                          # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
                          #hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},

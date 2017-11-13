@@ -17,6 +17,8 @@ using namespace DNest4;
 extern ContinuousDistribution *Cprior; // systematic velocity, m/s
 extern ContinuousDistribution *Jprior; // additional white noise, m/s
 
+extern ContinuousDistribution *slope_prior; // m/s/day
+
 extern ContinuousDistribution *log_eta1_prior;
 extern ContinuousDistribution *log_eta2_prior;
 extern ContinuousDistribution *eta3_prior;
@@ -34,6 +36,9 @@ void RVmodel::from_prior(RNG& rng)
     if(obs_after_HARPS_fibers)
         // between 0 m/s and 50 m/s
         fiber_offset = 50*rng.rand();
+
+    if(trend)
+        slope = slope_prior->rvs(rng);
 
     if(GP)
     {
@@ -162,10 +167,11 @@ void RVmodel::calculate_mu()
     {
         mu.assign(mu.size(), background);
         staleness = 0;
-        #if trend
+        if(trend)
+        {
             for(size_t i=0; i<t.size(); i++)
-                mu[i] += slope*(t[i] - t[0]) + quad*(t[i] - t[0])*(t[i] - t[0]);
-        #endif
+                mu[i] += slope*(t[i] - t[0]); //+ quad*(t[i] - t[0])*(t[i] - t[0]);
+        }
 
         if(obs_after_HARPS_fibers)
         {
@@ -214,6 +220,7 @@ void RVmodel::calculate_mu()
 
 double RVmodel::perturb(RNG& rng)
 {
+    const vector<double>& t = Data::get_instance().get_t();
     double logH = 0.;
     double fraction = 0.5;
 
@@ -266,6 +273,7 @@ double RVmodel::perturb(RNG& rng)
 
 
     if(GP) fraction = 0.125;
+
     if(rng.rand() <= fraction)
     {
         // need to change logH
@@ -277,27 +285,39 @@ double RVmodel::perturb(RNG& rng)
             calculate_C();
         #endif
     }
+
     if(rng.rand() <= fraction)
     {
 
         for(size_t i=0; i<mu.size(); i++)
         {
             mu[i] -= background;
+            if(trend)
+                mu[i] -= slope*(t[i]-t[0]);
+
             if (obs_after_HARPS_fibers)
                 if (i >= Data::get_instance().index_fibers) mu[i] -= fiber_offset;
         }
 
         background = Cprior->rvs(rng);
 
-        if (obs_after_HARPS_fibers) // propose new fiber offset
+        // propose new fiber offset
+        if (obs_after_HARPS_fibers) 
         {
             fiber_offset += 50*rng.randh();
             wrap(fiber_offset, 0., 50);
         }
 
+        // propose new slope
+        if(trend)
+            slope = slope_prior->rvs(rng);
+
         for(size_t i=0; i<mu.size(); i++)
         {
             mu[i] += background;
+            if(slope)
+                mu[i] += slope*(t[i]-t[0]);
+
             if (obs_after_HARPS_fibers)
                 if (i >= Data::get_instance().index_fibers) mu[i] += fiber_offset;
         }
@@ -408,6 +428,9 @@ void RVmodel::print(std::ostream& out) const
     
     if (obs_after_HARPS_fibers)
         out<<fiber_offset<<'\t';
+
+    if(trend)
+        out<<slope<<'\t'; //<<quad*1E8<<'\t';
 
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
