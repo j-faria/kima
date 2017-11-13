@@ -1,30 +1,28 @@
-
-import matplotlib.pyplot as plt
-# import matplotlib
-import numpy as np
-from scipy.stats import gaussian_kde
 import sys
 import re
 import os
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.stats import gaussian_kde
+pathjoin = os.path.join
+
+try:
+    from fast_histogram import histogram1d, histogram2d
+    fast_histogram_available = True
+except ImportError:
+    fast_histogram_available = False
+
+import corner
 import george
 from george import kernels
 
-import celerite
-from celerite import terms
-
-sys.path.append('/home/joao/Work/OPEN')
-from OPEN.classes import params as params_paper
-# from OPEN.classes import MyFormatter
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
+mjup2mearth = 317.8284065946748
 
-# sys.path.append('/home/joao/Work/corner/build/lib')
-import corner
-# reload(corner)
-# import corner_analytic
-# reload(corner_analytic)
+# sys.path.append('/home/joao/Work/OPEN')
+# from OPEN.classes import params as params_paper
+# from OPEN.utils import mjup2mearth #, mearth2msun, mean_sidereal_day, au2m
 
-plt.rc("font", size=14, family="serif", serif="Computer Sans")
-plt.rc("text", usetex=True)
 
 def apply_argsort(arr1, arr2, axis=-1):
     """
@@ -41,56 +39,127 @@ def percentile68_ranges(a):
     lp, median, up = np.percentile(a, [16, 50, 84])
     return (median, up-median, median-lp)
 
+def percentile68_ranges_latex(a):
+    lp, median, up = np.percentile(a, [16, 50, 84])
+    return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, up-median, median-lp)
+
 
 def get_aliases(Preal):
     fs = np.array([0.0027381631, 1.0, 1.0027]) #, 0.018472000025212765])
     return np.array([abs(1 / (1./Preal + i*fs)) for i in range(-6, 6)]).T
 
 
-class DisplayResults(object):
-    def __init__(self, options, data_file=None, posterior_samples_file='posterior_sample.txt'):
-        self.options = options
 
+def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
+    if verbose: print 'Using star mass = %s solar mass' % star_mass
+    # print 3.5e-2 * K * (P/365.)**(1./3) * star_mass**(2./3)
+    # print 9.077e-3 * star_mass**(2./3) * (P/(2*np.pi))**(1./3) * K * np.sqrt(1-e**2)
+
+    if isinstance(P, float):
+        assert isinstance(star_mass, float)
+        m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1-e**2)
+        m_me = m_mj * mjup2mearth
+        return m_mj, m_me
+    else:
+      if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+        star_mass = star_mass[0] + star_mass[1]*np.random.randn(P.size)
+      m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1-e**2)
+      m_me = m_mj * mjup2mearth
+      
+      if full_output:
+        # return map(percentile68_ranges, [m_mj, m_me]), m_mj
+        return m_mj.mean(), m_mj.std(), m_mj
+      else:
+        # return map(percentile68_ranges, [m_mj, m_me])
+        return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
+
+
+class DisplayResults(object):
+    def __init__(self, options, data_file=None, 
+                 fiber_offset=None, hyperpriors=None,
+                 posterior_samples_file='posterior_sample.txt'):
+
+        self.options = options
         debug = 'debug' in self.options
 
+        pwd = os.getcwd()
         path_to_this_file = os.path.abspath(__file__)
         top_level = os.path.dirname(os.path.dirname(path_to_this_file))
 
+        if debug:
+            print 
+            print 'running on:', pwd
+            print 'top_level:', top_level
+            print 
+
+        def get_skip(line):
+            load_args = re.findall(r'\((.*?)\)', line, re.DOTALL)[1]
+            load_args = load_args.split(',')
+            if len(load_args) == 3:
+                # use gave 'skip' option
+                return int(load_args[2])
+            else:
+                # default is skip=2
+                return 2
+
         if data_file is None:
-            if debug: print top_level
-            with open(os.path.join(top_level, 'src', 'main.cpp')) as f:
-                c = f.readlines()
-            for line in c:
-                if 'loadnew' in line and '/*' not in line: l = line
-            data_file = re.findall('"(.*?)"', l, re.DOTALL)[0]
+        # find datafile in the compiled model
+            try:
+                # either in an example directory
+                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                    for line in f.readlines():
+                        if 'datafile = ' in line and '/*' not in line: 
+                            data_file = re.findall('"(.*?)"', line, re.DOTALL)[0]
+
+                        if 'get_instance().load' in line:
+                            self.data_skip = get_skip(line)
+
+            except IOError:
+                # or in the main kima directory
+                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                    for line in f.readlines():
+                        if 'get_instance().load' in line and '/*' not in line:
+                            break
+                self.data_skip = get_skip(line)
+                data_file = re.findall('"(.*?)"', line, re.DOTALL)[0]
+                data_file = pathjoin(top_level, data_file)
 
         print 'Loading data file %s' % data_file
-        self.data_file = os.path.join(top_level, data_file)
+        self.data_file = data_file
+        if debug:
+            print '--- skipping first %d rows of data file' % self.data_skip
 
-        # self.data = np.loadtxt('1planet_plus_gp.rv')
-        # self.data = np.loadtxt('HD41248_harps_mean_corr.rdb')
-        # self.data = np.loadtxt('BT1.txt')
-        self.data = np.loadtxt(self.data_file, skiprows=2)
-        mean_vrad = self.data[:, 1].mean()
+        self.data = np.loadtxt(self.data_file, 
+                               skiprows=self.data_skip, usecols=(0,1,2))
+        # mean_vrad = self.data[:, 1].mean()
         # self.data[:, 1] = (self.data[:, 1] - mean_vrad)*1e3 + mean_vrad
-        # self.data[:, 2] *= 1e3
+        self.data[:, 1] *= 1e3
+        self.data[:, 2] *= 1e3
 
-        # self.truth = np.loadtxt('fake_data_like_nuoph.truth')
-        # posterior_samples_file = 'resultsCorot7/upto10/posterior_sample.txt'
-        self.posterior_sample = np.atleast_2d(np.loadtxt(posterior_samples_file))
+        self.posterior_sample = \
+            np.atleast_2d(np.loadtxt(posterior_samples_file))
+
+        try:
+            lnlikes_filename = '_lnlikelihoods'.join(os.path.splitext(posterior_samples_file))
+            self.posterior_sample_lnlikes = np.atleast_2d(np.loadtxt(lnlikes_filename))
+            self.max_likelihood_index = np.argmax(self.posterior_sample_lnlikes)
+        except IOError:
+            print 'Sample likelihoods not available!!! This is bad!'
+
 
         start_parameters = 0
-        # (nsamples x 1000)
-        self.signals = self.posterior_sample[:, :start_parameters]
-
         self.extra_sigma = self.posterior_sample[:, start_parameters]
 
+        try:
+            with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                self.GPmodel = 'bool GP = true' in f.read()
+        except IOError:
+            with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                self.GPmodel = 'bool GP = true' in f.read()
+        
+        if debug:
+            print 'GP model:', self.GPmodel
 
-        with open(os.path.join(top_level, 'src', 'MyModel.cpp')) as f:
-            r = f.read()
-            self.GPmodel = '#define ananas false' in r or \
-                           '#define limao true' in r
-            if debug: print 'GP model:', self.GPmodel
 
         if self.GPmodel:
             n_hyperparameters = 4
@@ -102,33 +171,70 @@ class DisplayResults(object):
         else:
             n_hyperparameters = 0
 
-        # if n_hyperparameters == 4:
-        #     self.eta1, self.eta2, self.eta3, self.eta4 = self.posterior_sample[:, start_parameters+1:start_parameters+5].T
-        # elif n_hyperparameters == 5:
-        #     self.eta1, self.eta2, self.eta3, self.eta4, self.eta5 = self.posterior_sample[:, start_parameters+1:start_parameters+6].T
-        # else:
-        #     self.nu = self.posterior_sample[:, start_parameters+n_hyperparameters].T
-        # self.eta1, self.eta2, self.eta3, self.eta4, self.eta5 = self.posterior_sample[:, start_parameters+1:start_parameters+6].T
+
+        if fiber_offset is None:
+            try:
+                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                    self.fiber_offset = \
+                        'bool obs_after_HARPS_fibers = true' in f.read()
+            except IOError:
+                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                    self.fiber_offset = \
+                        'bool obs_after_HARPS_fibers = true' in f.read()
+        else:
+            self.fiber_offset = fiber_offset
+
+        if debug: 
+            print 'obs_after_fibers:', self.fiber_offset
+
+        if self.fiber_offset:
+            n_offsets = 1
+            offset_index = start_parameters+n_hyperparameters+n_offsets
+            self.offset = self.posterior_sample[:, offset_index]
+        else:
+            n_offsets = 0
 
 
-        with open(os.path.join(top_level, 'src', 'MyModel.cpp')) as f:
-            self.trend = 'define trend true' in f.read()
-            if debug: print 'trend:', self.trend
+        self.trend = False
+        # with open(os.path.join(top_level, 'src', 'MyModel.cpp')) as f:
+        #     self.trend = 'define trend true' in f.read()
+        
+        if debug: 
+            print 'trend:', self.trend
 
 
-        n_trend = 2 if self.trend else 0
-        i1 = start_parameters + n_hyperparameters + 1
-        i2 = start_parameters + n_hyperparameters + n_trend + 1
-        self.trendpars = self.posterior_sample[:, i1:i2]
+        if self.trend:
+            n_trend = 2
+            i1 = start_parameters + n_hyperparameters + 1
+            i2 = start_parameters + n_hyperparameters + n_trend + 1
+            self.trendpars = self.posterior_sample[:, i1:i2]
+        else:
+            n_trend = 0
 
-        start_objects_print = start_parameters + n_trend + n_hyperparameters + 1
+        start_objects_print = start_parameters + n_offsets + n_trend + n_hyperparameters + 1
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
         # maximum number of components
         self.max_components = int(self.posterior_sample[0, start_objects_print+1])
 
-        n_dist_print = 0
+        if hyperpriors is None:
+            try:
+                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                    self.hyperpriors = \
+                        'bool hyperpriors = true' in f.read()
+            except IOError:
+                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                    self.hyperpriors = \
+                        'bool hyperpriors = true' in f.read()
+        else:
+            self.hyperpriors = hyperpriors
+        
+        # number of hyperparameters (muP, wP, muK)
+        n_dist_print = 3 if self.hyperpriors else 0
+        # if hyperpriors, then the period is sampled in log
+        self.log_period = self.hyperpriors
 
+        # the column with the number of planets in each sample
         self.index_component = start_objects_print + 1 + n_dist_print + 1
 
         self.get_marginals()
@@ -161,20 +267,6 @@ class DisplayResults(object):
             self.make_plot9()
         if '10' in options:
             self.plot_all_planet_params()
-        
-
-
-    def make_plot1(self):
-        plt.figure()
-        n, bins, _ = plt.hist(self.posterior_sample[:, self.index_component], 100)
-        plt.xlabel('Number of Planets')
-        plt.ylabel('Number of Posterior Samples')
-        plt.xlim([-0.5, self.max_components+.5])
-
-        nn = n[np.nonzero(n)]
-        print 'probability ratios: ', nn.flat[1:] / nn.flat[:-1]
-
-        plt.show()
 
 
     def get_marginals(self):
@@ -208,6 +300,20 @@ class DisplayResults(object):
         s = np.s_[i1 : i2]
         self.E = self.posterior_sample[:,s]
         self.Eall = np.copy(self.E)
+
+        # omegas
+        i1 = 4*max_components + index_component + 1
+        i2 = 4*max_components + index_component + max_components + 1
+        s = np.s_[i1 : i2]
+        self.Omega = self.posterior_sample[:,s]
+        self.Omegaall = np.copy(self.Omega)
+
+
+        # times of periastron
+        # t0 = jdb[0] - (P*phi)/(2.*np.pi)
+        self.T0 = self.data[0,0] - (self.T*self.phi)/(2.*np.pi)
+        self.T0all = np.copy(self.T0)
+
 
         which = self.T != 0
         self.T = self.T[which].flatten()
@@ -333,145 +439,209 @@ class DisplayResults(object):
 
 
 
+    def make_plot1(self):
+        """ Plot the histogram of the posterior for Np """
+        plt.figure()
+        n, bins, _ = plt.hist(self.posterior_sample[:, self.index_component], 100)
+        plt.xlabel('Number of Planets')
+        plt.ylabel('Number of Posterior Samples')
+        plt.xlim([-0.5, self.max_components+.5])
+
+        nn = n[np.nonzero(n)]
+        print 'probability ratios: ', nn.flat[1:] / nn.flat[:-1]
+
+        plt.show()
 
 
-    def make_plot2(self):
-        T = self.T
+    def make_plot2(self, bins=None):
+        """ 
+        Plot the histogram of the posterior for orbital period P.
+        Optionally provide the histogram bins.
+        """
+        if self.log_period:
+            T = np.exp(self.T)
+            print 'exponentiating period!'
+        else:
+            T = self.T
+        
         plt.figure()
 
+        # mark 1 year and 0.5 year
         year = 365.25
         plt.axvline(x=year, ls='--', color='r', lw=3, alpha=0.6)
         plt.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
         # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
 
+        # mark the timespan of the data
         plt.axvline(x=self.data[:,0].ptp(), ls='--', color='b', lw=4, alpha=0.5)
 
-        bins = 10 ** np.linspace(np.log10(1e-1), np.log10(1e7), 100)
+        # by default, 100 bins in log between 0.1 and 1e7
+        if bins is None:
+            bins = 10 ** np.linspace(np.log10(1e-1), np.log10(1e7), 100)
+
         plt.hist(T, bins=bins, alpha=0.5)
 
+        plt.xscale("log")
         plt.xlabel(r'(Period/days)')
-        plt.gca().set_xscale("log")
-        # plt.gca().set_yscale("symlog")
-        #for i in xrange(1009, 1009 + int(truth[1008])):
-        #  axvline(truth[i]/log(10.), color='r')
         plt.ylabel('Number of Posterior Samples')
         plt.show()
 
 
-    def make_plot3(self, paper=False, points=True):
+    def make_plot3(self, points=True):
+        """
+        Plot the 2d histograms of the posteriors for 
+        semi-amplitude and period and eccentricity and period.
+        If `points` is True (default), plot each posterior sample,
+        else plot hexbins
+        """
 
-        T, A, E = self.T, self.A, self.E
-
-        # aliases1 = get_aliases(0.85359165)
-        # aliases2 = get_aliases(3.691)
-        # aliases3 = get_aliases(9.03580275887)
-
-        if paper:
-            with plt.rc_context(params_paper):
-                figwidth = 3.543311946  # in inches = \hsize = 256.0748pt
-                figheight = 0.95 * figwidth
-
-                fig = plt.figure(figsize=(figwidth, figheight))
-                # fig.subplots_adjust(hspace=0.3, left=0.14, right=0.95, top=0.95)
-                ax1 = fig.add_subplot(2,1,1)
-                ax1.hexbin(np.exp(T[::100]), A[::100], gridsize=100, bins='log', xscale='log', yscale='log',
-                           cmap=plt.get_cmap('afmhot_r'))
-                ax1.set_ylabel(r'Semi-amplitude [$\ms$]')
-                ax1.set_xlim([0.1, 1000])
-                ax1.set_xticklabels([])
-                ax1.set_yticklabels(['', '', '0.01', '0.1', '1', '10'])
-
-                ax2 = fig.add_subplot(2,1,2)
-                ax2.hexbin(np.exp(T[::100]), E[::100], gridsize=100, bins='log', xscale='log',
-                           cmap=plt.get_cmap('afmhot_r'))
-
-                ax2.set_xlim([0.1, 1000])
-                print ax2.get_xticklabels()
-                ax2.set_xticklabels(['', '0.1', '1', '10', '100', '1000'])
-                ax2.set_xlabel(r'Period [days]')
-                ax2.set_ylabel('Eccentricity')
-
-                fig.tight_layout()
-                return
-                # fig.savefig('/home/joao/phd/RJGP_paper_HD41248/figures/jointplot.pdf')
+        if 'hexbin' in self.options:
+            points = False
 
 
+        if self.log_period:
+            T = np.exp(self.T)
+            print 'exponentiating period!'
         else:
-            fig = plt.figure()
+            T = self.T
+        A, E = self.A, self.E
 
-            ax1 = fig.add_subplot(2,1,1)
-            #plot(truth[1009:1009 + int(truth[1008])]/log(10.), log10(truth[1018:1018 + int(truth[1008])]), 'ro', markersize=7)
-            #hold(True)
-            if points:
-                ax1.loglog(T, A, '.', markersize=1)
-                ax1.set_xscale('log')
-                ax1.set_yscale('log')
-            else:
-                ax1.hexbin(T[::100], A[::100], gridsize=50, bins='log', xscale='log', yscale='log',
-                           cmap=plt.get_cmap('afmhot_r'))
-            # data = np.vstack([np.exp(T[::100]), A[::100]]).T
-            # sns.jointplot(x=np.exp(T[::100]), y=A[::100], kind="hex", color="k");
-            # sns.kdeplot(data=np.exp(T[::100]), data2=A[::100], bw=[0.1, 1], shade=True, ax=ax1)
+        fig = plt.figure()
 
-            ax1.set_ylabel(r'Amplitude (m/s)')
+        ax1 = fig.add_subplot(2,1,1)
+        if points:
+            ax1.loglog(T, A, '.', markersize=1)
+            # ax1.set(xscale='log', yscale='log')
+        else:
+            ax1.hexbin(T, A, gridsize=50, 
+                       bins='log', xscale='log', yscale='log',
+                       cmap=plt.get_cmap('afmhot_r'))
 
-            # mu = self.posterior_sample[:, self.index_component-1]
-            # ax = fig.add_subplot(2,2,2, sharey=ax1)
-            # ax.hist(mu, bins=30, orientation="horizontal")
-            # ax.set_ylim(ax1.get_ylim())
-            # ax.set_yscale('log')
+        ax1.set_ylabel(r'Semi-amplitude (m/s)')
 
-            ax2 = fig.add_subplot(2,1,2, sharex=ax1)
-            #plot(truth[1009:1009 + int(truth[1008])]/log(10.), truth[1038:1038 + int(truth[1008])], 'ro', markersize=7)
-            #hold(True)
-            if points:
-                ax2.semilogx(T, E, 'b.', markersize=2)
-            else:
-                ax2.hexbin(T[::100], E[::100], gridsize=50, bins='log', xscale='log',
-                           cmap=plt.get_cmap('afmhot_r'))
-            # ax.axvline(x=0.85359165, color='r')
-            # ax.axvline(x=3.691, color='r')
-            # ax.vlines([3.9359312722691815, 3.8939651463077287, 3.8528844910117557, 3.8126615742655399, 3.7732698100471724, 3.7346836998277957, 3.6968787775300003, 3.6598315577957377, 3.6235194873338745, 3.5879208991356037, 3.5530149693624242, 3.5187816767264146], ymin=0, ymax=1)
-            # ax.vlines(aliases1, ymin=0, ymax=1, color='g', alpha=0.4)
-            # ax.vlines(aliases2, ymin=0, ymax=1, color='y', alpha=0.4)
-            # ax.vlines(aliases3, ymin=0, ymax=1, color='c', alpha=0.4)
-            
-            ax2.set_xlim([0.1, 1000])
-            ax2.set_xlabel(r'(Period/days)')
-            ax2.set_ylabel('Eccentricity')
+        ax2 = fig.add_subplot(2,1,2, sharex=ax1)
+        if points:
+            ax2.semilogx(T, E, 'b.', markersize=2)
+        else:
+            ax2.hexbin(T, E, gridsize=50, 
+                       bins='log', xscale='log',
+                       cmap=plt.get_cmap('afmhot_r'))
+        
+        ax2.set_ylim(0, 1)
+        ax2.set_xlim([0.1, 1e7])
+        ax2.set_xlabel(r'(Period/days)')
+        ax2.set_ylabel('Eccentricity')
 
-            plt.show()
-
-
-    def make_plot4(self):
-        plt.figure()
-        available_etas = [v for v in dir(self) if v.startswith('eta')]
-
-        for i, eta in enumerate(available_etas):
-            plt.subplot(2, 3, i+1)
-            plt.hist(getattr(self, eta), bins=40)
-            plt.xlabel(eta)
         plt.show()
 
 
 
-    # # data[:,0] -= data[:,0].min()
-    # t = np.linspace(data[:,0].min(), data[:,0].max(), 1000)
-    # c = np.random.choice(, size=10, replace=False)
+    def make_plot31(self, star_mass=1.0, trend=0., points=True):
+        from astropy import units as u
 
-    # fig = figure()
-    # ax = fig.add_subplot(111)
-    # ax.errorbar(data[:,0], data[:,1], fmt='b.', yerr=data[:,2])
-    # data_ylimits = ax.get_ylim()
-    # # plot random posterior sample signals
-    # ax.plot(t, signals[c, :].T, alpha=0.4)
-    # ax.set_ylim(data_ylimits)
-    # # ax.errorbar(data[:,0], data[:,1], fmt='b.', yerr=data[:,2])
+        T = np.exp(self.T) if log_period else self.T
+        A, E = self.A, self.E
+
+        T = T * u.day
+        A = A * u.meter/u.second
+
+        Mmj = get_planet_mass(T.value, A.value, E, star_mass=star_mass, full_output=True)
+        Mmj = Mmj[2] * u.jupiterMass
+        # aliases1 = get_aliases(0.85359165)
+        # aliases2 = get_aliases(3.691)
+        # aliases3 = get_aliases(9.03580275887)
+
+        fig = plt.figure()
+
+        ax1 = fig.add_subplot(2,1,1)
+        #plot(truth[1009:1009 + int(truth[1008])]/log(10.), log10(truth[1018:1018 + int(truth[1008])]), 'ro', markersize=7)
+        #hold(True)
+        if points:
+            # ax1.loglog(T, Mmj, '.', markersize=1)
+            ax1.scatter(T, Mmj, c=E, s=5)
+            ax1.set_xscale('log')
+            ax1.set_yscale('log')
+        else:
+            ax1.hexbin(T[::100], A[::100], gridsize=50, bins='log', xscale='log', yscale='log',
+                       cmap=plt.get_cmap('afmhot_r'))
+        # data = np.vstack([np.exp(T[::100]), A[::100]]).T
+        # sns.jointplot(x=np.exp(T[::100]), y=A[::100], kind="hex", color="k");
+        # sns.kdeplot(data=np.exp(T[::100]), data2=A[::100], bw=[0.1, 1], shade=True, ax=ax1)
+
+        ax1.set_ylabel(r'Mass (Mjup)')
+
+        # mu = self.posterior_sample[:, self.index_component-1]
+        # ax = fig.add_subplot(2,2,2, sharey=ax1)
+        # ax.hist(mu, bins=30, orientation="horizontal")
+        # ax.set_ylim(ax1.get_ylim())
+        # ax.set_yscale('log')
+
+        ax2 = fig.add_subplot(2,1,2, sharex=ax1)
+        #plot(truth[1009:1009 + int(truth[1008])]/log(10.), truth[1038:1038 + int(truth[1008])], 'ro', markersize=7)
+        #hold(True)
+        if points:
+            ax2.semilogx(T, E, 'b.', markersize=2)
+        else:
+            ax2.hexbin(T[::100], E[::100], gridsize=50, bins='log', xscale='log',
+                       cmap=plt.get_cmap('afmhot_r'))
+        # ax.axvline(x=0.85359165, color='r')
+        # ax.axvline(x=3.691, color='r')
+        # ax.vlines([3.9359312722691815, 3.8939651463077287, 3.8528844910117557, 3.8126615742655399, 3.7732698100471724, 3.7346836998277957, 3.6968787775300003, 3.6598315577957377, 3.6235194873338745, 3.5879208991356037, 3.5530149693624242, 3.5187816767264146], ymin=0, ymax=1)
+        # ax.vlines(aliases1, ymin=0, ymax=1, color='g', alpha=0.4)
+        # ax.vlines(aliases2, ymin=0, ymax=1, color='y', alpha=0.4)
+        # ax.vlines(aliases3, ymin=0, ymax=1, color='c', alpha=0.4)
+        
+        ax2.set_xlim([10, 1e7])
+        ax2.set_xlabel(r'(Period/days)')
+        ax2.set_ylabel('Eccentricity')
+
+        for ax in (ax1,ax2):
+            ax.axvline(x=self.data[:,0].ptp(), ymin=0, ymax=1, color='k')
+            ax.axvline(x=2*self.data[:,0].ptp(), ymin=0, ymax=1, color='k')
+
+        # minimum mass from Feng et al 2015
+        Dt = self.data[:,0].ptp() / 365.25
+        Mmin = 0.0164 * (Dt)**(4/3.) * \
+               (np.abs(trend)) * \
+               (star_mass)**(2/3.)
+        print Mmin * u.jupiterMass
+        ax1.axhline(y=Mmin, xmin=0, xmax=1, color='k')
+
+        Mmin = lambda P: (1/28.4) * P**(1/3.) * \
+                         (star_mass)**(2/3.) * \
+                         (np.abs(trend)*Dt/2.)
+        print Mmin(Dt)
+        PP = np.linspace(2*Dt*365.25, 100*Dt*365.25)
+        ax1.plot(PP, Mmin(PP/365.25), 'g')
+        # ax1.axhline(y=Mmin, xmin=0, xmax=1, color='k')
+
+        plt.show()
+
+
+
+    def make_plot4(self):
+        """ Plot histograms for the GP hyperparameters """
+        if not self.GPmodel:
+            print 'Current model does not have GP, doing nothing...'
+            return
+
+        available_etas = [v for v in dir(self) if v.startswith('eta')]
+        
+        fig, axes = plt.subplots(2, len(available_etas)/2.)
+        for i, eta in enumerate(available_etas):
+            ax = axes[i]
+            ax.hist(getattr(self, eta), bins=40)
+            ax.set_xlabel(eta)
+        plt.show()
+
 
     def make_plot5(self, show=True, save=False):
-        # self.periods = np.exp(self.Tall[:,0])
-        # self.periods[self.periods == 1.] = -99
-        # self.periods = np.ma.masked_invalid(self.periods)
+        """ Corner plot for the GP hyperparameters """
+
+        if not self.GPmodel:
+            print 'Current model does not have GP, doing nothing...'
+            return
+
         self.pmin = 10. #self.periods.mean() - 2*self.periods.std()
         self.pmax = 40. #self.periods.mean() + 2*self.periods.std()
 
@@ -508,37 +678,31 @@ class DisplayResults(object):
 
 
         ### all Np together
-        # self.post_samples = np.vstack((self.extra_sigma, self.eta1, self.eta2, self.eta3, self.eta4)).T
         variables = [self.extra_sigma]
         for eta in available_etas:
             variables.append(getattr(self, eta))
 
         self.post_samples = np.vstack(variables).T
-        print self.post_samples.shape
+        # print self.post_samples.shape
 
         ranges = [1.]*(len(available_etas)+1)
         ranges[3] = (self.pmin, self.pmax)
-        # print (self.pmin, self.pmax)
-        # labels = ['$\sigma_{extra}$', '$\eta_1$', '$\eta_2$', '$\eta_3$', '$\eta_4$', '$\eta_5$']
-        
-        self.corner1 = corner.corner(self.post_samples, labels=labels, show_titles=True,
-                                     plot_contours=False, plot_datapoints=True, plot_density=False,
-                                     # fill_contours=True, smooth=True,
-                                     # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
-                                     hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-                                     hist_kwargs={'normed':True},
-                                     range=ranges,
-                                     shared_axis=True, data_kwargs={'alpha':1},
-                                     )
 
-
+        c = corner.corner        
+        self.corner1 = c(self.post_samples, labels=labels, show_titles=True,
+                         plot_contours=False, plot_datapoints=True, plot_density=False,
+                         # fill_contours=True, smooth=True,
+                         # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
+                         hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
+                         hist_kwargs={'normed':True},
+                         range=ranges, shared_axis=True, data_kwargs={'alpha':1},
+                         )
 
         if show:
             plt.show()
         
         if save:
             self.corner1.savefig(save)
-
 
 
     def make_plot6(self, plot_samples=False, show=True, N=0):
@@ -911,19 +1075,6 @@ class DisplayResults(object):
 
         plt.show()
 
-    def make_plot_priors(self):
-
-        self.make_plot5(show=False)
-
-        fs = np.array(['t', 'uniform', 'loguniform', 'loguniform', 'uniform', 'loguniform'])
-        labels = ['P', '$\sigma_{extra}$', '$\eta_1$', '$\eta_2$', '$\eta_3$', '$\eta_4$']
-        pars =  [1, [0, 2],  None,             None,             [10, 30], None]
-        kpars = [{}, {}, {'a':0.1,'b':10}, {'a':10,'b':100}, {},       {'a':0.1,'b':10}]
-
-        fig = corner_analytic.corner(fs, dist_args=pars, dist_kwargs=kpars, 
-                                     labels=labels, shared_axis=True, only_diag=True,
-                                     fig=self.corner1, )
-        plt.show()
 
     def make_plot8(self, show=True, cut=None):
 
@@ -1012,83 +1163,96 @@ class DisplayResults(object):
 
 
     def plot_all_planet_params(self, planet=None):
-        labels = ['$P$', '$K$', '$\phi$', 'ecc', 'va']
+        labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'va']
 
-        nsamples = self.posterior_sample.shape[0]
-        self.post_samples = np.zeros((self.max_components*nsamples, self.n_dimensions))
+        self.planet_samples = self.posterior_sample[:, self.index_component+1:-2]
 
-        k = 0
-        for j in range(self.max_components):
-            for i in range(nsamples):
-                planet_index = self.index_component + 1
-                self.post_samples[k, :] = self.posterior_sample[i, planet_index+j:-2:self.max_components]
-                if self.post_samples[k, 0] == 0.:
-                    self.post_samples[k, :] = np.nan
-                else:
-                    self.post_samples[k, 0] = np.exp(self.post_samples[k, 0])
-                k += 1
-            # self.post_samples[:, self.n_dimensions*i] = np.exp(self.post_samples[:, self.n_dimensions*i])
-        self.post_samples = self.post_samples[~np.isnan(self.post_samples).any(axis=1)]
-
-        if planet is None:
-            corner.corner(self.post_samples, labels=labels, show_titles=False,
-                                     plot_contours=False, plot_datapoints=True, plot_density=False,
-    #                                  # fill_contours=True, smooth=True,
-    #                                  # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
-    #                                  hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-    #                                  hist_kwargs={'normed':True},
-                                     range=[1., 1., (0, 2*np.pi), (0., 1.), (0, 2*np.pi)],
-                                     shared_axis=True, data_kwargs={'alpha':1, 'ms':3},
-                                     )
+        c = corner.corner
+        self.corner2 = c(self.planet_samples, labels=labels, show_titles=True,
+                         plot_contours=False, plot_datapoints=True, plot_density=False,
+                         # fill_contours=True, smooth=True,
+                         # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
+                         #hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
+                         hist_kwargs={'normed':True},
+                         # range=[1., 1., (0, 2*np.pi), (0., 1.), (0, 2*np.pi)],
+                         # shared_axis=True, 
+                         data_kwargs={'alpha':1, 'ms':3},
+                         )
 
         plt.show()
 
 
-    def plot_random_planets(self):
+    def plot_random_planets(self, ncurves=50, over=0.1,):
         from OPEN.ext.keplerian import keplerian
 
         nsamples = self.posterior_sample.shape[0]
-        self.post_samples = np.zeros((self.max_components*nsamples, self.n_dimensions))
-
-        k = 0
-        for j in range(self.max_components):
-            for i in range(nsamples):
-                planet_index = self.index_component + 1
-                self.post_samples[k, :] = self.posterior_sample[i, planet_index+j:-2:self.max_components]
-                if self.post_samples[k, 0] == 0.:
-                    self.post_samples[k, :] = np.nan
-                else:
-                    self.post_samples[k, 0] = np.exp(self.post_samples[k, 0])
-                k += 1
-            # self.post_samples[:, self.n_dimensions*i] = np.exp(self.post_samples[:, self.n_dimensions*i])
-        self.post_samples = self.post_samples[~np.isnan(self.post_samples).any(axis=1)]
+        # self.post_samples = np.zeros((self.max_components*nsamples, self.n_dimensions))
+        self.post_samples = self.posterior_sample[:, self.index_component+1:-2]
+        # k = 0
+        # for j in range(self.max_components):
+        #     for i in range(nsamples):
+        #         planet_index = self.index_component + 1
+        #         self.post_samples[k, :] = self.posterior_sample[i, planet_index+j:-2:self.max_components]
+        #         if self.post_samples[k, 0] == 0.:
+        #             self.post_samples[k, :] = np.nan
+        #         else:
+        #             if log_period: 
+        #                 print 'exponentiating period!'
+        #                 self.post_samples[k, 0] = np.exp(self.post_samples[k, 0])
+        #         k += 1
+        #     # self.post_samples[:, self.n_dimensions*i] = np.exp(self.post_samples[:, self.n_dimensions*i])
+        # self.post_samples = self.post_samples[~np.isnan(self.post_samples).any(axis=1)]
 
 
         t = self.data[:,0]
-        tt = np.linspace(t[0], t[-1], 1000)
+        # tt = np.linspace(t[0], t[-1], 1000)
+        tt = np.linspace(t[0]-over*t.ptp(), t[-1]+over*t.ptp(), 10000+int(100*over))
 
         y = self.data[:,1]
         yerr = self.data[:,2]
 
 
-        ii = np.random.randint(self.post_samples.shape[0], size=30)
+        ii = np.random.randint(self.post_samples.shape[0], size=ncurves)
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        ax.errorbar(t, y, yerr, fmt='o')
 
         for i in ii:
+            v = np.zeros_like(tt)
             pars = self.post_samples[i, :]
-            P = pars[0]
-            K = pars[1]
-            phi = pars[2]
-            t0 = t[0] - (P*phi)/(2.*np.pi)
-            ecc = pars[3]
-            w = pars[4]
+            nplanets = pars.size / self.n_dimensions
+            for j in range(nplanets):
+                P = pars[j + 0*self.max_components]
+                K = pars[j + 1*self.max_components]
+                phi = pars[j + 2*self.max_components]
+                t0 = t[0] - (P*phi)/(2.*np.pi)
+                ecc = pars[j + 3*self.max_components]
+                w = pars[j + 4*self.max_components]
+                print P,
+                v += keplerian(tt, P, K, ecc, w, t0, 0.)
+            print 
             vsys = self.posterior_sample[i, -1]
-            v = keplerian(tt, P, K, ecc, w, t0, vsys)
-            ax.plot(tt, v, alpha=0.1, color='k')
+            v += vsys
+            ax.plot(tt, v, alpha=0.5, color='k')
+            # print P, K, ecc
+
+        if self.fiber_offset:
+            mask = t < 57170
+            ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
+            # ax.errorbar(t[~mask], y[~mask], yerr[~mask], fmt='ro')
+            yshift = np.vstack([y[~mask], y[~mask]-self.offset.mean()])
+            print yshift.shape
+            for i, ti in enumerate(t[~mask]):
+                ax.errorbar(ti, yshift[0,i], fmt='o', color='m', alpha=0.3)
+                ax.errorbar(ti, yshift[1,i], yerr[~mask][i], fmt='o', color='r')
+            # ax.plot(t[~mask], yshift, '-ro')
+
+        else:
+            ax.errorbar(t, y, yerr, fmt='o')
+
+
+        ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
 
         plt.show()
 

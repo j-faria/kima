@@ -1,11 +1,6 @@
+from dnest4 import postprocess
 import sys
-try:
-    options = sys.argv
-except IndexError:
-    options = ''
-
-
-from dnest4 import postprocess  # , diffusion_plot
+options = sys.argv
 
 if 'no' in options:
     plot = False
@@ -14,17 +9,12 @@ else:
 
 if 'pvc' in options:
     while True:
-        logz_estimate, H_estimate, logx_samples, posterior_sample =\
-            postprocess(plot=plot)
+        logz, H, logx_samples, posterior = postprocess(plot=plot)
 else:
-    logz_estimate, H_estimate, logx_samples, posterior_sample =\
-        postprocess(plot=plot)  # moreSamples=1)
+    logz, H, logx_samples, posterior = postprocess(plot=plot)
 
-# diffusion_plot()
-
-if posterior_sample.shape[0] > 5:
-    # import display
+if posterior.shape[0] > 5:
     from display import DisplayResults
     res = DisplayResults(options)
 else:
-    print 'Too few samples yet'
+    print 'Too few samples, keep running the model'
