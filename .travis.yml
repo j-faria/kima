@@ -1,10 +1,23 @@
 language: cpp
 
+os:
+  - linux
+  - osx
+
 compiler:
-  gcc
+  - gcc
+  - clang
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update          ; fi
 
 script:
   - make
+
+matrix:
+  allow_failures:
+    - os: osx
+
 
 notifications:
   email:
