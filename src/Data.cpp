@@ -16,60 +16,7 @@ typedef vector <record_t> data_t;
 
 Data Data::instance;
 
-Data::Data()
-{
-
-}
-
-void Data::load(const char* filename)
-{
-  fstream fin(filename, ios::in);
-  if(!fin)
-  {
-    cerr<<"# Error. Couldn't open file "<<filename<<endl;
-    return;
-  }
-
-  // Empty the vectors
-  t.clear();
-  y.clear();
-  sig.clear();
-
-  int it = 0;
-  double temp1, temp2, temp3;
-  while(fin>>temp1 && fin>>temp2 && fin>>temp3)
-  {
-    /*if (it==0 || it==1) {
-      it++;
-      continue;
-    }*/
-    t.push_back(temp1);
-    y.push_back(temp2);
-    sig.push_back(temp3);
-    it++;
-  }
-  cout<<"# Loaded "<<t.size()<<" data points from file "
-      <<filename<<endl;
-  fin.close();
-  //cout<<it<<endl;
-
-  double mean = std::accumulate(y.begin(), y.end(), 0.0) / y.size();
-  //cout<<mean<<endl;
-
-  // this is probably a stupid way to substract the mean and convert to m/s
-  std::transform( y.begin(), y.end(), y.begin(), std::bind2nd( minus<double>(), mean ) );
-  std::transform( y.begin(), y.end(), y.begin(), std::bind2nd( multiplies<double>(), 1000. ) );
-  std::transform( y.begin(), y.end(), y.begin(), std::bind2nd( plus<double>(), mean ) );
-
-  // the errorbars just need to be converted to m/s
-  std::transform( sig.begin(), sig.end(), sig.begin(), std::bind2nd( multiplies<double>(), 1000. ) );
-  
-  //for (std::vector<double>::const_iterator i = sig.begin(); i != sig.end(); ++i)
-    //std::cout << *i << '\n';
-  //std::cout << '\n';
-}
-
-
+Data::Data(){}
 
 //-----------------------------------------------------------------------------
 // Let's overload the stream input operator to read a list of CSV fields (which a CSV record).
@@ -124,14 +71,15 @@ istream& operator >> ( istream& ins, data_t& data )
   }
 
 
-void Data::loadnew(const char* filename, const char* fileunits)
+void Data::load(const char* filename, const char* units, int skip)
   /* 
   Read in tab/space separated file `filename` with columns
   time  vrad  error
-  where vrad and error are in units `fileunits` (either "kms" or "ms")
+  ...   ...   ...
+  where vrad and error are in `units` (either "kms" or "ms")
   */
   {
-  // Here is the data we want.
+
   data_t data;
 
   // Empty the vectors
@@ -139,24 +87,24 @@ void Data::loadnew(const char* filename, const char* fileunits)
   y.clear();
   sig.clear();
 
-  // Here is the file containing the data. Read it into data.
+  // Read the file into the data container
   ifstream infile( filename );
   infile >> data;
 
   // Complain if something went wrong.
   if (!infile.eof())
-    {
-    cout << "Fooey!\n";
-    }
+  {
+    printf("Could not read data file (%s)!\n", filename);
+    exit(1);
+  }
 
   infile.close();
 
   // Otherwise, list some basic information about the file.
-  cout << "# Loaded " << data.size() << " data points from file "
-                 <<filename<<endl;
+  printf("# Loaded %d data points from file %s\n", data.size(), filename);
 
   double factor = 1.;
-  if(fileunits == "kms") factor = 1E3;
+  if(units == "kms") factor = 1E3;
   
 
   for (unsigned n = 0; n < data.size(); n++)

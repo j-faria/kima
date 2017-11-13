@@ -26,7 +26,7 @@ RVmodel::RVmodel()
 
 int main(int argc, char** argv)
 {
-	Data::get_instance().loadnew("data/data_to_test_priors.txt", "kms");
+	Data::get_instance().load("data/data_to_test_priors.txt", "kms");
 
 	//start<RVmodel>(argc, argv);
 	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);

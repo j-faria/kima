@@ -11,8 +11,8 @@ class Data
 
 	public:
 		Data();
-		void load(const char* filename);
-		void loadnew(const char* filename, const char* fileunits);
+		//void load(const char* filename);
+		void load(const char* filename, const char* units, int skip=2);
 		int index_fibers;
 
 		// Getters
