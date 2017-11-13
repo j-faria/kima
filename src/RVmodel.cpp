@@ -1,4 +1,5 @@
 #include "RVmodel.h"
+#include "RVConditionalPrior.h"
 #include "DNest4.h"
 #include "RNG.h"
 #include "Utils.h"
@@ -6,8 +7,6 @@
 #include <cmath>
 #include <fstream>
 #include <chrono>
-
-//#include "options.h"
 
 using namespace std;
 using namespace Eigen;
@@ -187,11 +186,11 @@ void RVmodel::calculate_mu()
     double P, K, phi, ecc, viewing_angle, f, v, ti;
     for(size_t j=0; j<components.size(); j++)
     {
-        #if hyperpriors
-        P = exp(components[j][0]);
-        #else
-        P = components[j][0];
-        #endif
+        if(hyperpriors)
+            P = exp(components[j][0]);
+        else
+            P = components[j][0];
+        
         K = components[j][1];
         phi = components[j][2];
         ecc = components[j][3];
