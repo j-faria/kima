@@ -11,7 +11,7 @@ using namespace DNest4;
 //  constructor and use Data::get_instance() 
 #include "default_priors.h"
 
-const bool obs_after_HARPS_fibers = true;
+const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
 const bool hyperpriors = false;
 
@@ -33,7 +33,7 @@ int main(int argc, char** argv)
 	// and reads the first 3 columns into time, vrad and svrad
 	char* datafile = "corot7.txt";
 
-	Data::get_instance().loadnew(datafile, "kms");
+	Data::get_instance().load(datafile, "kms");
 	
 	// set the sampler and run it!
 	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
