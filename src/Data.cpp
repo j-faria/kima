@@ -61,9 +61,9 @@ istream& operator >> ( istream& ins, data_t& data )
   record_t record;
   while (ins >> record)
     {
-      if (i==0 || i==1) header.push_back(record);
-      else data.push_back(record);
-        i++;
+      //if (i==0 || i==1) header.push_back(record);
+      data.push_back(record);
+      //  i++;
     }
 
   // Again, return the argument stream
@@ -90,6 +90,7 @@ void Data::load(const char* filename, const char* units, int skip)
   // Read the file into the data container
   ifstream infile( filename );
   infile >> data;
+  //operator>>(infile, data, skip);
 
   // Complain if something went wrong.
   if (!infile.eof())
@@ -100,19 +101,19 @@ void Data::load(const char* filename, const char* units, int skip)
 
   infile.close();
 
-  // Otherwise, list some basic information about the file.
-  printf("# Loaded %d data points from file %s\n", data.size(), filename);
-
   double factor = 1.;
   if(units == "kms") factor = 1E3;
-  
 
   for (unsigned n = 0; n < data.size(); n++)
     {
+      if (n<skip) continue;
       t.push_back(data[n][0]);
       y.push_back(data[n][1] * factor);
       sig.push_back(data[n][2] * factor);
     }
+
+  // How many points did we read?
+  printf("# Loaded %d data points from file %s\n", t.size(), filename);
 
   for(unsigned i=0; i<data.size(); i++)
   {
