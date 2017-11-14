@@ -1,7 +1,16 @@
 #!/bin/sh
+
+if [ -z ${SEED+x} ]; 
+	then SEED="time"; 
+# else 
+	# echo "SEED is set to '$SEED'"; 
+fi
+
 start=`date +%s.%N`
 
-./main -t 4
+./main -t 4 -s $SEED
+
+e=$? # the return code of the last command
 
 end=`date +%s.%N`
 
@@ -9,3 +18,5 @@ end=`date +%s.%N`
 runtime=$( echo "$end - $start" | bc -l )
 echo 
 echo Took $runtime seconds
+
+exit $e
