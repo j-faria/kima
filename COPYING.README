@@ -1,0 +1,11 @@
+kima is is licensed under the MIT License. See the LICENSE file.
+
+kima also uses parts of other codes:
+
+- DNest4 is MIT licensed -- see https://github.com/eggplantbren/DNest4
+
+- celerite is MIT licensed -- see https://github.com/dfm/celerite
+
+- Eigen is included in kima with the EIGEN_MPL2_ONLY flag,
+  such that only MPL2 licensed (and more permissive) code is used.
+  see https://github.com/RLovelett/eigen and http://eigen.tuxfamily.org
