@@ -5,11 +5,10 @@ EIGEN_PATH = eigen
 
 # CELERITE_PATH = celerite/cpp/include
 
-
 includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) 
-# -I$(CELERITE_PATH) -I$(REBOUND_PATH)
+# -I$(CELERITE_PATH)
 
-CXX = g++-4.9
+CXX = g++
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
 LIBS = -ldnest4 -L/usr/local/lib
 
