@@ -9,8 +9,8 @@ EIGEN_PATH = eigen
 includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) 
 # -I$(CELERITE_PATH) -I$(REBOUND_PATH)
 
-CXX = g++
-CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w
+CXX = g++-4.9
+CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
 LIBS = -ldnest4 -L/usr/local/lib
 
 
