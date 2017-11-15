@@ -9,9 +9,7 @@ __init__.py
 
 *.txt
 *.log
-reports
-
 
 
 *.rdb
-#scripts
+scripts
