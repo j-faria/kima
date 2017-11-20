@@ -2,6 +2,10 @@
 
 [![Build Status](https://travis-ci.org/j-faria/kima.svg?branch=master)](https://travis-ci.org/j-faria/kima)
 
-Clone with `git clone --recursive https://github.com/j-faria/kima.git` to get the submodules.
+<img src="logo/logo.jpg" width="200"
+     alt="Logo created by Solène Ulmer-Moll">
 
+Clone with `--recursive` to get the submodules.  
 Running `make` will hopefully work. Need a fairly recent version of g++ (one that accepts `-std=c++11`)
+
+See [the wiki](https://github.com/j-faria/kima/wiki) for more information and documentation.
