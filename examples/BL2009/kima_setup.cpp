@@ -9,12 +9,15 @@ using namespace DNest4;
 /* priors */
 //  data-dependent priors should be defined in the RVmodel() 
 //  constructor and use Data::get_instance() 
+
 #include "default_priors.h"
+
+
 
 const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
 const bool hyperpriors = false;
-
+const bool trend = false;
 
 // options for the model
 // 
@@ -23,10 +26,22 @@ RVmodel::RVmodel()
 	,mu(Data::get_instance().N())
 	,C(Data::get_instance().N(), Data::get_instance().N())
 {
-	double ymin = Data::get_instance().get_y_min();
-    double ymax = Data::get_instance().get_y_max();
-    // could now use ymin and ymax in setting prior for vsys
-    Cprior = new Uniform(ymin, ymax);
+	//double ymin = Data::get_instance().get_y_min();
+    //double ymax = Data::get_instance().get_y_max();
+    // can now use ymin and ymax in setting prior for vsys
+    //Cprior = new Uniform(ymin, ymax);
+
+	Cprior = new Uniform(-2000, 2000);
+	Jprior = new ModifiedJeffreys(1.0, 2000.); // additional white noise, m/s
+
+	Pprior = new Jeffreys(0.2, 15E3); // days
+	Kprior = new ModifiedJeffreys(1.0, 2E3); // m/s
+
+	eprior = new Uniform(0., 1.);
+	phiprior = new Uniform(0.0, 2*M_PI);
+	wprior = new Uniform(0.0, 2*M_PI);
+
+
 }
 
 
