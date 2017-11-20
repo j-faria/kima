@@ -23,6 +23,7 @@ RVmodel::RVmodel()
     double ymin = Data::get_instance().get_y_min();
     double ymax = Data::get_instance().get_y_max();
     double topslope = Data::get_instance().topslope();
+
     Cprior = new Uniform(ymin, ymax);
     if(trend)
     	slope_prior = new Uniform(-topslope, topslope);
@@ -30,10 +31,10 @@ RVmodel::RVmodel()
 
 int main(int argc, char** argv)
 {
-	Data::get_instance().load("data/data_to_test_priors.txt", "kms");
+	Data::get_instance().load("examples/BL2009/BL2009_dataset1.kms.rv", "kms");
 
-	//start<RVmodel>(argc, argv);
 	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
 	sampler.run();
+
 	return 0;
 }
