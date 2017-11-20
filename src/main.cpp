@@ -31,7 +31,7 @@ RVmodel::RVmodel()
 
 int main(int argc, char** argv)
 {
-	Data::get_instance().load("examples/BL2009/BL2009_dataset1.kms.rv", "kms");
+	Data::get_instance().load("examples/BL2009/BL2009_dataset1.kms.rv", "kms", 0);
 
 	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
 	sampler.run();
