@@ -610,11 +610,12 @@ class DisplayResults(object):
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
         
-        fig, axes = plt.subplots(2, len(available_etas)/2.)
+        fig, axes = plt.subplots(2, len(available_etas)/2)
         for i, eta in enumerate(available_etas):
-            ax = axes[i]
+            ax = np.ravel(axes)[i]
             ax.hist(getattr(self, eta), bins=40)
             ax.set_xlabel(eta)
+        plt.tight_layout()
         plt.show()
 
 
