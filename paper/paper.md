@@ -45,22 +45,23 @@ or recent scholarly publications enabled by it
 -->
 
 The radial-velocity (RV) method is one of the most successful in the detection of exoplanets.
-An orbiting planet induces a small gravitational pull on its host star,
+An orbiting planet induces a gravitational pull on its host star,
 which is observed as a variation of the velocity of the star 
 in the direction of the line of sight.
-By measuring small wavelength shifts in stellar spectra, a RV timeseries is constructed.
+By measuring the associated wavelength shifts in stellar spectra, a RV timeseries is constructed.
 These data provide information about the presence of (one or more) planets
-and allow for the planet mass to be determined. <!--  [e.g. @Fischer2016]. -->
+and allow for the planet mass
+and several orbital parameters to be determined. <!--  [e.g. @Fischer2016]. -->
 
 One of the main barriers to the detection of Earth-like planets with RVs
 is the intrinsic variations of the star,
 which can easily mimic or hide true RV signals of planets.
 Gaussian processes (GP) are now often used to model 
-the correlated noise that arises from the stellar-induced RV variations. 
+the correlated noise that arises from stellar-induced RV variations. 
 <!-- [e.g. @Haywood2014]. -->
 
 
-**kima** is a package for the detection and characterization of exoplanets from RV data.
+**kima** is a package for the detection and characterization of exoplanets using RV data.
 It fits a sum of Keplerian curves to a timeseries of RV measurements, 
 using the Diffusive Nested Sampling algorithm [@Brewer2011]
 to sample from the posterior distribution of the model parameters. 
@@ -79,19 +80,20 @@ using the trans-dimensional method proposed by @Brewer2014.
 Moreover, **kima** can use a GP with a quasi-periodic kernel
 as a noise model, to deal with activity-induced signals.
 The hyperparameters of the GP are inferred together with the orbital parameters.
-Priors for each parameter can be easily set by the user,
+Priors for each of the parameters can be easily set by the user,
 with a broad choice of standard probability distributions already implemented.
 
 
-The code is written in C\texttt{++}, with a few Python scripts
+The code is written in C\texttt{++}, and includes several Python scripts
 that can be used for the analysis of the results.
 It depends on the `DNest4` <!-- [@Brewer2016]  -->
 and the `Eigen` <!-- [@eigenweb]  -->
 packages,
 which are included as submodules in the repository.
-Other (Python) dependencies are the `numpy`, `scipy`, `matplotlib` and `pandas` packages.
-Documentation can be found on the main repository.
-A set of examples of how use **kima** also serves as the package's test suite.  
+Other (Python) dependencies are the `numpy`, `scipy`, `matplotlib`, `corner` and `pandas` packages.
+Documentation can be found on the main repository,
+that also contains a set of examples 
+of how use **kima**, serving as the package's test suite.  
 
 Initial versions of this package were used in the analysis 
 of HARPS RV data of the active planet-host CoRoT-7 [@Faria2016],
@@ -118,7 +120,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 
 This work was supported by 
 [Fundação para a Ciência e a Tecnologia (FCT, Portugal)](http://www.fct.pt/)
-by grants 
+through grants 
 UID/FIS/04434/2013, POCI-01-0145-FEDER-007672, PTDC/FIS-AST/1526/2014,
 POCI-01-0145-FEDER-016886, PTDC/FIS-AST/7073/2014, 
 and POCI-01-0145-FEDER-016880.
@@ -136,10 +138,13 @@ IF/01037/2013CP1191/CT0001;  <!-- nuno -->
 IF/00169/2012/CP0150/CT0002 and IF/01037/2013CP1191/CT0001,  <!-- pedro -->
 respectively.
 
+
 ![Results from a typical analysis with **kima**. 
-  The top panel shows a simulated RV dataset with two "planets".
+  The top panel shows a simulated RV dataset with two injected "planets".
+  The black curves represent ten samples from the posterior predictive distribution.
   On the top right, the posterior distribution for the number of planets $N_p$
-  (which had a uniform prior between 0 and 2) clearly favours the detection of the two planets.
+  clearly favours the detection of the two planets
+  (this parameter had a uniform prior between 0 and 2).
   The panels in the bottom row show the posterior distributions for 
   the orbital periods, the semi-amplitudes and the eccentricities of the two signals.](./joss_figure.png)
 
