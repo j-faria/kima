@@ -23,7 +23,7 @@ affiliations:
    index: 1
  - name: Departamento de Física e Astronomia, Faculdade de Ciências, Universidade do Porto, Rua do Campo Alegre, 4169-007, Porto, Portugal
    index: 2
- - name: Department of Statistics, University of Auckland
+ - name: Department of Statistics, The University of Auckland, Private Bag 92019, Auckland 1142, New Zealand
    index: 3
 
 date: 11 November 2017
@@ -46,7 +46,7 @@ or recent scholarly publications enabled by it
 
 The radial-velocity (RV) method is one of the most successful in the detection of exoplanets.
 An orbiting planet induces a gravitational pull on its host star,
-which is observed as a variation of the velocity of the star 
+which is observed as a periodic variation of the velocity of the star 
 in the direction of the line of sight.
 By measuring the associated wavelength shifts in stellar spectra, a RV timeseries is constructed.
 These data provide information about the presence of (one or more) planets
@@ -56,7 +56,7 @@ and several orbital parameters to be determined. <!--  [e.g. @Fischer2016]. -->
 One of the main barriers to the detection of Earth-like planets with RVs
 is the intrinsic variations of the star,
 which can easily mimic or hide true RV signals of planets.
-Gaussian processes (GP) are now often used to model 
+Gaussian processes (GP) are now seen as a promising tool to model 
 the correlated noise that arises from stellar-induced RV variations. 
 <!-- [e.g. @Haywood2014]. -->
 
@@ -90,8 +90,9 @@ It depends on the `DNest4` <!-- [@Brewer2016]  -->
 and the `Eigen` <!-- [@eigenweb]  -->
 packages,
 which are included as submodules in the repository.
-Other (Python) dependencies are the `numpy`, `scipy`, `matplotlib`, `corner` and `pandas` packages.
-Documentation can be found on the main repository,
+Other (Python) dependencies are the 
+`numpy`, `scipy`, `matplotlib`, `corner`, and `pandas` packages.
+Documentation can be found in the main repository,
 that also contains a set of examples 
 of how use **kima**, serving as the package's test suite.  
 
@@ -137,6 +138,7 @@ SFRH/BD/93848/2013;
 IF/01037/2013CP1191/CT0001;  <!-- nuno -->
 IF/00169/2012/CP0150/CT0002 and IF/01037/2013CP1191/CT0001,  <!-- pedro -->
 respectively.
+B.J.B. acknowledges support from the Marsden Fund of the Royal Society of New Zealand.
 
 
 ![Results from a typical analysis with **kima**. 
