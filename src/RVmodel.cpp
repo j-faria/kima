@@ -237,7 +237,9 @@ double RVmodel::perturb(RNG& rng)
         {
             if(rng.rand() <= 0.25)
             {
-                log_eta1_prior->perturb(eta1, rng);
+                double log_eta1 = log(eta1);
+                log_eta1_prior->perturb(log_eta1, rng);
+                eta1 = exp(log_eta1);
                 //eta1 = log(eta1);
                 //eta1 += log(1E4)*rng.randh(); // range of prior support
                 //wrap(eta1, log(1E-5), log(1E-1)); // wrap around inside prior
@@ -245,7 +247,9 @@ double RVmodel::perturb(RNG& rng)
             }
             else if(rng.rand() <= 0.33330)
             {
-                log_eta2_prior->perturb(eta2, rng);
+                double log_eta2 = log(eta2);
+                log_eta2_prior->perturb(log_eta2, rng);
+                eta2 = exp(log_eta2);
                 //eta2 = log(eta2);
                 //eta2 += log(1E12)*rng.randh(); // range of prior support
                 //wrap(eta2, log(1E-6), log(1E6)); // wrap around inside prior
@@ -260,7 +264,9 @@ double RVmodel::perturb(RNG& rng)
             else
             {
                 // eta4 = 1.0;
-                log_eta4_prior->perturb(eta4, rng);
+                double log_eta4 = log(eta4);
+                log_eta4_prior->perturb(log_eta4, rng);
+                eta4 = exp(log_eta4);
                 //eta4 = log(eta4);
                 //eta4 += log(1E10)*rng.randh(); // range of prior support
                 //wrap(eta4, log(1E-5), log(1E5)); // wrap around inside prior
