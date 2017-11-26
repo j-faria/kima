@@ -237,7 +237,7 @@ double RVmodel::perturb(RNG& rng)
         {
             if(rng.rand() <= 0.25)
             {
-                eta1 = exp(log_eta1_prior->rvs(rng)); // m/s
+                log_eta1_prior->perturb(eta1, rng);
                 //eta1 = log(eta1);
                 //eta1 += log(1E4)*rng.randh(); // range of prior support
                 //wrap(eta1, log(1E-5), log(1E-1)); // wrap around inside prior
@@ -245,7 +245,7 @@ double RVmodel::perturb(RNG& rng)
             }
             else if(rng.rand() <= 0.33330)
             {
-                eta2 = exp(log_eta2_prior->rvs(rng)); // days
+                log_eta2_prior->perturb(eta2, rng);
                 //eta2 = log(eta2);
                 //eta2 += log(1E12)*rng.randh(); // range of prior support
                 //wrap(eta2, log(1E-6), log(1E6)); // wrap around inside prior
@@ -253,14 +253,14 @@ double RVmodel::perturb(RNG& rng)
             }
             else if(rng.rand() <= 0.5)
             {
-                eta3 = eta3_prior->rvs(rng);
+                eta3_prior->perturb(eta3, rng);
                 //eta3 += 35.*rng.randh(); // range of prior support
                 //wrap(eta3, 15., 50.); // wrap around inside prior
             }
             else
             {
                 // eta4 = 1.0;
-                eta4 = exp(log_eta4_prior->rvs(rng));
+                log_eta4_prior->perturb(eta4, rng);
                 //eta4 = log(eta4);
                 //eta4 += log(1E10)*rng.randh(); // range of prior support
                 //wrap(eta4, log(1E-5), log(1E5)); // wrap around inside prior
@@ -276,10 +276,7 @@ double RVmodel::perturb(RNG& rng)
 
     if(rng.rand() <= fraction)
     {
-        // need to change logH
-        logH -= Jprior->log_pdf(extra_sigma);
-        extra_sigma = Jprior->rvs(rng);
-        logH += Jprior->log_pdf(extra_sigma);
+        Jprior->perturb(extra_sigma, rng);
 
         #if GP
             calculate_C();
@@ -299,7 +296,7 @@ double RVmodel::perturb(RNG& rng)
                 if (i >= Data::get_instance().index_fibers) mu[i] -= fiber_offset;
         }
 
-        background = Cprior->rvs(rng);
+        Cprior->perturb(background, rng);
 
         // propose new fiber offset
         if (obs_after_HARPS_fibers) 
@@ -310,7 +307,7 @@ double RVmodel::perturb(RNG& rng)
 
         // propose new slope
         if(trend)
-            slope = slope_prior->rvs(rng);
+            slope_prior->perturb(slope, rng);
 
         for(size_t i=0; i<mu.size(); i++)
         {
