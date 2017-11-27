@@ -21,8 +21,6 @@ except ImportError:
 
 
 import corner
-import george
-from george import kernels
 
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 mjup2mearth = 317.8284065946748
@@ -47,11 +45,9 @@ def percentile68_ranges_latex(a):
     lp, median, up = np.percentile(a, [16, 50, 84])
     return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, up-median, median-lp)
 
-
-def get_aliases(Preal):
-    fs = np.array([0.0027381631, 1.0, 1.0027]) #, 0.018472000025212765])
-    return np.array([abs(1 / (1./Preal + i*fs)) for i in range(-6, 6)]).T
-
+# def get_aliases(Preal):
+#     fs = np.array([0.0027381631, 1.0, 1.0027]) #, 0.018472000025212765])
+#     return np.array([abs(1 / (1./Preal + i*fs)) for i in range(-2, 2)]).T
 
 
 def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
@@ -107,6 +103,7 @@ class DisplayResults(object):
                 return 2
 
         # find datafile in the compiled model
+        self.data_skip = 2 # by default
         if data_file is None:
             try:
                 # either in an example directory
@@ -141,6 +138,10 @@ class DisplayResults(object):
         self.data[:, 2] *= 1e3
 
         self.posterior_sample = np.atleast_2d(np.loadtxt(posterior_samples_file))
+        try:
+            self.sample = np.loadtxt('sample.txt')
+        except IOError:
+            self.sample = None
 
         try:
             spl = os.path.splitext(posterior_samples_file)
@@ -445,6 +446,11 @@ class DisplayResults(object):
         Plot the histogram of the posterior for orbital period P.
         Optionally provide the histogram bins.
         """
+
+        if self.max_components == 0:
+            print 'Current model does not have planets, doing nothing...'
+            return
+
         if self.log_period:
             T = np.exp(self.T)
             print 'exponentiating period!'
@@ -699,6 +705,9 @@ class DisplayResults(object):
             self.planet_samples = \
                     self.posterior_sample[:, self.index_component+1:-2].copy()
 
+        if self.max_components == 0:
+            return self.planet_samples
+
         # here we sort the planet_samples array by the orbital period
         # this is a bit difficult because the organization of the array is
         # P1 P2 K1 K2 .... 
@@ -789,7 +798,8 @@ class DisplayResults(object):
         plt.show()
 
 
-    def plot_random_planets(self, ncurves=50, over=0.1, pmin=None, pmax=None):
+    def plot_random_planets(self, ncurves=50, over=0.1, 
+                            pmin=None, pmax=None, show_vsys=False):
         """
         Display the RV data together with curves from the posterior predictive.
         A total of `ncurves` random samples are chosen,
@@ -828,11 +838,14 @@ class DisplayResults(object):
                 t0 = t[0] - (P*phi)/(2.*np.pi)
                 ecc = pars[j + 3*self.max_components]
                 w = pars[j + 4*self.max_components]
+                print P
                 v += keplerian(tt, P, K, ecc, w, t0, 0.)
 
             vsys = self.posterior_sample[mask][i, -1]
             v += vsys
             ax.plot(tt, v, alpha=0.2, color='k')
+            if show_vsys:
+                ax.plot(t, vsys*np.ones_like(t), alpha=0.2, color='r', ls='--')
 
 
         ## plot the data
