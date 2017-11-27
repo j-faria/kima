@@ -281,9 +281,8 @@ double RVmodel::perturb(RNG& rng)
         extra_sigma = Jprior->rvs(rng);
         logH += Jprior->log_pdf(extra_sigma);
 
-        #if GP
+        if(GP)
             calculate_C();
-        #endif
     }
 
     if(rng.rand() <= fraction)
