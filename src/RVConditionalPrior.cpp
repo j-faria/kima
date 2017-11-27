@@ -79,20 +79,14 @@ double RVConditionalPrior::perturb_hyperparameters(RNG& rng)
 
         if(which == 0)
         {
-            logH -= log_muP_prior->log_pdf(center);
-            center = log_muP_prior->rvs(rng);
-            logH += log_muP_prior->log_pdf(center);
-        }
+            log_muP_prior->perturb(center, rng);
+        }        
         else if(which == 1)
-            width = wP_prior->rvs(rng);
+            wP_prior->perturb(width, rng);
         else
         {
             muK = log(muK);
-
-            logH -= log_muK_prior->log_pdf(muK);
-            muK = log_muK_prior->rvs(rng);
-            logH += log_muK_prior->log_pdf(muK);
-
+            log_muK_prior->perturb(muK, rng);
             muK = exp(muK);
         }
     }
@@ -116,6 +110,9 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
            vec[3] < 0. || vec[3] >= 1.0 ||
            vec[4] < 0. || vec[4] > 2.*M_PI)
              return -1E300;
+
+        delete Pprior;
+        delete Kprior;
 
         Pprior = new Laplace(center, width);
         Kprior = new Exponential(muK);
@@ -141,6 +138,8 @@ void RVConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
 {
     if(hyperpriors)
     {
+        delete Pprior;
+        delete Kprior;
         Pprior = new Laplace(center, width);
         Kprior = new Exponential(muK);
     }
@@ -155,6 +154,8 @@ void RVConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
 {
     if(hyperpriors)
     {
+        delete Pprior;
+        delete Kprior;
         Pprior = new Laplace(center, width);
         Kprior = new Exponential(muK);
     }
