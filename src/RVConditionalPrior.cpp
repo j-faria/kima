@@ -111,8 +111,8 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
            vec[4] < 0. || vec[4] > 2.*M_PI)
              return -1E300;
 
-        delete Pprior;
-        delete Kprior;
+        // delete Pprior;
+        // delete Kprior;
 
         Pprior = new Laplace(center, width);
         Kprior = new Exponential(muK);
@@ -138,8 +138,8 @@ void RVConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
 {
     if(hyperpriors)
     {
-        delete Pprior;
-        delete Kprior;
+        // delete Pprior;
+        // delete Kprior;
         Pprior = new Laplace(center, width);
         Kprior = new Exponential(muK);
     }
@@ -154,8 +154,8 @@ void RVConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
 {
     if(hyperpriors)
     {
-        delete Pprior;
-        delete Kprior;
+        // delete Pprior;
+        // delete Kprior;
         Pprior = new Laplace(center, width);
         Kprior = new Exponential(muK);
     }
