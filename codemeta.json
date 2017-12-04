@@ -1,0 +1,23 @@
+{
+  "@context": "https://raw.githubusercontent.com/codemeta/codemeta/master/codemeta.jsonld",
+  "@type": "Code",
+  "author": [
+    {
+      "@id": "0000-0002-6728-244X",
+      "@type": "Person",
+      "email": "joao.faria@astro.up.pt",
+      "name": "João Faria",
+      "affiliation": "Institute of Astrophysics and Space Sciences"
+    }
+  ],
+  "identifier": "",
+  "codeRepository": "https://github.com/j-faria/kima",
+  "datePublished": "2017-12-04",
+  "dateModified": "2017-12-04",
+  "dateCreated": "2017-12-04",
+  "description": "Exoplanet detection in radial velocities",
+  "keywords": "exoplanets, radial-velocity, Bayesian, analysis, Gaussian processes",
+  "license": "MIT",
+  "title": "kima",
+  "version": "v1.0.0"
+}
