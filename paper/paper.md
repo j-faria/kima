@@ -70,9 +70,9 @@ multimodal and correlated posteriors that often arise in this problem.
 <!-- _[more on DNS?]_ -->
 
 Additionally, **kima** also calculates the fully marginalized likelihood 
-(or _evidence_) <!-- ; see @Kass1995) -->
-of a model with $N_p$ Keplerians 
-and is also able to infer the number of Keplerian signals detected in a given dataset. 
+(or _evidence_) <!-- ; see @Kass1995) --> 
+either for a model with a fixed number $N_p$ of Keplerian signals,
+or marginalising over $N_p$.
 For this latter task we sample from the posterior distribution for $N_p$ itself,
 using the trans-dimensional method proposed by @Brewer2014.
 <!-- [see also @Brewer2015, @Faria2016] -->
