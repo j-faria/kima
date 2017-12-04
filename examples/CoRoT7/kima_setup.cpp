@@ -19,26 +19,29 @@ const bool trend = false;
 // options for the model
 // 
 RVmodel::RVmodel()
-	:objects(5, 5, false, RVConditionalPrior())
-	,mu(Data::get_instance().N())
-	,C(Data::get_instance().N(), Data::get_instance().N())
+    :objects(5, 5, false, RVConditionalPrior())
+    ,mu(Data::get_instance().N())
+    ,C(Data::get_instance().N(), Data::get_instance().N())
 {
-
+    double ymin = Data::get_instance().get_y_min();
+    double ymax = Data::get_instance().get_y_max();
+    // can now use ymin and ymax in setting prior for vsys
+    Cprior = new Uniform(ymin, ymax);
 }
 
 
 int main(int argc, char** argv)
 {
-	/* set the RV data file */
-	// kima skips the first 2 lines in the header
-	// and reads the first 3 columns into time, vrad and svrad
-	char* datafile = "corot7.txt";
+    /* set the RV data file */
+    // kima skips the first 2 lines in the header
+    // and reads the first 3 columns into time, vrad and svrad
+    char* datafile = "corot7.txt";
 
-	Data::get_instance().load(datafile, "ms");
-	
-	// set the sampler and run it!
-	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
-	sampler.run();
+    Data::get_instance().load(datafile, "ms");
+    
+    // set the sampler and run it!
+    Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
+    sampler.run();
 
-	return 0;
+    return 0;
 }
