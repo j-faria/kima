@@ -104,6 +104,14 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
 {
     //cout << "type of Pprior:" << typeid(Pprior).name() << endl;
     //cout << "called RVConditionalPrior::log_pdf !!!" << endl;
+
+    // Determine whether to use the global priors for P/K
+    // or whether to use ones based on the hyperparameters
+    Laplace l(center, width);
+    Exponential e(muK);
+    ContinuousDistribution* _Pprior = Pprior;
+    ContinuousDistribution* _Kprior = Kprior;
+
     if(hyperpriors)
     {
         if(vec[2] < 0. || vec[2] > 2.*M_PI ||
@@ -111,11 +119,8 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
            vec[4] < 0. || vec[4] > 2.*M_PI)
              return -1E300;
 
-        // delete Pprior;
-        // delete Kprior;
-
-        Pprior = new Laplace(center, width);
-        Kprior = new Exponential(muK);
+        _Pprior = &l;
+        _Kprior = &e;
     }
     else
     {
@@ -127,8 +132,8 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
              return -1E300;
     }
 
-    return Pprior->log_pdf(vec[0]) + 
-           Kprior->log_pdf(vec[1]) + 
+    return _Pprior->log_pdf(vec[0]) + 
+           _Kprior->log_pdf(vec[1]) + 
            phiprior->log_pdf(vec[2]) + 
            eprior->log_pdf(vec[3]) + 
            wprior->log_pdf(vec[4]);
@@ -136,15 +141,20 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
 
 void RVConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
 {
+    // Determine whether to use the global priors for P/K
+    // or whether to use ones based on the hyperparameters
+    Laplace l(center, width);
+    Exponential e(muK);
+    ContinuousDistribution* _Pprior = Pprior;
+    ContinuousDistribution* _Kprior = Kprior;
     if(hyperpriors)
     {
-        // delete Pprior;
-        // delete Kprior;
-        Pprior = new Laplace(center, width);
-        Kprior = new Exponential(muK);
+        _Pprior = &l;
+        _Kprior = &e;
     }
-    vec[0] = Pprior->cdf_inverse(vec[0]);
-    vec[1] = Kprior->cdf_inverse(vec[1]);
+
+    vec[0] = _Pprior->cdf_inverse(vec[0]);
+    vec[1] = _Kprior->cdf_inverse(vec[1]);
     vec[2] = phiprior->cdf_inverse(vec[2]); //2.*M_PI*vec[2];
     vec[3] = eprior->cdf_inverse(vec[3]);
     vec[4] = wprior->cdf_inverse(vec[4]); //2.*M_PI*vec[4];
@@ -152,15 +162,20 @@ void RVConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
 
 void RVConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
 {
+    // Determine whether to use the global priors for P/K
+    // or whether to use ones based on the hyperparameters
+    Laplace l(center, width);
+    Exponential e(muK);
+    ContinuousDistribution* _Pprior = Pprior;
+    ContinuousDistribution* _Kprior = Kprior;
     if(hyperpriors)
     {
-        // delete Pprior;
-        // delete Kprior;
-        Pprior = new Laplace(center, width);
-        Kprior = new Exponential(muK);
+        _Pprior = &l;
+        _Kprior = &e;
     }
-    vec[0] = Pprior->cdf(vec[0]);
-    vec[1] = Kprior->cdf(vec[1]);
+
+    vec[0] = _Pprior->cdf(vec[0]);
+    vec[1] = _Kprior->cdf(vec[1]);
     vec[2] = phiprior->cdf(vec[2]); //vec[2]/(2.*M_PI);
     vec[3] = eprior->cdf(vec[3]);
     vec[4] = wprior->cdf(vec[4]); //vec[4]/(2.*M_PI);
