@@ -22,24 +22,24 @@ const bool trend = false;
 // options for the model
 // 
 RVmodel::RVmodel()
-	:objects(5, 1, false, RVConditionalPrior())
-	,mu(Data::get_instance().N())
-	,C(Data::get_instance().N(), Data::get_instance().N())
+    :objects(5, 1, false, RVConditionalPrior())
+    ,mu(Data::get_instance().N())
+    ,C(Data::get_instance().N(), Data::get_instance().N())
 {
-	//double ymin = Data::get_instance().get_y_min();
+    //double ymin = Data::get_instance().get_y_min();
     //double ymax = Data::get_instance().get_y_max();
     // can now use ymin and ymax in setting prior for vsys
     //Cprior = new Uniform(ymin, ymax);
 
-	Cprior = new Uniform(-2000, 2000);
-	Jprior = new ModifiedJeffreys(1.0, 2000.); // additional white noise, m/s
+    Cprior = new Uniform(-2000, 2000);
+    Jprior = new ModifiedJeffreys(1.0, 2000.); // additional white noise, m/s
 
-	Pprior = new Jeffreys(0.2, 15E3); // days
-	Kprior = new ModifiedJeffreys(1.0, 2E3); // m/s
+    Pprior = new Jeffreys(0.2, 15E3); // days
+    Kprior = new ModifiedJeffreys(1.0, 2E3); // m/s
 
-	eprior = new Uniform(0., 1.);
-	phiprior = new Uniform(0.0, 2*M_PI);
-	wprior = new Uniform(0.0, 2*M_PI);
+    eprior = new Uniform(0., 1.);
+    phiprior = new Uniform(0.0, 2*M_PI);
+    wprior = new Uniform(0.0, 2*M_PI);
 
 
 }
@@ -47,16 +47,16 @@ RVmodel::RVmodel()
 
 int main(int argc, char** argv)
 {
-	/* set the RV data file */
-	char* datafile = "BL2009_dataset1.kms.rv";
+    /* set the RV data file */
+    char* datafile = "BL2009_dataset1.kms.rv";
 
-	// the third (optional) argument, 
-	// tells kima not to skip any line in the header of the file
-	Data::get_instance().load(datafile, "kms", 0);
-	
-	// set the sampler and run it!
-	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
-	sampler.run();
+    // the third (optional) argument, 
+    // tells kima not to skip any line in the header of the file
+    Data::get_instance().load(datafile, "kms", 0);
+    
+    // set the sampler and run it!
+    Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
+    sampler.run();
 
-	return 0;
+    return 0;
 }

@@ -8,7 +8,7 @@ CELERITE_PATH = $(KIMA_DIR)/celerite/cpp/include
 includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH)
 
 CXX = g++
-CXXFLAGS = -pthread -std=c++11 -O3 -w
+CXXFLAGS = -pthread -std=c++11 -O3 -w -g
 LIBS = -ldnest4 -L/usr/local/lib
 
 KIMA_SRCS =\

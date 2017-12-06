@@ -1,10 +1,15 @@
 import os, sys
+import cPickle
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import matplotlib.cbook as cbook
 import matplotlib.image as image
-import tqdm
+# import tqdm
+
+### use mpl 1.0 style
+import matplotlib as mpl
+mpl.style.use('classic')
+
 
 import seaborn.apionly as sns
 colors = sns.color_palette("colorblind")
@@ -19,10 +24,10 @@ from display import DisplayResults
 sys.path.append('.')
 from styler import styler
 
-res = DisplayResults('')
+# res = DisplayResults('')
 # res.sample = np.atleast_2d(np.loadtxt('sample.txt'))
 
-# res = cPickle.load(open('BL2009_joss_figure1.pickle'))
+res = cPickle.load(open('BL2009_joss_figure1.pickle'))
 
 
 @styler
@@ -139,10 +144,11 @@ def f(fig, *args, **kwargs):
 	ax5.set(xlabel='Eccentricity', yticks=[], ylabel='Posterior')
 	ax5.xaxis.labelpad = 6
 
-	# im = image.imread('../../logo/logo_small.jpg')
+	im = image.imread('../../logo/logo_small.png')
 	# aximg = plt.subplot(gs[0, 5])
-	# aximg.axis('off')
-	# aximg.imshow(im, alpha=1, extent=(0, 10, 0, 10))
+	aximg = plt.axes([0.85, 0.85, 0.12, 0.12])
+	aximg.axis('off')
+	aximg.imshow(im, alpha=1, extent=(0, 10, 0, 10))
 
 
 f(type='main', save='joss_figure.png', png=True, formatx=False,

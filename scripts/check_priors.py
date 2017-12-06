@@ -77,3 +77,4 @@ if __name__ == '__main__':
     # else:
 
     do_plot(data, column, bins=bins, normed=normed, logxscale=logxscale)
+    plt.show()

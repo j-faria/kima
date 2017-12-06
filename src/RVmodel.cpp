@@ -5,6 +5,7 @@
 #include "Utils.h"
 #include "Data.h"
 #include <cmath>
+#include <limits>
 #include <fstream>
 #include <chrono>
 
@@ -416,7 +417,11 @@ double RVmodel::log_likelihood() const
     #endif
 
     if(std::isnan(logL) || std::isinf(logL))
-        logL = -1E300;
+    {
+        // cout << "inf!" << endl;
+        logL = std::numeric_limits<double>::infinity();
+        // logL = -1E300;
+    }
     return logL;
 }
 
