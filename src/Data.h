@@ -27,7 +27,7 @@ class Data
 		double get_RV_span() const {return get_y_max() - get_y_min();}
 		
 		const std::vector<double>& get_sig() const { return sig; }
-		double topslope() const {return abs(get_y_max() - get_y_min()) / (t.back() - t.front()); }
+		double topslope() const {return std::abs(get_y_max() - get_y_min()) / (t.back() - t.front());}
 
 	// Singleton
 	private:
