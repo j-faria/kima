@@ -442,21 +442,37 @@ void RVmodel::print(std::ostream& out) const
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
   
-    if (objects.get_fixed() and objects.get_components().size()==0)
-        objects.print0(out);
-    else
-        objects.print(out);
+    objects.print(out);
 
     out<<' '<<staleness<<' ';
-    out<<background<<' ';
+    out<<background;
 }
 
 string RVmodel::description() const
 {
+    string desc;
+    
+    desc += "extra_sigma\t";
+
+    if (obs_after_HARPS_fibers)
+        desc += "fiber_offset\t";
+    if(trend)
+        desc += "slope\t";
     if(GP)
-        return string("extra_sigma   eta1   eta2   eta3   eta4  objects.print   staleness   background");
-    else
-        return string("extra_sigma   objects.print   staleness   background");
+        desc += "eta1\teta2\teta3\teta4\t";
+
+    desc += "ndim\tmaxNp\t";
+    if(hyperpriors)
+        desc += "muP\twP\tmuK\t";
+
+    desc += "Np\t";
+
+    if (objects.get_components().size()>0)
+        desc += "P\tK\tphi\tecc\tchi\t";
+
+    desc += "staleness\tvsys";
+
+    return desc;
 }
 
 
