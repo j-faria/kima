@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/j-faria/kima.svg?branch=master)](https://travis-ci.org/j-faria/kima)
 
-<img src="logo/logo.jpg" width="200"
+<img src="logo/logo.png" width="200"
      alt="Logo created by Solène Ulmer-Moll">
 
 Clone with `--recursive` to get the submodules.  
