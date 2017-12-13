@@ -45,10 +45,10 @@ RVmodel::RVmodel()
 int main(int argc, char** argv)
 {
     /* set the RV data file */
-    // kima skips the first 2 lines in the header
-    // and reads the first 3 columns into time, vrad and svrad
+    // kima reads the first 3 columns into time, vrad and svrad
     char* datafile = "HD10180.kms.rv";
 
+    // skip the first line in the file
     Data::get_instance().load(datafile, "kms", 1);
     
     // set the sampler and run it!

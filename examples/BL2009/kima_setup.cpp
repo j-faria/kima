@@ -26,11 +26,7 @@ RVmodel::RVmodel()
     ,mu(Data::get_instance().N())
     ,C(Data::get_instance().N(), Data::get_instance().N())
 {
-    //double ymin = Data::get_instance().get_y_min();
-    //double ymax = Data::get_instance().get_y_max();
-    // can now use ymin and ymax in setting prior for vsys
-    //Cprior = new Uniform(ymin, ymax);
-
+    // priors as in Balan & Lahav (2009, DOI: 10.1111/j.1365-2966.2008.14385.x)
     Cprior = new Uniform(-2000, 2000);
     Jprior = new ModifiedJeffreys(1.0, 2000.); // additional white noise, m/s
 
@@ -40,8 +36,6 @@ RVmodel::RVmodel()
     eprior = new Uniform(0., 1.);
     phiprior = new Uniform(0.0, 2*M_PI);
     wprior = new Uniform(0.0, 2*M_PI);
-
-
 }
 
 
