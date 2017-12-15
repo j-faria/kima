@@ -8,6 +8,8 @@
 using namespace std;
 using namespace DNest4;
 
+/* edit from here on */
+
 #include "default_priors.h"
 
 const bool obs_after_HARPS_fibers = false;
@@ -16,7 +18,7 @@ const bool hyperpriors = false;
 const bool trend = false;
 
 RVmodel::RVmodel()
-:objects(5, 1, true, RVConditionalPrior())
+:planets(5, 0, true, RVConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {

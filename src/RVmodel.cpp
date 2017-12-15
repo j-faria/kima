@@ -28,8 +28,8 @@ extern ContinuousDistribution *log_eta4_prior;
 
 void RVmodel::from_prior(RNG& rng)
 {
-    objects.from_prior(rng);
-    objects.consolidate_diff();
+    planets.from_prior(rng);
+    planets.consolidate_diff();
     
     background = Cprior->rvs(rng);
     extra_sigma = Jprior->rvs(rng);
@@ -153,12 +153,12 @@ void RVmodel::calculate_mu()
     const vector<double>& t = Data::get_instance().get_t();
 
     // Update or from scratch?
-    bool update = (objects.get_added().size() < objects.get_components().size()) &&
+    bool update = (planets.get_added().size() < planets.get_components().size()) &&
             (staleness <= 10);
 
     // Get the components
-    const vector< vector<double> >& components = (update)?(objects.get_added()):
-                (objects.get_components());
+    const vector< vector<double> >& components = (update)?(planets.get_added()):
+                (planets.get_components());
     // at this point, components has:
     //  if updating: only the added planets' parameters
     //  if from scratch: all the planets' parameters
@@ -227,8 +227,8 @@ double RVmodel::perturb(RNG& rng)
 
     if(rng.rand() <= 0.5)
     {
-        logH += objects.perturb(rng);
-        objects.consolidate_diff();
+        logH += planets.perturb(rng);
+        planets.consolidate_diff();
         calculate_mu();
     }
 
@@ -442,7 +442,7 @@ void RVmodel::print(std::ostream& out) const
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
   
-    objects.print(out);
+    planets.print(out);
 
     out<<' '<<staleness<<' ';
     out<<background;
@@ -467,7 +467,7 @@ string RVmodel::description() const
 
     desc += "Np\t";
 
-    if (objects.get_components().size()>0)
+    if (planets.get_components().size()>0)
         desc += "P\tK\tphi\tecc\tchi\t";
 
     desc += "staleness\tvsys";

@@ -23,7 +23,7 @@ extern const bool trend;
 class RVmodel
 {
     private:
-        DNest4::RJObject<RVConditionalPrior> objects;
+        DNest4::RJObject<RVConditionalPrior> planets;
 
         double background;
         //std::vector<double> offsets;
