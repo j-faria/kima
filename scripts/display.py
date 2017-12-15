@@ -19,6 +19,7 @@ try:
 except ImportError:
     hist_tools_available = False
 
+from keplerian import keplerian
 
 import corner
 
@@ -157,24 +158,26 @@ class DisplayResults(object):
         start_parameters = 0
         self.extra_sigma = self.posterior_sample[:, start_parameters]
 
-        # find GP in the compiled model
+        # find trend in the compiled model
         try:
             with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                self.GPmodel = 'bool GP = true' in f.read()
+                self.trend = 'bool trend = true' in f.read()
         except IOError:
             with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                self.GPmodel = 'bool GP = true' in f.read()
+                self.trend = 'bool trend = true' in f.read()
         
-        if debug:
-            print 'GP model:', self.GPmodel
+        if debug: 
+            print 'trend:', self.trend
 
-        if self.GPmodel:
-            n_hyperparameters = 4
-            for i in range(n_hyperparameters):
-                name = 'eta' + str(i+1)
-                setattr(self, name, self.posterior_sample[:, start_parameters+1+i])
+
+        if self.trend:
+            n_trend = 1
+            i1 = start_parameters + 1
+            i2 = start_parameters + n_trend + 1
+            self.trendpars = self.posterior_sample[:, i1:i2]
         else:
-            n_hyperparameters = 0
+            n_trend = 0
+
 
 
         # find fiber offset in the compiled model
@@ -200,25 +203,27 @@ class DisplayResults(object):
         else:
             n_offsets = 0
 
-        # find trend in the compiled model
+
+        # find GP in the compiled model
         try:
             with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                self.trend = 'bool trend = true' in f.read()
+                self.GPmodel = 'bool GP = true' in f.read()
         except IOError:
             with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                self.trend = 'bool trend = true' in f.read()
+                self.GPmodel = 'bool GP = true' in f.read()
         
-        if debug: 
-            print 'trend:', self.trend
+        if debug:
+            print 'GP model:', self.GPmodel
 
-
-        if self.trend:
-            n_trend = 2
-            i1 = start_parameters + n_hyperparameters + 1
-            i2 = start_parameters + n_hyperparameters + n_trend + 1
-            self.trendpars = self.posterior_sample[:, i1:i2]
+        if self.GPmodel:
+            n_hyperparameters = 4
+            for i in range(n_hyperparameters):
+                name = 'eta' + str(i+1)
+                ind = start_parameters + n_trend + n_offsets + 1 + i
+                setattr(self, name, self.posterior_sample[:, ind])
         else:
-            n_trend = 0
+            n_hyperparameters = 0
+
 
 
         start_objects_print = start_parameters + n_offsets + \
@@ -806,8 +811,6 @@ class DisplayResults(object):
         and the Keplerian curves are calculated covering 100 + `over`%
         of the timespan of the data.
         """
-        from keplerian import keplerian
-
         samples = self.get_sorted_planet_samples()
         samples, mask = \
             self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
