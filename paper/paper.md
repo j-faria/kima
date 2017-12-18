@@ -13,7 +13,7 @@ authors:
    affiliation: "1, 2"
  - name: P. Figueira
    orcid: 0000
-   affiliation: "1"
+   affiliation: 1
  - name: B. J. Brewer
    orcid: 0000
    affiliation: 3
@@ -30,19 +30,7 @@ date: 11 November 2017
 bibliography: paper.bib
 ---
 
-<!--  - name: Brendon J. Brewer
-   orcid: 0000-0000-0000-1234
-   affiliation: 3 -->
-
 # Summary
-
-<!-- 
-- _requirement_: A summary describing the high-level functionality and purpose of the software for a diverse, non-specialist audience
-- _requirement_: A clear statement of need that illustrates the purpose of the software
-- _requirement_: A list of key references including a link to the software archive
-- _optional_: Mentions (if applicable) of any ongoing research projects using the software
-or recent scholarly publications enabled by it
--->
 
 The radial-velocity (RV) method is one of the most successful in the detection of exoplanets.
 An orbiting planet induces a gravitational pull on its host star,
@@ -67,7 +55,6 @@ using the Diffusive Nested Sampling algorithm [@Brewer2011]
 to sample from the posterior distribution of the model parameters. 
 This algorithm is extremely efficient on the 
 multimodal and correlated posteriors that often arise in this problem.
-<!-- _[more on DNS?]_ -->
 
 Additionally, **kima** also calculates the fully marginalized likelihood 
 (or _evidence_) <!-- ; see @Kass1995) --> 
@@ -103,42 +90,22 @@ as well as the rotation period of the star and the typical lifetime of active re
 were inferred from RV observations alone.
 
 
-<!-- ### Roadmap
-
-I think I can write two lines here still, but I'm not sure, let's find out
-with a bit more text such as this and this and this also
-ah maybe we can even go for three lines who knows let's see if it works
-it does! hurray!
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
- -->
-
-
-
-
 
 ## Acknowledgements
 
-This work was supported by 
-[Fundação para a Ciência e a Tecnologia (FCT, Portugal)](http://www.fct.pt/)
-through grants 
-UID/FIS/04434/2013, POCI-01-0145-FEDER-007672, PTDC/FIS-AST/1526/2014,
-POCI-01-0145-FEDER-016886, PTDC/FIS-AST/7073/2014, 
-and POCI-01-0145-FEDER-016880.
+This work was supported by Fundação para a Ciência e Tecnologia (FCT)
+through national funds and FEDER through COMPETE2020,
+by these grants UID/FIS/04434/2013 & POCI-01-0145-FEDER-007672 
+and PTDC/FIS-AST/1526/2014 & POCI-01-0145-FEDER-016886.
 <!--  -->
-<!-- J. P. F. acknowledges support from FCT through the grant reference SFRH/BD/93848/2013.
-N.C.S and P.F. acknowledge  support  from  FCT through
-Investigador FCT contracts nr. IF/01037/2013CP1191/CT0001 and IF/00169/2012/CP0150/CT0002
-PF  further  acknowledges support from (FCT) in the form
-of an exploratory project of reference IF/01037/2013CP1191/CT0001. -->
+J.F. acknowledges support from the fellowship SFRH/BD/93848/2013 
+funded by FCT (Portugal) and POPH/FSE (EC).
+N.C.S. and P.F. also acknowledge support from FCT through 
+Investigador FCT contracts 
+IF/00169/2012/CP0150/CT0002 and IF/01037/2013/CP1191/CT0001, respectively.
 <!--  -->
-J.P.F, N.C.S. and P.F. acknowledge support from FCT 
-through grants with references
-SFRH/BD/93848/2013; 
-IF/01037/2013CP1191/CT0001;  <!-- nuno -->
-IF/00169/2012/CP0150/CT0002 and IF/01037/2013CP1191/CT0001,  <!-- pedro -->
-respectively.
 B.J.B. acknowledges support from the Marsden Fund of the Royal Society of New Zealand.
+
 
 
 ![Results from a typical analysis with **kima**. 
