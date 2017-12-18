@@ -77,7 +77,7 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
 
 class DisplayResults(object):
     def __init__(self, options, data_file=None, 
-                 fiber_offset=None, hyperpriors=None,
+                 fiber_offset=None, hyperpriors=None, trend=None, GP=None,
                  posterior_samples_file='posterior_sample.txt'):
 
         self.options = options
@@ -158,27 +158,6 @@ class DisplayResults(object):
         start_parameters = 0
         self.extra_sigma = self.posterior_sample[:, start_parameters]
 
-        # find trend in the compiled model
-        try:
-            with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                self.trend = 'bool trend = true' in f.read()
-        except IOError:
-            with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                self.trend = 'bool trend = true' in f.read()
-        
-        if debug: 
-            print 'trend:', self.trend
-
-
-        if self.trend:
-            n_trend = 1
-            i1 = start_parameters + 1
-            i2 = start_parameters + n_trend + 1
-            self.trendpars = self.posterior_sample[:, i1:i2]
-        else:
-            n_trend = 0
-
-
 
         # find fiber offset in the compiled model
         if fiber_offset is None:
@@ -198,20 +177,48 @@ class DisplayResults(object):
 
         if self.fiber_offset:
             n_offsets = 1
-            offset_index = start_parameters+n_hyperparameters+n_offsets
+            offset_index = start_parameters+n_offsets
             self.offset = self.posterior_sample[:, offset_index]
         else:
             n_offsets = 0
+        # --- end fiber offset
+
+
+        # find trend in the compiled model
+        if trend is None:
+            try:
+                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                    self.trend = 'bool trend = true' in f.read()
+            except IOError:
+                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                    self.trend = 'bool trend = true' in f.read()
+        else:
+            self.trend = trend 
+
+        if debug: 
+            print 'trend:', self.trend
+
+        if self.trend:
+            n_trend = 1
+            i1 = start_parameters + n_offsets + 1
+            i2 = start_parameters + n_offsets + n_trend + 1
+            self.trendpars = self.posterior_sample[:, i1:i2]
+        else:
+            n_trend = 0
+        # --- end trend
 
 
         # find GP in the compiled model
-        try:
-            with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                self.GPmodel = 'bool GP = true' in f.read()
-        except IOError:
-            with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                self.GPmodel = 'bool GP = true' in f.read()
-        
+        if GP is None:
+            try:
+                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                    self.GPmodel = 'bool GP = true' in f.read()
+            except IOError:
+                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                    self.GPmodel = 'bool GP = true' in f.read()
+        else:
+            self.GPmodel = GP
+
         if debug:
             print 'GP model:', self.GPmodel
 
@@ -223,7 +230,7 @@ class DisplayResults(object):
                 setattr(self, name, self.posterior_sample[:, ind])
         else:
             n_hyperparameters = 0
-
+        # --- end trend
 
 
         start_objects_print = start_parameters + n_offsets + \
@@ -811,10 +818,14 @@ class DisplayResults(object):
         and the Keplerian curves are calculated covering 100 + `over`%
         of the timespan of the data.
         """
+
         samples = self.get_sorted_planet_samples()
-        samples, mask = \
-            self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
-        # print mask
+        mask = np.ones(samples.shape[0], dtype=bool)
+        
+        if self.max_components > 0:
+            samples, mask = \
+                self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
+            # print mask
 
         t = self.data[:,0].copy()
         tt = np.linspace(t[0]-over*t.ptp(), t[-1]+over*t.ptp(), 
