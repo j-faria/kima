@@ -52,7 +52,7 @@ def percentile68_ranges_latex(a):
 
 
 def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
-    if verbose: print 'Using star mass = %s solar mass' % star_mass
+    if verbose: print('Using star mass = %s solar mass' % star_mass)
     # print 3.5e-2 * K * (P/365.)**(1./3) * star_mass**(2./3)
     # print 9.077e-3 * star_mass**(2./3) * (P/(2*np.pi))**(1./3) * K * np.sqrt(1-e**2)
 
@@ -88,10 +88,10 @@ class DisplayResults(object):
         top_level = os.path.dirname(os.path.dirname(path_to_this_file))
 
         if debug:
-            print 
-            print 'running on:', pwd
-            print 'top_level:', top_level
-            print 
+            print()
+            print('running on:', pwd)
+            print('top_level:', top_level)
+            print()
 
         def get_skip(line):
             load_args = re.findall(r'\((.*?)\)', line, re.DOTALL)[1]
@@ -126,10 +126,10 @@ class DisplayResults(object):
                 data_file = re.findall('"(.*?)"', line, re.DOTALL)[0]
                 data_file = pathjoin(top_level, data_file)
 
-        print 'Loading data file %s' % data_file
+        print('Loading data file %s' % data_file)
         self.data_file = data_file
         if debug:
-            print '--- skipping first %d rows of data file' % self.data_skip
+            print('--- skipping first %d rows of data file' % self.data_skip)
 
         self.data = np.loadtxt(self.data_file, 
                                skiprows=self.data_skip, usecols=(0,1,2))
@@ -152,7 +152,7 @@ class DisplayResults(object):
             self.max_likelihood_index = np.argmax(self.posterior_sample_lnlikes)
         
         except IOError:
-            print 'Sample likelihoods not available!!! This is bad!'
+            print('Sample likelihoods not available!!! This is bad!')
 
 
         start_parameters = 0
@@ -167,7 +167,7 @@ class DisplayResults(object):
                 self.trend = 'bool trend = true' in f.read()
         
         if debug: 
-            print 'trend:', self.trend
+            print('trend:', self.trend)
 
 
         if self.trend:
@@ -194,7 +194,7 @@ class DisplayResults(object):
             self.fiber_offset = fiber_offset
 
         if debug: 
-            print 'obs_after_fibers:', self.fiber_offset
+            print('obs_after_fibers:', self.fiber_offset)
 
         if self.fiber_offset:
             n_offsets = 1
@@ -213,7 +213,7 @@ class DisplayResults(object):
                 self.GPmodel = 'bool GP = true' in f.read()
         
         if debug:
-            print 'GP model:', self.GPmodel
+            print('GP model:', self.GPmodel)
 
         if self.GPmodel:
             n_hyperparameters = 4
@@ -330,7 +330,7 @@ class DisplayResults(object):
     def get_medians(self):
         """ return the median values of all the parameters """
         if self.posterior_sample.shape[0] % 2 == 0:
-            print 'Median is not a solution because number of samples is even!!'
+            print('Median is not a solution because number of samples is even!!')
 
         self.medians = np.median(self.posterior_sample, axis=0)
         self.means = np.mean(self.posterior_sample, axis=0)
@@ -349,9 +349,9 @@ class DisplayResults(object):
             i = self.posterior_sample[mask, -1].argmax()
             pars = self.posterior_sample[mask][i, :]
 
-        print 'maximum likelihood '
-        print pars[:5]
-        print pars[pars != 0]
+        print('maximum likelihood ')
+        print(pars[:5])
+        print(pars[pars != 0])
 
         sort_periods = False
         if sort_periods:
@@ -383,28 +383,28 @@ class DisplayResults(object):
         else:
             pass
 
-        print 
-        print 'medians:'
-        print
+        print()
+        print('medians:')
+        print()
 
         a = '$%7.5f\,^{+\,%7.5f}_{-\,%7.5f}$' % percentile68_ranges(P1)
         b = ' & $%4.3f$' % P1.std()
-        print '%-40s' % a, b
+        print('%-40s' % a, b)
 
         a, b = '$%3.2f\,^{+\,%3.2f}_{-\,%3.2f}$' % percentile68_ranges(K1), ' & $%4.3f$' % K1.std()
-        print '%-40s' % a, b
+        print('%-40s' % a, b)
         
         a, b = '$%4.3f\,^{+\,%4.3f}_{-\,%4.3f}$' % percentile68_ranges(e1), ' & $%4.3f$' % e1.std()
-        print '%-40s' % a, b
+        print('%-40s' % a, b)
 
         a, b = '$%7.5f\,^{+\,%7.5f}_{-\,%7.5f}$' % percentile68_ranges(P2), ' & $%4.3f$' % P2.std()
-        print '%-40s' % a, b
+        print('%-40s' % a, b)
 
         a, b = '$%3.2f\,^{+\,%3.2f}_{-\,%3.2f}$' % percentile68_ranges(K2), ' & $%4.3f$' % K2.std()
-        print '%-40s' % a, b
+        print('%-40s' % a, b)
 
         a, b = '$%4.3f\,^{+\,%4.3f}_{-\,%4.3f}$' % percentile68_ranges(e2), ' & $%4.3f$' % e2.std()
-        print '%-40s' % a, b
+        print('%-40s' % a, b)
 
 
 
@@ -418,7 +418,7 @@ class DisplayResults(object):
         m_me = m_mj * mjup2mearth
         # a = ((system.star_mass + m_me*mearth2msun)/(m_me*mearth2msun)) * sqrt(1.-ecc**2) * K * (P*mean_sidereal_day/(2*np.pi)) / au2m
 
-        print 'b - $%4.2f\,^{+\,%4.2f}_{-\,%4.2f}$ [MEarth]' % percentile68_ranges(m_me)
+        print('b - $%4.2f\,^{+\,%4.2f}_{-\,%4.2f}$ [MEarth]' % percentile68_ranges(m_me))
         # print '%8s %11.4f +- %7.4f [AU]' % ('a', a.n, a.s)
 
 
@@ -427,7 +427,7 @@ class DisplayResults(object):
         m_me = m_mj * mjup2mearth
         # a = ((system.star_mass + m_me*mearth2msun)/(m_me*mearth2msun)) * sqrt(1.-ecc**2) * K * (P*mean_sidereal_day/(2*np.pi)) / au2m
 
-        print 'c - $%4.2f\,^{+\,%4.2f}_{-\,%4.2f}$ [MEarth]' % percentile68_ranges(m_me)
+        print('c - $%4.2f\,^{+\,%4.2f}_{-\,%4.2f}$ [MEarth]' % percentile68_ranges(m_me))
         # print '%8s %11.4f +- %7.4f [AU]' % ('a', a.n, a.s)
 
 
@@ -441,7 +441,7 @@ class DisplayResults(object):
         plt.xlim([-0.5, self.max_components+.5])
 
         nn = n[np.nonzero(n)]
-        print 'probability ratios: ', nn.flat[1:] / nn.flat[:-1]
+        print('probability ratios: ', nn.flat[1:] / nn.flat[:-1])
 
         plt.show()
 
@@ -453,12 +453,12 @@ class DisplayResults(object):
         """
 
         if self.max_components == 0:
-            print 'Current model does not have planets, doing nothing...'
+            print('Current model does not have planets, doing nothing...')
             return
 
         if self.log_period:
             T = np.exp(self.T)
-            print 'exponentiating period!'
+            print('exponentiating period!')
         else:
             T = self.T
         
@@ -496,7 +496,7 @@ class DisplayResults(object):
 
         if self.log_period:
             T = np.exp(self.T)
-            print 'exponentiating period!'
+            print('exponentiating period!')
         else:
             T = self.T
         A, E = self.A, self.E
@@ -598,13 +598,13 @@ class DisplayResults(object):
         Mmin = 0.0164 * (Dt)**(4/3.) * \
                (np.abs(trend)) * \
                (star_mass)**(2/3.)
-        print Mmin * u.jupiterMass
+        print(Mmin * u.jupiterMass)
         ax1.axhline(y=Mmin, xmin=0, xmax=1, color='k')
 
         Mmin = lambda P: (1/28.4) * P**(1/3.) * \
                          (star_mass)**(2/3.) * \
                          (np.abs(trend)*Dt/2.)
-        print Mmin(Dt)
+        print(Mmin(Dt))
         PP = np.linspace(2*Dt*365.25, 100*Dt*365.25)
         ax1.plot(PP, Mmin(PP/365.25), 'g')
         # ax1.axhline(y=Mmin, xmin=0, xmax=1, color='k')
@@ -616,7 +616,7 @@ class DisplayResults(object):
     def make_plot4(self):
         """ Plot histograms for the GP hyperparameters """
         if not self.GPmodel:
-            print 'Current model does not have GP, doing nothing...'
+            print('Current model does not have GP, doing nothing...')
             return
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
@@ -634,7 +634,7 @@ class DisplayResults(object):
         """ Corner plot for the GP hyperparameters """
 
         if not self.GPmodel:
-            print 'Current model does not have GP, doing nothing...'
+            print('Current model does not have GP, doing nothing...')
             return
 
         self.pmin = 10.
@@ -841,7 +841,7 @@ class DisplayResults(object):
                 t0 = t[0] - (P*phi)/(2.*np.pi)
                 ecc = pars[j + 3*self.max_components]
                 w = pars[j + 4*self.max_components]
-                print P
+                print(P)
                 v += keplerian(tt, P, K, ecc, w, t0, 0.)
 
             vsys = self.posterior_sample[mask][i, -1]
@@ -869,7 +869,7 @@ class DisplayResults(object):
     def hist_offset(self):
         """ Plot the histogram of the posterior for the fiber offset """
         if not self.fiber_offset:
-            print 'Model has no fiber offset! doing nothing...'
+            print('Model has no fiber offset! doing nothing...')
             return
 
         fig, ax = plt.subplots(1,1)
@@ -885,7 +885,7 @@ class DisplayResults(object):
 
 
 if __name__ == '__main__':
-    print 'Arguments: ', sys.argv[1:]
+    print('Arguments: ', sys.argv[1:])
     options = ' '.join(sys.argv[1:])
 
     res = DisplayResults(options)

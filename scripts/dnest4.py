@@ -40,7 +40,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
         levels_orig = pd.read_csv("levels.txt", **k).values
         sample_info = pd.read_csv("sample_info.txt", **k).values
         sample = pd.read_csv("sample.txt", **k).values
-        print 'Took %f sec to read files' % (time() - t1, )
+        print('Took %f sec to read files' % (time() - t1, ))
 
         # assert np.allclose(sample1, sample)
         # assert np.allclose(sample_info1, sample_info)
@@ -223,7 +223,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
     w = w/np.max(w)
     if save:
         np.savetxt('weights.txt', w) # Save weights
-    for i in tqdm(xrange(0, N), 'buillding posterior samples'):
+    for i in tqdm(range(0, N), 'building posterior samples'):
         while True:
             which = np.random.randint(sample.shape[0])
             if np.random.rand() <= w[which]:
