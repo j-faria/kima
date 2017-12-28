@@ -17,4 +17,4 @@ if posterior.shape[0] > 5:
     from display import DisplayResults
     res = DisplayResults(options)
 else:
-    print 'Too few samples, keep running the model'
+    print('Too few samples, keep running the model')
