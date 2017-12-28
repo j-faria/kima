@@ -19,7 +19,7 @@ const bool trend = false;
 // options for the model
 // 
 RVmodel::RVmodel()
-    :objects(5, 5, false, RVConditionalPrior())
+    :planets(5, 5, false, RVConditionalPrior())
     ,mu(Data::get_instance().N())
     ,C(Data::get_instance().N(), Data::get_instance().N())
 {
