@@ -1,8 +1,6 @@
 # Put the directory of 'DNest4/code' into this variable
 DNEST4_PATH = DNest4/code
-
 EIGEN_PATH = eigen
-
 # CELERITE_PATH = celerite/cpp/include
 
 includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) 
@@ -23,7 +21,8 @@ $(SRCDIR)/main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
 
-all: main pythoncheck
+
+all: main examples pythoncheck
 
 %.o: %.cpp
 	$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
@@ -31,6 +30,12 @@ all: main pythoncheck
 
 main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 	$(CXX) -o main $(OBJS) -L$(DNEST4_PATH) $(LIBS) $(CXXFLAGS)
+
+examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
+	@make -C examples/BL2009
+	@make -C examples/CoRoT7
+	@make -C examples/many_planets
+	
 
 $(DNEST4_PATH)/libdnest4.a:
 	make noexamples -C $(DNEST4_PATH)
@@ -64,9 +69,13 @@ pythoncheck:
 		fi
 
 
-
 clean:
 	rm -f main $(OBJS)
+
+cleanexamples:
+	@make clean -C examples/BL2009
+	@make clean -C examples/CoRoT7
+	@make clean -C examples/many_planets
 
 cleanout:
 	rm -f sample.txt sample_info.txt levels.txt \
