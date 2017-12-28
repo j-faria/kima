@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <cmath>
 
 class Data
 {
@@ -18,12 +19,12 @@ class Data
 		// Getters
 		int N() const {return t.size();}
 		const std::vector<double>& get_t() const { return t; }
-		double get_t_min() const { return *min_element(t.begin(), t.end()); }
-		double get_t_max() const { return *max_element(t.begin(), t.end()); }
+		double get_t_min() const { return *std::min_element(t.begin(), t.end()); }
+		double get_t_max() const { return *std::max_element(t.begin(), t.end()); }
 
 		const std::vector<double>& get_y() const { return y; }
-		double get_y_min() const { return *min_element(y.begin(), y.end()); }
-		double get_y_max() const { return *max_element(y.begin(), y.end()); }
+		double get_y_min() const { return *std::min_element(y.begin(), y.end()); }
+		double get_y_max() const { return *std::max_element(y.begin(), y.end()); }
 		double get_RV_span() const {return get_y_max() - get_y_min();}
 		
 		const std::vector<double>& get_sig() const { return sig; }
