@@ -12,6 +12,7 @@ before_install:
 
 script:
   - make -j
+  - python setup.py install
 
 matrix:
   allow_failures:
