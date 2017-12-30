@@ -1,8 +1,5 @@
 language: cpp
 
-python:
-  - 2.7
-
 os:
   - linux
   - osx
@@ -17,12 +14,13 @@ before_install:
   - bash ~/miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda update --yes conda
-  - echo $TRAVIS_PYTHON_VERSION
+  - python --version
+  - pip --version
 
 script:
   - make -j
   # now the pykima package
-  - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib
+  - conda install --yes numpy scipy matplotlib pandas 
   - python setup.py install
 
 matrix:
