@@ -8,7 +8,7 @@ includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH)
 
 CXX = g++
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
-LIBS = -ldnest4 -L/usr/local/lib
+LIBS = -L$(DNEST4_PATH) -ldnest4 -L/usr/local/lib
 
 
 SRCDIR = ./src
@@ -29,7 +29,7 @@ all: main examples pythoncheck
 
 
 main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
-	$(CXX) -o main $(OBJS) -L$(DNEST4_PATH) $(LIBS) $(CXXFLAGS)
+	$(CXX) -o main $(OBJS) $(LIBS) $(CXXFLAGS)
 
 examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 	@make -C examples/BL2009
@@ -77,9 +77,12 @@ cleanexamples:
 	@make clean -C examples/CoRoT7
 	@make clean -C examples/many_planets
 
+cleandnest4:
+	@make clean -C $(DNEST4_PATH)
+
 cleanout:
 	rm -f sample.txt sample_info.txt levels.txt \
               weights.txt posterior_sample.txt sampler_state.txt \
               posterior_sample_lnlikelihoods.txt
 
-cleanall: clean cleanout
+cleanall: cleanout clean cleanexamples cleandnest4
