@@ -1,5 +1,8 @@
-language: cpp
+language: python
 
+python:
+  - 2.7
+  
 os:
   - linux
   # - osx
@@ -20,20 +23,17 @@ before_install:
   - conda update --yes conda
   - python --version
   - pip --version
-  - conda install --yes numpy scipy matplotlib pandas pytest
 
-script:
+install:
+  - conda install --yes numpy scipy matplotlib pandas pytest
   - make -j
   # now the pykima package
-  - which python
-  - python --version
   - python setup.py install
-  # - pip install -e .
-  
+
+script:
   # do tests
   - python -c "import pykima"
   - kima-showresults -h
-
   - pytest tests
 
 matrix:
