@@ -9,13 +9,28 @@ os:
 compiler:
   - gcc
 
+matrix:
+  include:
+    - os: linux
+      env: PYTHON_VERSION=2.7
+    # - os: linux
+      # env: PYTHON_VERSION=3.5
+    # - os: linux
+      # env: PYTHON_VERSION=3.6
+    # - os: osx
+      # env: PYTHON_VERSION=2.7
+    # - os: osx
+      # env: PYTHON_VERSION=3.6
+  allow_failures:
+    - os: osx
+
 install:
-  # - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   # setup miniconda
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      wget http://repo.continuum.io/miniconda/Miniconda-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
+      wget http://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
     else
-      wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O ~/miniconda.sh;
+      wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh;
     fi
   - bash ~/miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
@@ -25,11 +40,14 @@ install:
   - conda info -a
   - python --version
   - pip --version
-
-  - conda create -q -n test python=2.7 numpy scipy matplotlib pandas pytest
+  - conda create -q -n test python=$PYTHON_VERSION
   - source activate test
-  - make -j
-  # now the pykima package
+  - conda install numpy scipy matplotlib pandas pytest
+  - pip install corner
+
+  # compile the C++
+  - make
+  # and now the pykima package
   - python setup.py develop
 
 script:
@@ -37,10 +55,6 @@ script:
   - python -c "import pykima"
   - kima-showresults -h
   - pytest tests
-
-matrix:
-  allow_failures:
-    - os: osx
 
 
 notifications:
