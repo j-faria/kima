@@ -1,7 +1,5 @@
-language: python
-
-python:
-  - 2.7
+language: cpp
+sudo: false
 
 os:
   - linux
