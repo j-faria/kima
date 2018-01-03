@@ -2,7 +2,7 @@ language: cpp
 
 os:
   - linux
-  - osx
+  # - osx
 
 compiler:
   - gcc
@@ -26,8 +26,12 @@ script:
   - make -j
   # now the pykima package
   - python setup.py install
+  
   # do tests
-  - py.test --slow tests
+  - python -c "import pykima"
+  - kima-showresults -h
+
+  - pytest tests
 
 matrix:
   allow_failures:
