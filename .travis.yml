@@ -4,7 +4,7 @@ dist: trusty
 
 os:
   - linux
-  # - osx
+  - osx
 
 compiler:
   - gcc
@@ -13,12 +13,12 @@ matrix:
   include:
     - os: linux
       env: PYTHON_VERSION=2.7
-    # - os: linux
-      # env: PYTHON_VERSION=3.5
-    # - os: linux
-      # env: PYTHON_VERSION=3.6
-    # - os: osx
-      # env: PYTHON_VERSION=2.7
+    - os: linux
+      env: PYTHON_VERSION=3.5
+    - os: linux
+      env: PYTHON_VERSION=3.6
+    - os: osx
+      env: PYTHON_VERSION=2.7
     # - os: osx
       # env: PYTHON_VERSION=3.6
   allow_failures:
@@ -54,7 +54,7 @@ script:
   # do tests
   - python -c "import pykima"
   - kima-showresults -h
-  - pytest tests
+  - pytest --slow tests
 
 
 notifications:
