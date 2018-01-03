@@ -1,5 +1,6 @@
-language: cpp
 sudo: false
+language: generic
+dist: trusty
 
 os:
   - linux
@@ -25,20 +26,17 @@ install:
   - python --version
   - pip --version
 
-  - conda create -q -n test-environment python=2.7 numpy
-  - source activate test-environment
-  # - conda install --yes numpy scipy matplotlib pandas pytest
-  # - make -j
+  - conda create -q -n test python=2.7 numpy scipy matplotlib pandas pytest
+  - source activate test
+  - make -j
   # now the pykima package
-  - pwd
-  - ls
   - python setup.py develop
 
 script:
   # do tests
   - python -c "import pykima"
   - kima-showresults -h
-  # - pytest tests
+  - pytest tests
 
 matrix:
   allow_failures:
