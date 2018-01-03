@@ -49,8 +49,6 @@ def percentile68_ranges_latex(a):
 
 def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
     if verbose: print('Using star mass = %s solar mass' % star_mass)
-    # print 3.5e-2 * K * (P/365.)**(1./3) * star_mass**(2./3)
-    # print 9.077e-3 * star_mass**(2./3) * (P/(2*np.pi))**(1./3) * K * np.sqrt(1-e**2)
 
     if isinstance(P, float):
         assert isinstance(star_mass, float)
@@ -64,10 +62,8 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
       m_me = m_mj * mjup2mearth
       
       if full_output:
-        # return map(percentile68_ranges, [m_mj, m_me]), m_mj
         return m_mj.mean(), m_mj.std(), m_mj
       else:
-        # return map(percentile68_ranges, [m_mj, m_me])
         return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
 
 

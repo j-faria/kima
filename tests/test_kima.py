@@ -5,6 +5,9 @@ import numpy.testing as npt
 def test_import():
     import pykima
 
+
+## pykima.keplerian
+
 def test_true_ecc_anomaly():
     from pykima.keplerian import true_anomaly, ecc_anomaly
     
@@ -39,6 +42,7 @@ def test_keplerian():
     npt.assert_allclose(keplerian(times2, 1., 1., 0., 0., 0., 0.), 1.)
 
 
+## pykima.display
 
 def test_percentiles():
     from pykima.display import percentile68_ranges, percentile68_ranges_latex
@@ -64,5 +68,31 @@ def test_percentiles():
     assert percentile68_ranges_latex(a) == '$5.00 ^{+3.40} _{-3.40}$'
 
 
+def test_planet_mass():
+    from pykima.display import get_planet_mass
+    # get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False)
+    npt.assert_allclose(get_planet_mass(0., 0., 0.), (0., 0.))
+    npt.assert_allclose(get_planet_mass(np.random.rand(), 0., np.random.rand()), 
+                        (0., 0.))
+
+
 def test_KimaResults():
     pass
+
+
+
+
+## pykima.dnest4
+
+def test_logsumexp():
+    from pykima.dnest4 import logsumexp
+    from scipy.special import logsumexp as s_logsumexp
+
+    a = np.random.rand(10)
+    npt.assert_allclose(logsumexp(a), s_logsumexp(a))
+
+
+## pykima.showresults
+
+# def test_showresults():
+    # pass
