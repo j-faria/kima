@@ -21,7 +21,7 @@ def true_anomaly(E, e):
 def ecc_anomaly(M, e):
     M = np.atleast_1d(M)
     E0 = M; E = M
-    for _ in xrange(200):
+    for _ in range(200):
         g = E0 - e * np.sin(E0) - M
         gp = 1.0 - e * np.cos(E0)
         E = E0 - g / gp
