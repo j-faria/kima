@@ -46,10 +46,6 @@ def percentile68_ranges_latex(a):
     lp, median, up = np.percentile(a, [16, 50, 84])
     return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, up-median, median-lp)
 
-# def get_aliases(Preal):
-#     fs = np.array([0.0027381631, 1.0, 1.0027]) #, 0.018472000025212765])
-#     return np.array([abs(1 / (1./Preal + i*fs)) for i in range(-2, 2)]).T
-
 
 def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
     if verbose: print('Using star mass = %s solar mass' % star_mass)
@@ -97,7 +93,7 @@ class KimaResults(object):
             load_args = re.findall(r'\((.*?)\)', line, re.DOTALL)[1]
             load_args = load_args.split(',')
             if len(load_args) == 3:
-                # use gave 'skip' option
+                # user gave 'skip' option
                 return int(load_args[2])
             else:
                 # default is skip=2
@@ -177,7 +173,6 @@ class KimaResults(object):
             self.trendpars = self.posterior_sample[:, i1:i2]
         else:
             n_trend = 0
-
 
 
         # find fiber offset in the compiled model
