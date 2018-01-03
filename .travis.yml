@@ -25,7 +25,8 @@ before_install:
 script:
   - make -j
   # now the pykima package
-  - python setup.py install
+  # - python setup.py install
+  - pip install -e .
   
   # do tests
   - python -c "import pykima"
