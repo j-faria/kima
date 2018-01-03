@@ -3,9 +3,12 @@ import re
 import os
 pathjoin = os.path.join
 
+from .keplerian import keplerian
+
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import gaussian_kde
+import corner
 
 try:
     from fast_histogram import histogram1d, histogram2d
@@ -19,9 +22,6 @@ try:
 except ImportError:
     hist_tools_available = False
 
-from keplerian import keplerian
-
-import corner
 
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 mjup2mearth = 317.8284065946748
@@ -45,10 +45,6 @@ def percentile68_ranges(a):
 def percentile68_ranges_latex(a):
     lp, median, up = np.percentile(a, [16, 50, 84])
     return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, up-median, median-lp)
-
-# def get_aliases(Preal):
-#     fs = np.array([0.0027381631, 1.0, 1.0027]) #, 0.018472000025212765])
-#     return np.array([abs(1 / (1./Preal + i*fs)) for i in range(-2, 2)]).T
 
 
 def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
@@ -75,9 +71,9 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
         return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
 
 
-class DisplayResults(object):
+class KimaResults(object):
     def __init__(self, options, data_file=None, 
-                 fiber_offset=None, hyperpriors=None, trend=None, GP=None,
+                 fiber_offset=None, hyperpriors=None,
                  posterior_samples_file='posterior_sample.txt'):
 
         self.options = options
@@ -97,7 +93,7 @@ class DisplayResults(object):
             load_args = re.findall(r'\((.*?)\)', line, re.DOTALL)[1]
             load_args = load_args.split(',')
             if len(load_args) == 3:
-                # use gave 'skip' option
+                # user gave 'skip' option
                 return int(load_args[2])
             else:
                 # default is skip=2
@@ -201,44 +197,16 @@ class DisplayResults(object):
             self.offset = self.posterior_sample[:, offset_index]
         else:
             n_offsets = 0
-        # --- end fiber offset
-
-
-        # find trend in the compiled model
-        if trend is None:
-            try:
-                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                    self.trend = 'bool trend = true' in f.read()
-            except IOError:
-                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                    self.trend = 'bool trend = true' in f.read()
-        else:
-            self.trend = trend 
-
-        if debug: 
-            print 'trend:', self.trend
-
-        if self.trend:
-            n_trend = 1
-            i1 = start_parameters + n_offsets + 1
-            i2 = start_parameters + n_offsets + n_trend + 1
-            self.trendpars = self.posterior_sample[:, i1:i2]
-        else:
-            n_trend = 0
-        # --- end trend
 
 
         # find GP in the compiled model
-        if GP is None:
-            try:
-                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                    self.GPmodel = 'bool GP = true' in f.read()
-            except IOError:
-                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                    self.GPmodel = 'bool GP = true' in f.read()
-        else:
-            self.GPmodel = GP
-
+        try:
+            with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                self.GPmodel = 'bool GP = true' in f.read()
+        except IOError:
+            with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                self.GPmodel = 'bool GP = true' in f.read()
+        
         if debug:
             print('GP model:', self.GPmodel)
 
@@ -250,7 +218,7 @@ class DisplayResults(object):
                 setattr(self, name, self.posterior_sample[:, ind])
         else:
             n_hyperparameters = 0
-        # --- end trend
+
 
 
         start_objects_print = start_parameters + n_offsets + \
@@ -560,7 +528,7 @@ class DisplayResults(object):
     def make_plot31(self, star_mass=1.0, trend=0., points=True):
         from astropy import units as u
 
-        T = np.exp(self.T) if log_period else self.T
+        T = np.exp(self.T) if self.log_period else self.T
         A, E = self.A, self.E
 
         T = T * u.day
@@ -838,14 +806,10 @@ class DisplayResults(object):
         and the Keplerian curves are calculated covering 100 + `over`%
         of the timespan of the data.
         """
-
         samples = self.get_sorted_planet_samples()
-        mask = np.ones(samples.shape[0], dtype=bool)
-        
-        if self.max_components > 0:
-            samples, mask = \
-                self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
-            # print mask
+        samples, mask = \
+            self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
+        # print mask
 
         t = self.data[:,0].copy()
         tt = np.linspace(t[0]-over*t.ptp(), t[-1]+over*t.ptp(), 
@@ -912,13 +876,3 @@ class DisplayResults(object):
 
         ax.hist(self.offset, bins=bins)
         plt.show()
-
-
-
-if __name__ == '__main__':
-    print('Arguments: ', sys.argv[1:])
-    options = ' '.join(sys.argv[1:])
-
-    res = DisplayResults(options)
-    globals()['res'] = res
-

@@ -28,7 +28,9 @@ kima: $(KIMA_OBJS)
 clean:
 	rm -f kima_setup.o kima
 
-cleanall: clean
+cleanout:
 	rm -f sample.txt sample_info.txt \
 		levels.txt weights.txt posterior_sample.txt sampler_state.txt \
 		posterior_sample_lnlikelihoods.txt
+
+cleanall: clean cleanout

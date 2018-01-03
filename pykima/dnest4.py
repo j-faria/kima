@@ -27,7 +27,8 @@ def logdiffexp(x1, x2):
 
 def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
                 cut=0., save=True, zoom_in=True, compression_bias_min=1,
-                compression_scatter=0., moreSamples=1., compression_assert=None):
+                compression_scatter=0., moreSamples=1., compression_assert=None,
+                just_print_logz=False, just_print_neff=False):
     if len(loaded) == 0:
         # t1 = time()
         # levels_orig1 = np.atleast_2d(np.loadtxt("levels.txt"))
@@ -40,7 +41,8 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
         levels_orig = pd.read_csv("levels.txt", **k).values
         sample_info = pd.read_csv("sample_info.txt", **k).values
         sample = pd.read_csv("sample.txt", **k).values
-        print('Took %f sec to read files' % (time() - t1, ))
+        if not just_print_logz and not just_print_neff:
+            print('Took %f sec to read files' % (time() - t1, ))
 
         # assert np.allclose(sample1, sample)
         # assert np.allclose(sample_info1, sample_info)
@@ -69,7 +71,8 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
     sample_info = sample_info[int(cut*sample_info.shape[0]):, :]
 
     if sample.shape[0] != sample_info.shape[0]:
-        print('# Size mismatch. Truncating...')
+        if not just_print_logz and not just_print_neff:
+            print('# Size mismatch. Truncating...')
         lowest = np.min([sample.shape[0], sample_info.shape[0]])
         sample = sample[0:lowest, :]
         sample_info = sample_info[0:lowest, :]
@@ -211,9 +214,14 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
     H_error = np.std(H_estimates)
     ESS = np.exp(-np.sum(P_samples*np.log(P_samples+1E-300)))
 
-    print("log(Z) = " + str(logz_estimate) + " +- " + str(logz_error))
-    print("Information = " + str(H_estimate) + " +- " + str(H_error) + " nats.")
-    print("Effective sample size = " + str(ESS))
+    if not just_print_logz and not just_print_neff:
+        print("log(Z) = " + str(logz_estimate) + " +- " + str(logz_error))
+        print("Information = " + str(H_estimate) + " +- " + str(H_error) + " nats.")
+        print("Effective sample size = " + str(ESS))
+    elif just_print_logz:
+        print(logz_estimate)
+    elif just_print_neff:
+        print(int(ESS))
 
     # Resample to uniform weight
     N = int(moreSamples*ESS)
