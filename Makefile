@@ -31,10 +31,13 @@ all: main examples pythoncheck
 main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 	$(CXX) -o main $(OBJS) $(LIBS) $(CXXFLAGS)
 
+
+.PHONY: examples
 examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 	@make -C examples/BL2009
 	@make -C examples/CoRoT7
 	@make -C examples/many_planets
+	@make -C examples/default_priors
 	
 
 $(DNEST4_PATH)/libdnest4.a:
@@ -76,6 +79,7 @@ cleanexamples:
 	@make clean -C examples/BL2009
 	@make clean -C examples/CoRoT7
 	@make clean -C examples/many_planets
+	@make clean -C examples/default_priors
 
 cleandnest4:
 	@make clean -C $(DNEST4_PATH)

@@ -16,12 +16,14 @@ before_install:
   - conda update --yes conda
   - python --version
   - pip --version
+  - conda install --yes numpy scipy matplotlib pandas 
 
 script:
   - make -j
   # now the pykima package
-  - conda install --yes numpy scipy matplotlib pandas 
   - python setup.py install
+  # do tests
+  - py.test --slow tests
 
 matrix:
   allow_failures:
