@@ -38,7 +38,7 @@ def showresults(logz=False, neff=False, options=''):
         plot = True
 
     try:
-        logz, H, logx_samples, posterior = \
+        evidence, H, logx_samples, posterior = \
             postprocess(plot=plot, just_print_logz=logz, just_print_neff=neff)
     except IOError as e:
         print(e)
@@ -49,7 +49,8 @@ def showresults(logz=False, neff=False, options=''):
 
     if posterior.shape[0] > 5:
         res = KimaResults(options)
-        if isinteractive(): return res
+        if isinteractive(): 
+            return res
     else:
         print('Too few samples, keep running the model')
 

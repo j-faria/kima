@@ -36,7 +36,7 @@ install:
   - conda create -q -n test python=$PYTHON_VERSION
   - source activate test
   - conda install numpy scipy matplotlib pandas pytest
-  - pip install corner
+  - pip install corner coveralls
 
   # compile the C++
   - make
@@ -47,7 +47,11 @@ script:
   # do tests
   - python -c "import pykima"
   - kima-showresults -h
-  - pytest --slow tests
+  # - pytest --slow tests
+  - py.test --slow -v --cov=pykima tests
+
+
+after_success: coveralls
 
 
 notifications:

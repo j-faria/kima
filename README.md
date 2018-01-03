@@ -1,6 +1,7 @@
 ### RV analysis with DNest4 and GPs
 
 [![Build Status](https://travis-ci.org/j-faria/kima.svg?branch=master)](https://travis-ci.org/j-faria/kima)
+[![Coverage Status](https://coveralls.io/repos/github/j-faria/kima/badge.svg?branch=master)](https://coveralls.io/github/j-faria/kima?branch=master)
 
 <img src="logo/logo.png" width="200"
      alt="Logo created by Solène Ulmer-Moll">
