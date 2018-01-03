@@ -25,7 +25,6 @@ install:
   - python --version
   - pip --version
 
-script:
   - conda create -q -n test-environment python=2.7 numpy
   - source activate test-environment
   # - conda install --yes numpy scipy matplotlib pandas pytest
@@ -33,7 +32,9 @@ script:
   # now the pykima package
   - pwd
   - ls
-  - python setup.py install
+  - python setup.py develop
+
+script:
   # do tests
   - python -c "import pykima"
   - kima-showresults -h
