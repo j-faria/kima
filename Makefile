@@ -37,7 +37,7 @@ examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 	
 
 $(DNEST4_PATH)/libdnest4.a:
-	make noexamples -C $(DNEST4_PATH)
+	make -C $(DNEST4_PATH)
 
 pythoncheck:
 	$(eval NOPACK=0)
