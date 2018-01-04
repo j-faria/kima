@@ -8,6 +8,13 @@ setup(name='pykima',
       description='Analysis of results from kima',
       author='João Faria',
       author_email='joao.faria@astro.up.pt',
+      install_requires=[
+        'numpy',
+        'scipy',
+        'pandas',
+        'matplotlib>=1.5.3',
+        'corner',
+      ],
       entry_points={
         'console_scripts': [
             'kima-showresults = pykima.showresults:showresults',
