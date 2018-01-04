@@ -6,7 +6,7 @@ from time import time
 import pandas as pd
 
 try:
-    from tqdmmm import tqdm
+    from tqdm import tqdm
 except ImportError:
     def tqdm(x, *args):
         return x
