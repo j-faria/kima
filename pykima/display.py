@@ -248,19 +248,23 @@ class KimaResults(object):
         # build the marginal posteriors for planet parameters
         self.get_marginals()
 
-        if '1' in options:
-            self.make_plot1()
-        if '2' in options:
-            self.make_plot2()
-        if '3' in options:
-            self.make_plot3()
-        if '4' in options:
-            self.make_plot4()
-        if '5' in options:
-            self.make_plot5()
+        allowed_options = {'1': [self.make_plot1, {}],
+                           '2': [self.make_plot2, {}],
+                           '3': [self.make_plot3, {}],
+                           '4': [self.make_plot4, {}],
+                           '5': [self.make_plot5, {}],
+                           '6': [self.plot_random_planets, {'show_vsys':True}],
+                           '7': [(self.hist_offset,self.hist_vsys), {}],
+                          }
 
-        if '10' in options:
-            self.corner_planet_parameters()
+        for item in allowed_options.items():
+            if item[0] in options:
+                methods = item[1][0]
+                kwargs = item[1][1]
+                if isinstance(methods, tuple):
+                    [m() for m in methods]
+                else:
+                    methods(**kwargs)
 
 
     def get_marginals(self):
@@ -444,12 +448,12 @@ class KimaResults(object):
         """
 
         if self.max_components == 0:
-            print('Current model does not have planets, doing nothing...')
+            print('Model has no planets! make_plot2() doing nothing...')
             return
 
         if self.log_period:
             T = np.exp(self.T)
-            print('exponentiating period!')
+            # print('exponentiating period!')
         else:
             T = self.T
         
@@ -523,7 +527,7 @@ class KimaResults(object):
     def make_plot4(self):
         """ Plot histograms for the GP hyperparameters """
         if not self.GPmodel:
-            print('Current model does not have GP, doing nothing...')
+            print('Model does not have GP! make_plot4() doing nothing...')
             return
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
@@ -541,7 +545,7 @@ class KimaResults(object):
         """ Corner plot for the GP hyperparameters """
 
         if not self.GPmodel:
-            print('Current model does not have GP, doing nothing...')
+            print('Model does not have GP! make_plot4() doing nothing...')
             return
 
         self.pmin = 10.
@@ -719,9 +723,11 @@ class KimaResults(object):
         of the timespan of the data.
         """
         samples = self.get_sorted_planet_samples()
-        samples, mask = \
-            self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
-        # print mask
+        if self.max_components > 0:
+            samples, mask = \
+                self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
+        else:
+            mask = np.ones(samples.shape[0], dtype=bool)
 
         t = self.data[:,0].copy()
         tt = np.linspace(t[0]-over*t.ptp(), t[-1]+over*t.ptp(), 
@@ -748,7 +754,7 @@ class KimaResults(object):
                 t0 = t[0] - (P*phi)/(2.*np.pi)
                 ecc = pars[j + 3*self.max_components]
                 w = pars[j + 4*self.max_components]
-                print(P)
+                # print(P)
                 v += keplerian(tt, P, K, ecc, w, t0, 0.)
 
             vsys = self.posterior_sample[mask][i, -1]
@@ -770,13 +776,14 @@ class KimaResults(object):
             ax.errorbar(t, y, yerr, fmt='o')
 
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
+        plt.tight_layout()
         plt.show()
 
 
     def hist_offset(self):
         """ Plot the histogram of the posterior for the fiber offset """
         if not self.fiber_offset:
-            print('Model has no fiber offset! doing nothing...')
+            print('Model has no fiber offset! hist_offset() doing nothing...')
             return
 
         fig, ax = plt.subplots(1,1)
@@ -787,4 +794,19 @@ class KimaResults(object):
             bins = None
 
         ax.hist(self.offset, bins=bins)
+        ax.set(xlabel='fiber offset (m/s)', ylabel='posterior samples')
+        plt.show()
+
+    def hist_vsys(self):
+        """ Plot the histogram of the posterior for the systemic velocity """
+        vsys = self.posterior_sample[:,-1]
+        fig, ax = plt.subplots(1,1)
+        if hist_tools_available:
+            bw = hist_tools.freedman_bin_width
+            _, bins = bw(vsys/1e3, return_bins=True)
+        else:
+            bins = None
+
+        ax.hist(vsys/1e3, bins=bins)
+        ax.set(xlabel='vsys (m/s)', ylabel='posterior samples')
         plt.show()

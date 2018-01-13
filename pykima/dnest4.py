@@ -24,9 +24,74 @@ def logdiffexp(x1, x2):
     result = np.log(np.exp(xx1) - np.exp(xx2)) + biggest
     return result
 
+def loadfiles():
+    k = {'delim_whitespace':True, 'header':None, 'comment':'#'}
+    t1 = time()
+    levels_orig = pd.read_csv("levels.txt", **k).values
+    sample_info = pd.read_csv("sample_info.txt", **k).values
+    sample = pd.read_csv("sample.txt", **k).values
+    t2 = time()
+    took = t2 - t1
+    return levels_orig, sample_info, sample, took
+
+def plot_levels_vs_iteration(sample_info):
+    plt.figure()
+    plt.plot(sample_info[:,0])
+    plt.xlabel("Iteration")
+    plt.ylabel("Level")
+
+def plot_compression_acceptance_vs_levels(levels_orig):
+    plt.figure()
+    plt.subplot(2,1,1)
+    plt.plot(np.diff(levels_orig[:,0]))
+    plt.ylabel("Compression")
+    plt.xlabel("Level")
+    xlim = plt.gca().get_xlim()
+    plt.axhline(-1., color='r')
+    plt.axhline(-np.log(10.), color='g')
+    plt.ylim(ymax=0.05)
+
+    plt.subplot(2,1,2)
+    good = np.nonzero(levels_orig[:,4] > 0)[0]
+    plt.plot(levels_orig[good,3]/levels_orig[good,4])
+    plt.xlim(xlim)
+    plt.ylim([0., 1.])
+    plt.ylabel("MH Acceptance")
+    plt.xlabel("Level")
+
+
+def plot_logL_weights_vs_logX(z, sample_info, levels, numResampleLogX,
+                              logx_samples, logz_estimates, P_samples, zoom_in):
+    plt.figure()
+
+    plt.subplot(2,1,1)
+    plt.plot(logx_samples[:,z], sample_info[:,1], 'b.', label='Samples')
+    plt.plot(levels[1:,0], levels[1:,1], 'r.', label='Levels')
+    plt.legend(numpoints=1, loc='lower left')
+    plt.ylabel('log(L)')
+    plt.title(str(z+1) + "/" + str(numResampleLogX) + ", log(Z) = " + str(logz_estimates[z][0]))
+    # Use all plotted logl values to set ylim
+    combined_logl = np.hstack([sample_info[:,1], levels[1:, 1]])
+    combined_logl = np.sort(combined_logl)
+    lower = combined_logl[int(0.1*combined_logl.size)]
+    upper = combined_logl[-1]
+    diff = upper - lower
+    lower -= 0.05*diff
+    upper += 0.05*diff
+    if zoom_in:
+        plt.ylim([lower, upper])
+
+    xlim = plt.gca().get_xlim()
+
+    plt.subplot(2,1,2)
+    plt.plot(logx_samples[:,z], P_samples[:,z], 'b.')
+    plt.ylabel('Posterior Weights')
+    plt.xlabel('log(X)')
+    plt.xlim(xlim)
+
 
 def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
-                cut=0., save=True, zoom_in=True, compression_bias_min=1,
+                cut=0, save=True, zoom_in=True, compression_bias_min=1,
                 compression_scatter=0., moreSamples=1., compression_assert=None,
                 just_print_logz=False, just_print_neff=False):
     if len(loaded) == 0:
@@ -36,17 +101,10 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
         # sample1 = np.atleast_2d(np.loadtxt("sample.txt"))
         # print 'Took %f sec' % (time() - t1, )
 
-        k = {'delim_whitespace':True, 'header':None, 'comment':'#'}
-        t1 = time()
-        levels_orig = pd.read_csv("levels.txt", **k).values
-        sample_info = pd.read_csv("sample_info.txt", **k).values
-        sample = pd.read_csv("sample.txt", **k).values
-        if not just_print_logz and not just_print_neff:
-            print('Took %f sec to read files' % (time() - t1, ))
+        levels_orig, sample_info, sample, took = loadfiles()
 
-        # assert np.allclose(sample1, sample)
-        # assert np.allclose(sample_info1, sample_info)
-        # assert np.allclose(levels_orig1, levels_orig)
+        if not just_print_logz and not just_print_neff:
+            print('Took %f sec to read files' % took)
 
         # I believe this is the fastest way to get the 2nd line 
         # and doesn't load the whole file into memory
@@ -58,8 +116,6 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
                 break
         fp.close()
 
-        #if(sample.shape[0] == 1):
-        #   sample = sample.T
     else:
         levels_orig, sample_info, sample = loaded[0], loaded[1], loaded[2]
 
@@ -67,8 +123,9 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
     if compression_assert is not None:
         levels_orig[1:,0] = -np.cumsum(compression_assert*np.ones(levels_orig.shape[0] - 1))
 
-    sample = sample[int(cut*sample.shape[0]):, :]
-    sample_info = sample_info[int(cut*sample_info.shape[0]):, :]
+    if cut != 0:
+        sample = sample[int(cut*sample.shape[0]):, :]
+        sample_info = sample_info[int(cut*sample_info.shape[0]):, :]
 
     if sample.shape[0] != sample_info.shape[0]:
         if not just_print_logz and not just_print_neff:
@@ -78,29 +135,9 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
         sample_info = sample_info[0:lowest, :]
 
     if plot:
+        plot_levels_vs_iteration(sample_info)
+        plot_compression_acceptance_vs_levels(levels_orig)
 
-        plt.figure()
-        plt.plot(sample_info[:,0])
-        plt.xlabel("Iteration")
-        plt.ylabel("Level")
-
-        plt.figure()
-        plt.subplot(2,1,1)
-        plt.plot(np.diff(levels_orig[:,0]))
-        plt.ylabel("Compression")
-        plt.xlabel("Level")
-        xlim = plt.gca().get_xlim()
-        plt.axhline(-1., color='r')
-        plt.axhline(-np.log(10.), color='g')
-        plt.ylim(ymax=0.05)
-
-        plt.subplot(2,1,2)
-        good = np.nonzero(levels_orig[:,4] > 0)[0]
-        plt.plot(levels_orig[good,3]/levels_orig[good,4])
-        plt.xlim(xlim)
-        plt.ylim([0., 1.])
-        plt.xlabel("Level")
-        plt.ylabel("MH Acceptance")
 
     # Convert to lists of tuples
     logl_levels = [(levels_orig[i,1], levels_orig[i, 2]) for i in range(0, levels_orig.shape[0])] # logl, tiebreaker
@@ -115,11 +152,12 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
     # Find sandwiching level for each sample
     sandwich = sample_info[:,0].copy().astype('int')
     for i in range(0, sample.shape[0]):
-        while sandwich[i] < levels_orig.shape[0]-1 and logl_samples[i] > logl_levels[sandwich[i] + 1]:
+        while (sandwich[i] < levels_orig.shape[0]-1
+               and logl_samples[i] > logl_levels[sandwich[i] + 1]):
             sandwich[i] += 1
 
+    # Make a monte carlo perturbation of the level compressions
     for z in range(0, numResampleLogX):
-        # Make a monte carlo perturbation of the level compressions
         levels = levels_orig.copy()
         compressions = -np.diff(levels[:,0])
         compressions *= compression_bias_min + (1. - compression_bias_min)*np.random.rand()
@@ -177,34 +215,11 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
         P_samples[:,z] = np.exp(logP_samples[:,z])
         H_estimates[z] = -logz_estimates[z] + np.sum(P_samples[:,z]*logl)
 
+        # depending on numResampleLogX, plotting all these will take a while
         if plot:
-            plt.figure()
+            plot_logL_weights_vs_logX(z, sample_info, levels, numResampleLogX,
+                                      logx_samples, logz_estimates, P_samples, zoom_in)
 
-            plt.subplot(2,1,1)
-            plt.plot(logx_samples[:,z], sample_info[:,1], 'b.', label='Samples')
-            plt.plot(levels[1:,0], levels[1:,1], 'r.', label='Levels')
-            plt.legend(numpoints=1, loc='lower left')
-            plt.ylabel('log(L)')
-            plt.title(str(z+1) + "/" + str(numResampleLogX) + ", log(Z) = " + str(logz_estimates[z][0]))
-            # Use all plotted logl values to set ylim
-            combined_logl = np.hstack([sample_info[:,1], levels[1:, 1]])
-            combined_logl = np.sort(combined_logl)
-            lower = combined_logl[int(0.1*combined_logl.size)]
-            upper = combined_logl[-1]
-            diff = upper - lower
-            lower -= 0.05*diff
-            upper += 0.05*diff
-            if zoom_in:
-                plt.ylim([lower, upper])
-
-            xlim = plt.gca().get_xlim()
-
-        if plot:
-            plt.subplot(2,1,2)
-            plt.plot(logx_samples[:,z], P_samples[:,z], 'b.')
-            plt.ylabel('Posterior Weights')
-            plt.xlabel('log(X)')
-            plt.xlim(xlim)
 
     P_samples = np.mean(P_samples, 1)
     P_samples = P_samples/np.sum(P_samples)
@@ -237,19 +252,18 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
             if np.random.rand() <= w[which]:
                 break
         posterior_sample[i,:] = sample[which,:]
-        # print sample_info.shape
         likelihoods[i,0] = sample_info[which,1]
     if save:
         np.savetxt("posterior_sample.txt", posterior_sample)
         np.savetxt("posterior_sample_lnlikelihoods.txt", likelihoods)
 
-    if plot:
+    if plot: 
         plt.show()
 
     if numResampleLogX == 1:
-        return [logz_estimate, H_estimate, logx_samples, posterior_sample]
+        return logz_estimate, H_estimate, logx_samples, P_samples, posterior_sample
     else:
-        return [logz_estimates, H_estimate, logx_samples, posterior_sample]
+        return logz_estimates, H_estimate, logx_samples, P_samples, posterior_sample
 
 
 def diffusion_plot():

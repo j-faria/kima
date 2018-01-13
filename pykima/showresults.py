@@ -12,11 +12,13 @@ def _parse_args():
     3 plots the joint posterior for semi-amplitudes, eccentricities
     and orbital periods;
     4 and 5 plot the posteriors for the GP hyperparameters;
+    6 plots random posterior samples in data-space, together with the data;
+    7 plots posteriors for the fiber_offset and vsys;
     """
     parser = argparse.ArgumentParser(prog='kima-showresults',
-                                     usage='%(prog)s [no,1,2,...,5]')
+                                     usage='%(prog)s [no,1,2,...,7]')
     parser.add_argument('options', nargs='*', 
-                        choices=['no','1','2','3','4','5',''],
+                        choices=['no','1','2','3','4','5','6','7', ''],
                         help=argshelp, default='')
     parser.add_argument('--logz', action='store_true',
                         help='just print the value of the log evidence')
@@ -38,7 +40,7 @@ def showresults(logz=False, neff=False, options=''):
         plot = True
 
     try:
-        evidence, H, logx_samples, posterior = \
+        evidence, H, logx_samples, p_samples, posterior = \
             postprocess(plot=plot, just_print_logz=logz, just_print_neff=neff)
     except IOError as e:
         print(e)
