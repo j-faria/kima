@@ -11,7 +11,6 @@ setup(name='pykima',
       install_requires=[
         'numpy',
         'scipy',
-        'pandas',
         'matplotlib>=1.5.3',
         'corner',
       ],

@@ -1,4 +1,4 @@
-from .dnest4 import postprocess
+from .classic import postprocess
 from .display import KimaResults
 import sys
 import argparse
@@ -20,42 +20,34 @@ def _parse_args():
     parser.add_argument('options', nargs='*', 
                         choices=['no','1','2','3','4','5','6','7', ''],
                         help=argshelp, default='')
-    parser.add_argument('--logz', action='store_true',
-                        help='just print the value of the log evidence')
-    parser.add_argument('--neff', action='store_true',
-                        help='just print the effective sample size')
+    # parser.add_argument('--logz', action='store_true',
+                        # help='just print the value of the log evidence')
+    # parser.add_argument('--neff', action='store_true',
+                        # help='just print the effective sample size')
     args = parser.parse_args()
     return args
 
 
-def showresults(logz=False, neff=False, options=''):
+def showresults(options=''):
     if not isinteractive():
         # use argparse to force correct CLI arguments
         args = _parse_args()
-        options, logz, neff = args.options, args.logz, args.neff
+        options = args.options
 
-    if ('no' in options) or logz or neff:
+    if 'no' in options:
         plot = False
     else:
         plot = True
 
     try:
-        evidence, H, logx_samples, p_samples, posterior = \
-            postprocess(plot=plot, just_print_logz=logz, just_print_neff=neff)
+        evidence, H, logx_samples = postprocess(plot=plot)
     except IOError as e:
         print(e)
         sys.exit(1)
 
-    if logz or neff:
-        return
-
-    if posterior.shape[0] > 5:
-        res = KimaResults(options)
-        if isinteractive(): 
-            return res
-    else:
-        print('Too few samples, keep running the model')
-
+    res = KimaResults(options)
+    if isinteractive(): 
+        return res
 
 if __name__ == '__main__':
     options = sys.argv

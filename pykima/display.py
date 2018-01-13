@@ -1,4 +1,3 @@
-import sys
 import re
 import os
 pathjoin = os.path.join
@@ -7,21 +6,13 @@ from .keplerian import keplerian
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import gaussian_kde
 import corner
-
-try:
-    from fast_histogram import histogram1d, histogram2d
-    fast_histogram_available = True
-except ImportError:
-    fast_histogram_available = False
 
 try:
     from astroML.plotting import hist_tools
     hist_tools_available = True
 except ImportError:
     hist_tools_available = False
-
 
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 mjup2mearth = 317.8284065946748
