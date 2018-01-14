@@ -85,7 +85,7 @@ def test_KimaResults():
 ## pykima.dnest4
 
 def test_logsumexp():
-    from pykima.dnest4 import logsumexp
+    from pykima.classic import logsumexp
     from scipy.special import logsumexp as s_logsumexp
 
     a = np.random.rand(10)
