@@ -18,7 +18,7 @@ OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
 
 
-all: main examples pythoncheck
+all: main examples
 
 %.o: %.cpp
 	$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
