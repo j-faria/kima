@@ -92,7 +92,7 @@ and the `Eigen` <!-- [@eigenweb]  -->
 packages,
 which are included as submodules in the repository.
 Other (Python) dependencies are the 
-`numpy`, `scipy`, `matplotlib`, `corner`, and `pandas` packages.
+`numpy`, `scipy`, `matplotlib`, and `corner` packages.
 Documentation can be found in the main repository,
 that also contains a set of examples 
 of how use **kima**, serving as the package's test suite.
