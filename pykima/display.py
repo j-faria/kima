@@ -127,16 +127,6 @@ class KimaResults(object):
         except IOError:
             self.sample = None
 
-        try:
-            spl = os.path.splitext(posterior_samples_file)
-            lnlikes_filename = '_lnlikelihoods'.join(spl)
-
-            self.posterior_sample_lnlikes = np.atleast_2d(np.loadtxt(lnlikes_filename))
-            self.max_likelihood_index = np.argmax(self.posterior_sample_lnlikes)
-        
-        except IOError:
-            print('Sample likelihoods not available!!! This is bad!')
-
 
         start_parameters = 0
         self.extra_sigma = self.posterior_sample[:, start_parameters]
