@@ -128,9 +128,3 @@ void RVConditionalPrior::print(std::ostream& out) const
     if(hyperpriors)
         out<<center<<' '<<width<<' '<<muK<<' ';
 }
-
-
-void RVConditionalPrior::print0(std::ostream& out) const
-{
-    out<<0.<<' '<<0.<<' '<<0.<<' ';
-}
