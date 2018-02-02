@@ -1,6 +1,3 @@
-[submodule "DNest4"]
-	path = DNest4
-	url = https://github.com/j-faria/DNest4.git
 [submodule "eigen"]
 	path = eigen
 	url = https://github.com/RLovelett/eigen.git
