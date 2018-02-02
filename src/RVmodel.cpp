@@ -31,31 +31,31 @@ void RVmodel::from_prior(RNG& rng)
     planets.from_prior(rng);
     planets.consolidate_diff();
     
-    background = Cprior->rvs(rng);
-    extra_sigma = Jprior->rvs(rng);
+    background = Cprior->generate(rng);
+    extra_sigma = Jprior->generate(rng);
 
     if(obs_after_HARPS_fibers)
         // between 0 m/s and 50 m/s
         fiber_offset = 50*rng.rand();
 
     if(trend)
-        slope = slope_prior->rvs(rng);
+        slope = slope_prior->generate(rng);
 
     if(GP)
     {
-        eta1 = exp(log_eta1_prior->rvs(rng)); // m/s
+        eta1 = exp(log_eta1_prior->generate(rng)); // m/s
         // eta1 = exp(log(1E-5) + log(1E-1)*rng.rand());
         //eta1 = sqrt(3.); // m/s
 
-        eta2 = exp(log_eta2_prior->rvs(rng)); // days
+        eta2 = exp(log_eta2_prior->generate(rng)); // days
         // eta2 = exp(log(1E-6) + log(1E6)*rng.rand());
         //eta2 = 50.; //days
 
-        eta3 = eta3_prior->rvs(rng); // days
+        eta3 = eta3_prior->generate(rng); // days
         // eta3 = 15. + 35.*rng.rand();
         //eta3 = 20.; // days
 
-        eta4 = exp(log_eta4_prior->rvs(rng));
+        eta4 = exp(log_eta4_prior->generate(rng));
         // exp(log(1E-5) + log(1E5)*rng.rand());
         //eta4 = 0.5;
     }
