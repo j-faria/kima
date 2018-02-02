@@ -29,9 +29,9 @@ void RVConditionalPrior::from_prior(RNG& rng)
 {
     if(hyperpriors)
     {
-        center = log_muP_prior->rvs(rng);
-        width = wP_prior->rvs(rng);
-        muK = exp(log_muK_prior->rvs(rng));
+        center = log_muP_prior->generate(rng);
+        width = wP_prior->generate(rng);
+        muK = exp(log_muK_prior->generate(rng));
     }
 }
 
@@ -93,7 +93,7 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
            wprior->log_pdf(vec[4]);
 }
 
-void RVConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
+void RVConditionalPrior::from_uniform(std::vector<double>& vec) const
 {
     if(hyperpriors)
     {
@@ -108,7 +108,7 @@ void RVConditionalPrior::from_uniform(std::vector<double>& vec, int id) const
     vec[4] = wprior->cdf_inverse(vec[4]);
 }
 
-void RVConditionalPrior::to_uniform(std::vector<double>& vec, int id) const
+void RVConditionalPrior::to_uniform(std::vector<double>& vec) const
 {
     if(hyperpriors)
     {
