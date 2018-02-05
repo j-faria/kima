@@ -4,7 +4,7 @@
 #include "DNest4.h"
 
 Uniform *Cprior = new Uniform(-1000, 1000);
-ModifiedJeffreys *Jprior = new ModifiedJeffreys(1.0, 99.); // additional white noise, m/s
+ModifiedLogUniform *Jprior = new ModifiedLogUniform(1.0, 99.); // additional white noise, m/s
 
 // this default prior for the slope of a linear trend is awful!
 // the prior probably should depend on the data,
@@ -12,8 +12,8 @@ ModifiedJeffreys *Jprior = new ModifiedJeffreys(1.0, 99.); // additional white n
 Uniform *slope_prior = new Uniform(-10, 10);
 
 
-Jeffreys *Pprior = new Jeffreys(1.0, 1E5); // days
-ModifiedJeffreys *Kprior = new ModifiedJeffreys(1.0, 2E3); // m/s
+LogUniform *Pprior = new LogUniform(1.0, 1E5); // days
+ModifiedLogUniform *Kprior = new ModifiedLogUniform(1.0, 2E3); // m/s
 
 Uniform *eprior = new Uniform(0., 1.);
 Uniform *phiprior = new Uniform(0.0, 2*M_PI);
