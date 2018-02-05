@@ -8,7 +8,7 @@ fi
 
 start=`date +%s.%N`
 
-./main -t 4 -s $SEED
+./kima -t 4 -s $SEED
 
 e=$? # the return code of the last command
 
