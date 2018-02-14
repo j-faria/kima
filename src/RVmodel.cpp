@@ -467,7 +467,7 @@ string RVmodel::description() const
 
     desc += "Np\t";
 
-    if (planets.get_components().size()>0)
+    if (planets.get_max_num_components()>0)
         desc += "P\tK\tphi\tecc\tchi\t";
 
     desc += "staleness\tvsys";
