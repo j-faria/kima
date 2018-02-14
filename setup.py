@@ -4,10 +4,12 @@
 from setuptools import setup
 
 setup(name='pykima',
-      version='0.1',
+      version=open('VERSION').read().strip(), # same as kima
       description='Analysis of results from kima',
       author='João Faria',
       author_email='joao.faria@astro.up.pt',
+      license='MIT',
+      url='https://github.com/j-faria/kima/tree/master/pykima',
       install_requires=[
         'numpy',
         'scipy',
