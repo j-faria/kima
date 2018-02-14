@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/j-faria/kima.svg?branch=master)](https://travis-ci.org/j-faria/kima)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/j-faria/kima/blob/master/LICENSE)
 [![Coverage Status](https://coveralls.io/repos/github/j-faria/kima/badge.svg?branch=master)](https://coveralls.io/github/j-faria/kima?branch=master)
-
+[![status](https://joss.theoj.org/papers/b396d6f8c5566bb67844f05bda0cbc8a/status.svg)](https://joss.theoj.org/papers/b396d6f8c5566bb67844f05bda0cbc8a)
 
 <img src="logo/logo.png" width="200"
      alt="Logo created by Solène Ulmer-Moll">
