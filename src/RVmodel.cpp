@@ -25,6 +25,10 @@ extern ContinuousDistribution *log_eta2_prior;
 extern ContinuousDistribution *eta3_prior;
 extern ContinuousDistribution *log_eta4_prior;
 
+// from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
+// mean, std = 14.641789473684208, 2.7783035258938971
+//Normal *fiber_offset_prior = new Normal(15., 3.);
+Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
 
 void RVmodel::from_prior(RNG& rng)
 {
@@ -35,8 +39,7 @@ void RVmodel::from_prior(RNG& rng)
     extra_sigma = Jprior->generate(rng);
 
     if(obs_after_HARPS_fibers)
-        // between 0 m/s and 50 m/s
-        fiber_offset = 50*rng.rand();
+        fiber_offset = fiber_offset_prior->generate(rng);
 
     if(trend)
         slope = slope_prior->generate(rng);
@@ -305,11 +308,8 @@ double RVmodel::perturb(RNG& rng)
         Cprior->perturb(background, rng);
 
         // propose new fiber offset
-        if (obs_after_HARPS_fibers) 
-        {
-            fiber_offset += 50*rng.randh();
-            wrap(fiber_offset, 0., 50);
-        }
+        if (obs_after_HARPS_fibers)
+            fiber_offset_prior->perturb(fiber_offset, rng);
 
         // propose new slope
         if(trend)
