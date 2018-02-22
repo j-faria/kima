@@ -47,9 +47,10 @@ script:
   # do tests
   - python -c "import pykima"
   - kima-showresults -h
+  - make test
   # - pytest --slow tests
   - py.test --slow -v --cov=pykima tests
-
+  
 
 after_success: coveralls
 
