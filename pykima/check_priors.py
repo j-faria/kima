@@ -1,5 +1,6 @@
 import sys
-import numpy as np 
+import numpy as np
+import scipy.stats as st
 import matplotlib.pyplot as plt
 import argparse
 
@@ -10,7 +11,7 @@ def _parse_args():
     Remember to run kima with the maximum number of levels
     set to 1 (and save interval = 1 to speed things up).
     Then, sample.txt contains samples from the prior.
-    This script plots histograms of each column of that file.
+    This script simply plots histograms of each column of that file.
     """
     parser = argparse.ArgumentParser(description=desc,
                                      prog='kima-checkpriors',
@@ -20,25 +21,16 @@ def _parse_args():
                         help='which column to use for histogram')
     parser.add_argument('--log', action='store_true',
                         help='plot the logarithm of the samples')
+    parser.add_argument('--code', nargs=1, type=str,
+                        help='code to generate "theoretical" samples '\
+                             'to compare to the prior. \n'\
+                             'Assign samples to an iterable called `samples`. '\
+                             'Use numpy and scipy.stats as `np` and `st`, respectively. '\
+                             'Number of prior samples in sample.txt is in variable `nsamples`.')
+
     args = parser.parse_args()
     return args
 
-
-def do_plot(data, save=None, xlabel=None, bins=None):
-    
-    fig, ax = plt.subplots(1,1)
-    if bins is None:
-        bins = 100
-
-    ax.hist(data, bins=bins, color='k', histtype='step', align='mid',
-            range=[data.min()-0.2*data.ptp(), data.max()+0.2*data.ptp()],
-            )
-
-    ax.set_xlabel(xlabel)
-    if save:
-        fig.savefig(save)
-    else:
-        return fig, ax
 
 def main():
     args = _parse_args()
@@ -47,27 +39,42 @@ def main():
 
     with open('sample.txt') as f:
         firstline = f.readline()
-    firstline = firstline.strip().replace('#','')
+    firstline = firstline.strip().replace('#', '')
     names = firstline.split()
 
     try:
-        name = names[column-1]
+        name = names[column - 1]
         print 'Histogram of column %d: %s' % (column, name)
     except IndexError:
         print 'Histogram of column %d' % column
 
-    data = np.loadtxt('sample.txt', usecols=(column-1,))
+    data = np.loadtxt('sample.txt', usecols=(column - 1,))
     data = data[np.nonzero(data)[0]]
-    print ('  number of samples: %d' % data.size)
+    nsamples = data.size
+    print ('  number of samples: %d' % nsamples)
     print ('  max value: %f' % data.max())
     print ('  min value: %f' % data.min())
-    
+
     xlabel = name
     if log:
         data = np.log(data)
         xlabel = 'log ' + name
 
-    do_plot(data, xlabel=xlabel)
+    fig, ax = plt.subplots(1, 1)
+    ax.set_xlabel(xlabel)
+
+    ax.hist(data, bins=100, color='k', histtype='step', align='mid',
+            range=[data.min() - 0.2 * data.ptp(),
+                   data.max() + 0.2 * data.ptp()],
+            )
+
+    if args.code:
+        exec args.code[0] in globals(), locals()
+        ax.hist(samples, alpha=0.3, bins=100,
+                range=[data.min() - 0.2 * data.ptp(),
+                       data.max() + 0.2 * data.ptp()],
+                )
+
     plt.show()
 
 
