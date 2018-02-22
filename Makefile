@@ -18,7 +18,7 @@ $(SRCDIR)/main.cpp
 
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
-
+EXAMPLES = examples/BL2009 examples/CoRoT7 examples/default_priors
 
 all: main examples
 
@@ -66,6 +66,10 @@ else
 	make -C $(DNEST4_PATH) libdnest4.a
 endif
 
+
+test: examples
+	@echo "\033[0;33m Running tests \033[0m"
+	@./tests/run_tests.sh
 
 clean:
 	rm -f main $(OBJS)
