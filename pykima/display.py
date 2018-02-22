@@ -60,11 +60,11 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
 
 class KimaResults(object):
     def __init__(self, options, data_file=None, 
-                 fiber_offset=None, hyperpriors=None,
+                 fiber_offset=None, hyperpriors=None, trend=None, GPmodel=None,
                  posterior_samples_file='posterior_sample.txt'):
 
         self.options = options
-        debug = 'debug' in self.options
+        debug = 'debug' in options
 
         pwd = os.getcwd()
         path_to_this_file = os.path.abspath(__file__)
@@ -132,16 +132,18 @@ class KimaResults(object):
         self.extra_sigma = self.posterior_sample[:, start_parameters]
 
         # find trend in the compiled model
-        try:
-            with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                self.trend = 'bool trend = true' in f.read()
-        except IOError:
-            with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                self.trend = 'bool trend = true' in f.read()
-        
+        if trend is None:
+            try:
+                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                    self.trend = 'bool trend = true' in f.read()
+            except IOError:
+                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                    self.trend = 'bool trend = true' in f.read()
+        else:
+            self.trend = trend
+
         if debug: 
             print('trend:', self.trend)
-
 
         if self.trend:
             n_trend = 1
@@ -170,20 +172,23 @@ class KimaResults(object):
 
         if self.fiber_offset:
             n_offsets = 1
-            offset_index = start_parameters+n_offsets
+            offset_index = start_parameters+n_offsets+n_trend
             self.offset = self.posterior_sample[:, offset_index]
         else:
             n_offsets = 0
 
 
         # find GP in the compiled model
-        try:
-            with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                self.GPmodel = 'bool GP = true' in f.read()
-        except IOError:
-            with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                self.GPmodel = 'bool GP = true' in f.read()
-        
+        if GPmodel is None:
+            try:
+                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
+                    self.GPmodel = 'bool GP = true' in f.read()
+            except IOError:
+                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
+                    self.GPmodel = 'bool GP = true' in f.read()
+        else:
+            self.GPmodel = GPmodel
+
         if debug:
             print('GP model:', self.GPmodel)
 
@@ -234,7 +239,8 @@ class KimaResults(object):
                            '3': [self.make_plot3, {}],
                            '4': [self.make_plot4, {}],
                            '5': [self.make_plot5, {}],
-                           '6': [self.plot_random_planets, {'show_vsys':True}],
+                           '6': [self.plot_random_planets, 
+                                    {'show_vsys':True, 'show_trend':True}],
                            '7': [(self.hist_offset,self.hist_vsys), {}],
                           }
 
@@ -534,6 +540,9 @@ class KimaResults(object):
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
         labels = ['$s$'] + ['$\eta_%d$' % (i+1) for i in range(len(available_etas))]
+        units = ['m/s', 'm/s', 'days', 'days', None]
+        labels = [l+'(%s)'%unit for l,unit in zip(labels, units)]
+
 
         ### color code by number of planets
         # self.corner1 = None
@@ -570,7 +579,6 @@ class KimaResults(object):
             variables.append(getattr(self, eta))
 
         self.post_samples = np.vstack(variables).T
-        # print self.post_samples.shape
 
         ranges = [1.]*(len(available_etas)+1)
         ranges[3] = (self.pmin, self.pmax)
@@ -581,11 +589,12 @@ class KimaResults(object):
                          # fill_contours=True, smooth=True,
                          # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
                          hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-                         hist_kwargs={'normed':True},
-                         range=ranges, shared_axis=True, data_kwargs={'alpha':1},
+                         hist_kwargs={'normed':True}, 
+                         range=ranges, data_kwargs={'alpha':1},
                          )
 
         if show:
+            self.corner1.tight_layout()
             plt.show()
         
         if save:
@@ -695,8 +704,8 @@ class KimaResults(object):
         plt.show()
 
 
-    def plot_random_planets(self, ncurves=50, over=0.1, 
-                            pmin=None, pmax=None, show_vsys=False):
+    def plot_random_planets(self, ncurves=50, over=0.1, pmin=None, pmax=None, 
+                            show_vsys=False, show_trend=False):
         """
         Display the RV data together with curves from the posterior predictive.
         A total of `ncurves` random samples are chosen,
@@ -740,6 +749,12 @@ class KimaResults(object):
 
             vsys = self.posterior_sample[mask][i, -1]
             v += vsys
+            if self.trend:
+                v += self.trendpars[i]*(tt - t[0])
+                if show_trend:
+                    ax.plot(tt, vsys+self.trendpars[i]*(tt - t[0]), 
+                            alpha=0.2, color='m', ls=':')
+
             ax.plot(tt, v, alpha=0.2, color='k')
             if show_vsys:
                 ax.plot(t, vsys*np.ones_like(t), alpha=0.2, color='r', ls='--')

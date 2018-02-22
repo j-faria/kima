@@ -433,11 +433,11 @@ void RVmodel::print(std::ostream& out) const
 
     out<<extra_sigma<<'\t';
     
-    if (obs_after_HARPS_fibers)
-        out<<fiber_offset<<'\t';
-
     if(trend)
         out<<slope<<'\t'; //<<quad*1E8<<'\t';
+
+    if (obs_after_HARPS_fibers)
+        out<<fiber_offset<<'\t';
 
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
@@ -454,10 +454,10 @@ string RVmodel::description() const
     
     desc += "extra_sigma\t";
 
-    if (obs_after_HARPS_fibers)
-        desc += "fiber_offset\t";
     if(trend)
         desc += "slope\t";
+    if (obs_after_HARPS_fibers)
+        desc += "fiber_offset\t";
     if(GP)
         desc += "eta1\teta2\teta3\teta4\t";
 
