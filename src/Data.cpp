@@ -114,6 +114,7 @@ void Data::load(const char* filename, const char* units, int skip)
 
   // How many points did we read?
   printf("# Loaded %d data points from file %s\n", t.size(), filename);
+  if(units == "kms") printf("# Multiplied all RVs by 1000; units are now m/s.\n");
 
   for(unsigned i=0; i<data.size(); i++)
   {
