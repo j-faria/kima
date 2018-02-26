@@ -126,3 +126,17 @@ void Data::load(const char* filename, const char* units, int skip)
   }
 
   }
+
+
+
+double Data::get_RV_var() const
+{
+    double sum = std::accumulate(std::begin(y), std::end(y), 0.0);
+    double mean =  sum / y.size();
+
+    double accum = 0.0;
+    std::for_each (std::begin(y), std::end(y), [&](const double d) {
+        accum += (d - mean) * (d - mean);
+    });
+    return accum / (y.size()-1);
+}

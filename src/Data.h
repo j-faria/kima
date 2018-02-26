@@ -5,8 +5,6 @@
 #include <algorithm>
 #include <cmath>
 
-#include "DNest4.h"
-
 class Data
 {
 	private:
@@ -30,8 +28,8 @@ class Data
 		double get_y_min() const { return *std::min_element(y.begin(), y.end()); }
 		double get_y_max() const { return *std::max_element(y.begin(), y.end()); }
 		double get_RV_span() const { return get_y_max() - get_y_min(); }
-		double get_RV_var() const { return DNest4::variance(y); }
-		double get_RV_std() const { return std::sqrt(DNest4::variance(y)); }
+		double get_RV_var() const;
+		double get_RV_std() const { return std::sqrt(get_RV_var()); }
 		
 		const std::vector<double>& get_sig() const { return sig; }
 		double topslope() const {return std::abs(get_y_max() - get_y_min()) / (t.back() - t.front());}
