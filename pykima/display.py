@@ -473,6 +473,11 @@ class KimaResults(object):
         and orbital period and eccentricity and orbital period.
         If `points` is True, plot each posterior sample, else plot hexbins
         """
+        
+        if self.max_components == 0:
+            print('Model has no planets! make_plot3() doing nothing...')
+            return
+
         if 'hexbin' in self.options:
             points = False
 
@@ -532,7 +537,7 @@ class KimaResults(object):
         """ Corner plot for the GP hyperparameters """
 
         if not self.GPmodel:
-            print('Model does not have GP! make_plot4() doing nothing...')
+            print('Model does not have GP! make_plot5() doing nothing...')
             return
 
         self.pmin = 10.
