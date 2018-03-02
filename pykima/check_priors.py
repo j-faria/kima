@@ -46,6 +46,7 @@ def main():
         name = names[column - 1]
         print 'Histogram of column %d: %s' % (column, name)
     except IndexError:
+        name = 'column %d' % column
         print 'Histogram of column %d' % column
 
     data = np.loadtxt('sample.txt', usecols=(column - 1,))
