@@ -30,6 +30,7 @@ extern ContinuousDistribution *log_eta4_prior;
 Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
 //Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
 
+const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVmodel::from_prior(RNG& rng)
 {
@@ -153,8 +154,9 @@ void RVmodel::calculate_C()
 
 void RVmodel::calculate_mu()
 {
+    auto data = Data::get_instance();
     // Get the times from the data
-    const vector<double>& t = Data::get_instance().get_t();
+    const vector<double>& t = data.get_t();
 
     // Update or from scratch?
     bool update = (planets.get_added().size() < planets.get_components().size()) &&
@@ -180,7 +182,7 @@ void RVmodel::calculate_mu()
 
         if(obs_after_HARPS_fibers)
         {
-            for(size_t i=Data::get_instance().index_fibers; i<t.size(); i++)
+            for(size_t i=data.index_fibers; i<t.size(); i++)
                 //if (i>=Data::get_instance().index_fibers) mu[i] += fiber_offset;
                 mu[i] += fiber_offset;
         }
@@ -225,7 +227,8 @@ void RVmodel::calculate_mu()
 
 double RVmodel::perturb(RNG& rng)
 {
-    const vector<double>& t = Data::get_instance().get_t();
+    auto data = Data::get_instance();
+    const vector<double>& t = data.get_t();
     double logH = 0.;
     double fraction = 0.5;
 
@@ -333,12 +336,11 @@ double RVmodel::perturb(RNG& rng)
 
 double RVmodel::log_likelihood() const
 {
-    int N = Data::get_instance().get_y().size();
     double logL = 0.;
-    /** The following code calculates the log likelihood in the case of a GP model */
-
-    // Get the data
-    const vector<double>& y = Data::get_instance().get_y();
+    auto data = Data::get_instance();
+    int N = data.N();
+    const vector<double>& y = data.get_y();
+    const vector<double>& sig = data.get_sig();
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -346,6 +348,7 @@ double RVmodel::log_likelihood() const
 
     if(GP)
     {
+        /** The following code calculates the log likelihood in the case of a GP model */
         // residual vector (observed y minus model y)
         VectorXd residual(y.size());
         for(size_t i=0; i<y.size(); i++)
@@ -388,8 +391,7 @@ double RVmodel::log_likelihood() const
     } 
     else
     {
-
-        /** The following code calculates the log likelihood in the case of a t-Student model without correlated noise*/
+        /** The following code calculates the log likelihood in the case of a t-Student model*/
         //  for(size_t i=0; i<y.size(); i++)
         //  {
         //      var = sig[i]*sig[i] + extra_sigma*extra_sigma;
@@ -399,9 +401,6 @@ double RVmodel::log_likelihood() const
         //  }
 
         /** The following code calculates the log likelihood in the case of a Gaussian likelihood*/
-        const vector<double>& sig = Data::get_instance().get_sig();
-
-        double halflog2pi = 0.5*log(2.*M_PI);
         double var;
         for(size_t i=0; i<y.size(); i++)
         {
@@ -410,7 +409,7 @@ double RVmodel::log_likelihood() const
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
         }
 
-    } //GP
+    }
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
