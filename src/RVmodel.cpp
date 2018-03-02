@@ -233,105 +233,140 @@ double RVmodel::perturb(RNG& rng)
     auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
     double logH = 0.;
-    double fraction = 0.5;
 
-    if(rng.rand() <= 0.5)
+    if(GP)
     {
-        logH += planets.perturb(rng);
-        planets.consolidate_diff();
-        calculate_mu();
-    }
-
-    if(GP) 
-    {
-        if(rng.rand() <= 0.25)
+        if(rng.rand() <= 0.5)
+        {
+            logH += planets.perturb(rng);
+            planets.consolidate_diff();
+            calculate_mu();
+        }
+        else if(rng.rand() <= 0.5)
         {
             if(rng.rand() <= 0.25)
             {
-                double log_eta1 = log(eta1);
+                log_eta1 = log(eta1);
                 log_eta1_prior->perturb(log_eta1, rng);
                 eta1 = exp(log_eta1);
-                //eta1 = log(eta1);
-                //eta1 += log(1E4)*rng.randh(); // range of prior support
-                //wrap(eta1, log(1E-5), log(1E-1)); // wrap around inside prior
-                //eta1 = exp(eta1);
             }
             else if(rng.rand() <= 0.33330)
             {
-                double log_eta2 = log(eta2);
+                log_eta2 = log(eta2);
                 log_eta2_prior->perturb(log_eta2, rng);
                 eta2 = exp(log_eta2);
-                //eta2 = log(eta2);
-                //eta2 += log(1E12)*rng.randh(); // range of prior support
-                //wrap(eta2, log(1E-6), log(1E6)); // wrap around inside prior
-                //eta2 = exp(eta2);
             }
             else if(rng.rand() <= 0.5)
             {
                 eta3_prior->perturb(eta3, rng);
-                //eta3 += 35.*rng.randh(); // range of prior support
-                //wrap(eta3, 15., 50.); // wrap around inside prior
             }
             else
             {
-                // eta4 = 1.0;
-                double log_eta4 = log(eta4);
+                log_eta4 = log(eta4);
                 log_eta4_prior->perturb(log_eta4, rng);
                 eta4 = exp(log_eta4);
-                //eta4 = log(eta4);
-                //eta4 += log(1E10)*rng.randh(); // range of prior support
-                //wrap(eta4, log(1E-5), log(1E5)); // wrap around inside prior
-                //eta4 = exp(eta4);
             }
 
             calculate_C();
         }
-    } // GP
-
-
-    if(GP) fraction = 0.125;
-
-    if(rng.rand() <= fraction)
-    {
-        Jprior->perturb(extra_sigma, rng);
-
-        if(GP)
+        else if(rng.rand() <= 0.5)
+        {
+            Jprior->perturb(extra_sigma, rng);
             calculate_C();
+        }
+        else
+        {
+            for(size_t i=0; i<mu.size(); i++)
+            {
+                mu[i] -= background;
+                if(trend) {
+                    mu[i] -= slope*(t[i]-data.get_t_middle());
+                }
+                if (obs_after_HARPS_fibers) {
+                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
+                }
+            }
+
+            Cprior->perturb(background, rng);
+
+            // propose new fiber offset
+            if (obs_after_HARPS_fibers) {
+                fiber_offset_prior->perturb(fiber_offset, rng);
+            }
+
+            // propose new slope
+            if(trend) {
+                slope_prior->perturb(slope, rng);
+            }
+
+            for(size_t i=0; i<mu.size(); i++)
+            {
+                mu[i] += background;
+                if(trend) {
+                    mu[i] += slope*(t[i]-data.get_t_middle());
+                }
+
+                if (obs_after_HARPS_fibers) {
+                    if (i >= data.index_fibers) mu[i] += fiber_offset;
+                }
+            }
+        }
+
     }
 
-    if(rng.rand() <= fraction)
+    else
     {
-
-        for(size_t i=0; i<mu.size(); i++)
+        if(rng.rand() <= 0.75)
         {
-            mu[i] -= background;
-            if(trend)
-                mu[i] -= slope*(t[i]-t[0]);
-
-            if (obs_after_HARPS_fibers)
-                if (i >= Data::get_instance().index_fibers) mu[i] -= fiber_offset;
+            logH += planets.perturb(rng);
+            planets.consolidate_diff();
+            calculate_mu();
         }
-
-        Cprior->perturb(background, rng);
-
-        // propose new fiber offset
-        if (obs_after_HARPS_fibers)
-            fiber_offset_prior->perturb(fiber_offset, rng);
-
-        // propose new slope
-        if(trend)
-            slope_prior->perturb(slope, rng);
-
-        for(size_t i=0; i<mu.size(); i++)
+        else if(rng.rand() <= 0.5)
         {
-            mu[i] += background;
-            if(slope)
-                mu[i] += slope*(t[i]-t[0]);
+            //cout << "J: " << extra_sigma;
+            Jprior->perturb(extra_sigma, rng);
+            //cout << " --> " << extra_sigma << endl;
+        }
+        else
+        {
+            for(size_t i=0; i<mu.size(); i++)
+            {
+                mu[i] -= background;
+                if(trend) {
+                    mu[i] -= slope*(t[i]-data.get_t_middle());
+                }
+                if (obs_after_HARPS_fibers) {
+                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
+                }
+            }
 
-            if (obs_after_HARPS_fibers)
-                if (i >= Data::get_instance().index_fibers) mu[i] += fiber_offset;
+            Cprior->perturb(background, rng);
+
+            // propose new fiber offset
+            if (obs_after_HARPS_fibers) {
+                fiber_offset_prior->perturb(fiber_offset, rng);
+            }
+
+            // propose new slope
+            if(trend) {
+                slope_prior->perturb(slope, rng);
+            }
+
+            for(size_t i=0; i<mu.size(); i++)
+            {
+                mu[i] += background;
+                if(trend) {
+                    mu[i] += slope*(t[i]-data.get_t_middle());
+                }
+
+                if (obs_after_HARPS_fibers) {
+                    if (i >= data.index_fibers) mu[i] += fiber_offset;
+                }
+            }
         }
     }
+
 
     return logH;
 }
