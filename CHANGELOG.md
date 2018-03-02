@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 We're still in 0.x.x so anything may change at any time. 
 The API should not be considered stable.
 
-## [Unreleased]
+### [Unreleased]
 
 
 ### [0.1.2] - 2018-03-02
