@@ -174,17 +174,20 @@ void RVmodel::calculate_mu()
     {
         mu.assign(mu.size(), background);
         staleness = 0;
-        if(trend)
+        if(trend) 
         {
             for(size_t i=0; i<t.size(); i++)
-                mu[i] += slope*(t[i] - t[0]); //+ quad*(t[i] - t[0])*(t[i] - t[0]);
+            {
+                mu[i] += slope*(t[i] - data.get_t_middle());
+            }
         }
 
         if(obs_after_HARPS_fibers)
         {
             for(size_t i=data.index_fibers; i<t.size(); i++)
-                //if (i>=Data::get_instance().index_fibers) mu[i] += fiber_offset;
+            {
                 mu[i] += fiber_offset;
+            }
         }
 
 
