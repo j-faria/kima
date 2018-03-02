@@ -27,8 +27,9 @@ extern ContinuousDistribution *log_eta4_prior;
 
 // from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
 // mean, std = 14.641789473684208, 2.7783035258938971
-//Normal *fiber_offset_prior = new Normal(15., 3.);
-Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
+Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
+//Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
+
 
 void RVmodel::from_prior(RNG& rng)
 {
