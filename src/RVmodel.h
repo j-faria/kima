@@ -34,6 +34,7 @@ class RVmodel
 
         // Parameters for the quasi-periodic extra noise
         double eta1, eta2, eta3, eta4, eta5;
+        double log_eta1, log_eta2, log_eta3, log_eta4, log_eta5;
         double a,b,c,P;
 
         /*celerite::solver::CholeskySolver<double> solver;
@@ -82,6 +83,7 @@ class RVmodel
 
         // Return string with column information
         std::string description() const;
+
 };
 
 #endif
