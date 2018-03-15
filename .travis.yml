@@ -41,13 +41,15 @@ install:
   # compile the C++
   - make
   # and now the pykima package
-  - python setup.py develop
+  - python setup.py install
 
 script:
-  # do tests
+  # test pykima installation
   - python -c "import pykima"
+  - cd; python -c "import pykima"; cd -
   - kima-showresults -h
-  # - pytest --slow tests
+  - kima-checkpriors -h
+  # run tests
   - py.test --slow -v --cov=pykima tests
 
 
