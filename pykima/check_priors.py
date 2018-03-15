@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys
 import numpy as np
 import scipy.stats as st
@@ -44,10 +45,10 @@ def main():
 
     try:
         name = names[column - 1]
-        print 'Histogram of column %d: %s' % (column, name)
+        print ('Histogram of column %d: %s' % (column, name))
     except IndexError:
         name = 'column %d' % column
-        print 'Histogram of column %d' % column
+        print ('Histogram of column %d' % column)
 
     data = np.loadtxt('sample.txt', usecols=(column - 1,))
     data = data[np.nonzero(data)[0]]
@@ -70,7 +71,7 @@ def main():
             )
 
     if args.code:
-        exec args.code[0] in globals(), locals()
+        exec (args.code[0], globals(), locals())
         ax.hist(samples, alpha=0.3, bins=100,
                 range=[data.min() - 0.2 * data.ptp(),
                        data.max() + 0.2 * data.ptp()],

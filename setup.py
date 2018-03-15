@@ -10,6 +10,7 @@ setup(name='pykima',
       author_email='joao.faria@astro.up.pt',
       license='MIT',
       url='https://github.com/j-faria/kima/tree/master/pykima',
+      packages=['pykima'],
       install_requires=[
         'numpy',
         'scipy',
