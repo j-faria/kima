@@ -29,16 +29,39 @@ def apply_argsort(arr1, arr2, axis=-1):
     i[axis] = arr1.argsort(axis)
     return arr2[i]
 
-def percentile68_ranges(a):
-    lp, median, up = np.percentile(a, [16, 50, 84])
+def percentile68_ranges(a, min=None, max=None):
+    if min is None and max is None:
+        mask = np.ones_like(a, dtype=bool)
+    elif min is None:
+        mask = a < max
+    elif max is None:
+        mask = a > min
+    else:
+        mask = (a > min) & (a < max)
+    lp, median, up = np.percentile(a[mask], [16, 50, 84])
     return (median, up-median, median-lp)
 
-def percentile68_ranges_latex(a):
-    lp, median, up = np.percentile(a, [16, 50, 84])
-    return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, up-median, median-lp)
+def percentile68_ranges_latex(a, min=None, max=None):
+    median, plus, minus = percentile68_ranges(a, min, max)
+    return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, plus, minus)
+
+
+def clipped_mean(arr, min, max):
+    """ Mean of `arr` between `min` and `max` """
+    mask = (arr > min) & (arr < max)
+    return np.mean(arr[mask])
+
+def clipped_std(arr, min, max):
+    """ std of `arr` between `min` and `max` """
+    mask = (arr > min) & (arr < max)
+    return np.std(arr[mask])
 
 
 def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
+    """
+    Calculate the planet (minimuum) mass given
+    period `P`, semi-amplitude `K` and eccentricity `e`.
+    """
     if verbose: print('Using star mass = %s solar mass' % star_mass)
 
     if isinstance(P, float):
@@ -478,9 +501,6 @@ class KimaResults(object):
             print('Model has no planets! make_plot3() doing nothing...')
             return
 
-        if 'hexbin' in self.options:
-            points = False
-
         if self.log_period:
             T = np.exp(self.T)
             print('exponentiating period!')
@@ -489,8 +509,7 @@ class KimaResults(object):
         A, E = self.A, self.E
 
 
-        fig, axs = plt.subplots(2, 1, sharex=True)
-        ax1, ax2 = axs
+        _, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
         if points:
             ax1.loglog(T, A, '.', markersize=1)
@@ -503,16 +522,14 @@ class KimaResults(object):
         if points:
             ax2.semilogx(T, E, 'b.', markersize=2)
         else:
-            ax2.hexbin(T, E, gridsize=50, 
-                       bins='log', xscale='log',
+            ax2.hexbin(T, E, gridsize=50, bins='log', xscale='log',
                        cmap=plt.get_cmap('afmhot_r'))
         
-        ax1.set_ylabel(r'Semi-amplitude (m/s)')
+        ax1.set_ylabel('Semi-amplitude [m/s]')
         ax2.set_ylabel('Eccentricity')
-        ax2.set_xlabel(r'(Period/days)')
+        ax2.set_xlabel('Period [days]')
         ax2.set_ylim(0, 1)
         ax2.set_xlim([0.1, 1e7])
-
         plt.show()
 
 
@@ -742,7 +759,7 @@ class KimaResults(object):
             v = np.zeros_like(tt)
             pars = samples[i, :].copy()
             nplanets = pars.size / self.n_dimensions
-            for j in range(nplanets):
+            for j in range(int(nplanets)):
                 P = pars[j + 0*self.max_components]
                 K = pars[j + 1*self.max_components]
                 phi = pars[j + 2*self.max_components]
