@@ -5,8 +5,8 @@
 #include <sstream>
 #include <numeric>
 #include <algorithm>
-#include <string>
 #include <vector>
+#include <string>
 
 using namespace std;
 
@@ -52,8 +52,9 @@ istream& operator >> ( istream& ins, data_t& data )
   {
   // used to hold the header
   data_t header;
+  
   // make sure that the returned data only contains the CSV data we read here
-  data.clear();
+  // data.clear();
 
   // For every record we can read from the file, append it to our resulting data
   // except if it's in the header
@@ -76,7 +77,8 @@ void Data::load(const char* filename, const char* units, int skip)
   Read in tab/space separated file `filename` with columns
   time  vrad  error
   ...   ...   ...
-  where vrad and error are in `units` (either "kms" or "ms")
+  where vrad and error are in `units` (either "kms" or "ms").
+  Skip the first `skip` lines.
   */
   {
 
@@ -90,7 +92,6 @@ void Data::load(const char* filename, const char* units, int skip)
   // Read the file into the data container
   ifstream infile( filename );
   infile >> data;
-  //operator>>(infile, data, skip);
 
   // Complain if something went wrong.
   if (!infile.eof())
@@ -119,7 +120,8 @@ void Data::load(const char* filename, const char* units, int skip)
 
   // How many points did we read?
   printf("# Loaded %d data points from file %s\n", t.size(), filename);
-  if(units == "kms") printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+  if(units == "kms") 
+    printf("# Multiplied all RVs by 1000; units are now m/s.\n");
 
   for(unsigned i=0; i<data.size(); i++)
   {
@@ -132,6 +134,134 @@ void Data::load(const char* filename, const char* units, int skip)
 
   }
 
+
+
+void Data::load_multi(const char* filename, const char* units, int skip)
+  /* 
+  Read in tab/space separated file `filename` with columns
+  time  vrad  error  obs
+  ...   ...   ...    ...
+  where vrad and error are in `units` (either "kms" or "ms").
+  The obs column should be an integer identifying the instrument.
+  Skip the first `skip` lines.
+  */
+  {
+
+  data_t data;
+
+  // Empty the vectors
+  t.clear();
+  y.clear();
+  sig.clear();
+  obsi.clear();
+
+  // Read the file into the data container
+  ifstream infile( filename );
+  infile >> data;
+
+  // Complain if something went wrong.
+  if (!infile.eof())
+  {
+    printf("Could not read data file (%s)!\n", filename);
+    exit(1);
+  }
+
+  infile.close();
+
+  double factor = 1.;
+  if(units == "kms") factor = 1E3;
+
+  for (unsigned n = 0; n < data.size(); n++)
+    {
+      if (n<skip) continue;
+      t.push_back(data[n][0]);
+      y.push_back(data[n][1] * factor);
+      sig.push_back(data[n][2] * factor);
+      obsi.push_back(data[n][3]);
+    }
+
+  // How many points did we read?
+  printf("# Loaded %d data points from file %s\n", t.size(), filename);
+  if(units == "kms") 
+    printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+
+  for(unsigned i=0; i<data.size(); i++)
+  {
+      if (t[i] > 57170.)
+      {
+          index_fibers = i;
+          break;
+      }
+  }
+
+  }
+
+void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
+  /* 
+  Read in tab/space separated file `filename` with columns
+  time  vrad  error  obs
+  ...   ...   ...    ...
+  where vrad and error are in `units` (either "kms" or "ms").
+  The obs column should be an integer identifying the instrument.
+  Skip the first `skip` lines.
+  */
+  {
+
+  data_t data;
+
+  // Empty the vectors
+  t.clear();
+  y.clear();
+  sig.clear();
+  obsi.clear();
+
+  int filecount = 1;
+  int last_file_size = 0;
+
+  // Read the files into the data container
+  for (auto &filename : filenames) {
+    ifstream infile( filename );
+    infile >> data;
+
+    // Complain if something went wrong.
+    if (!infile.eof())
+    {
+      printf("Could not read data file (%s)!\n", filename);
+      exit(1);
+    }
+
+    infile.close();
+
+    // Assign instrument int identifier to obsi
+    for(unsigned i=last_file_size; i<data.size(); i++)
+      obsi.push_back(filecount);
+    
+    last_file_size += data.size();
+    filecount++;
+  }
+
+  double factor = 1.;
+  if(units == "kms") factor = 1E3;
+
+  for (unsigned n=0; n<data.size(); n++)
+    {
+      if (n<skip) continue;
+      t.push_back(data[n][0]);
+      y.push_back(data[n][1] * factor);
+      sig.push_back(data[n][2] * factor);
+    }
+
+  // How many points did we read?
+  printf("# Loaded %d data points from files\n", t.size());
+  cout << "# ";
+  for (auto f: filenames)
+    cout << f << " ; ";
+  cout << endl;
+
+  if(units == "kms") 
+    printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+
+  }
 
 
 double Data::get_RV_var() const
