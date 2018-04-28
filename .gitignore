@@ -3,9 +3,12 @@ __init__.py
 
 .sync
 *sublime*
+.cache
+.vscode
 
 *.o
 *.d
+*.so
 
 *.txt
 *.log
@@ -16,3 +19,7 @@ scripts
 paper
 kima
 main
+
+
+celerite
+boost
