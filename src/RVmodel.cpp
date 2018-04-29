@@ -20,6 +20,7 @@ extern ContinuousDistribution *Cprior; // systematic velocity, m/s
 extern ContinuousDistribution *Jprior; // additional white noise, m/s
 
 extern ContinuousDistribution *slope_prior; // m/s/day
+extern ContinuousDistribution *offsets_prior;
 
 extern ContinuousDistribution *log_eta1_prior;
 extern ContinuousDistribution *log_eta2_prior;
@@ -31,7 +32,6 @@ extern ContinuousDistribution *log_eta4_prior;
 Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
 //Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
 
-extern ContinuousDistribution *offsets_prior;
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 

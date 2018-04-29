@@ -23,7 +23,7 @@ const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
 const bool hyperpriors = true;
 const bool trend = false;
-
+const bool multi_instrument = false;
 
 // options for the model
 // 

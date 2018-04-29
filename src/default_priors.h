@@ -12,6 +12,12 @@ ModifiedLogUniform *Jprior = new ModifiedLogUniform(1.0, 99.); // additional whi
 Uniform *slope_prior = new Uniform(-10, 10);
 
 
+// this default prior for the instrument offsets is awful!
+// the prior probably should depend on the data,
+// -> a good default would be Uniform( -data.get_RV_span(), data.get_RV_span() )
+Uniform *offsets_prior = new Uniform(-10, 10);
+
+
 LogUniform *Pprior = new LogUniform(1.0, 1E5); // days
 ModifiedLogUniform *Kprior = new ModifiedLogUniform(1.0, 2E3); // m/s
 
