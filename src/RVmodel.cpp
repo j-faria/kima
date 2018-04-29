@@ -31,6 +31,8 @@ extern ContinuousDistribution *log_eta4_prior;
 Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
 //Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
 
+extern ContinuousDistribution *offsets_prior;
+
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVmodel::from_prior(RNG& rng)
@@ -41,6 +43,17 @@ void RVmodel::from_prior(RNG& rng)
     background = Cprior->generate(rng);
     extra_sigma = Jprior->generate(rng);
 
+    if(multi_instrument)
+    {
+        // auto data = Data::get_instance();
+        // this prior is not exposed to the user
+        // Uniform *offsets_prior = new Uniform(0, data.get_RV_span());
+
+        for(unsigned i=0; i<offsets.size(); i++)
+            offsets[i] = offsets_prior->generate(rng);
+    }
+
+    
     if(obs_after_HARPS_fibers)
         fiber_offset = fiber_offset_prior->generate(rng);
 
@@ -61,7 +74,7 @@ void RVmodel::from_prior(RNG& rng)
     calculate_mu();
 
     if(GP) calculate_C();
-
+    
 }
 
 void RVmodel::calculate_C()
@@ -96,6 +109,8 @@ void RVmodel::calculate_mu()
     auto data = Data::get_instance();
     // Get the times from the data
     const vector<double>& t = data.get_t();
+    // only really needed if multi_instrument
+    const vector<int>& obsi = data.get_obsi();
 
     // Update or from scratch?
     bool update = (planets.get_added().size() < planets.get_components().size()) &&
@@ -118,6 +133,17 @@ void RVmodel::calculate_mu()
             for(size_t i=0; i<t.size(); i++)
             {
                 mu[i] += slope*(t[i] - data.get_t_middle());
+            }
+        }
+
+        if(multi_instrument)
+        {
+            for(size_t j=0; j<offsets.size(); j++)
+            {
+                for(size_t i=0; i<t.size(); i++)
+                {   
+                    if (obsi[i] == j+1) { mu[i] += offsets[j]; }
+                }
             }
         }
 
@@ -171,6 +197,7 @@ double RVmodel::perturb(RNG& rng)
 {
     auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
+    const vector<int>& obsi = data.get_obsi();
     double logH = 0.;
 
     if(GP)
@@ -221,12 +248,23 @@ double RVmodel::perturb(RNG& rng)
                 if(trend) {
                     mu[i] -= slope*(t[i]-data.get_t_middle());
                 }
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
+                    }
+                }
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
             }
 
             Cprior->perturb(background, rng);
+
+            // propose new instrument offsets
+            if (multi_instrument){
+                for(unsigned j=0; j<offsets.size(); j++)
+                    offsets_prior->perturb(offsets[j], rng);
+            }
 
             // propose new fiber offset
             if (obs_after_HARPS_fibers) {
@@ -244,7 +282,11 @@ double RVmodel::perturb(RNG& rng)
                 if(trend) {
                     mu[i] += slope*(t[i]-data.get_t_middle());
                 }
-
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] += offsets[j]; }
+                    }
+                }
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
@@ -275,12 +317,24 @@ double RVmodel::perturb(RNG& rng)
                 if(trend) {
                     mu[i] -= slope*(t[i]-data.get_t_middle());
                 }
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
+                    }
+                }
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
             }
 
             Cprior->perturb(background, rng);
+
+            // propose new instrument offsets
+            if (multi_instrument){
+                for(unsigned j=0; j<offsets.size(); j++){
+                    offsets_prior->perturb(offsets[j], rng);
+                }
+            }
 
             // propose new fiber offset
             if (obs_after_HARPS_fibers) {
@@ -298,7 +352,11 @@ double RVmodel::perturb(RNG& rng)
                 if(trend) {
                     mu[i] += slope*(t[i]-data.get_t_middle());
                 }
-
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] += offsets[j]; }
+                    }
+                }
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
@@ -400,6 +458,12 @@ void RVmodel::print(std::ostream& out) const
 
     if (obs_after_HARPS_fibers)
         out<<fiber_offset<<'\t';
+    
+    if (multi_instrument){
+        for(unsigned j=0; j<offsets.size(); j++){
+            out<<offsets[j]<<'\t';
+        }
+    }
 
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
@@ -418,8 +482,15 @@ string RVmodel::description() const
 
     if(trend)
         desc += "slope\t";
+    
     if (obs_after_HARPS_fibers)
         desc += "fiber_offset\t";
+
+    if (multi_instrument){
+        for(unsigned j=0; j<offsets.size(); j++)
+            desc += "offset" + std::to_string(j+1) + "\t";
+    }
+    
     if(GP)
         desc += "eta1\teta2\teta3\teta4\t";
 

@@ -19,6 +19,10 @@ extern const bool obs_after_HARPS_fibers;
 // whether the model includes a linear trend
 extern const bool trend;
 
+// whether the data comes from different instruments
+// (and offsets should be included in the model)
+extern const bool multi_instrument;
+
 
 class RVmodel
 {
@@ -32,7 +36,7 @@ class RVmodel
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
 
         double background;
-        //std::vector<double> offsets;
+        std::vector<double> offsets; // between instruments
         double slope, quad;
         double fiber_offset;
 
