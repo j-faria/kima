@@ -29,6 +29,8 @@ except ImportError:
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 
 class KimaResults(object):
+    """ A class to hold, analyse, and display the results from kima """
+
     def __init__(self, options, data_file=None, 
                  fiber_offset=None, hyperpriors=None, trend=None, GPmodel=None,
                  posterior_samples_file='posterior_sample.txt'):
@@ -110,8 +112,7 @@ class KimaResults(object):
         else:
             self.trend = trend
 
-        if debug: 
-            print('trend:', self.trend)
+        if debug: print('trend:', self.trend)
 
         if self.trend:
             n_trend = 1
@@ -128,8 +129,7 @@ class KimaResults(object):
         else:
             self.fiber_offset = fiber_offset
 
-        if debug: 
-            print('obs_after_fibers:', self.fiber_offset)
+        if debug: print('obs_after_fibers:', self.fiber_offset)
 
         if self.fiber_offset:
             n_offsets = 1
@@ -286,6 +286,8 @@ class KimaResults(object):
         self.T = self.T[which].flatten()
         self.A = self.A[which].flatten()
         self.E = self.E[which].flatten()
+        self.Omega = self.Omega[which].flatten()
+        self.T0 = self.T0[which].flatten()
 
 
     def get_medians(self):
