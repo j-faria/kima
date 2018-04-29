@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <set>
 #include <cmath>
 
 class Data
@@ -43,7 +44,10 @@ class Data
 		double get_RV_std() const { return std::sqrt(get_RV_var()); }
 		
 		const std::vector<double>& get_sig() const { return sig; }
+		
 		const std::vector<int>& get_obsi() const { return obsi; }
+		int Ninstruments() const {std::set<int> s(obsi.begin(), obsi.end()); return s.size();}
+
 		double topslope() const {return std::abs(get_y_max() - get_y_min()) / (t.back() - t.front());}
 
 	// Singleton

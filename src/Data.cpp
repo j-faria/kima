@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <vector>
 #include <string>
+#include <set>
 
 using namespace std;
 
@@ -18,9 +19,9 @@ Data Data::instance;
 
 Data::Data(){}
 
-//-----------------------------------------------------------------------------
-// Let's overload the stream input operator to read a list of CSV fields (which a CSV record).
 istream& operator >> ( istream& ins, record_t& record )
+  // Let's overload the stream input operator to read a list of CSV fields (which a CSV record).
+  //-----------------------------------------------------------------------------
   {
   // make sure that the returned record contains only the stuff we read now
   record.clear();
@@ -44,15 +45,13 @@ istream& operator >> ( istream& ins, record_t& record )
   return ins;
   }
 
-//-----------------------------------------------------------------------------
-// Let's likewise overload the stream input operator to read a list of CSV records.
-// This time it is a little easier, just because we only need to worry about reading
-// records, and not fields.
+
 istream& operator >> ( istream& ins, data_t& data )
+  // Let's likewise overload the stream input operator to read a list of CSV records.
+  // This time it is a little easier, just because we only need to worry about reading
+  // records, and not fields.
+  //-----------------------------------------------------------------------------
   {
-  // used to hold the header
-  data_t header;
-  
   // make sure that the returned data only contains the CSV data we read here
   // data.clear();
 
@@ -62,9 +61,7 @@ istream& operator >> ( istream& ins, data_t& data )
   record_t record;
   while (ins >> record)
     {
-      //if (i==0 || i==1) header.push_back(record);
       data.push_back(record);
-      //  i++;
     }
 
   // Again, return the argument stream
@@ -125,7 +122,7 @@ void Data::load(const char* filename, const char* units, int skip)
 
   for(unsigned i=0; i<data.size(); i++)
   {
-      if (t[i] > 57170.)
+      if (t[i] > 57170.) 
       {
           index_fibers = i;
           break;
@@ -182,8 +179,13 @@ void Data::load_multi(const char* filename, const char* units, int skip)
 
   // How many points did we read?
   printf("# Loaded %d data points from file %s\n", t.size(), filename);
+
+  // Of how many instruments?
+  std::set<int> s( obsi.begin(), obsi.end() );
+  printf("# RVs come from %d different instruments.\n", s.size());
+  
   if(units == "kms") 
-    printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+    cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
 
   for(unsigned i=0; i<data.size(); i++)
   {
@@ -258,8 +260,12 @@ void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
     cout << f << " ; ";
   cout << endl;
 
+  // Of how many instruments?
+  std::set<int> s( obsi.begin(), obsi.end() );
+  printf("# RVs come from %d different instruments.\n", s.size());
+
   if(units == "kms") 
-    printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+    cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
 
   }
 
