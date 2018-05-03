@@ -1,6 +1,7 @@
 import re
 import os
 pathjoin = os.path.join
+import configparser
 
 from .keplerian import keplerian
 
@@ -87,7 +88,7 @@ class KimaResults(object):
                  posterior_samples_file='posterior_sample.txt'):
 
         self.options = options
-        debug = 'debug' in options
+        debug = True # 'debug' in options
 
         pwd = os.getcwd()
         path_to_this_file = os.path.abspath(__file__)
@@ -99,38 +100,13 @@ class KimaResults(object):
             print('top_level:', top_level)
             print()
 
-        def get_skip(line):
-            load_args = re.findall(r'\((.*?)\)', line, re.DOTALL)[1]
-            load_args = load_args.split(',')
-            if len(load_args) == 3:
-                # user gave 'skip' option
-                return int(load_args[2])
-            else:
-                # default is skip=2
-                return 2
+        setup = configparser.ConfigParser()
+        setup.read('kima_model_setup.txt')
 
         # find datafile in the compiled model
         self.data_skip = 2 # by default
         if data_file is None:
-            try:
-                # either in an example directory
-                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                    for line in f.readlines():
-                        if 'datafile = ' in line and '/*' not in line: 
-                            data_file = re.findall('"(.*?)"', line, re.DOTALL)[0]
-
-                        if 'get_instance().load' in line:
-                            self.data_skip = get_skip(line)
-
-            except IOError:
-                # or in the main kima directory
-                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                    for line in f.readlines():
-                        if 'get_instance().load' in line and '/*' not in line:
-                            break
-                self.data_skip = get_skip(line)
-                data_file = re.findall('"(.*?)"', line, re.DOTALL)[0]
-                data_file = pathjoin(top_level, data_file)
+            data_file = setup['kima']['file']
 
         print('Loading data file %s' % data_file)
         self.data_file = data_file
@@ -156,12 +132,7 @@ class KimaResults(object):
 
         # find trend in the compiled model
         if trend is None:
-            try:
-                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                    self.trend = 'bool trend = true' in f.read()
-            except IOError:
-                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                    self.trend = 'bool trend = true' in f.read()
+            self.trend = setup['kima']['trend'] == 'true'
         else:
             self.trend = trend
 
@@ -179,14 +150,7 @@ class KimaResults(object):
 
         # find fiber offset in the compiled model
         if fiber_offset is None:
-            try:
-                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                    self.fiber_offset = \
-                        'bool obs_after_HARPS_fibers = true' in f.read()
-            except IOError:
-                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                    self.fiber_offset = \
-                        'bool obs_after_HARPS_fibers = true' in f.read()
+            self.fiber_offset = setup['kima']['obs_after_HARPS_fibers'] == 'true'
         else:
             self.fiber_offset = fiber_offset
 
@@ -203,12 +167,7 @@ class KimaResults(object):
 
         # find GP in the compiled model
         if GPmodel is None:
-            try:
-                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                    self.GPmodel = 'bool GP = true' in f.read()
-            except IOError:
-                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                    self.GPmodel = 'bool GP = true' in f.read()
+            self.GPmodel = setup['kima']['GP'] == 'true'
         else:
             self.GPmodel = GPmodel
 
@@ -235,14 +194,7 @@ class KimaResults(object):
 
         # find hyperpriors in the compiled model
         if hyperpriors is None:
-            try:
-                with open(pathjoin(pwd, 'kima_setup.cpp')) as f:
-                    self.hyperpriors = \
-                        'bool hyperpriors = true' in f.read()
-            except IOError:
-                with open(pathjoin(top_level, 'src', 'main.cpp')) as f:
-                    self.hyperpriors = \
-                        'bool hyperpriors = true' in f.read()
+            self.hyperpriors = setup['kima']['hyperpriors'] == 'true'
         else:
             self.hyperpriors = hyperpriors
         
