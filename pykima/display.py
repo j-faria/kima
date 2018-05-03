@@ -88,7 +88,7 @@ class KimaResults(object):
                  posterior_samples_file='posterior_sample.txt'):
 
         self.options = options
-        debug = True # 'debug' in options
+        debug = False # 'debug' in options
 
         pwd = os.getcwd()
         path_to_this_file = os.path.abspath(__file__)
