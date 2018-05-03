@@ -1,7 +1,12 @@
 import re
 import os
 pathjoin = os.path.join
-import configparser
+
+try:
+    import configparser
+except ImportError:
+    # Python 2
+    import ConfigParser as configparser
 
 from .keplerian import keplerian
 
