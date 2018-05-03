@@ -29,6 +29,7 @@ RVmodel::RVmodel()
     Cprior = new Uniform(ymin, ymax);
     if(trend)
     	slope_prior = new Uniform(-topslope, topslope);
+    save_setup();
 }
 
 int main(int argc, char** argv)
