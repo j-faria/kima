@@ -67,7 +67,7 @@ class RVmodel
     public:
         RVmodel();
 
-        void setupHODLR();
+        void save_setup();
 
         // Generate the point from the prior
         void from_prior(DNest4::RNG& rng);

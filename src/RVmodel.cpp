@@ -8,6 +8,7 @@
 #include <limits>
 #include <fstream>
 #include <chrono>
+#include <time.h> 
 
 using namespace std;
 using namespace Eigen;
@@ -511,6 +512,30 @@ string RVmodel::description() const
     desc += "staleness\tvsys";
 
     return desc;
+}
+
+
+void RVmodel::save_setup() {
+    // save the options of the current model in a INI file
+	std::fstream fout("kima_model_setup.txt", std::ios::out);
+    fout << std::boolalpha;
+
+    time_t rawtime;
+    time (&rawtime);
+    fout << ";" << ctime(&rawtime) << endl;
+
+    fout << "[kima]" << endl;
+
+	fout << "obs_after_HARPS_fibers: " << obs_after_HARPS_fibers << endl;
+    fout << "GP: " << GP << endl;
+    fout << "hyperpriors: " << hyperpriors << endl;
+    fout << "trend: " << trend << endl;
+    fout << endl;
+    fout << "file: " << Data::get_instance().datafile << endl;
+    fout << "units: " << Data::get_instance().dataunits << endl;
+    fout << "skip: " << Data::get_instance().dataskip << endl;
+
+	fout.close();
 }
 
 
