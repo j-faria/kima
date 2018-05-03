@@ -101,6 +101,11 @@ void Data::load(const char* filename, const char* units, int skip)
 
   infile.close();
 
+  datafile = filename;
+  dataunits = units;
+  dataskip = skip;
+
+
   double factor = 1.;
   if(units == "kms") factor = 1E3;
 

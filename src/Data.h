@@ -16,6 +16,10 @@ class Data
 		void load(const char* filename, const char* units, int skip=2);
 		int index_fibers;
 
+		const char* datafile;
+		const char* dataunits;
+		int dataskip;
+
 		// Getters
 		int N() const {return t.size();}
 
