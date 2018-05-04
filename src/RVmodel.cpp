@@ -511,6 +511,7 @@ string RVmodel::description() const
 
 void RVmodel::save_setup() {
     // save the options of the current model in a INI file
+    auto data = Data::get_instance();
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
@@ -524,10 +525,17 @@ void RVmodel::save_setup() {
     fout << "GP: " << GP << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
+    fout << "multi_instrument: " << multi_instrument << endl;
     fout << endl;
-    fout << "file: " << Data::get_instance().datafile << endl;
-    fout << "units: " << Data::get_instance().dataunits << endl;
-    fout << "skip: " << Data::get_instance().dataskip << endl;
+    fout << "file: " << data.datafile << endl;
+    fout << "units: " << data.dataunits << endl;
+    fout << "skip: " << data.dataskip << endl;
+    fout << "multi: " << data.datamulti << endl;
+    
+    fout << "files: ";
+    for (auto f: data.datafiles)
+        fout << f << ",";
+    fout << endl;
 
 	fout.close();
 }

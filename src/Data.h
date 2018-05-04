@@ -24,8 +24,10 @@ class Data
 		int index_fibers;
 
 		const char* datafile;
+		std::vector<char*> datafiles;
 		const char* dataunits;
 		int dataskip;
+		bool datamulti; // multiple instruments? not sure if needed
 
 		// Getters
 		int N() const {return t.size();}

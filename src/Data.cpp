@@ -102,6 +102,7 @@ void Data::load(const char* filename, const char* units, int skip)
   datafile = filename;
   dataunits = units;
   dataskip = skip;
+  datamulti = false;
 
 
   double factor = 1.;
@@ -164,6 +165,11 @@ void Data::load_multi(const char* filename, const char* units, int skip)
   }
 
   infile.close();
+
+  datafile = filename;
+  dataunits = units;
+  dataskip = skip;
+  datamulti = true;
 
   double factor = 1.;
   if(units == "kms") factor = 1E3;
@@ -241,6 +247,13 @@ void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
     last_file_size += data.size();
     filecount++;
   }
+
+  datafile = "";
+  datafiles = filenames;
+  dataunits = units;
+  dataskip = skip;
+  datamulti = true;
+
 
   double factor = 1.;
   if(units == "kms") factor = 1E3;
