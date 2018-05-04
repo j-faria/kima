@@ -27,7 +27,8 @@ def _parse_args():
                              'to compare to the prior. \n'\
                              'Assign samples to an iterable called `samples`. '\
                              'Use numpy and scipy.stats as `np` and `st`, respectively. '\
-                             'Number of prior samples in sample.txt is in variable `nsamples`.')
+                             'Number of prior samples in sample.txt is in variable `nsamples`. '\
+                             'For example: samples=np.random.uniform(0,1,nsamples)')
 
     args = parser.parse_args()
     return args
@@ -71,8 +72,11 @@ def main():
             )
 
     if args.code:
-        exec (args.code[0], globals(), locals())
-        ax.hist(samples, alpha=0.3, bins=100,
+        namespace = locals()
+        exec (args.code[0], globals(), namespace)
+        samples = namespace['samples']
+        
+        ax.hist(samples, alpha=0.3, bins=100, align='mid',
                 range=[data.min() - 0.2 * data.ptp(),
                        data.max() + 0.2 * data.ptp()],
                 )
