@@ -937,5 +937,5 @@ class KimaResults(object):
             for i in range(n_inst_offsets):
                 a = self.inst_offsets[:,i]
                 axs[i].hist(a)
-                axs[i].set_xlabel(f'offset {i+1}')
+                axs[i].set_xlabel('offset %d' % (i+1))
             plt.show()
