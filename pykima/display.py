@@ -55,6 +55,7 @@ class KimaResults(object):
             need_model_setup(exc)
         
         setup.read('kima_model_setup.txt')
+        self.setup = setup
 
         if sys.version_info < (3, 0):
             setup = setup._sections
@@ -66,7 +67,20 @@ class KimaResults(object):
 
 
         if data_file is None:
-            data_file = setup['kima']['file']
+            self.multi = setup['kima']['multi'] == 'true'
+            if self.multi:
+                if setup['kima']['files'] == '':
+                    # multi is true but in only one file
+                    data_file = setup['kima']['file']
+                else:
+                    raise NotImplementedError('TO DO')
+            else:
+                data_file = setup['kima']['file']
+        
+        self.data_skip = int(setup['kima']['skip'])
+        self.units = setup['kima']['units']
+
+
         print('Loading data file %s' % data_file)
         self.data_file = data_file
 
@@ -76,8 +90,11 @@ class KimaResults(object):
         if debug:
             print('--- skipping first %d rows of data file' % self.data_skip)
 
-        self.data = np.loadtxt(self.data_file, 
-                               skiprows=self.data_skip, usecols=(0,1,2))
+        if self.multi:
+            self.data, self.obs = read_datafile(self.data_file, self.data_skip)
+        else:
+            self.data = np.loadtxt(self.data_file, 
+                                   skiprows=self.data_skip, usecols=(0,1,2))
 
         # to m/s
         if self.units == 'kms':
@@ -139,6 +156,17 @@ class KimaResults(object):
             n_offsets = 0
 
 
+        # multiple instruments ??
+        if self.multi:
+            # there are n instruments and n-1 offsets
+            n_inst_offsets = np.unique(self.obs).size - 1
+            istart = start_parameters + n_offsets + n_trend + 1
+            iend = istart + n_inst_offsets
+            ind = np.s_[istart : iend]
+            self.inst_offsets = self.posterior_sample[:, ind]
+        else:
+            n_inst_offsets = 0
+
         # find GP in the compiled model
         if GPmodel is None:
             self.GPmodel = setup['kima']['GP'] == 'true'
@@ -156,7 +184,7 @@ class KimaResults(object):
 
             for i in range(n_hyperparameters):
                 name = 'eta' + str(i+1)
-                ind = start_hyperpars + i
+                ind = start_parameters + n_trend + n_offsets + n_inst_offsets + 1 + i
                 setattr(self, name, self.posterior_sample[:, ind])
             
             self.GP = GP(QPkernel(1, 1, 1, 1), 
@@ -166,7 +194,7 @@ class KimaResults(object):
 
 
 
-        start_objects_print = start_parameters + n_offsets + \
+        start_objects_print = start_parameters + n_offsets + n_inst_offsets + \
                               n_trend + n_hyperparameters + 1
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])

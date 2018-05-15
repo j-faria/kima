@@ -166,3 +166,9 @@ def get_planet_semimajor_axis_latex(P, K, star_mass=1.0, earth=False, **kargs):
         return '$%f$' % out
     else:
         return '$%f$' % out[0]
+
+def read_datafile(filename, skip=2):
+    data = np.loadtxt(filename, usecols=(0,1,2))
+    obs = np.loadtxt(filename, usecols=(3,))
+    return data, obs
+
