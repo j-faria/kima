@@ -22,13 +22,15 @@ RVmodel::RVmodel()
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
-    double ymin = Data::get_instance().get_y_min();
-    double ymax = Data::get_instance().get_y_max();
-    double topslope = Data::get_instance().topslope();
+    auto data = Data::get_instance();
+    double ymin = data.get_y_min();
+    double ymax = data.get_y_max();
+    double topslope = data.topslope();
 
     Cprior = new Uniform(ymin, ymax);
     if(trend)
     	slope_prior = new Uniform(-topslope, topslope);
+        
     save_setup();
 }
 

@@ -27,6 +27,8 @@ RVmodel::RVmodel()
     double ymax = Data::get_instance().get_y_max();
     // can now use ymin and ymax in setting prior for vsys
     Cprior = new Uniform(ymin, ymax);
+
+    save_setup();
 }
 
 

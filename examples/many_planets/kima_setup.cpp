@@ -39,6 +39,7 @@ RVmodel::RVmodel()
     // can now use ymin and ymax in setting prior for vsys
     Cprior = new Uniform(ymin, ymax);
 
+    save_setup();
 }
 
 
