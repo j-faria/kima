@@ -906,7 +906,7 @@ class KimaResults(object):
         ax.set(xlabel='slope' + units   , ylabel='posterior samples',
                title=title)
 
-    def hist_vsys(self):
+    def hist_vsys(self, show_offsets=True):
         """ Plot the histogram of the posterior for the systemic velocity """
         vsys = self.posterior_sample[:,-1]
         units = ' (m/s)' if self.units=='ms' else ' (km/s)'
@@ -925,7 +925,17 @@ class KimaResults(object):
         estimate = percentile68_ranges_latex(self.extra_sigma) + units
 
         _, ax = plt.subplots(1,1)
-        ax.hist(self.extra_sigma)
-        title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
-        ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
-               title=title)
+        ax.hist(vsys/1e3)
+        ax.set(xlabel='vsys (m/s)', ylabel='posterior samples')
+        plt.show()
+
+        if show_offsets and self.multi:
+            n_inst_offsets = self.inst_offsets.shape[1]
+            _, axs = plt.subplots(1, n_inst_offsets, sharey=True,
+                                  figsize=(n_inst_offsets*3, 5),
+                                  squeeze=True)
+            for i in range(n_inst_offsets):
+                a = self.inst_offsets[:,i]
+                axs[i].hist(a)
+                axs[i].set_xlabel(f'offset {i+1}')
+            plt.show()
