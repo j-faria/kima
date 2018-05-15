@@ -572,18 +572,9 @@ class KimaResults(object):
             print('Model does not have GP! make_plot4() doing nothing...')
             return
 
-        # available_etas = [v for v in dir(self) if v.startswith('eta')]
-        available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
-        labels = [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
-        units = ['m/s', 'days', 'days', None]
-        xlabels = []
-        for label, unit in zip(labels, units):
-            xlabels.append(label + ' (%s)' % unit 
-                                if unit is not None else label)
-
-        fig, axes = plt.subplots(2, len(available_etas)//2)
-        fig.suptitle('Posterior distributions for GP hyperparameters')
-
+        available_etas = [v for v in dir(self) if v.startswith('eta')]
+        
+        _, axes = plt.subplots(2, int(len(available_etas)/2))
         for i, eta in enumerate(available_etas):
             ax = np.ravel(axes)[i]
             ax.hist(getattr(self, eta), bins=40)
@@ -617,36 +608,6 @@ class KimaResults(object):
             xlabels.append(label + ' (%s)' % unit 
                                 if unit is not None else label)
 
-
-        ### color code by number of planets
-        # self.corner1 = None
-        # for N in range(6)[::-1]:
-        #     mask = self.posterior_sample[:, self.index_component] == N
-        #     if mask.any():
-        #         self.post_samples = np.vstack((self.extra_sigma, self.eta1, self.eta2, self.eta3, self.eta4)).T
-        #         self.post_samples = self.post_samples[mask, :]
-        #         # self.post_samples = np.vstack((self.extra_sigma, self.eta1, self.eta2, self.eta3, self.eta4, self.eta5)).T
-        #         print self.post_samples.shape
-        #         # print (self.pmin, self.pmax)
-        #         # labels = ['$\sigma_{extra}$', '$\eta_1$', '$\eta_2$', '$\eta_3$', '$\eta_4$', '$\eta_5$']
-                
-        #         self.corner1 = corner.corner(self.post_samples, fig=self.corner1, labels=labels, show_titles=True,
-        #                                      plot_contours=False, plot_datapoints=True, plot_density=False,
-        #                                      # fill_contours=True, smooth=True,
-        #                                      # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
-        #                                      hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-        #                                      hist_kwargs={'normed':True, 'color':colors[N]},
-        #                                      range=[1., 1., 1., (self.pmin, self.pmax), 1],
-        #                                      shared_axis=True, data_kwargs={'alpha':1, 'color':colors[N]},
-        #                                      )
-
-        #         ax = self.corner1.axes[3]
-        #         ax.plot([2,2.1], color=colors[N], lw=3)
-        #     else:
-        #         print 'Skipping N=%d, no posterior samples...' % N
-        # ax.legend([r'$N_p=%d$'%N for N in range(6)[::-1]])
-
-
         ### all Np together
         variables = [self.extra_sigma]
         for eta in available_etas:
@@ -655,7 +616,7 @@ class KimaResults(object):
         self.post_samples = np.vstack(variables).T
 
         ranges = [1.]*(len(available_etas)+1)
-        ranges[3] = (self.pmin, self.pmax)
+        # ranges[3] = (self.pmin, self.pmax)
 
         c = corner.corner
         try:
