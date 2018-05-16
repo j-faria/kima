@@ -115,12 +115,17 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
 
 def get_planet_mass_latex(P, K, e, star_mass=1.0, earth=False, **kargs):
     out = get_planet_mass(P, K, e, star_mass, full_output=True, verbose=False)
+    
     if isinstance(P, float):
-        if earth: return '$%f$' % out[1]
-        else: return '$%f$' % out[0]
+        if earth:
+            return '$%f$' % out[1]
+        else:
+            return '$%f$' % out[0]
     else:
-        if earth: return percentile68_ranges_latex(out[2]*mjup2mearth)
-        else: return percentile68_ranges_latex(out[2])
+        if earth:
+            return percentile68_ranges_latex(out[2]*mjup2mearth)
+        else:
+            return percentile68_ranges_latex(out[2])
 
 
 def get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False, verbose=False):
