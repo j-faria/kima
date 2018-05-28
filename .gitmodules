@@ -1,6 +1,6 @@
 [submodule "eigen"]
 	path = eigen
-	url = https://github.com/RLovelett/eigen.git
+	url = https://github.com/eigenteam/eigen-git-mirror.git
 [submodule "DNest4"]
 	path = DNest4
 	url = https://github.com/eggplantbren/DNest4.git
