@@ -27,17 +27,26 @@ RVmodel::RVmodel()
     double ymax = data.get_y_max();
     double topslope = data.topslope();
 
+    // set the prior for the systemic velocity
     Cprior = new Uniform(ymin, ymax);
+    // and for the slope parameter
     if(trend)
     	slope_prior = new Uniform(-topslope, topslope);
-        
+    
+    // save the current model for further analysis
     save_setup();
 }
 
 int main(int argc, char** argv)
 {
-	Data::get_instance().load("examples/BL2009/BL2009_dataset1.kms.rv", "kms", 0);
+    /* set the RV data file */
+    char* datafile = "examples/BL2009/BL2009_dataset1.kms.rv";
 
+    /* load the file (RVs are in km/s) */
+    /* don't skip any lines in the header */
+	Data::get_instance().load(datafile, "kms", 0);
+
+    // set the sampler and run it!
 	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
 	sampler.run();
 

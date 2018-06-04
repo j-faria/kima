@@ -1,5 +1,4 @@
-import re
-import os
+import re, os, sys
 pathjoin = os.path.join
 
 try:
@@ -9,6 +8,7 @@ except ImportError:
     import ConfigParser as configparser
 
 from .keplerian import keplerian
+from .utils import need_model_setup
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -106,7 +106,10 @@ class KimaResults(object):
             print()
 
         setup = configparser.ConfigParser()
-        setup.read('kima_model_setup.txt')
+        s = setup.read('kima_model_setup.txt')
+        if len(s) == 0:
+            need_model_setup()
+            sys.exit(0)
 
         # find datafile in the compiled model
         self.data_skip = 2 # by default
