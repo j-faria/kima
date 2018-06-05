@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: What should **kima** do that it still doesn't?
+about: What should kima be able to do?
 
 ---
 
