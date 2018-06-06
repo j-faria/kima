@@ -200,7 +200,7 @@ void RVmodel::calculate_mu()
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    double P, K, phi, ecc, viewing_angle, f, v, ti;
+    double P, K, phi, ecc, omega, f, v, ti;
     for(size_t j=0; j<components.size(); j++)
     {
         if(hyperpriors)
@@ -211,13 +211,13 @@ void RVmodel::calculate_mu()
         K = components[j][1];
         phi = components[j][2];
         ecc = components[j][3];
-        viewing_angle = components[j][4];
+        omega = components[j][4];
 
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
             f = true_anomaly(ti, P, ecc, t[0]-(P*phi)/(2.*M_PI));
-            v = K*(cos(f+viewing_angle) + ecc*cos(viewing_angle));
+            v = K*(cos(f+omega) + ecc*cos(omega));
             mu[i] += v;
         }
     }
