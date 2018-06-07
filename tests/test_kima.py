@@ -31,12 +31,14 @@ def test_keplerian():
     times1 = [0.,]
     times2 = [0., 1., 2.]
 
+    # before we were testing getting a NaN result when P=0
+    # now it should raise a FloatingPointError
     with pytest.warns(RuntimeWarning):
-        result = keplerian(times1, 0., 0., 0., 0., 0., 0.)
-        assert np.isnan(result)
-
-        result = keplerian(times2, 0., 0., 0., 0., 0., 0.)
-        assert np.all(np.isnan(result))
+        with pytest.raises(FloatingPointError, message="Expecting FloatingPointError"):
+            keplerian(times1, 0., 0., 0., 0., 0., 0.)
+            # assert np.isnan(result)
+            keplerian(times2, 0., 0., 0., 0., 0., 0.)
+            # assert np.all(np.isnan(result))
 
     npt.assert_allclose(keplerian(times1, 100., 1., 0., 0., 0., 0.), 1.)
     npt.assert_allclose(keplerian(times2, 1., 1., 0., 0., 0., 0.), 1.)
