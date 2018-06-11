@@ -2,7 +2,7 @@ from .classic import postprocess
 from .display import KimaResults
 import sys
 import argparse
-from matplotlib.pyplot import isinteractive
+from matplotlib.pyplot import isinteractive, show
 
 def _parse_args():
     argshelp = """
@@ -48,6 +48,8 @@ def showresults(options=''):
     res = KimaResults(options)
     if isinteractive(): 
         return res
+    
+    show() # render the plots
 
 if __name__ == '__main__':
     options = sys.argv
