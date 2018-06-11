@@ -399,16 +399,23 @@ class KimaResults(object):
 
     def make_plot1(self):
         """ Plot the histogram of the posterior for Np """
-        plt.figure()
-        n, bins, _ = plt.hist(self.posterior_sample[:, self.index_component], 100)
-        plt.xlabel('Number of Planets')
-        plt.ylabel('Number of Posterior Samples')
-        plt.xlim([-0.5, self.max_components+.5])
+        _, ax = plt.subplots(1,1)
+        # n, _, _ = plt.hist(self.posterior_sample[:, self.index_component], 100)
+        
+        bins = np.arange(self.max_components+2)
+        nplanets = self.posterior_sample[:, self.index_component]
+        n, _ = np.histogram(nplanets, bins=bins)
+        ax.bar(bins[:-1], n)
+
+        ax.set(xlabel='Number of Planets',
+               ylabel='Number of Posterior Samples',
+               xlim=[-0.5, self.max_components+.5],
+               xticks=np.arange(self.max_components+1),
+               title='Posterior distribution for $N_p$'
+              )
 
         nn = n[np.nonzero(n)]
-        print('probability ratios: ', nn.flat[1:] / nn.flat[:-1])
-
-        plt.show()
+        print('Np probability ratios: ', nn.flat[1:] / nn.flat[:-1])
 
 
     def make_plot2(self, bins=None):
@@ -427,27 +434,29 @@ class KimaResults(object):
         else:
             T = self.T
         
-        plt.figure()
+        fig, ax = plt.subplots(1, 1)
 
         # mark 1 year and 0.5 year
         year = 365.25
-        plt.axvline(x=year, ls='--', color='r', lw=3, alpha=0.6)
-        plt.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
+        ax.axvline(x=year, ls='--', color='r', lw=3, alpha=0.6)
+        # ax.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
         # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
 
         # mark the timespan of the data
-        plt.axvline(x=self.data[:,0].ptp(), ls='--', color='b', lw=4, alpha=0.5)
+        ax.axvline(x=self.data[:,0].ptp(), ls='--', color='b', lw=3, alpha=0.5)
 
         # by default, 100 bins in log between 0.1 and 1e7
         if bins is None:
             bins = 10 ** np.linspace(np.log10(1e-1), np.log10(1e7), 100)
 
-        plt.hist(T, bins=bins, alpha=0.5)
+        ax.hist(T, bins=bins, alpha=0.5)
 
-        plt.xscale("log")
-        plt.xlabel(r'(Period/days)')
-        plt.ylabel('Number of Posterior Samples')
-        plt.show()
+        ax.legend(['1 year', 'timespan'])
+        ax.set(xscale="log",
+               xlabel=r'(Period/days)',
+               ylabel='Number of Posterior Samples',
+               title='Posterior distribution for the orbital period(s)')
+        # plt.show()
 
 
     def make_plot3(self, points=True):
@@ -463,16 +472,17 @@ class KimaResults(object):
 
         if self.log_period:
             T = np.exp(self.T)
-            print('exponentiating period!')
+            # print('exponentiating period!')
         else:
             T = self.T
+
         A, E = self.A, self.E
 
 
         _, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
         if points:
-            ax1.loglog(T, A, '.', markersize=1)
+            ax1.loglog(T, A, '.', markersize=2)
         else:
             ax1.hexbin(T, A, gridsize=50, 
                        bins='log', xscale='log', yscale='log',
@@ -480,17 +490,18 @@ class KimaResults(object):
 
 
         if points:
-            ax2.semilogx(T, E, 'b.', markersize=2)
+            ax2.semilogx(T, E, '.', markersize=2)
         else:
             ax2.hexbin(T, E, gridsize=50, bins='log', xscale='log',
                        cmap=plt.get_cmap('afmhot_r'))
         
-        ax1.set_ylabel('Semi-amplitude [m/s]')
-        ax2.set_ylabel('Eccentricity')
-        ax2.set_xlabel('Period [days]')
-        ax2.set_ylim(0, 1)
-        ax2.set_xlim([0.1, 1e7])
-        plt.show()
+        ax1.set(ylabel='Semi-amplitude [m/s]',
+                title='Joint posterior semi-amplitude $-$ orbital period')
+        ax2.set(ylabel='Eccentricity',
+                xlabel='Period [days]',
+                title='Joint posterior eccentricity $-$ orbital period',
+                ylim=[0, 1],
+                xlim=[0.1, 1e7])
 
 
     def make_plot4(self):
@@ -500,14 +511,22 @@ class KimaResults(object):
             return
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
-        
-        fig, axes = plt.subplots(2, len(available_etas)/2)
+        labels = [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
+        units = ['m/s', 'days', 'days', None]
+        xlabels = []
+        for label, unit in zip(labels, units):
+            xlabels.append(label + ' (%s)' % unit 
+                                if unit is not None else label)
+
+        fig, axes = plt.subplots(2, len(available_etas)//2)
+        fig.suptitle('Posterior distributions for GP hyperparameters')
+
         for i, eta in enumerate(available_etas):
             ax = np.ravel(axes)[i]
             ax.hist(getattr(self, eta), bins=40)
-            ax.set_xlabel(eta)
-        plt.tight_layout()
-        plt.show()
+            ax.set(xlabel=xlabels[i], ylabel='posterior samples')
+        
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
 
     def make_plot5(self, show=True, save=False):
@@ -521,9 +540,12 @@ class KimaResults(object):
         self.pmax = 40.
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
-        labels = ['$s$'] + ['$\eta_%d$' % (i+1) for i in range(len(available_etas))]
+        labels = [r'$s$'] + [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
         units = ['m/s', 'm/s', 'days', 'days', None]
-        labels = [l+'(%s)'%unit for l,unit in zip(labels, units)]
+        xlabels = []
+        for label, unit in zip(labels, units):
+            xlabels.append(label + ' (%s)' % unit 
+                                if unit is not None else label)
 
 
         ### color code by number of planets
@@ -566,7 +588,7 @@ class KimaResults(object):
         ranges[3] = (self.pmin, self.pmax)
 
         c = corner.corner        
-        self.corner1 = c(self.post_samples, labels=labels, show_titles=True,
+        self.corner1 = c(self.post_samples, labels=xlabels, show_titles=True,
                          plot_contours=False, plot_datapoints=True, plot_density=False,
                          # fill_contours=True, smooth=True,
                          # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
@@ -575,9 +597,10 @@ class KimaResults(object):
                          range=ranges, data_kwargs={'alpha':1},
                          )
 
+        self.corner1.suptitle('Joint and marginal posteriors for GP hyperparameters')
+
         if show:
-            self.corner1.tight_layout()
-            plt.show()
+            self.corner1.tight_layout(rect=[0, 0.03, 1, 0.95])
         
         if save:
             self.corner1.savefig(save)
@@ -764,27 +787,17 @@ class KimaResults(object):
             print('Model has no fiber offset! hist_offset() doing nothing...')
             return
 
-        fig, ax = plt.subplots(1,1)
-        if hist_tools_available:
-            bw = hist_tools.freedman_bin_width
-            _, bins = bw(self.offset, return_bins=True)
-        else:
-            bins = None
+        _, ax = plt.subplots(1,1)
+        ax.hist(self.offset)
+        ax.set(xlabel='fiber offset (m/s)', ylabel='posterior samples',
+               title='Posterior distribution for fiber offset')
 
-        ax.hist(self.offset, bins=bins)
-        ax.set(xlabel='fiber offset (m/s)', ylabel='posterior samples')
-        plt.show()
 
     def hist_vsys(self):
         """ Plot the histogram of the posterior for the systemic velocity """
         vsys = self.posterior_sample[:,-1]
-        fig, ax = plt.subplots(1,1)
-        if hist_tools_available:
-            bw = hist_tools.freedman_bin_width
-            _, bins = bw(vsys/1e3, return_bins=True)
-        else:
-            bins = None
 
-        ax.hist(vsys/1e3, bins=bins)
-        ax.set(xlabel='vsys (m/s)', ylabel='posterior samples')
-        plt.show()
+        fig, ax = plt.subplots(1,1)
+        ax.hist(vsys/1e3)
+        ax.set(xlabel='vsys (m/s)', ylabel='posterior samples',
+               title=r'Posterior distribution for $v_{\rm sys}$')
