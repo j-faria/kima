@@ -1,11 +1,11 @@
 from __future__ import print_function
 
+import __main__
 from .classic import postprocess
 from .display import KimaResults
 import sys, os
 from collections import namedtuple
-from matplotlib.pyplot import isinteractive, show
-
+from matplotlib.pyplot import show
 
 numbered_args_help = """optional numbered arguments:
   1    - plot the posterior for Np;
@@ -27,18 +27,20 @@ def findpop(value, lst):
         return False # didn't find the value
 
 def usage(full=True):
-    u = "usage: kima-showresults [rv] [planets] [orbital] [gp] [1, ..., 7]\n"\
+    u = "usage: kima-showresults "\
+        "[rv] [planets] [orbital] [gp] [extra] [1, ..., 7]\n"\
         "                        [-h/--help] [--version]"
     u += '\n\n'
     if not full: return u
 
     pos = ["positional arguments:\n"]
-    names = ['rv', 'planets', 'orbital', 'gp']
+    names = ['rv', 'planets', 'orbital', 'gp', 'extra']
     descriptions = \
         ["Plot posterior realizations of the model over the RV measurements",
          "Plot posterior for number of planets",
          "Plot posteriors for some of the orbital parameters",
          "Plot posteriors for GP hyperparameters",
+         "Plot posteriors for fiber offset, systematic velocity, and extra white noise",
         ]
     for n, d in zip(names, descriptions):
         pos.append("  %-10s\t%s\n" % (n,d))
@@ -66,12 +68,14 @@ def _parse_args(options):
         sys.exit(0)
 
     number_options = ['1','2','3','4','5','6','7']
-    argstuple = namedtuple('Arguments', ['rv', 'planets', 'orbital', 'gp'] \
-                                        + ['diagnostic'] \
-                                        + ['plot_number'])
+    argstuple = namedtuple('Arguments', 
+                                ['rv', 'planets', 'orbital', 'gp', 'extra'] \
+                                + ['diagnostic'] \
+                                + ['plot_number'])
     
     rv = findpop('rv', args)
     gp = findpop('gp', args)
+    extra = findpop('extra', args)
     planets = findpop('planets', args)
     orbital = findpop('orbital', args)
     diag = findpop('diagnostic', args)
@@ -84,7 +88,7 @@ def _parse_args(options):
         print('error: could not recognize argument:', "'%s'" % args[0])
         sys.exit(1)
 
-    return argstuple(rv, planets, orbital, gp, diag, plot_number=plots)
+    return argstuple(rv, planets, orbital, gp, extra, diag, plot_number=plots)
 
 
 def showresults(options=''):
@@ -106,6 +110,8 @@ def showresults(options=''):
         plots.append('2'); plots.append('3')
     if args.gp:
         plots.append('4'); plots.append('5')
+    if args.extra:
+        plots.append('7')
     for number in args.plot_number:
         plots.append(number)
     
@@ -117,10 +123,11 @@ def showresults(options=''):
         sys.exit(1)
 
     res = KimaResults(list(set(plots)))
-    if isinteractive(): 
-        return res
-    
     show() # render the plots
+
+    # __main__.__file__ doesn't exist in the interactive interpreter
+    if not hasattr(__main__, '__file__'):
+        return res
 
 if __name__ == '__main__':
     options = sys.argv
