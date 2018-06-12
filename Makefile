@@ -1,4 +1,4 @@
-VERBOSE ?= 0
+VERBOSE ?= 1
 
 DNEST4_PATH = DNest4/code
 EIGEN_PATH = eigen
@@ -19,11 +19,12 @@ $(SRCDIR)/main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
 
+EXAMPLES = BL2009 CoRoT7 many_planets default_priors
 
 all: main examples
 
 %.o: %.cpp
-ifeq ($(VERBOSE), 0)
+ifeq ($(VERBOSE), 1)
 	@echo "\033[0;33m Compiling:\033[0m" $<
 	@$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
 else
@@ -32,7 +33,7 @@ endif
 
 
 main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
-ifeq ($(VERBOSE), 0)
+ifeq ($(VERBOSE), 1)
 	@echo "\033[0;33m Linking\033[0m "
 	@$(CXX) -o kima $(OBJS) $(LIBS) $(CXXFLAGS)
 else
@@ -42,24 +43,19 @@ endif
 
 .PHONY: examples
 examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
-ifeq ($(VERBOSE), 0)
-	@make -s -C examples/BL2009
-	@echo "\033[0;33m Compiling example\033[0m BL2009"
-	@make -s -C examples/CoRoT7
-	@echo "\033[0;33m Compiling example\033[0m CoRoT7"
-	@make -s -C examples/many_planets
-	@echo "\033[0;33m Compiling example\033[0m many_planets"
-	@make -s -C examples/default_priors
-	@echo "\033[0;33m Compiling example\033[0m default_priors"
+ifeq ($(VERBOSE), 1)
+	@for example in $(EXAMPLES) ; do \
+		echo "\033[0;33m Compiling example\033[0m $$example"; \
+		make -s -C examples/$$example; \
+	done
 else
-	@make -C examples/BL2009
-	@make -C examples/CoRoT7
-	@make -C examples/many_planets
-	@make -C examples/default_priors
+	@for example in $(EXAMPLES) ; do \
+		make -s -C examples/$$example; \
+	done 
 endif
 
 $(DNEST4_PATH)/libdnest4.a:
-ifeq ($(VERBOSE), 0)
+ifeq ($(VERBOSE), 1)
 	@echo "\033[0;33m Compiling \033[0m DNest4"
 	@make -s -C $(DNEST4_PATH) libdnest4.a
 else
@@ -71,10 +67,16 @@ clean:
 	rm -f main $(OBJS)
 
 cleanexamples:
-	@make clean -C examples/BL2009
-	@make clean -C examples/CoRoT7
-	@make clean -C examples/many_planets
-	@make clean -C examples/default_priors
+ifeq ($(VERBOSE), 1)
+	@for example in $(EXAMPLES) ; do \
+		echo "\033[0;33m Cleaning example \033[0m $$example"; \
+    	make clean -s -C examples/$$example; \
+	done
+else
+	@for example in $(EXAMPLES) ; do \
+    	make clean -s -C examples/$$example; \
+	done
+endif
 
 cleandnest4:
 	@make clean -C $(DNEST4_PATH)
