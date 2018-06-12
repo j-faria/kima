@@ -8,8 +8,8 @@ we use a standard sum-of-Keplerians model (no GP)
 without an offset due to the HARPS change of optical fibers, and no linear trend.  
 The number of planets in the model is fixed to 1. 
 
-Inside the RVmodel() constructor, we define the priors for the model parameters, 
-the same as those used by Balan & Lahav (2009).
+Inside the `RVmodel()` constructor, we define the priors for the model parameters
+to be the same as those used by Balan & Lahav (2009) -- see their [Table 1](https://academic.oup.com/view-large/20641662).
 
 To compile and run, type
 
