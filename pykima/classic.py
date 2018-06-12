@@ -34,28 +34,25 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], \
 	sample_info = sample_info[cut:, :]
 
 	if plot:
-		plt.figure(1)
-		plt.plot(sample_info[:,0], "k")
-		plt.xlabel("Iteration")
-		plt.ylabel("Level")
+		_, ax = plt.subplots(1,1)
+		ax.plot(sample_info[:,0], "k")
+		ax.set(xlabel="Iteration", ylabel="Level",
+		       title='DNest4: level of each saved particle')
 
-		plt.figure(2)
-		plt.subplot(2,1,1)
-		plt.plot(np.diff(levels_orig[:,0]), "k")
-		plt.ylabel("Compression")
-		plt.xlabel("Level")
-		xlim = plt.gca().get_xlim()
-		plt.axhline(-1., color='g')
-		plt.axhline(-np.log(10.), color='g', linestyle="--")
-		plt.ylim(ymax=0.05)
+		fig, (ax1,ax2) = plt.subplots(2,1)
+		ax1.plot(np.diff(levels_orig[:,0]), "k")
+		ax1.set(ylabel="Compression", xlabel="Level",
+		        title='DNest4: compression factor between levels')
+		xlim = ax1.get_xlim()
+		ax1.axhline(-1., color='g')
+		ax1.axhline(-np.log(10.), color='g', linestyle="--")
+		ax1.set_ylim(ymax=0.05)
 
-		plt.subplot(2,1,2)
 		good = np.nonzero(levels_orig[:,4] > 0)[0]
-		plt.plot(levels_orig[good,3]/levels_orig[good,4], "ko-")
-		plt.xlim(xlim)
-		plt.ylim([0., 1.])
-		plt.xlabel("Level")
-		plt.ylabel("MH Acceptance")
+		ax2.plot(levels_orig[good,3]/levels_orig[good,4], "ko-")
+		ax2.set(xlim=xlim, ylim=[0, 1], xlabel="Level", ylabel="MH Acceptance",
+		        title='DNest4: MCMC acceptance fraction for each level')
+		fig.tight_layout()
 
 	# Convert to lists of tuples
 	logl_levels = [(levels_orig[i,1], levels_orig[i, 2]) for i in range(0, levels_orig.shape[0])] # logl, tiebreaker
@@ -133,14 +130,16 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], \
 		H_estimates[z] = -logz_estimates[z] + np.sum(P_samples[:,z]*logl)
 
 		if plot:
-			plt.figure(3)
+			fig, (ax1, ax2) = plt.subplots(2,1)
+			ax1.plot(logx_samples[:,z], sample_info[:,1], 'k.', label='Samples')
+			ax1.plot(levels[1:,0], levels[1:,1], 'g.', label='Levels')
+			ax1.legend(numpoints=1, loc='lower left')
+			ax1.set(ylabel='log(L)',
+			        title='DNest4: Log-likelihood vs enclosed prior mass for each sample/level')
 
-			plt.subplot(2,1,1)
-			plt.plot(logx_samples[:,z], sample_info[:,1], 'k.', label='Samples')
-			plt.plot(levels[1:,0], levels[1:,1], 'g.', label='Levels')
-			plt.legend(numpoints=1, loc='lower left')
-			plt.ylabel('log(L)')
-			plt.title(str(z+1) + "/" + str(numResampleLogX) + ", log(Z) = " + str(logz_estimates[z][0]))
+			# fig.suptitle(str(z+1) + "/" + str(numResampleLogX) + ", log(Z) = " + str(logz_estimates[z][0]))
+			fig.suptitle("log(Z) = %7.3f" % logz_estimates[z][0])
+
 			# Use all plotted logl values to set ylim
 			combined_logl = np.hstack([sample_info[:,1], levels[1:, 1]])
 			combined_logl = np.sort(combined_logl)
@@ -150,15 +149,13 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], \
 			lower -= 0.05*diff
 			upper += 0.05*diff
 			if zoom_in:
-				plt.ylim([lower, upper])
-			xlim = plt.gca().get_xlim()
+				ax1.set_ylim([lower, upper])
+			xlim = ax1.get_xlim()
 
-		if plot:
-			plt.subplot(2,1,2)
-			plt.plot(logx_samples[:,z], P_samples[:,z], 'k.')
-			plt.ylabel('Posterior Weights')
-			plt.xlabel('log(X)')
-			plt.xlim(xlim)
+			ax2.plot(logx_samples[:,z], P_samples[:,z], 'k.')
+			ax2.set(ylabel='Posterior Weights', xlabel='log(X)', xlim=xlim,
+			        title='DNest4: Posterior weight of each sample')
+			fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
 	P_samples = np.mean(P_samples, 1)
 	P_samples = P_samples/np.sum(P_samples)
