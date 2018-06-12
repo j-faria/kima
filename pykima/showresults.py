@@ -1,51 +1,120 @@
 from .classic import postprocess
 from .display import KimaResults
-import sys
-import argparse
+import sys, os
+from collections import namedtuple
 from matplotlib.pyplot import isinteractive, show
 
-def _parse_args():
-    argshelp = """
-    'no' skips the diagnostic DNest4 plots;
-    1 plots the posterior for Np;
-    2 plots the posterior for the orbital periods;
-    3 plots the joint posterior for semi-amplitudes, eccentricities
-    and orbital periods;
-    4 and 5 plot the posteriors for the GP hyperparameters;
-    6 plots random posterior samples in data-space, together with the data;
-    7 plots posteriors for the fiber_offset and vsys;
-    """
-    parser = argparse.ArgumentParser(prog='kima-showresults',
-                                     usage='%(prog)s [no,1,2,...,7]')
-    parser.add_argument('options', nargs='*', 
-                        choices=['no','1','2','3','4','5','6','7', ''],
-                        help=argshelp, default='')
-    # parser.add_argument('--logz', action='store_true',
-                        # help='just print the value of the log evidence')
-    # parser.add_argument('--neff', action='store_true',
-                        # help='just print the effective sample size')
-    args = parser.parse_args()
-    return args
+
+numbered_args_help = """optional numbered arguments:
+  1    - plot the posterior for Np;
+  2    - plot the posterior for the orbital periods;
+  3    - plot the joint posterior for semi-amplitudes, eccentricities and orbital periods;
+  4, 5 - plot the posteriors for the GP hyperparameters (marginal and joint);
+  6    - plot random posterior samples in data-space, together with the RV data;
+  7    - plot posteriors for the HARPS fiber offset and systematic velocity;
+"""
+
+def findpop(value, lst):
+    """ Return whether `value` is in `lst` and remove all its occurrences """
+    if value in lst:
+        while True: # remove all instances `value` from lst
+            try: lst.pop(lst.index(value))
+            except ValueError: break
+        return True # and return yes we found the value 
+    else:
+        return False # didn't find the value
+
+def usage(full=True):
+    u = "usage: kima-showresults [rv] [planets] [orbital] [gp] [1, ..., 7]\n"\
+        "                        [-h/--help] [--version]"
+    u += '\n\n'
+    if not full: return u
+
+    pos = ["positional arguments:\n"]
+    names = ['rv', 'planets', 'orbital', 'gp']
+    descriptions = \
+        ["Plot posterior realizations of the model over the RV measurements",
+         "Plot posterior for number of planets",
+         "Plot posteriors for some of the orbital parameters",
+         "Plot posteriors for GP hyperparameters",
+        ]
+    for n, d in zip(names, descriptions):
+        pos.append("  %-10s\t%s\n" % (n,d))
+    u += ''.join(pos)
+    
+    u+= numbered_args_help
+    return u
+
+
+def _parse_args(options):
+    if options == '':
+        if 'kima-showresults' in sys.argv[0]:
+            args = sys.argv[1:]
+        else:
+            args = options
+    else:
+        args = options.split()
+    
+    if '-h' in args or '--help' in args:
+        print(usage())
+        sys.exit(0)
+    if '--version' in args:
+        version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
+        print('kima', open(version_file).read().strip()) # same as kima
+        sys.exit(0)
+
+    number_options = ['1','2','3','4','5','6','7']
+    argstuple = namedtuple('Arguments', ['rv', 'planets', 'orbital', 'gp'] \
+                                        + ['diagnostic'] \
+                                        + ['plot_number'])
+    
+    rv = findpop('rv', args)
+    gp = findpop('gp', args)
+    planets = findpop('planets', args)
+    orbital = findpop('orbital', args)
+    diag = findpop('diagnostic', args)
+    plots = list(set(args).intersection(number_options))
+    for plot in plots:
+        findpop(plot, args)
+
+    if len(args)>=1:
+        print(usage(full=False), end='')
+        print('error: could not recognize argument:', "'%s'" % args[0])
+        sys.exit(1)
+
+    return argstuple(rv, planets, orbital, gp, diag, plot_number=plots)
 
 
 def showresults(options=''):
-    if not isinteractive():
-        # use argparse to force correct CLI arguments
-        args = _parse_args()
-        options = args.options
+    """
+    Generate and plot results from a kima run. 
+    The argument `options` should be a string with the same options as for 
+    the kima-showresults script.
+    """
 
-    if 'no' in options:
-        plot = False
-    else:
-        plot = True
+    # force correct CLI arguments
+    args = _parse_args(options)
+
+    plots = []
+    if args.rv:
+        plots.append('6')
+    if args.planets:
+        plots.append('1')
+    if args.orbital:
+        plots.append('2'); plots.append('3')
+    if args.gp:
+        plots.append('4'); plots.append('5')
+    for number in args.plot_number:
+        plots.append(number)
+    
 
     try:
-        evidence, H, logx_samples = postprocess(plot=plot)
+        evidence, H, logx_samples = postprocess(plot=args.diagnostic)
     except IOError as e:
         print(e)
         sys.exit(1)
 
-    res = KimaResults(options)
+    res = KimaResults(list(set(plots)))
     if isinteractive(): 
         return res
     
