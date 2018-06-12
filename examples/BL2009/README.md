@@ -6,7 +6,7 @@ which were used to test the [ExoFit package](http://zuserver2.star.ucl.ac.uk/~la
 The `kima_setup.cpp` file sets the main options for the model: 
 we use a standard sum-of-Keplerians model (no GP) 
 without an offset due to the HARPS change of optical fibers, and no linear trend.  
-The number of planets in the model is fixed to 1. 
+The number of planets in the model is fixed to 1 and, by default, we read the dataset contaning only one planet.
 
 Inside the `RVmodel()` constructor, we define the priors for the model parameters
 to be the same as those used by Balan & Lahav (2009) -- see their [Table 1](https://academic.oup.com/view-large/20641662).
@@ -17,3 +17,5 @@ To compile and run, type
 make
 ./run 
 ```
+
+With the default options, this example could take around 10 minutes to finish.
