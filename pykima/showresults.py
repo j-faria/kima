@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from .classic import postprocess
 from .display import KimaResults
 import sys, os
