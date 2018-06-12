@@ -19,7 +19,7 @@ $(SRCDIR)/main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
 
-EXAMPLES = BL2009 CoRoT7 many_planets default_priors
+EXAMPLES = BL2009 CoRoT7 many_planets 51Peg default_priors
 
 all: main examples
 
@@ -64,26 +64,33 @@ endif
 
 
 clean:
-	rm -f main $(OBJS)
+	@rm -f kima $(OBJS)
 
 cleanexamples:
 ifeq ($(VERBOSE), 1)
 	@for example in $(EXAMPLES) ; do \
 		echo "\033[0;33m Cleaning example \033[0m $$example"; \
-    	make clean -s -C examples/$$example; \
+		make clean -s -C examples/$$example; \
 	done
 else
 	@for example in $(EXAMPLES) ; do \
-    	make clean -s -C examples/$$example; \
+		make clean -s -C examples/$$example; \
 	done
 endif
 
 cleandnest4:
-	@make clean -C $(DNEST4_PATH)
+ifeq ($(VERBOSE), 1)
+	@echo "\033[0;33m Cleaning \033[0m DNest4"
+endif
+	@make clean -s -C $(DNEST4_PATH)
 
 cleanout:
-	rm -f sample.txt sample_info.txt levels.txt \
-              weights.txt posterior_sample.txt sampler_state.txt \
-              posterior_sample_lnlikelihoods.txt
+ifeq ($(VERBOSE), 1)
+	@echo "\033[0;33m Cleaning kima outputs \033[0m "
+endif
+	@rm -f sample.txt sample_info.txt levels.txt \
+			kima_model_setup.txt \
+			weights.txt posterior_sample.txt sampler_state.txt \
+			posterior_sample_lnlikelihoods.txt
 
 cleanall: cleanout clean cleanexamples cleandnest4
