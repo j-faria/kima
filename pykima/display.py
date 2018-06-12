@@ -111,13 +111,14 @@ class KimaResults(object):
             need_model_setup()
             sys.exit(0)
 
-        # find datafile in the compiled model
-        self.data_skip = 2 # by default
         if data_file is None:
             data_file = setup['kima']['file']
-
         print('Loading data file %s' % data_file)
         self.data_file = data_file
+
+        self.data_skip = int(setup['kima']['skip'])
+        self.units = setup['kima']['units']
+        
         if debug:
             print('--- skipping first %d rows of data file' % self.data_skip)
 
@@ -125,8 +126,9 @@ class KimaResults(object):
                                skiprows=self.data_skip, usecols=(0,1,2))
 
         # to m/s
-        self.data[:, 1] *= 1e3
-        self.data[:, 2] *= 1e3
+        if self.units == 'kms':
+            self.data[:, 1] *= 1e3
+            self.data[:, 2] *= 1e3
 
         self.posterior_sample = np.atleast_2d(np.loadtxt(posterior_samples_file))
         try:
@@ -224,7 +226,9 @@ class KimaResults(object):
                            '5': [self.make_plot5, {}],
                            '6': [self.plot_random_planets, 
                                     {'show_vsys':True, 'show_trend':True}],
-                           '7': [(self.hist_offset,self.hist_vsys), {}],
+                           '7': [(self.hist_offset,
+                                  self.hist_vsys,
+                                  self.hist_extra_sigma), {}],
                           }
 
         for item in allowed_options.items():
@@ -735,7 +739,7 @@ class KimaResults(object):
         # from the (sorted, period-cut) posterior samples
         ii = np.random.randint(samples.shape[0], size=ncurves)
 
-        fig, ax = plt.subplots(1,1)
+        _, ax = plt.subplots(1,1)
 
         ## plot the Keplerian curves
         for i in ii:
@@ -787,17 +791,36 @@ class KimaResults(object):
             print('Model has no fiber offset! hist_offset() doing nothing...')
             return
 
+        units = ' (m/s)' if self.units=='ms' else ' (km/s)'
+        estimate = percentile68_ranges_latex(self.offset) + units
+
         _, ax = plt.subplots(1,1)
         ax.hist(self.offset)
+        title = 'Posterior distribution for fiber offset \n %s' % estimate
         ax.set(xlabel='fiber offset (m/s)', ylabel='posterior samples',
-               title='Posterior distribution for fiber offset')
+               title=title)
 
 
     def hist_vsys(self):
         """ Plot the histogram of the posterior for the systemic velocity """
         vsys = self.posterior_sample[:,-1]
+        units = ' (m/s)' if self.units=='ms' else ' (km/s)'
+        estimate = percentile68_ranges_latex(vsys) + units
 
-        fig, ax = plt.subplots(1,1)
-        ax.hist(vsys/1e3)
-        ax.set(xlabel='vsys (m/s)', ylabel='posterior samples',
-               title=r'Posterior distribution for $v_{\rm sys}$')
+        _, ax = plt.subplots(1,1)
+        ax.hist(vsys)
+        title = 'Posterior distribution for $v_{\\rm sys}$ \n %s' % estimate
+        ax.set(xlabel='vsys' + units, ylabel='posterior samples',
+               title=title)
+
+
+    def hist_extra_sigma(self):
+        """ Plot the histogram of the posterior for the additional white noise """
+        units = ' (m/s)' if self.units=='ms' else ' (km/s)'
+        estimate = percentile68_ranges_latex(self.extra_sigma) + units
+
+        _, ax = plt.subplots(1,1)
+        ax.hist(self.extra_sigma)
+        title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
+        ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
+               title=title)
