@@ -8,7 +8,8 @@ except ImportError:
     import ConfigParser as configparser
 
 from .keplerian import keplerian
-from .utils import need_model_setup
+from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
+                   percentile68_ranges, percentile68_ranges_latex
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,71 +22,6 @@ except ImportError:
     hist_tools_available = False
 
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
-mjup2mearth = 317.8284065946748
-
-
-def apply_argsort(arr1, arr2, axis=-1):
-    """
-    Apply arr1.argsort() on arr2, along `axis`.
-    """
-    # check matching shapes
-    assert arr1.shape == arr2.shape, "Shapes don't match!"
-
-    i = list(np.ogrid[[slice(x) for x in arr1.shape]])
-    i[axis] = arr1.argsort(axis)
-    return arr2[i]
-
-def percentile68_ranges(a, min=None, max=None):
-    if min is None and max is None:
-        mask = np.ones_like(a, dtype=bool)
-    elif min is None:
-        mask = a < max
-    elif max is None:
-        mask = a > min
-    else:
-        mask = (a > min) & (a < max)
-    lp, median, up = np.percentile(a[mask], [16, 50, 84])
-    return (median, up-median, median-lp)
-
-def percentile68_ranges_latex(a, min=None, max=None):
-    median, plus, minus = percentile68_ranges(a, min, max)
-    return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, plus, minus)
-
-
-def clipped_mean(arr, min, max):
-    """ Mean of `arr` between `min` and `max` """
-    mask = (arr > min) & (arr < max)
-    return np.mean(arr[mask])
-
-def clipped_std(arr, min, max):
-    """ std of `arr` between `min` and `max` """
-    mask = (arr > min) & (arr < max)
-    return np.std(arr[mask])
-
-
-def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
-    """
-    Calculate the planet (minimuum) mass given
-    period `P`, semi-amplitude `K` and eccentricity `e`.
-    """
-    if verbose: print('Using star mass = %s solar mass' % star_mass)
-
-    if isinstance(P, float):
-        assert isinstance(star_mass, float)
-        m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1-e**2)
-        m_me = m_mj * mjup2mearth
-        return m_mj, m_me
-    else:
-      if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-        star_mass = star_mass[0] + star_mass[1]*np.random.randn(P.size)
-      m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1-e**2)
-      m_me = m_mj * mjup2mearth
-      
-      if full_output:
-        return m_mj.mean(), m_mj.std(), m_mj
-      else:
-        return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
-
 
 class KimaResults(object):
     def __init__(self, options, data_file=None, 
@@ -782,7 +718,7 @@ class KimaResults(object):
 
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
         plt.tight_layout()
-        plt.show()
+        # plt.show()
 
 
     def hist_offset(self):
