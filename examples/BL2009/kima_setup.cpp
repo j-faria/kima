@@ -1,9 +1,7 @@
-#include <iostream>
 #include "DNest4.h"
 #include "Data.h"
 #include "RVmodel.h"
 
-using namespace std;
 using namespace DNest4;
 
 /* priors */
@@ -19,10 +17,7 @@ const bool trend = false;
 
 // options for the model
 // 
-RVmodel::RVmodel()
-    :planets(5, 1, false, RVConditionalPrior())
-    ,mu(Data::get_instance().N())
-    ,C(Data::get_instance().N(), Data::get_instance().N())
+RVmodel::RVmodel():fix(false),npmax(1)
 {
     // priors as in Balan & Lahav (2009, DOI: 10.1111/j.1365-2966.2008.14385.x)
     Cprior = new Uniform(-2000, 2000);

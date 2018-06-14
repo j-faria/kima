@@ -1,6 +1,7 @@
 #include "DNest4.h"
 #include "Data.h"
 #include "RVmodel.h"
+
 using namespace DNest4;
 
 #include "default_priors.h"
@@ -10,10 +11,7 @@ const bool GP = false;
 const bool hyperpriors = false;
 const bool trend = false;
 
-RVmodel::RVmodel()
-    :planets(5, 1, false, RVConditionalPrior())
-    ,mu(Data::get_instance().N())
-    ,C(Data::get_instance().N(), Data::get_instance().N())
+RVmodel::RVmodel():fix(false),npmax(1)
 {
     Cprior = new Uniform(-10, 10); // m/s
     Jprior = new ModifiedLogUniform(1.0, 2000.); // m/s
