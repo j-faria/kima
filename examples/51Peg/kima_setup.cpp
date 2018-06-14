@@ -1,24 +1,15 @@
-#include <iostream>
 #include "DNest4.h"
 #include "Data.h"
 #include "RVmodel.h"
-
-using namespace std;
 using namespace DNest4;
 
-/* priors */
-//  data-dependent priors should be defined in the RVmodel() 
-//  constructor and use Data::get_instance() 
 #include "default_priors.h"
-
 
 const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
 const bool hyperpriors = false;
 const bool trend = false;
 
-// options for the model
-// 
 RVmodel::RVmodel()
     :planets(5, 1, false, RVConditionalPrior())
     ,mu(Data::get_instance().N())
