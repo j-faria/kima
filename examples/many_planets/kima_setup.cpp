@@ -1,9 +1,7 @@
-#include <iostream>
 #include "DNest4.h"
 #include "Data.h"
 #include "RVmodel.h"
 
-using namespace std;
 using namespace DNest4;
 
 /* priors */
@@ -29,10 +27,7 @@ const bool trend = false;
 
 // options for the model
 // 
-RVmodel::RVmodel()
-    :planets(5, 10, false, RVConditionalPrior())
-    ,mu(Data::get_instance().N())
-    ,C(Data::get_instance().N(), Data::get_instance().N())
+RVmodel::RVmodel():fix(false),npmax(10)
 {
     double ymin = Data::get_instance().get_y_min();
     double ymax = Data::get_instance().get_y_max();

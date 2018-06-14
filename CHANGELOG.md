@@ -9,6 +9,9 @@ The API should not be considered stable.
 
 ### [Unreleased]
 
+#### Changed
+- The API for the RVModel constructor was simplified. One can now do
+  `RVmodel::RVmodel():fix(false),npmax(1)` or even just `RVmodel::RVmodel()`
 
 ### [0.1.2] - 2018-03-02
 #### Added

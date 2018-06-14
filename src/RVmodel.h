@@ -23,7 +23,13 @@ extern const bool trend;
 class RVmodel
 {
     private:
-        DNest4::RJObject<RVConditionalPrior> planets;
+        // Fix the number of planets? (by default, yes)
+        bool fix {true};
+        // Maximum number of planets
+        int npmax {1};
+
+        DNest4::RJObject<RVConditionalPrior> planets =
+            DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
 
         double background;
         //std::vector<double> offsets;
@@ -46,7 +52,8 @@ class RVmodel
                  beta_complex_imag;*/
 
         // The signal
-        std::vector<long double> mu;
+        std::vector<long double> mu = 
+                            std::vector<long double>(Data::get_instance().N());
         void calculate_mu();
 
         // eccentric and true anomalies
@@ -56,7 +63,7 @@ class RVmodel
         double true_anomaly(double time, double prd, double ecc, double peri_pass);
 
         // The covariance matrix for the data
-        Eigen::MatrixXd C;
+        Eigen::MatrixXd C {Data::get_instance().N(), Data::get_instance().N()};
         void calculate_C();
 
         //QPkernel *kernel;
