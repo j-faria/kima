@@ -57,15 +57,15 @@ exoplanets using RV data.
 It fits a sum of Keplerian curves to a timeseries of RV measurements, 
 using the Diffusive Nested Sampling algorithm [@Brewer2011]
 to sample from the posterior distribution of the model parameters. 
-This algorithm is extremely efficient on the 
-multimodal and correlated posteriors that often arise in this problem.
+This algorithm can sample the multimodal and correlated posteriors 
+that often arise in this problem [e.g. @Brewer2015].
 
 <!-- Additionally, -->
 Unlike similar open-source packages, 
 **kima** calculates the fully marginalized likelihood, or _evidence_,
 <!--; see @Kass1995)  -->
 both for a model with a fixed number $N_p$ of Keplerian signals,
-or marginalising over $N_p$.
+or after marginalising over $N_p$.
 For this latter task, $N_p$ itself is a free parameter
 and we sample from its posterior distribution
 using the trans-dimensional method proposed by @Brewer2014.
@@ -75,7 +75,8 @@ using the trans-dimensional method proposed by @Brewer2014.
 Because **kima** uses the Diffusive Nested Sampling algorithm,
 the evidence values are still accurate
 when the likelihood function contains phase changes
-which would make other algorithms (such as thermodynamic integration) unreliable. 
+which would make other algorithms 
+(such as thermodynamic integration) unreliable [@Skilling2006].
 <!--  -->
 
 Moreover, **kima** can use a GP with a quasi-periodic kernel
