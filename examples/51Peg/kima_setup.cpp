@@ -14,10 +14,10 @@ const bool trend = false;
 RVmodel::RVmodel():fix(false),npmax(1)
 {
     Cprior = new Uniform(-10, 10); // m/s
-    Jprior = new ModifiedLogUniform(1.0, 2000.); // m/s
+    Jprior = new ModifiedLogUniform(1.0, 1000.); // m/s
 
-    Pprior = new LogUniform(0.2, 1E2); // days
-    Kprior = new ModifiedLogUniform(1.0, 2E3); // m/s
+    Pprior = new LogUniform(0.2, 2000); // days
+    Kprior = new ModifiedLogUniform(1.0, 1000); // m/s
 
     eprior = new Uniform(0., 1.);
     phiprior = new Uniform(0.0, 2*M_PI);
@@ -38,7 +38,7 @@ int main(int argc, char** argv)
     
     // set the sampler and run it!
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
-    sampler.run(10);
+    sampler.run(50);
 
     return 0;
 }
