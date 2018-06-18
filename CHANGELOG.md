@@ -9,9 +9,27 @@ The API should not be considered stable.
 
 ### [Unreleased]
 
+#### Added 
+- `save_setup()` function to save the current model settings for later analysis
+- New example with data of 51 Peg
+- Getting started guide, going over the 51 Peg example
+- READMEs for each example
+- New arguments for the `kima-showresults` script: 
+  `rv`, `planets`,`orbital`, `gp`, `extra`, `diagnostic`.
+  Numbered arguments for specific plots still work
+- Titles and more labels to the DNest4 diagnostic plots and other plots
+
 #### Changed
 - The API for the RVModel constructor was simplified. One can now do
   `RVmodel::RVmodel():fix(false),npmax(1)` or even just `RVmodel::RVmodel()`
+- `KimaResults` now reads a config file (created by `save_setup`)
+  to get the model settings; much less error-prone than parsing the cpp files
+- Changed the url for the Eigen submodule: https://github.com/eigenteam/eigen-git-mirror.git
+- Easier to add new examples to the makefile
+- Improve `kima-checkpriors` script
+- Move utility functions from `display.py` to `utils.py`
+
+
 
 ### [0.1.2] - 2018-03-02
 #### Added
