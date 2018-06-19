@@ -1,5 +1,3 @@
-VERBOSE ?= 1
-
 DNEST4_PATH = DNest4/code
 EIGEN_PATH = eigen
 
@@ -24,70 +22,42 @@ EXAMPLES = BL2009 CoRoT7 many_planets 51Peg default_priors
 all: main examples
 
 %.o: %.cpp
-ifeq ($(VERBOSE), 1)
-	@echo "\033[0;33m Compiling:\033[0m" $<
+	@echo "Compiling:" $<
 	@$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
-else
-	$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
-endif
 
 
 main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
-ifeq ($(VERBOSE), 1)
-	@echo "\033[0;33m Linking\033[0m "
+	@echo "Linking"
 	@$(CXX) -o kima $(OBJS) $(LIBS) $(CXXFLAGS)
-else
-	$(CXX) -o kima $(OBJS) $(LIBS) $(CXXFLAGS)
-endif
 
 
 .PHONY: examples
 examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
-ifeq ($(VERBOSE), 1)
-	@for example in $(EXAMPLES) ; do \
-		echo "\033[0;33m Compiling example\033[0m $$example"; \
-		make -s -C examples/$$example; \
+	@+for example in $(EXAMPLES) ; do \
+		echo "Compiling example $$example"; \
+		$(MAKE) -s -C examples/$$example; \
 	done
-else
-	@for example in $(EXAMPLES) ; do \
-		make -s -C examples/$$example; \
-	done 
-endif
 
 $(DNEST4_PATH)/libdnest4.a:
-ifeq ($(VERBOSE), 1)
-	@echo "\033[0;33m Compiling \033[0m DNest4"
-	@make -s -C $(DNEST4_PATH) libdnest4.a
-else
-	make -C $(DNEST4_PATH) libdnest4.a
-endif
+	@echo "Compiling DNest4"
+	@+$(MAKE) -s -C $(DNEST4_PATH) libdnest4.a
 
 
 clean:
 	@rm -f kima $(OBJS)
 
 cleanexamples:
-ifeq ($(VERBOSE), 1)
-	@for example in $(EXAMPLES) ; do \
-		echo "\033[0;33m Cleaning example \033[0m $$example"; \
-		make clean -s -C examples/$$example; \
+	@+for example in $(EXAMPLES) ; do \
+		echo "Cleaning example $$example"; \
+		$(MAKE) clean -s -C examples/$$example; \
 	done
-else
-	@for example in $(EXAMPLES) ; do \
-		make clean -s -C examples/$$example; \
-	done
-endif
 
 cleandnest4:
-ifeq ($(VERBOSE), 1)
-	@echo "\033[0;33m Cleaning \033[0m DNest4"
-endif
-	@make clean -s -C $(DNEST4_PATH)
+	@echo "Cleaning DNest4"
+	@$(MAKE) clean -s -C $(DNEST4_PATH)
 
 cleanout:
-ifeq ($(VERBOSE), 1)
-	@echo "\033[0;33m Cleaning kima outputs \033[0m "
-endif
+	@echo "Cleaning kima outputs  "
 	@rm -f sample.txt sample_info.txt levels.txt \
 			kima_model_setup.txt \
 			weights.txt posterior_sample.txt sampler_state.txt \
