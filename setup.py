@@ -21,6 +21,7 @@ setup(name='pykima',
         'console_scripts': [
             'kima-showresults = pykima.showresults:showresults',
             'kima-checkpriors = pykima.check_priors:main',
+            'kima-template = pykima.make_template:main',
             ]
         },
      )

@@ -4,10 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-We're still in 0.x.x so anything may change at any time. 
-The API should not be considered stable.
-
 ### [Unreleased]
+
+#### Added
+- new `kima-template` script to copy all files necessary for a run
+
+
+### [1.0]  - 2018-06-19
 
 #### Added 
 - `save_setup()` function to save the current model settings for later analysis
