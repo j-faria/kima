@@ -8,6 +8,7 @@ except ImportError:
     import ConfigParser as configparser
 
 from .keplerian import keplerian
+from .GP import GP, QPkernel
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
                    percentile68_ranges, percentile68_ranges_latex
 
@@ -122,10 +123,17 @@ class KimaResults(object):
 
         if self.GPmodel:
             n_hyperparameters = 4
+            start_hyperpars = start_parameters + n_trend + n_offsets + 1
+            self.etas = self.posterior_sample[:,
+                          start_hyperpars : start_hyperpars+n_hyperparameters]
+
             for i in range(n_hyperparameters):
                 name = 'eta' + str(i+1)
-                ind = start_parameters + n_trend + n_offsets + 1 + i
+                ind = start_hyperpars + i
                 setattr(self, name, self.posterior_sample[:, ind])
+            
+            self.GP = GP(QPkernel(1, 1, 1, 1), 
+                         self.data[:,0], self.data[:,2], white_noise=0.)
         else:
             n_hyperparameters = 0
 
@@ -450,7 +458,8 @@ class KimaResults(object):
             print('Model does not have GP! make_plot4() doing nothing...')
             return
 
-        available_etas = [v for v in dir(self) if v.startswith('eta')]
+        # available_etas = [v for v in dir(self) if v.startswith('eta')]
+        available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
         labels = [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
         units = ['m/s', 'days', 'days', None]
         xlabels = []
@@ -479,7 +488,8 @@ class KimaResults(object):
         self.pmin = 10.
         self.pmax = 40.
 
-        available_etas = [v for v in dir(self) if v.startswith('eta')]
+        # available_etas = [v for v in dir(self) if v.startswith('eta')]
+        available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
         labels = [r'$s$'] + [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
         units = ['m/s', 'm/s', 'days', 'days', None]
         xlabels = []
@@ -533,7 +543,7 @@ class KimaResults(object):
                          # fill_contours=True, smooth=True,
                          # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
                          hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-                         hist_kwargs={'normed':True}, 
+                         hist_kwargs={'density':True}, 
                          range=ranges, data_kwargs={'alpha':1},
                          )
 
@@ -656,6 +666,8 @@ class KimaResults(object):
         A total of `ncurves` random samples are chosen,
         and the Keplerian curves are calculated covering 100 + `over`%
         of the timespan of the data.
+        If the model has a GP component, the prediction using the median GP
+        hyperparameters and median orbital parameters is also shown.
         """
         samples = self.get_sorted_planet_samples()
         if self.max_components > 0:
@@ -676,6 +688,7 @@ class KimaResults(object):
         ii = np.random.randint(samples.shape[0], size=ncurves)
 
         _, ax = plt.subplots(1,1)
+        ax.set_title('Posterior samples in RV data space')
 
         ## plot the Keplerian curves
         for i in ii:
@@ -705,6 +718,28 @@ class KimaResults(object):
                 ax.plot(t, vsys*np.ones_like(t), alpha=0.2, color='r', ls='--')
 
 
+        if self.GPmodel:
+            # let's be more reasonable for the number of GP prediction points
+            ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
+            
+            # set the GP parameters to the median (or mean?) of their posteriors
+            eta1, eta2, eta3, eta4 = np.median(self.etas, axis=0)
+            # eta1, eta2, eta3, eta4 = np.mean(self.etas, axis=0)
+            self.GP.kernel.setpars(eta1, eta2, eta3, eta4)
+
+            # set the orbital parameters to the median of their posteriors
+            P,K,phi,ecc,w = np.median(samples, axis=0)
+            t0 = t[0] - (P*phi)/(2.*np.pi)
+            mu_orbital = keplerian(t, P, K, ecc, w, t0, 0.)
+
+            # calculate the mean and std prediction from the GP model
+            mu, std = self.GP.predict(y - mu_orbital, ttGP, return_std=True)
+            mu_orbital = keplerian(ttGP, P, K, ecc, w, t0, 0.)
+            
+            # 2-sigma region around the predictive mean
+            ax.fill_between(ttGP, y1=mu+mu_orbital-2*std, y2=mu+mu_orbital+2*std, 
+                            alpha=0.3, color='m')
+
         ## plot the data
         if self.fiber_offset:
             mask = t < 57170
@@ -718,7 +753,6 @@ class KimaResults(object):
 
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
         plt.tight_layout()
-        # plt.show()
 
 
     def hist_offset(self):
