@@ -697,6 +697,8 @@ class KimaResults(object):
             nplanets = pars.size / self.n_dimensions
             for j in range(int(nplanets)):
                 P = pars[j + 0*self.max_components]
+                if P==0.0:
+                    continue
                 K = pars[j + 1*self.max_components]
                 phi = pars[j + 2*self.max_components]
                 t0 = t[0] - (P*phi)/(2.*np.pi)
