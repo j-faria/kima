@@ -27,6 +27,7 @@ class Data
 		double get_t_min() const { return *std::min_element(t.begin(), t.end()); }
 		double get_t_max() const { return *std::max_element(t.begin(), t.end()); }
 		double get_t_middle() const { return get_t_min() + 0.5*(get_t_max() - get_t_min()); }
+		double get_timespan() const { return get_t_max() - get_t_min(); }
 
 		const std::vector<double>& get_y() const { return y; }
 		double get_y_min() const { return *std::min_element(y.begin(), y.end()); }
