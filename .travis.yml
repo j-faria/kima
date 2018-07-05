@@ -39,7 +39,7 @@ install:
   - pip install corner coveralls
 
   # compile the C++
-  - make
+  # - make
   # and now the pykima package
   - python setup.py install
 
@@ -48,6 +48,7 @@ script:
   - python -c "import pykima"
   - cd; python -c "import pykima"; cd -
   - kima-showresults -h
+  - ./run
   - kima-showresults
   - kima-checkpriors -h
   # run tests
