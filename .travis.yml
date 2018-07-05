@@ -4,18 +4,18 @@ dist: trusty
 
 matrix:
   include:
-    - os: linux
-      env: PYTHON_VERSION=2.7
-    - os: linux
-      env: PYTHON_VERSION=3.5
-    - os: linux
-      env: PYTHON_VERSION=3.6
+    # - os: linux
+    #   env: PYTHON_VERSION=2.7
+    # - os: linux
+    #   env: PYTHON_VERSION=3.5
+    # - os: linux
+    #   env: PYTHON_VERSION=3.6
     - os: osx
       env: PYTHON_VERSION=2.7
     - os: osx
       env: PYTHON_VERSION=3.6
-  allow_failures:
-    - os: osx
+  # allow_failures:
+    # - os: osx
 
 install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
@@ -48,12 +48,13 @@ script:
   - python -c "import pykima"
   - cd; python -c "import pykima"; cd -
   - kima-showresults -h
+  - kima-showresults
   - kima-checkpriors -h
   # run tests
-  - py.test --slow -v --cov=pykima tests
+  # - py.test --slow -v --cov=pykima tests
 
 
-after_success: coveralls
+# after_success: coveralls
 
 
 notifications:
