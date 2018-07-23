@@ -1,9 +1,10 @@
 ---
 title: 'kima: Exoplanet detection in radial velocities'
 tags:
-  - example
-  - tags
-  - for the paper
+  - exoplanets
+  - radial-velocity
+  - bayesian
+  - gaussian-processes
 authors:
  - name: J. P. Faria
    orcid: 0000-0002-6728-244X
