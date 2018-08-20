@@ -1,6 +1,7 @@
 import re, os, sys
 pathjoin = os.path.join
 
+import pickle
 try:
     import configparser
 except ImportError:
@@ -175,6 +176,20 @@ class KimaResults(object):
                     [m() for m in methods]
                 else:
                     methods(**kwargs)
+
+
+    @classmethod
+    def load(cls, filename):
+        """Load a KimaResults object from a pickle file."""
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
+    
+    
+    def save(self, filename):
+        """Pickle this KimaResults object into a file."""
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f, protocol=2)
+        print('Wrote to file "%s"' % f.name)
 
 
     def get_marginals(self):
