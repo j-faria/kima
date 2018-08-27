@@ -181,9 +181,15 @@ class KimaResults(object):
     @classmethod
     def load(cls, filename):
         """Load a KimaResults object from a pickle file."""
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
-    
+        try:
+            with open(filename, 'rb') as f:
+                return pickle.load(f)
+        except UnicodeDecodeError:
+            with open(filename, 'rb') as f:
+                return pickle.load(f, encoding='latin1')
+        except Exception as e:
+            print('Unable to load data from ', filename, ':', e)
+            raise
     
     def save(self, filename):
         """Pickle this KimaResults object into a file."""
