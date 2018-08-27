@@ -31,6 +31,15 @@ extern ContinuousDistribution *log_eta4_prior;
 Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
 //Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
 
+
+extern ContinuousDistribution *bgplanet_Pprior;
+extern ContinuousDistribution *bgplanet_Kprior;
+extern ContinuousDistribution *bgplanet_eprior;
+extern ContinuousDistribution *bgplanet_phiprior;
+extern ContinuousDistribution *bgplanet_wprior;
+
+
+
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVmodel::from_prior(RNG& rng)
@@ -64,6 +73,17 @@ void RVmodel::from_prior(RNG& rng)
         eta4 = exp(log_eta4_prior->generate(rng));
         // exp(log(1E-5) + log(1E5)*rng.rand());
         //eta4 = 0.5;
+    }
+
+    if(bgplanet)
+    {
+        // do something
+        bgp_P = bgplanet_Pprior->generate(rng);
+        bgp_K = bgplanet_Kprior->generate(rng);
+        bgp_e = bgplanet_eprior->generate(rng);
+        bgp_phi = bgplanet_phiprior->generate(rng);
+        bgp_w = bgplanet_wprior->generate(rng);
+        // cout << bgp_P << " " << bgp_K << " " << bgp_e << endl;
     }
 
     calculate_mu();
@@ -200,6 +220,13 @@ void RVmodel::calculate_mu()
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
+
+    if(bgplanet)
+    {
+        // add the background planet!
+    }
+
+
     double P, K, phi, ecc, omega, f, v, ti;
     for(size_t j=0; j<components.size(); j++)
     {
@@ -321,6 +348,15 @@ double RVmodel::perturb(RNG& rng)
         {
             logH += planets.perturb(rng);
             planets.consolidate_diff();
+            
+            if(bgplanet){
+                bgplanet_Pprior->perturb(bgp_P, rng);
+                bgplanet_Kprior->perturb(bgp_K, rng);
+                bgplanet_eprior->perturb(bgp_e, rng);
+                bgplanet_phiprior->perturb(bgp_phi, rng);
+                bgplanet_wprior->perturb(bgp_w, rng);
+            }
+            
             calculate_mu();
         }
         else if(rng.rand() <= 0.5)
@@ -481,6 +517,10 @@ void RVmodel::print(std::ostream& out) const
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
   
+    if(bgplanet){
+        out<<bgp_P<<'\t'<<bgp_K<<'\t'<<bgp_phi<<'\t'<<bgp_e<<'\t'<<bgp_phi<<'\t';
+    }
+
     planets.print(out);
 
     out<<' '<<staleness<<' ';
@@ -499,6 +539,9 @@ string RVmodel::description() const
         desc += "fiber_offset\t";
     if(GP)
         desc += "eta1\teta2\teta3\teta4\t";
+
+    if(bgplanet)
+        desc += "bg_P\tbg_K\tbg_phi\tbg_ecc\tbg_chi\t";
 
     desc += "ndim\tmaxNp\t";
     if(hyperpriors)
@@ -530,6 +573,7 @@ void RVmodel::save_setup() {
     fout << "GP: " << GP << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
+    fout << "bgplanet: " << bgplanet << endl;
     fout << endl;
     fout << "file: " << Data::get_instance().datafile << endl;
     fout << "units: " << Data::get_instance().dataunits << endl;

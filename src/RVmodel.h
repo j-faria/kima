@@ -20,6 +20,8 @@ extern const bool obs_after_HARPS_fibers;
 extern const bool trend;
 
 
+extern const bool bgplanet;
+
 class RVmodel
 {
     private:
@@ -37,6 +39,10 @@ class RVmodel
         double fiber_offset;
 
         double extra_sigma;
+
+        // orbital parameters for the background planet,
+        // used if bgplanet is set to true
+        double bgp_P, bgp_K, bgp_e, bgp_phi, bgp_w;
 
         // Parameters for the quasi-periodic extra noise
         double eta1, eta2, eta3, eta4, eta5;
