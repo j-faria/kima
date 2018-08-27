@@ -221,13 +221,21 @@ void RVmodel::calculate_mu()
     #endif
 
 
+    double f, v, ti;
     if(bgplanet)
     {
         // add the background planet!
+        for(size_t i=0; i<t.size(); i++)
+        {
+            ti = t[i];
+            f = true_anomaly(ti, bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
+            v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
+            mu[i] += v;
+        }
     }
 
 
-    double P, K, phi, ecc, omega, f, v, ti;
+    double P, K, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
         if(hyperpriors)
