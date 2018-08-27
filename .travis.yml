@@ -49,6 +49,7 @@ script:
   - cd; python -c "import pykima"; cd -
   - kima-showresults -h
   - kima-checkpriors -h
+  - cd; kima-template; cd -
   # run tests
   - py.test --slow -v --cov=pykima tests
 
