@@ -323,6 +323,11 @@ double RVmodel::perturb(RNG& rng)
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
+                if (bgplanet) {
+                    f = true_anomaly(t[i], bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
+                    v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
+                    mu[i] -= v;
+                }
             }
 
             Cprior->perturb(background, rng);
@@ -337,6 +342,15 @@ double RVmodel::perturb(RNG& rng)
                 slope_prior->perturb(slope, rng);
             }
 
+            // propose new bg planet parameters
+            if(bgplanet){
+                bgplanet_Pprior->perturb(bgp_P, rng);
+                bgplanet_Kprior->perturb(bgp_K, rng);
+                bgplanet_eprior->perturb(bgp_e, rng);
+                bgplanet_phiprior->perturb(bgp_phi, rng);
+                bgplanet_wprior->perturb(bgp_w, rng);
+            }
+
             for(size_t i=0; i<mu.size(); i++)
             {
                 mu[i] += background;
@@ -346,6 +360,12 @@ double RVmodel::perturb(RNG& rng)
 
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] += fiber_offset;
+                }
+                
+                if (bgplanet) {
+                    f = true_anomaly(t[i], bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
+                    v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
+                    mu[i] += v;
                 }
             }
         }
@@ -362,9 +382,7 @@ double RVmodel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5)
         {
-            //cout << "J: " << extra_sigma;
             Jprior->perturb(extra_sigma, rng);
-            //cout << " --> " << extra_sigma << endl;
         }
         else
         {
