@@ -175,6 +175,8 @@ void RVmodel::calculate_C()
 
 void RVmodel::calculate_mu()
 {
+    double f, v, ti;
+    double P, K, phi, ecc, omega;
     auto data = Data::get_instance();
     // Get the times from the data
     const vector<double>& t = data.get_t();
@@ -212,6 +214,19 @@ void RVmodel::calculate_mu()
         }
 
 
+        if(bgplanet)
+        {
+            // add the background planet!
+            for(size_t i=0; i<t.size(); i++)
+            {
+                ti = t[i];
+                f = true_anomaly(ti, bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
+                v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
+                mu[i] += v;
+            }
+        }
+
+
     }
     else // just updating (adding) planets
         staleness++;
@@ -221,21 +236,7 @@ void RVmodel::calculate_mu()
     #endif
 
 
-    double f, v, ti;
-    if(bgplanet)
-    {
-        // add the background planet!
-        for(size_t i=0; i<t.size(); i++)
-        {
-            ti = t[i];
-            f = true_anomaly(ti, bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
-            v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
-            mu[i] += v;
-        }
-    }
 
-
-    double P, K, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
         if(hyperpriors)
@@ -269,6 +270,7 @@ double RVmodel::perturb(RNG& rng)
     auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
     double logH = 0.;
+    double f, v;
 
     if(GP)
     {
@@ -356,15 +358,6 @@ double RVmodel::perturb(RNG& rng)
         {
             logH += planets.perturb(rng);
             planets.consolidate_diff();
-            
-            if(bgplanet){
-                bgplanet_Pprior->perturb(bgp_P, rng);
-                bgplanet_Kprior->perturb(bgp_K, rng);
-                bgplanet_eprior->perturb(bgp_e, rng);
-                bgplanet_phiprior->perturb(bgp_phi, rng);
-                bgplanet_wprior->perturb(bgp_w, rng);
-            }
-            
             calculate_mu();
         }
         else if(rng.rand() <= 0.5)
@@ -384,6 +377,11 @@ double RVmodel::perturb(RNG& rng)
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
+                if (bgplanet) {
+                    f = true_anomaly(t[i], bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
+                    v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
+                    mu[i] -= v;
+                }
             }
 
             Cprior->perturb(background, rng);
@@ -398,6 +396,15 @@ double RVmodel::perturb(RNG& rng)
                 slope_prior->perturb(slope, rng);
             }
 
+            // propose new bg planet parameters
+            if(bgplanet){
+                bgplanet_Pprior->perturb(bgp_P, rng);
+                bgplanet_Kprior->perturb(bgp_K, rng);
+                bgplanet_eprior->perturb(bgp_e, rng);
+                bgplanet_phiprior->perturb(bgp_phi, rng);
+                bgplanet_wprior->perturb(bgp_w, rng);
+            }
+
             for(size_t i=0; i<mu.size(); i++)
             {
                 mu[i] += background;
@@ -408,6 +415,13 @@ double RVmodel::perturb(RNG& rng)
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
+
+                if (bgplanet) {
+                    f = true_anomaly(t[i], bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
+                    v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
+                    mu[i] += v;
+                }
+            
             }
         }
     }
@@ -526,7 +540,7 @@ void RVmodel::print(std::ostream& out) const
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
   
     if(bgplanet){
-        out<<bgp_P<<'\t'<<bgp_K<<'\t'<<bgp_phi<<'\t'<<bgp_e<<'\t'<<bgp_phi<<'\t';
+        out<<bgp_P<<'\t'<<bgp_K<<'\t'<<bgp_phi<<'\t'<<bgp_e<<'\t'<<bgp_w<<'\t';
     }
 
     planets.print(out);
@@ -549,7 +563,7 @@ string RVmodel::description() const
         desc += "eta1\teta2\teta3\teta4\t";
 
     if(bgplanet)
-        desc += "bg_P\tbg_K\tbg_phi\tbg_ecc\tbg_chi\t";
+        desc += "bg_P\tbg_K\tbg_phi\tbg_ecc\tbg_w\t";
 
     desc += "ndim\tmaxNp\t";
     if(hyperpriors)

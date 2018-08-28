@@ -131,9 +131,23 @@ class KimaResults(object):
             n_hyperparameters = 0
 
 
+        # find background planet in the compiled model
+        self.bgplanet = setup['kima']['bgplanet'] == 'true'
+
+        if self.bgplanet:
+            n_bgp_pars = 5
+            names = 'bgp_P', 'bgp_K', 'bgp_phi', 'bgp_e', 'bgp_w'
+            for i in range(n_bgp_pars):
+                ind = start_parameters + n_trend \
+                      + n_offsets + n_hyperparameters\
+                      + 1 + i
+                setattr(self, names[i], self.posterior_sample[:, ind])
+        else:
+            n_bgp_pars = 0
+
 
         start_objects_print = start_parameters + n_offsets + \
-                              n_trend + n_hyperparameters + 1
+                              n_trend + n_hyperparameters + n_bgp_pars + 1
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
         # maximum number of components
@@ -692,8 +706,16 @@ class KimaResults(object):
 
         _, ax = plt.subplots(1,1)
 
+
         ## plot the Keplerian curves
         for i in ii:
+            if self.bgplanet:
+                bgv = np.zeros_like(tt)
+                t0 = t[0] - (self.bgp_P[i]*self.bgp_phi[i])/(2.*np.pi)
+                bgv = keplerian(tt, self.bgp_P[i], self.bgp_K[i], self.bgp_e[i],
+                                    self.bgp_w, t0, 0.)
+                
+
             v = np.zeros_like(tt)
             pars = samples[i, :].copy()
             nplanets = pars.size / self.n_dimensions
@@ -717,7 +739,12 @@ class KimaResults(object):
                     ax.plot(tt, vsys+self.trendpars[i]*(tt - t[0]), 
                             alpha=0.2, color='m', ls=':')
 
+            if self.bgplanet:
+                v += bgv
+                ax.plot(tt, bgv + vsys, 'm', lw=1, alpha=0.5)
+
             ax.plot(tt, v, alpha=0.2, color='k')
+            
             if show_vsys:
                 ax.plot(t, vsys*np.ones_like(t), alpha=0.2, color='r', ls='--')
 
