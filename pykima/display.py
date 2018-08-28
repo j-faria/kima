@@ -497,8 +497,14 @@ class KimaResults(object):
             print('Model does not have GP! make_plot5() doing nothing...')
             return
 
+        # these are the limits of the default prior for eta3
         self.pmin = 10.
         self.pmax = 40.
+        # but we try to accomodate if the prior is changed
+        if self.eta3.min() < self.pmin:
+            self.pmin = np.floor(self.eta3.min())
+        if self.eta3.max() > self.pmax:
+            self.pmax = np.ceil(self.eta3.max())
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
         labels = [r'$s$'] + [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
