@@ -39,7 +39,7 @@ install:
   - pip install corner coveralls
 
   # compile the C++
-  - make
+  - make main
   # and now the pykima package
   - python setup.py install
 
