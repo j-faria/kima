@@ -678,6 +678,36 @@ class KimaResults(object):
         plt.show()
 
 
+    def corner_known_planet_parameters(self, pmin=None, pmax=None):
+        """ Corner plot of the posterior samples for the known planet parameters """
+        
+        if not self.bgplanet:
+            print('Model does not have bg planet! corner_known_planet_parameters() doing nothing...')
+            return
+
+        # names = [r'$P$', r'$K$', r'$\phi$', 'ecc', r'$\omega$']
+        labels = [r'$P$', r'$K$', 'ecc']
+        # units = [' (days)', ' (m/s)', '']
+        # labels = [name + unit for name,unit in zip(names, units)]
+
+        samples = np.c_[self.bgp_P, self.bgp_K, self.bgp_e]
+
+
+        c = corner.corner
+        fig = c(samples, labels=labels, show_titles=True,
+                plot_contours=False, plot_datapoints=True, plot_density=False,
+                #bins=bins[i], range=ranges, #color=,
+                # fill_contours=True, smooth=True,
+                # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
+                #hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
+                hist_kwargs={'normed':True},
+                # range=[1., 1., (0, 2*np.pi), (0., 1.), (0, 2*np.pi)],
+                data_kwargs={'alpha':1, 'ms':3, },#'color':colorcycle['color']},
+                )
+
+        plt.show()
+
+
     def plot_random_planets(self, ncurves=50, over=0.1, pmin=None, pmax=None, 
                             show_vsys=False, show_trend=False):
         """
