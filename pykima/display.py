@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import re, os, sys
 pathjoin = os.path.join
 
@@ -195,9 +197,15 @@ class KimaResults(object):
     @classmethod
     def load(cls, filename):
         """Load a KimaResults object from a pickle file."""
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
-    
+        try:
+            with open(filename, 'rb') as f:
+                return pickle.load(f)
+        except UnicodeDecodeError:
+            with open(filename, 'rb') as f:
+                return pickle.load(f, encoding='latin1')
+        except Exception as e:
+            print('Unable to load data from ', filename, ':', e)
+            raise
     
     def save(self, filename):
         """Pickle this KimaResults object into a file."""
@@ -505,8 +513,14 @@ class KimaResults(object):
             print('Model does not have GP! make_plot5() doing nothing...')
             return
 
+        # these are the limits of the default prior for eta3
         self.pmin = 10.
         self.pmax = 40.
+        # but we try to accomodate if the prior is changed
+        if self.eta3.min() < self.pmin:
+            self.pmin = np.floor(self.eta3.min())
+        if self.eta3.max() > self.pmax:
+            self.pmax = np.ceil(self.eta3.max())
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
         labels = [r'$s$'] + [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
@@ -556,15 +570,21 @@ class KimaResults(object):
         ranges = [1.]*(len(available_etas)+1)
         ranges[3] = (self.pmin, self.pmax)
 
-        c = corner.corner        
-        self.corner1 = c(self.post_samples, labels=xlabels, show_titles=True,
-                         plot_contours=False, plot_datapoints=True, plot_density=False,
-                         # fill_contours=True, smooth=True,
-                         # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
-                         hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-                         hist_kwargs={'normed':True}, 
-                         range=ranges, data_kwargs={'alpha':1},
-                         )
+        c = corner.corner
+        try:
+            self.corner1 = c(self.post_samples, labels=xlabels, show_titles=True,
+                            plot_contours=False, plot_datapoints=True, plot_density=False,
+                            # fill_contours=True, smooth=True,
+                            # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
+                            hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
+                            hist_kwargs={'normed':True}, 
+                            range=ranges, data_kwargs={'alpha':1},
+                            )
+        except AssertionError as exc:
+            print('AssertionError from corner in make_plot5()', end='')
+            if "I don't believe" in str(exc):
+                print(', you probably need to get more posterior samples')
+            return
 
         self.corner1.suptitle('Joint and marginal posteriors for GP hyperparameters')
 
