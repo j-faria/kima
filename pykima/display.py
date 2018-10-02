@@ -758,6 +758,8 @@ class KimaResults(object):
         If the model has a GP component, the prediction is calculated using the
         GP hyperparameters for each of the random samples.
         """
+        colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
+
         samples = self.get_sorted_planet_samples()
         if self.max_components > 0:
             samples, mask = \
@@ -766,8 +768,8 @@ class KimaResults(object):
             mask = np.ones(samples.shape[0], dtype=bool)
 
         t = self.data[:,0].copy()
-        tt = np.linspace(t[0]-over*t.ptp(), t[-1]+over*t.ptp(), 
-                         5000+int(100*over))
+        tt = np.linspace(t.min()-over*t.ptp(), t.max()+over*t.ptp(), 
+                         10000+int(100*over))
 
         if self.GPmodel:
             # let's be more reasonable for the number of GP prediction points
@@ -797,8 +799,11 @@ class KimaResults(object):
                 v_at_t = np.zeros_like(t)
                 v_at_ttGP = np.zeros_like(ttGP)
 
+            # get the planet parameters for the current (ith) sample
             pars = samples[i, :].copy()
+            # how many planets in this sample?
             nplanets = pars.size / self.n_dimensions
+            # add the Keplerians for each of the planets
             for j in range(int(nplanets)):
                 P = pars[j + 0*self.max_components]
                 if P==0.0:
@@ -813,12 +818,15 @@ class KimaResults(object):
                     v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
                     v_at_ttGP += keplerian(ttGP, P, K, ecc, w, t0, 0.)
 
+            # systemic velocity for the current (ith) sample
             vsys = self.posterior_sample[mask][i, -1]
             v += vsys
             if self.GPmodel:
                 v_at_t += vsys
                 v_at_ttGP += vsys
 
+            
+            # add the trend, if present
             if self.trend:
                 v += self.trendpars[i]*(tt - self.tmiddle)
                 if self.GPmodel:
@@ -836,9 +844,36 @@ class KimaResults(object):
                 ax.plot(ttGP, mu + v_at_ttGP, alpha=0.1, color='plum')
 
             # v only has the Keplerian components, not the GP predictions
-            ax.plot(tt, v, alpha=0.2, color='k')
+            # ax.plot(tt, v, alpha=0.2, color='k')
+            
+            # add the instrument offsets, if present
+            if self.multi:
+                for j in range(self.inst_offsets.shape[1]):
+                    of = self.inst_offsets[i, j]
+                    
+                    instrument_mask = self.obs == j+1
+                    start = self.data[instrument_mask,0].min()
+                    end = self.data[instrument_mask,0].max()
+                    time_mask = (tt>start) & (tt<end)
+
+                    v_i = v.copy()
+                    v_i[time_mask] += of
+                    ax.plot(tt[time_mask], v_i[time_mask], alpha=0.2, color='k')
+            else:
+                ax.plot(tt, v, alpha=0.2, color='k')
+
             if show_vsys:
                 ax.plot(t, vsys*np.ones_like(t), alpha=0.2, color='r', ls='--')
+                if self.multi:
+                    for j in range(self.inst_offsets.shape[1]):
+                        instrument_mask = self.obs == j+1
+                        start = self.data[instrument_mask,0].min()
+                        end = self.data[instrument_mask,0].max()
+
+                        of = self.inst_offsets[i, j]
+                        
+                        ax.hlines(vsys+of, xmin=start, xmax=end, alpha=0.2,
+                                  color=colors[j])
 
 
         ## we could also choose to plot the GP prediction using the median of
@@ -872,7 +907,12 @@ class KimaResults(object):
                 ax.errorbar(ti, yshift[0,i], fmt='o', color='m', alpha=0.3)
                 ax.errorbar(ti, yshift[1,i], yerr[~mask][i], fmt='o', color='r')
         else:
-            ax.errorbar(t, y, yerr, fmt='o')
+            if self.multi:
+                for j in range(self.inst_offsets.shape[1]):
+                    m = self.obs == j+1
+                    ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j])
+            else:
+                ax.errorbar(t, y, yerr, fmt='o')
 
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
         plt.tight_layout()
