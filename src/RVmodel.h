@@ -36,7 +36,8 @@ class RVmodel
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
 
         double background;
-        std::vector<double> offsets; // between instruments
+        std::vector<double> offsets = // between instruments
+              std::vector<double>(Data::get_instance().number_instruments - 1);
         double slope, quad;
         double fiber_offset;
 

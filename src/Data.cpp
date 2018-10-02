@@ -244,7 +244,7 @@ void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
     for(unsigned i=last_file_size; i<data.size(); i++)
       obsi.push_back(filecount);
     
-    last_file_size += data.size();
+    last_file_size = data.size();
     filecount++;
   }
 
@@ -260,6 +260,7 @@ void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
 
   for (unsigned n=0; n<data.size(); n++)
     {
+      // cout << n << endl;
       if (n<skip) continue;
       t.push_back(data[n][0]);
       y.push_back(data[n][1] * factor);
@@ -275,7 +276,10 @@ void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
 
   // Of how many instruments?
   std::set<int> s( obsi.begin(), obsi.end() );
+  // set<int>::iterator iter;
+  // for(iter=s.begin(); iter!=s.end();++iter) {  cout << (*iter) << endl;}
   printf("# RVs come from %d different instruments.\n", s.size());
+  number_instruments = s.size();
 
   if(units == "kms") 
     cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;

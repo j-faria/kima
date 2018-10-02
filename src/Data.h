@@ -28,6 +28,7 @@ class Data
 		const char* dataunits;
 		int dataskip;
 		bool datamulti; // multiple instruments? not sure if needed
+		int number_instruments;
 
 		// Getters
 		int N() const {return t.size();}
