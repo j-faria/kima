@@ -13,7 +13,9 @@ except ImportError:
 from .keplerian import keplerian
 from .GP import GP, QPkernel
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
-                   percentile68_ranges, percentile68_ranges_latex
+                   percentile68_ranges, percentile68_ranges_latex,\
+                   read_datafile
+
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -73,7 +75,8 @@ class KimaResults(object):
                     # multi is true but in only one file
                     data_file = setup['kima']['file']
                 else:
-                    raise NotImplementedError('TO DO')
+                    data_file = setup['kima']['files'].split(',')[:-1]
+                    # raise NotImplementedError('TO DO')
             else:
                 data_file = setup['kima']['file']
         

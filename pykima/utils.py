@@ -31,6 +31,28 @@ def need_model_setup(exception):
     raise exception
 
 
+
+def read_datafile(datafile, skip):
+    """
+    Read data from `datafile` for multiple instruments. 
+    Can be str, in which case the 4th column is assumed to contain an integer
+    identifier of the instrument.
+    Or list, in which case each element will be one different filename 
+    containing three columns each.
+    """
+    if isinstance(datafile, list):
+        data = np.empty((0,3))
+        obs = np.empty((0,))
+        for i, df in enumerate(datafile):
+            d = np.loadtxt(df, usecols=(0,1,2), skiprows=skip)
+            data = np.append(data, d, axis=0)
+            obs = np.append(obs, (i+1)*np.ones((d.shape[0])))
+        return data, obs
+    else:
+        data = np.loadtxt(datafile, usecols=(0,1,2), skiprows=skip)
+        obs = np.loadtxt(datafile, usecols=(3,), skiprows=skip, dtype=int)
+        return data, obs
+
 def apply_argsort(arr1, arr2, axis=-1):
     """
     Apply arr1.argsort() on arr2, along `axis`.
