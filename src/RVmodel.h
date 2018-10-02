@@ -42,7 +42,7 @@ class RVmodel
 
         // orbital parameters for the background planet,
         // used if bgplanet is set to true
-        double bgp_P, bgp_K, bgp_e, bgp_phi, bgp_w;
+        double bgp_P, bgp_K, bgp_e, bgp_phi, bgp_w, bgp_Tc, bgp_Tp;
 
         // Parameters for the quasi-periodic extra noise
         double eta1, eta2, eta3, eta4, eta5;

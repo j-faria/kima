@@ -35,8 +35,8 @@ Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
 extern ContinuousDistribution *bgplanet_Pprior;
 extern ContinuousDistribution *bgplanet_Kprior;
 extern ContinuousDistribution *bgplanet_eprior;
-extern ContinuousDistribution *bgplanet_phiprior;
 extern ContinuousDistribution *bgplanet_wprior;
+extern ContinuousDistribution *bgplanet_Tcprior;
 
 
 
@@ -44,6 +44,8 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVmodel::from_prior(RNG& rng)
 {
+    const vector<double>& t = Data::get_instance().get_t();
+
     planets.from_prior(rng);
     planets.consolidate_diff();
     
@@ -77,13 +79,15 @@ void RVmodel::from_prior(RNG& rng)
 
     if(bgplanet)
     {
-        // do something
         bgp_P = bgplanet_Pprior->generate(rng);
         bgp_K = bgplanet_Kprior->generate(rng);
         bgp_e = bgplanet_eprior->generate(rng);
-        bgp_phi = bgplanet_phiprior->generate(rng);
+        
+        bgp_Tc = bgplanet_Tcprior->generate(rng);
+        bgp_phi = 2 * M_PI * fmod(abs(bgp_Tc - t[0]), bgp_P);
+        bgp_Tp = t[0] - P*bgp_phi/(2*M_PI); // Tp_from_Tc(bgp_P, bgp_e, bgp_w, bgp_Tc);
+
         bgp_w = bgplanet_wprior->generate(rng);
-        // cout << bgp_P << " " << bgp_K << " " << bgp_e << endl;
     }
 
     calculate_mu();
@@ -176,7 +180,7 @@ void RVmodel::calculate_C()
 void RVmodel::calculate_mu()
 {
     double f, v, ti;
-    double P, K, phi, ecc, omega;
+    double P, K, phi, ecc, omega, Tp;
     auto data = Data::get_instance();
     // Get the times from the data
     const vector<double>& t = data.get_t();
@@ -220,7 +224,7 @@ void RVmodel::calculate_mu()
             for(size_t i=0; i<t.size(); i++)
             {
                 ti = t[i];
-                f = true_anomaly(ti, bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
+                f = true_anomaly(ti, bgp_P, bgp_e, bgp_Tp);
                 v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
                 mu[i] += v;
             }
@@ -324,7 +328,7 @@ double RVmodel::perturb(RNG& rng)
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
                 if (bgplanet) {
-                    f = true_anomaly(t[i], bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
+                    f = true_anomaly(t[i], bgp_P, bgp_e, bgp_Tp);
                     v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
                     mu[i] -= v;
                 }
@@ -347,7 +351,11 @@ double RVmodel::perturb(RNG& rng)
                 bgplanet_Pprior->perturb(bgp_P, rng);
                 bgplanet_Kprior->perturb(bgp_K, rng);
                 bgplanet_eprior->perturb(bgp_e, rng);
-                bgplanet_phiprior->perturb(bgp_phi, rng);
+                
+                bgplanet_Tcprior->perturb(bgp_Tc, rng);
+                bgp_phi = 2 * M_PI * fmod(abs(bgp_Tc - t[0]), bgp_P);
+                bgp_Tp = t[0] - P*bgp_phi/(2*M_PI);
+
                 bgplanet_wprior->perturb(bgp_w, rng);
             }
 
@@ -363,7 +371,7 @@ double RVmodel::perturb(RNG& rng)
                 }
                 
                 if (bgplanet) {
-                    f = true_anomaly(t[i], bgp_P, bgp_e, t[0]-(bgp_P*bgp_phi)/(2.*M_PI));
+                    f = true_anomaly(t[i], bgp_P, bgp_e, bgp_Tp);
                     v = bgp_K*(cos(f+bgp_w) + bgp_e*cos(bgp_w));
                     mu[i] += v;
                 }
@@ -419,7 +427,11 @@ double RVmodel::perturb(RNG& rng)
                 bgplanet_Pprior->perturb(bgp_P, rng);
                 bgplanet_Kprior->perturb(bgp_K, rng);
                 bgplanet_eprior->perturb(bgp_e, rng);
-                bgplanet_phiprior->perturb(bgp_phi, rng);
+                
+                bgplanet_Tcprior->perturb(bgp_Tc, rng);
+                bgp_phi = 2 * M_PI * fmod(abs(bgp_Tc - t[0]), bgp_P);
+                bgp_Tp = t[0] - P*bgp_phi/(2*M_PI);
+
                 bgplanet_wprior->perturb(bgp_w, rng);
             }
 
@@ -533,7 +545,6 @@ double RVmodel::log_likelihood() const
 
     if(std::isnan(logL) || std::isinf(logL))
     {
-        // cout << "inf!" << endl;
         logL = std::numeric_limits<double>::infinity();
         // logL = -1E300;
     }

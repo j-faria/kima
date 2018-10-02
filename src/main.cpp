@@ -22,8 +22,8 @@ const bool bgplanet = false;
 Uniform *bgplanet_Pprior = new Uniform();
 Uniform *bgplanet_Kprior = new Uniform();
 Uniform *bgplanet_eprior = new Uniform();
-Uniform *bgplanet_phiprior = new Uniform();
 Uniform *bgplanet_wprior = new Uniform();
+Uniform *bgplanet_Tcprior = new Uniform();
 ///////////////////////////////////////
 
 

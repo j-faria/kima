@@ -36,13 +36,11 @@ const bool trend = false;
 // background planet
 const bool bgplanet = true;
 
-// Gaussian *bgplanet_Pprior = new Gaussian(0.85359165, 5.6e-7); // corot7
 Gaussian *bgplanet_Pprior = new Gaussian(1.628930, 3.1e-5); // gj1132
 Uniform *bgplanet_Kprior = new Uniform(1.0, 20.0); // m/s
 Uniform *bgplanet_eprior = new Uniform(0., 1.);
-Uniform *bgplanet_phiprior = new Uniform(0.0, 2*M_PI);
 Uniform *bgplanet_wprior = new Uniform(0.0, 2*M_PI);
-
+Gaussian *bgplanet_Tcprior = new Gaussian(57184.55786, 0.00032);
 
 RVmodel::RVmodel():fix(false),npmax(4)
 {
