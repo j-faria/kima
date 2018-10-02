@@ -45,10 +45,15 @@ class KimaResults(object):
             print()
 
         setup = configparser.ConfigParser()
-        s = setup.read('kima_model_setup.txt')
-        if len(s) == 0:
+        setup.read('kima_model_setup.txt')
+        if sys.version_info < (3, 0):
+            setup = setup._sections
+            
+        self.setup = setup
+        if len(setup) == 0:
             need_model_setup()
             sys.exit(0)
+
 
         if data_file is None:
             data_file = setup['kima']['file']
