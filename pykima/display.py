@@ -48,7 +48,10 @@ class KimaResults(object):
         setup.read('kima_model_setup.txt')
         if sys.version_info < (3, 0):
             setup = setup._sections
-            
+            # because we cheated, we need to cheat a bit more...
+            setup['kima']['obs_after_HARPS_fibers'] = setup['kima'].pop('obs_after_harps_fibers')
+            setup['kima']['GP'] = setup['kima'].pop('gp')
+
         self.setup = setup
         if len(setup) == 0:
             need_model_setup()
