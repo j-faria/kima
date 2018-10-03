@@ -28,9 +28,10 @@ def _parse_args():
 def main():
     args = _parse_args()
 
-    kimadir = os.path.dirname(os.path.dirname(__file__))
-    src = os.path.join(kimadir, 'pykima', 'template')
-    print(src)
+    kimadir = '/home/joao/Work/kima' # filled by setup.py
+
+    thisdir = os.path.dirname(os.path.realpath(__file__))
+    src = os.path.join(thisdir, 'template')
     
     if args is None:
         dst = os.getcwd()
@@ -52,3 +53,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
