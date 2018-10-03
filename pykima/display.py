@@ -46,6 +46,11 @@ class KimaResults(object):
 
         setup = configparser.ConfigParser()
         setup.read('kima_model_setup.txt')
+
+        if len(setup) == 0:
+            need_model_setup()
+            sys.exit(0)
+
         if sys.version_info < (3, 0):
             setup = setup._sections
             # because we cheated, we need to cheat a bit more...
@@ -53,9 +58,6 @@ class KimaResults(object):
             setup['kima']['GP'] = setup['kima'].pop('gp')
 
         self.setup = setup
-        if len(setup) == 0:
-            need_model_setup()
-            sys.exit(0)
 
 
         if data_file is None:
