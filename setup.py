@@ -24,4 +24,6 @@ setup(name='pykima',
             'kima-template = pykima.make_template:main',
             ]
         },
+      package_data={'pykima': ['template/*']},
+      include_package_data=True,
      )

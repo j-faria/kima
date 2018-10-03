@@ -29,7 +29,8 @@ def main():
     args = _parse_args()
 
     kimadir = os.path.dirname(os.path.dirname(__file__))
-    src = os.path.join(kimadir, 'template')
+    src = os.path.join(kimadir, 'pykima', 'template')
+    print(src)
     
     if args is None:
         dst = os.getcwd()
