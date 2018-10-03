@@ -189,6 +189,7 @@ void Data::load_multi(const char* filename, const char* units, int skip)
   // Of how many instruments?
   std::set<int> s( obsi.begin(), obsi.end() );
   printf("# RVs come from %d different instruments.\n", s.size());
+  number_instruments = s.size();
   
   if(units == "kms") 
     cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
