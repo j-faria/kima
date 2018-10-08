@@ -177,7 +177,8 @@ class KimaResults(object):
                                     {'show_vsys':True, 'show_trend':True}],
                            '7': [(self.hist_offset,
                                   self.hist_vsys,
-                                  self.hist_extra_sigma), {}],
+                                  self.hist_extra_sigma,
+                                  self.hist_trend), {}],
                           }
 
         for item in allowed_options.items():
@@ -783,6 +784,21 @@ class KimaResults(object):
         ax.set(xlabel='fiber offset (m/s)', ylabel='posterior samples',
                title=title)
 
+
+    def hist_trend(self):
+        """ Plot the histogram of the posterior for the slope of a linear trend """
+        if not self.trend:
+            print('Model has no trend! hist_trend() doing nothing...')
+            return
+
+        units = ' (m/s/day)' # if self.units=='ms' else ' (km/s)'
+        estimate = percentile68_ranges_latex(self.trendpars) + units
+
+        _, ax = plt.subplots(1,1)
+        ax.hist(self.trendpars.ravel())
+        title = 'Posterior distribution for slope \n %s' % estimate
+        ax.set(xlabel='slope' + units   , ylabel='posterior samples',
+               title=title)
 
     def hist_vsys(self):
         """ Plot the histogram of the posterior for the systemic velocity """
