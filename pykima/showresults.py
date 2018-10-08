@@ -67,12 +67,19 @@ def _parse_args(options):
         print('kima', open(version_file).read().strip()) # same as kima
         sys.exit(0)
 
+                         
     number_options = ['1','2','3','4','5','6','7']
     argstuple = namedtuple('Arguments', 
                                 ['rv', 'planets', 'orbital', 'gp', 'extra'] \
                                 + ['diagnostic'] \
                                 + ['plot_number'])
     
+    if 'all' in args:
+        diag = findpop('diagnostic', args)
+        return argstuple(rv=True, planets=True, orbital=True, 
+                         gp=True, extra=True, diagnostic=diag, 
+                         plot_number=[])
+
     rv = findpop('rv', args)
     gp = findpop('gp', args)
     extra = findpop('extra', args)

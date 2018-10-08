@@ -1,6 +1,9 @@
+from __future__ import print_function
+
 import re, os, sys
 pathjoin = os.path.join
 
+import pickle
 try:
     import configparser
 except ImportError:
@@ -43,10 +46,20 @@ class KimaResults(object):
             print()
 
         setup = configparser.ConfigParser()
-        s = setup.read('kima_model_setup.txt')
-        if len(s) == 0:
+        setup.read('kima_model_setup.txt')
+
+        if len(setup) == 0:
             need_model_setup()
             sys.exit(0)
+
+        if sys.version_info < (3, 0):
+            setup = setup._sections
+            # because we cheated, we need to cheat a bit more...
+            setup['kima']['obs_after_HARPS_fibers'] = setup['kima'].pop('obs_after_harps_fibers')
+            setup['kima']['GP'] = setup['kima'].pop('gp')
+
+        self.setup = setup
+
 
         if data_file is None:
             data_file = setup['kima']['file']
@@ -172,7 +185,8 @@ class KimaResults(object):
                                     {'show_vsys':True, 'show_trend':True}],
                            '7': [(self.hist_offset,
                                   self.hist_vsys,
-                                  self.hist_extra_sigma), {}],
+                                  self.hist_extra_sigma,
+                                  self.hist_trend), {}],
                           }
 
         for item in allowed_options.items():
@@ -183,6 +197,26 @@ class KimaResults(object):
                     [m() for m in methods]
                 else:
                     methods(**kwargs)
+
+
+    @classmethod
+    def load(cls, filename):
+        """Load a KimaResults object from a pickle file."""
+        try:
+            with open(filename, 'rb') as f:
+                return pickle.load(f)
+        except UnicodeDecodeError:
+            with open(filename, 'rb') as f:
+                return pickle.load(f, encoding='latin1')
+        except Exception as e:
+            print('Unable to load data from ', filename, ':', e)
+            raise
+    
+    def save(self, filename):
+        """Pickle this KimaResults object into a file."""
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f, protocol=2)
+        print('Wrote to file "%s"' % f.name)
 
 
     def get_marginals(self):
@@ -485,8 +519,14 @@ class KimaResults(object):
             print('Model does not have GP! make_plot5() doing nothing...')
             return
 
+        # these are the limits of the default prior for eta3
         self.pmin = 10.
         self.pmax = 40.
+        # but we try to accomodate if the prior is changed
+        if self.eta3.min() < self.pmin:
+            self.pmin = np.floor(self.eta3.min())
+        if self.eta3.max() > self.pmax:
+            self.pmax = np.ceil(self.eta3.max())
 
         # available_etas = [v for v in dir(self) if v.startswith('eta')]
         available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
@@ -537,15 +577,21 @@ class KimaResults(object):
         ranges = [1.]*(len(available_etas)+1)
         ranges[3] = (self.pmin, self.pmax)
 
-        c = corner.corner        
-        self.corner1 = c(self.post_samples, labels=xlabels, show_titles=True,
-                         plot_contours=False, plot_datapoints=True, plot_density=False,
-                         # fill_contours=True, smooth=True,
-                         # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
-                         hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-                         hist_kwargs={'density':True}, 
-                         range=ranges, data_kwargs={'alpha':1},
-                         )
+        c = corner.corner
+        try:
+            self.corner1 = c(self.post_samples, labels=xlabels, show_titles=True,
+                            plot_contours=False, plot_datapoints=True, plot_density=False,
+                            # fill_contours=True, smooth=True,
+                            # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
+                            hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
+                            hist_kwargs={'normed':True}, 
+                            range=ranges, data_kwargs={'alpha':1},
+                            )
+        except AssertionError as exc:
+            print('AssertionError from corner in make_plot5()', end='')
+            if "I don't believe" in str(exc):
+                print(', you probably need to get more posterior samples')
+            return
 
         self.corner1.suptitle('Joint and marginal posteriors for GP hyperparameters')
 
@@ -772,6 +818,21 @@ class KimaResults(object):
         ax.set(xlabel='fiber offset (m/s)', ylabel='posterior samples',
                title=title)
 
+
+    def hist_trend(self):
+        """ Plot the histogram of the posterior for the slope of a linear trend """
+        if not self.trend:
+            print('Model has no trend! hist_trend() doing nothing...')
+            return
+
+        units = ' (m/s/day)' # if self.units=='ms' else ' (km/s)'
+        estimate = percentile68_ranges_latex(self.trendpars) + units
+
+        _, ax = plt.subplots(1,1)
+        ax.hist(self.trendpars.ravel())
+        title = 'Posterior distribution for slope \n %s' % estimate
+        ax.set(xlabel='slope' + units   , ylabel='posterior samples',
+               title=title)
 
     def hist_vsys(self):
         """ Plot the histogram of the posterior for the systemic velocity """
