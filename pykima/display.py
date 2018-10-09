@@ -28,7 +28,7 @@ colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 
 class KimaResults(object):
     def __init__(self, options, data_file=None, 
-                 fiber_offset=None, hyperpriors=None, trend=None, GPmodel=None,
+                 fiber_offset=None, hyperpriors=None, trend=None, MAmodel=None,
                  posterior_samples_file='posterior_sample.txt'):
 
         self.options = options
@@ -55,7 +55,7 @@ class KimaResults(object):
             setup = setup._sections
             # because we cheated, we need to cheat a bit more...
             setup['kima']['obs_after_HARPS_fibers'] = setup['kima'].pop('obs_after_harps_fibers')
-            setup['kima']['GP'] = setup['kima'].pop('gp')
+            setup['kima']['MA'] = setup['kima'].pop('ma')
 
         self.setup = setup
 
@@ -124,19 +124,19 @@ class KimaResults(object):
             n_offsets = 0
 
 
-        # find GP in the compiled model
-        if GPmodel is None:
-            self.GPmodel = setup['kima']['GP'] == 'true'
+        # find MA in the compiled model
+        if MAmodel is None:
+            self.MAmodel = setup['kima']['MA'] == 'true'
         else:
-            self.GPmodel = GPmodel
+            self.MAmodel = MAmodel
 
         if debug:
-            print('GP model:', self.GPmodel)
+            print('MA model:', self.MAmodel)
 
-        if self.GPmodel:
-            n_hyperparameters = 4
+        if self.MAmodel:
+            n_hyperparameters = 2
             for i in range(n_hyperparameters):
-                name = 'eta' + str(i+1)
+                name = 'MA' + str(i+1)
                 ind = start_parameters + n_trend + n_offsets + 1 + i
                 setattr(self, name, self.posterior_sample[:, ind])
         else:
@@ -479,23 +479,23 @@ class KimaResults(object):
 
 
     def make_plot4(self):
-        """ Plot histograms for the GP hyperparameters """
-        if not self.GPmodel:
-            print('Model does not have GP! make_plot4() doing nothing...')
+        """ Plot histograms for the MA parameters """
+        if not self.MAmodel:
+            print('Model does not have MA! make_plot4() doing nothing...')
             return
 
-        available_etas = [v for v in dir(self) if v.startswith('eta')]
-        labels = [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
-        units = ['m/s', 'days', 'days', None]
+        available_MAs = ['MA1', 'MA2']
+        labels = [r'$\sigma_{MA}$', r'$\tau_{MA}$']
+        units = ['m/s', 'days']
         xlabels = []
         for label, unit in zip(labels, units):
             xlabels.append(label + ' (%s)' % unit 
                                 if unit is not None else label)
 
-        fig, axes = plt.subplots(2, len(available_etas)//2)
-        fig.suptitle('Posterior distributions for GP hyperparameters')
+        fig, axes = plt.subplots(2, len(available_MAs)//2)
+        fig.suptitle('Posterior distributions for MA hyperparameters')
 
-        for i, eta in enumerate(available_etas):
+        for i, eta in enumerate(available_MAs):
             ax = np.ravel(axes)[i]
             ax.hist(getattr(self, eta), bins=40)
             ax.set(xlabel=xlabels[i], ylabel='posterior samples')
@@ -726,6 +726,8 @@ class KimaResults(object):
         ## plot the Keplerian curves
         for i in ii:
             v = np.zeros_like(tt)
+            v_at_t = np.zeros_like(t)
+
             pars = samples[i, :].copy()
             nplanets = pars.size / self.n_dimensions
             for j in range(int(nplanets)):
@@ -739,16 +741,29 @@ class KimaResults(object):
                 w = pars[j + 4*self.max_components]
                 # print(P)
                 v += keplerian(tt, P, K, ecc, w, t0, 0.)
-
+                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
+            
             vsys = self.posterior_sample[mask][i, -1]
             v += vsys
+            v_at_t += vsys
+
             if self.trend:
                 v += self.trendpars[i]*(tt - t[0])
+                v_at_t += self.trendpars[i]*(t - t[0])
                 if show_trend:
                     ax.plot(tt, vsys+self.trendpars[i]*(tt - t[0]), 
                             alpha=0.2, color='m', ls=':')
 
+            if self.MAmodel:
+                r = y - v_at_t
+                dt = t[:-1] - t[1:]
+                MA = np.append(0, 
+                        abs(self.MA1[i]) * np.exp(-np.abs(dt) / self.MA2[i]) * r[:-1])
+                print(self.MA1[i], self.MA2[i])
+                v_at_t += MA
+
             ax.plot(tt, v, alpha=0.2, color='k')
+            ax.plot(t, v_at_t, alpha=0.2, color='r', ls='--')
             if show_vsys:
                 ax.plot(t, vsys*np.ones_like(t), alpha=0.2, color='r', ls='--')
 
