@@ -20,12 +20,9 @@ Uniform *phiprior = new Uniform(0.0, 2*M_PI);
 Uniform *wprior = new Uniform(0.0, 2*M_PI);
 
 
-/* GP parameters */
-Uniform *log_eta1_prior = new Uniform(-5, 5);
-Uniform *log_eta2_prior = new Uniform(0, 5);
-Uniform *eta3_prior = new Uniform(10., 40.);
-Uniform *log_eta4_prior = new Uniform(-1, 1);
-
+/* MA parameters */
+Uniform *sigma_MA_prior = new Uniform(-1, 1);
+Uniform *tau_MA_prior = new Uniform(0, 10);
 
 
 /* hyper parameters */

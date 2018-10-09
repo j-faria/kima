@@ -21,10 +21,8 @@ extern ContinuousDistribution *Jprior; // additional white noise, m/s
 
 extern ContinuousDistribution *slope_prior; // m/s/day
 
-extern ContinuousDistribution *log_eta1_prior;
-extern ContinuousDistribution *log_eta2_prior;
-extern ContinuousDistribution *eta3_prior;
-extern ContinuousDistribution *log_eta4_prior;
+extern ContinuousDistribution *sigma_MA_prior;
+extern ContinuousDistribution *tau_MA_prior;
 
 // from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
 // mean, std = 14.641789473684208, 2.7783035258938971
@@ -47,111 +45,99 @@ void RVmodel::from_prior(RNG& rng)
     if(trend)
         slope = slope_prior->generate(rng);
 
-    if(GP)
+    if(MA)
     {
-        eta1 = exp(log_eta1_prior->generate(rng)); // m/s
-        // eta1 = exp(log(1E-5) + log(1E-1)*rng.rand());
-        //eta1 = sqrt(3.); // m/s
+        sigma_MA = sigma_MA_prior->generate(rng); // m/s
 
-        eta2 = exp(log_eta2_prior->generate(rng)); // days
-        // eta2 = exp(log(1E-6) + log(1E6)*rng.rand());
-        //eta2 = 50.; //days
-
-        eta3 = eta3_prior->generate(rng); // days
-        // eta3 = 15. + 35.*rng.rand();
-        //eta3 = 20.; // days
-
-        eta4 = exp(log_eta4_prior->generate(rng));
-        // exp(log(1E-5) + log(1E5)*rng.rand());
-        //eta4 = 0.5;
+        tau_MA = tau_MA_prior->generate(rng); // days
     }
 
     calculate_mu();
 
-    if(GP) calculate_C();
+    // if(MA) calculate_C();
 
 }
 
-void RVmodel::calculate_C()
-{
+// void RVmodel::calculate_C()
+// {
 
-    // Get the data
-    const vector<double>& t = Data::get_instance().get_t();
-    const vector<double>& sig = Data::get_instance().get_sig();
+//     // Get the data
+//     const vector<double>& t = Data::get_instance().get_t();
+//     const vector<double>& sig = Data::get_instance().get_sig();
 
-    #if DOCEL
-        // celerite!
-        // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
+//     #if DOCEL
+//         // celerite!
+//         // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
 
-        /*
-        This implements the kernel in Eq (61) of Foreman-Mackey et al. (2017)
-        The kernel has parameters a, b, c and P
-        corresponding to an amplitude, factor, decay timescale and period.
-        */
+//         /*
+//         This implements the kernel in Eq (61) of Foreman-Mackey et al. (2017)
+//         The kernel has parameters a, b, c and P
+//         corresponding to an amplitude, factor, decay timescale and period.
+//         */
 
-        VectorXd alpha_real(1),
-                 beta_real(1),
-                 alpha_complex_real(1),
-                 alpha_complex_imag(1),
-                 beta_complex_real(1),
-                 beta_complex_imag(1);
+//         VectorXd alpha_real(1),
+//                  beta_real(1),
+//                  alpha_complex_real(1),
+//                  alpha_complex_imag(1),
+//                  beta_complex_real(1),
+//                  beta_complex_imag(1);
         
-        //a = eta1;
-        //b = eta4;
-        //P = eta3;
-        //c = eta2;
+//         //a = eta1;
+//         //b = eta4;
+//         //P = eta3;
+//         //c = eta2;
 
-        alpha_real << eta1*(1.+eta4)/(2.+eta4);
-        beta_real << 1./eta2;
-        alpha_complex_real << eta1/(2.+eta4);
-        alpha_complex_imag << 0.;
-        beta_complex_real << 1./eta2;
-        beta_complex_imag << 2.*M_PI / eta3;
-
-
-        VectorXd yvar(t.size()), tt(t.size());
-        for (int i = 0; i < t.size(); ++i){
-            yvar(i) = sig[i] * sig[i] + extra_sigma * extra_sigma;
-            tt(i) = t[i];
-        }
-
-        solver.compute(
-            extra_sigma,
-            alpha_real, beta_real,
-            alpha_complex_real, alpha_complex_imag,
-            beta_complex_real, beta_complex_imag,
-            tt, yvar  // Note: this is the measurement _variance_
-        );
+//         alpha_real << eta1*(1.+eta4)/(2.+eta4);
+//         beta_real << 1./eta2;
+//         alpha_complex_real << eta1/(2.+eta4);
+//         alpha_complex_imag << 0.;
+//         beta_complex_real << 1./eta2;
+//         beta_complex_imag << 2.*M_PI / eta3;
 
 
-        // auto end1 = std::chrono::high_resolution_clock::now();
-        // cout << "new GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
+//         VectorXd yvar(t.size()), tt(t.size());
+//         for (int i = 0; i < t.size(); ++i){
+//             yvar(i) = sig[i] * sig[i] + extra_sigma * extra_sigma;
+//             tt(i) = t[i];
+//         }
+
+//         solver.compute(
+//             extra_sigma,
+//             alpha_real, beta_real,
+//             alpha_complex_real, alpha_complex_imag,
+//             beta_complex_real, beta_complex_imag,
+//             tt, yvar  // Note: this is the measurement _variance_
+//         );
+
+
+//         // auto end1 = std::chrono::high_resolution_clock::now();
+//         // cout << "new GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
         
-    #else
+//     #else
 
-        int N = Data::get_instance().get_t().size();
-        // auto begin = std::chrono::high_resolution_clock::now();  // start timing
+//         int N = Data::get_instance().get_t().size();
+//         // auto begin = std::chrono::high_resolution_clock::now();  // start timing
 
-        for(size_t i=0; i<N; i++)
-        {
-            for(size_t j=i; j<N; j++)
-            {
-                //C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) );
-                C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) 
-                           -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
+//         for(size_t i=0; i<N; i++)
+//         {
+//             for(size_t j=i; j<N; j++)
+//             {
+//                 //C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) );
+//                 C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) 
+//                            -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
 
-                if(i==j)
-                    C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma; //+ eta5*t[i]*t[i];
-                else
-                    C(j, i) = C(i, j);
-            }
-        }
+//                 if(i==j)
+//                     C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma; //+ eta5*t[i]*t[i];
+//                 else
+//                     C(j, i) = C(i, j);
+//             }
+//         }
 
-        // auto end = std::chrono::high_resolution_clock::now();
-        // cout << "old GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << "\t"; // << std::endl;
+//         // auto end = std::chrono::high_resolution_clock::now();
+//         // cout << "old GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << "\t"; // << std::endl;
 
-    #endif
-}
+//     #endif
+// }
 
 void RVmodel::calculate_mu()
 {
@@ -190,8 +176,6 @@ void RVmodel::calculate_mu()
                 mu[i] += fiber_offset;
             }
         }
-
-
     }
     else // just updating (adding) planets
         staleness++;
@@ -222,6 +206,17 @@ void RVmodel::calculate_mu()
         }
     }
 
+
+    if(!update && MA)
+    {
+        const vector<double>& y = data.get_y();
+        for(size_t i=1; i<t.size(); i++) // the loop starts at the 2nd point
+        {
+            // y[i-1] - mu[i-1] is the residual at the i-1 observation
+            mu[i] += sigma_MA * exp(-fabs(t[i-1] - t[i]) / tau_MA) * (y[i-1] - mu[i-1]);
+        }   
+    }
+
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
     cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
@@ -235,7 +230,7 @@ double RVmodel::perturb(RNG& rng)
     const vector<double>& t = data.get_t();
     double logH = 0.;
 
-    if(GP)
+    if(MA)
     {
         if(rng.rand() <= 0.5)
         {
@@ -245,35 +240,20 @@ double RVmodel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5)
         {
-            if(rng.rand() <= 0.25)
+            if(rng.rand() <= 0.5)
             {
-                log_eta1 = log(eta1);
-                log_eta1_prior->perturb(log_eta1, rng);
-                eta1 = exp(log_eta1);
-            }
-            else if(rng.rand() <= 0.33330)
-            {
-                log_eta2 = log(eta2);
-                log_eta2_prior->perturb(log_eta2, rng);
-                eta2 = exp(log_eta2);
-            }
-            else if(rng.rand() <= 0.5)
-            {
-                eta3_prior->perturb(eta3, rng);
+                sigma_MA_prior->perturb(sigma_MA, rng);
             }
             else
             {
-                log_eta4 = log(eta4);
-                log_eta4_prior->perturb(log_eta4, rng);
-                eta4 = exp(log_eta4);
+                tau_MA_prior->perturb(tau_MA, rng);
             }
-
-            calculate_C();
+            // calculate_C();
         }
         else if(rng.rand() <= 0.5)
         {
             Jprior->perturb(extra_sigma, rng);
-            calculate_C();
+            // calculate_C();
         }
         else
         {
@@ -385,70 +365,15 @@ double RVmodel::log_likelihood() const
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    if(GP)
+    /** The following code calculates the log likelihood in the case of a Gaussian likelihood*/
+    double var;
+    for(size_t i=0; i<y.size(); i++)
     {
-        /** The following code calculates the log likelihood in the case of a GP model */
-        // residual vector (observed y minus model y)
-        VectorXd residual(y.size());
-        for(size_t i=0; i<y.size(); i++)
-            residual(i) = y[i] - mu[i];
-
-        #if DOCEL
-            logL = -0.5 * (solver.dot_solve(residual) +
-                           solver.log_determinant() +
-                           y.size()*log(2*M_PI)); 
-        #else
-            // perform the cholesky decomposition of C
-            Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
-            // get the lower triangular matrix L
-            MatrixXd L = cholesky.matrixL();
-
-            double logDeterminant = 0.;
-            for(size_t i=0; i<y.size(); i++)
-                logDeterminant += 2.*log(L(i,i));
-
-            VectorXd solution = cholesky.solve(residual);
-
-            // y*solution
-            double exponent = 0.;
-            for(size_t i=0; i<y.size(); i++)
-                exponent += residual(i)*solution(i);
-
-            logL = -0.5*y.size()*log(2*M_PI)
-                   - 0.5*logDeterminant - 0.5*exponent;
-        #endif
-
-        // calculate C^-1*(y-mu)
-        // auto begin = std::chrono::high_resolution_clock::now();  // start timing
-        // auto end = std::chrono::high_resolution_clock::now();
-        // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns \t";// <<  std::endl;
-
-        // auto begin1 = std::chrono::high_resolution_clock::now();  // start timing
-        // auto end1 = std::chrono::high_resolution_clock::now();
-        // cout << "solve took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end1-begin1).count() << " ns" << std::endl;
-
-    } 
-    else
-    {
-        /** The following code calculates the log likelihood in the case of a t-Student model*/
-        //  for(size_t i=0; i<y.size(); i++)
-        //  {
-        //      var = sig[i]*sig[i] + extra_sigma*extra_sigma;
-        //      logL += gsl_sf_lngamma(0.5*(nu + 1.)) - gsl_sf_lngamma(0.5*nu)
-        //          - 0.5*log(M_PI*nu) - 0.5*log(var)
-        //          - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
-        //  }
-
-        /** The following code calculates the log likelihood in the case of a Gaussian likelihood*/
-        double var;
-        for(size_t i=0; i<y.size(); i++)
-        {
-            var = sig[i]*sig[i] + extra_sigma*extra_sigma;
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(y[i] - mu[i], 2)/var);
-        }
-
+        var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+        logL += - halflog2pi - 0.5*log(var)
+                - 0.5*(pow(y[i] - mu[i], 2)/var);
     }
+
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
@@ -478,8 +403,8 @@ void RVmodel::print(std::ostream& out) const
     if (obs_after_HARPS_fibers)
         out<<fiber_offset<<'\t';
 
-    if(GP)
-        out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+    if(MA)
+        out<<sigma_MA<<'\t'<<tau_MA<<'\t';
   
     planets.print(out);
 
@@ -497,8 +422,8 @@ string RVmodel::description() const
         desc += "slope\t";
     if (obs_after_HARPS_fibers)
         desc += "fiber_offset\t";
-    if(GP)
-        desc += "eta1\teta2\teta3\teta4\t";
+    if(MA)
+        desc += "sigmaMA\ttauMA\t";
 
     desc += "ndim\tmaxNp\t";
     if(hyperpriors)
@@ -527,7 +452,7 @@ void RVmodel::save_setup() {
     fout << "[kima]" << endl;
 
 	fout << "obs_after_HARPS_fibers: " << obs_after_HARPS_fibers << endl;
-    fout << "GP: " << GP << endl;
+    fout << "MA: " << MA << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
     fout << endl;

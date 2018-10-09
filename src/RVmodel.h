@@ -10,8 +10,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
 
-// whether the model includes a GP component
-extern const bool GP;
+// whether the model includes an MA component
+extern const bool MA;
 
 // whether there are observations after the change in HARPS fibers
 extern const bool obs_after_HARPS_fibers;
@@ -38,10 +38,9 @@ class RVmodel
 
         double extra_sigma;
 
-        // Parameters for the quasi-periodic extra noise
-        double eta1, eta2, eta3, eta4, eta5;
-        double log_eta1, log_eta2, log_eta3, log_eta4, log_eta5;
-        double a,b,c,P;
+        // Parameters for the correlated noise
+        double sigma_MA, tau_MA;
+        double log_sigma_MA, log_tau_MA;
 
         /*celerite::solver::CholeskySolver<double> solver;
         Eigen::VectorXd alpha_real,
