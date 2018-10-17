@@ -79,6 +79,8 @@ class KimaResults(object):
             self.data[:, 1] *= 1e3
             self.data[:, 2] *= 1e3
 
+        self.tmiddle = self.data[:,0].min() + 0.5*self.data[:,0].ptp()
+
         self.posterior_sample = np.atleast_2d(np.loadtxt(posterior_samples_file))
         try:
             self.sample = np.loadtxt('sample.txt')
@@ -743,9 +745,9 @@ class KimaResults(object):
             vsys = self.posterior_sample[mask][i, -1]
             v += vsys
             if self.trend:
-                v += self.trendpars[i]*(tt - t[0])
+                v += self.trendpars[i]*(tt - self.tmiddle)
                 if show_trend:
-                    ax.plot(tt, vsys+self.trendpars[i]*(tt - t[0]), 
+                    ax.plot(tt, vsys+self.trendpars[i]*(tt - self.tmiddle), 
                             alpha=0.2, color='m', ls=':')
 
             ax.plot(tt, v, alpha=0.2, color='k')
