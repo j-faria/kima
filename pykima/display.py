@@ -908,7 +908,7 @@ class KimaResults(object):
                 ax.errorbar(ti, yshift[1,i], yerr[~mask][i], fmt='o', color='r')
         else:
             if self.multi:
-                for j in range(self.inst_offsets.shape[1]):
+                for j in range(self.inst_offsets.shape[1]+1):
                     m = self.obs == j+1
                     ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j])
             else:
