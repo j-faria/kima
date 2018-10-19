@@ -188,34 +188,51 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[], \
 				break
 		rows[i] = which + cut
 
-    # Get header row
-	f = open("sample.txt", "r")
-	line = f.readline()
+    # Get header rows
+	f1 = open("sample.txt", "r")
+	line = f1.readline()
 	if line[0] == "#":
 		header = line[1:]
 	else:
 		header = ""
-	f.close()
+	f1.close()
+	f2 = open("sample_info.txt", "r")
+	line = f2.readline()
+	if line[0] == "#":
+		header_info = line[1:]
+	else:
+		header_info = ""
+	f2.close()
 
 	sample = loadtxt_rows("sample.txt", set(rows), single_precision)
+	sample_info = loadtxt_rows("sample_info.txt", set(rows), single_precision)
 	posterior_sample = None
+	posterior_sample_lnlike = None
 	if single_precision:
 		posterior_sample = np.empty((N, sample["ncol"]), dtype="float32")
+		posterior_sample_lnlike = np.empty((N, sample_info["ncol"]), dtype="float32")
 	else:
 		posterior_sample = np.empty((N, sample["ncol"]))
+		posterior_sample_lnlike = np.empty((N, sample_info["ncol"]))
 
 	for i in range(0, N):
 		posterior_sample[i, :] = sample[rows[i]]
+		posterior_sample_lnlike[i, :] = sample_info[rows[i]]
 
 
 	if save:
 		np.savetxt('weights.txt', w)
 		if single_precision:
 			np.savetxt("posterior_sample.txt", posterior_sample, fmt="%.7e",\
-													header=header)
+                                               header=header)
+			np.savetxt("posterior_sample_info.txt", posterior_sample_lnlike,
+                                                    fmt="%.7e",
+                                                    header=header_info)
 		else:
-			np.savetxt("posterior_sample.txt", posterior_sample,\
-													header=header)
+			np.savetxt("posterior_sample.txt", posterior_sample, header=header)
+			np.savetxt("posterior_sample_info.txt", posterior_sample_lnlike,
+			                                        fmt=['%d','%f','%f','%d'],
+			                                        header=header_info)
 
 	if plot:
 		plt.show()
