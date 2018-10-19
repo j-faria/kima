@@ -3,9 +3,8 @@ KIMA_DIR = {kimadir}
 SRC_DIR = $(KIMA_DIR)/src
 DNEST4_PATH = $(KIMA_DIR)/DNest4/code
 EIGEN_PATH = $(KIMA_DIR)/eigen
-CELERITE_PATH = $(KIMA_DIR)/celerite/cpp/include
 
-includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH)
+includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH)
 
 CXXFLAGS = -pthread -std=c++11 -O3 -w
 LIBS = -ldnest4 -L/usr/local/lib
@@ -28,8 +27,10 @@ clean:
 	rm -f kima_setup.o kima
 
 cleanout:
-	rm -f sample.txt sample_info.txt \
-		levels.txt weights.txt posterior_sample.txt sampler_state.txt \
-		posterior_sample_lnlikelihoods.txt
+	@echo "Cleaning kima outputs  "
+	@rm -f sample.txt sample_info.txt levels.txt \
+			kima_model_setup.txt \
+			weights.txt posterior_sample.txt sampler_state.txt \
+			posterior_sample_info.txt
 
 cleanall: clean cleanout
