@@ -8,7 +8,7 @@
 class Data
 {
 	private:
-		std::vector<double> t, y, sig;
+		std::vector<double> t, rv, rverr, fwhm, bis, rhk, rhkerr;
 
 	public:
 		Data();
@@ -23,22 +23,36 @@ class Data
 		// Getters
 		int N() const {return t.size();}
 
+        //time
 		const std::vector<double>& get_t() const { return t; }
 		double get_t_min() const { return *std::min_element(t.begin(), t.end()); }
 		double get_t_max() const { return *std::max_element(t.begin(), t.end()); }
 		double get_t_middle() const { return get_t_min() + 0.5*(get_t_max() - get_t_min()); }
 		double get_timespan() const { return get_t_max() - get_t_min(); }
 
-		const std::vector<double>& get_y() const { return y; }
-		double get_y_min() const { return *std::min_element(y.begin(), y.end()); }
-		double get_y_max() const { return *std::max_element(y.begin(), y.end()); }
-		double get_RV_span() const { return get_y_max() - get_y_min(); }
-		double get_RV_var() const;
-		double get_RV_std() const { return std::sqrt(get_RV_var()); }
-		
-		const std::vector<double>& get_sig() const { return sig; }
-		double topslope() const {return std::abs(get_y_max() - get_y_min()) / (t.back() - t.front());}
+        //RVs
+		const std::vector<double>& get_rv() const { return rv; }
+		double get_rv_min() const { return *std::min_element(rv.begin(), rv.end()); }
+		double get_rv_max() const { return *std::max_element(rv.begin(), rv.end()); }
+		double get_rv_span() const { return get_rv_max() - get_rv_min(); }
+		double get_rv_var() const;
+		double get_rv_std() const { return std::sqrt(get_rv_var()); }
 
+        //RVs errors and slope
+		const std::vector<double>& get_rverr() const { return rverr; }
+		double topslope() const {return std::abs(get_rv_max() - get_rv_min()) / (t.back() - t.front());}
+
+		
+		//The rest
+        const std::vector<double>& get_fwhm() const { return fwhm; }
+        const std::vector<double>& get_bis() const { return bis; }
+
+        const std::vector<double>& get_rhk() const { return rhk; }
+        const std::vector<double>& get_rhkerr() const { return rhkerr; }
+
+        //experiments because this is going to take a long time...
+
+       
 	// Singleton
 	private:
 		static Data instance;

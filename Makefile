@@ -10,16 +10,24 @@ includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH)
 SRCDIR = ./src
 SRCS =\
 $(SRCDIR)/Data.cpp \
-$(SRCDIR)/RVConditionalPrior.cpp \
-$(SRCDIR)/RVmodel.cpp \
-$(SRCDIR)/main.cpp
+$(SRCDIR)/main.cpp 
+
+# Original was:
+#SRCDIR = ./src
+#SRCS =\
+#$(SRCDIR)/Data.cpp \
+#$(SRCDIR)/RVConditionalPrior.cpp \
+#$(SRCDIR)/RVmodel.cpp \
+#$(SRCDIR)/main.cpp 
 
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
 
-EXAMPLES = BL2009 CoRoT7 many_planets 51Peg default_priors
+# Don't what exaples yet
+#EXAMPLES = BL2009 CoRoT7 many_planets 51Peg default_priors
 
-all: main examples
+# No idea what this is
+#all: main examples
 
 %.o: %.cpp
 	@echo "Compiling:" $<
