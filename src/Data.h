@@ -8,7 +8,7 @@
 class Data
 {
 	private:
-		std::vector<double> t, rv, rverr, fwhm, bis, rhk, rhkerr;
+		std::vector<double> t, rv, rverr, fwhm, bis, rhk, rhkerr, y, sig;
 
 	public:
 		Data();
@@ -38,20 +38,21 @@ class Data
 		double get_rv_var() const;
 		double get_rv_std() const { return std::sqrt(get_rv_var()); }
 
-        //RVs errors and slope
+        //RVs error
 		const std::vector<double>& get_rverr() const { return rverr; }
-		double topslope() const {return std::abs(get_rv_max() - get_rv_min()) / (t.back() - t.front());}
-
 		
-		//The rest
+		//slope
+		double topslope() const {return std::abs(get_rv_max() - get_rv_min()) / (t.back() - t.front());}
+		
+		//The fwhm, BIS, Rhk and Rhk error
         const std::vector<double>& get_fwhm() const { return fwhm; }
         const std::vector<double>& get_bis() const { return bis; }
 
         const std::vector<double>& get_rhk() const { return rhk; }
         const std::vector<double>& get_rhkerr() const { return rhkerr; }
 
-        //experiments because this is going to take a long time...
-
+        //Vector with RVs, fwhm, BIS and Rhk 
+        std::vector<double> get_y() const;
        
 	// Singleton
 	private:

@@ -137,6 +137,7 @@ void Data::load(const char* filename, const char* units, int skip)
           break;
       }
   }
+  get_y();
   }
 
 
@@ -154,6 +155,29 @@ double Data::get_rv_var() const
 }
 
 
+//to merge Rvs, fwhm, BIS and Rhk into a single vector
+std::vector<double> Data::get_y() const
+{
+    //merging RVs and fwhm
+    std::vector<double> AB;
+    AB.reserve( rv.size() + fwhm.size() ); // preallocate memory
+    AB.insert( AB.end(), rv.begin(), rv.end() );
+    AB.insert( AB.end(), fwhm.begin(), fwhm.end() );
+    printf("%i \n", AB.size());
+    //merging RVs+fwhm with BIS
+    std::vector<double> AC;
+    AC.reserve( AB.size() + bis.size() ); // preallocate memory
+    AC.insert( AC.end(), AB.begin(), AB.end() );
+    AC.insert( AC.end(), bis.begin(), bis.end() );
+    printf("%i \n", AC.size());
+    //merging RVs+fwhm+BIS wuth Rhk
+    std::vector<double> AD;
+    AD.reserve( AC.size() + rhk.size() ); // preallocate memory
+    AD.insert( AD.end(), AC.begin(), AC.end() );
+    AD.insert( AD.end(), rhk.begin(), rhk.end() );
+    printf("%i \n", AD.size());
+    return AD;
+}
 
 
 
