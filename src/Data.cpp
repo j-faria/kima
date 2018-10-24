@@ -137,7 +137,10 @@ void Data::load(const char* filename, const char* units, int skip)
           break;
       }
   }
-  get_y();
+//  get_y();
+//  get_fwhmerr();
+//  get_biserr();
+  get_sig();
   }
 
 
@@ -155,6 +158,56 @@ double Data::get_rv_var() const
 }
 
 
+// functor for getting sum of previous result and square of current element
+template<typename T>
+struct square
+{
+    T operator()(const T& Left, const T& Right) const
+    {   
+        return (Left + Right*Right);
+    }
+};
+
+
+//fwhm rms error
+std::vector<double> Data::get_fwhmerr() const
+{
+    double sum_of_elems;
+    double rms;
+    //sum of the squared elements
+    sum_of_elems = std::accumulate(fwhm.begin(), fwhm.end(), 0, square<int>() );
+
+    //sqrt(sum/n)
+    rms = std::sqrt(sum_of_elems / fwhm.size());
+
+    //now put values into vector
+    std::vector<double> fwhmerr(fwhm.size(), 0.1 * rms);
+
+    //std::cout << "myvector contains:";
+    //for (unsigned i=0; i<fwhmerr.size() ; i++)
+    //    std::cout << ' ' << fwhmerr[i];
+    //std::cout << '\n';
+    return fwhmerr;
+}
+
+
+//BIS rms error
+std::vector<double> Data::get_biserr() const
+{
+    double sum_of_elems;
+    double rms;
+    //sum of the squared elements
+    sum_of_elems = std::accumulate(bis.begin(), bis.end(), 0, square<int>() );
+    
+    //sqrt(sum/n)
+    rms = std::sqrt(sum_of_elems / bis.size());
+    
+    //now put value into vector
+    std::vector<double> biserr(bis.size(), 0.2 * rms);
+    return biserr;
+}
+
+
 //to merge Rvs, fwhm, BIS and Rhk into a single vector
 std::vector<double> Data::get_y() const
 {
@@ -163,22 +216,45 @@ std::vector<double> Data::get_y() const
     AB.reserve( rv.size() + fwhm.size() ); // preallocate memory
     AB.insert( AB.end(), rv.begin(), rv.end() );
     AB.insert( AB.end(), fwhm.begin(), fwhm.end() );
-    printf("%i \n", AB.size());
+    
     //merging RVs+fwhm with BIS
     std::vector<double> AC;
     AC.reserve( AB.size() + bis.size() ); // preallocate memory
     AC.insert( AC.end(), AB.begin(), AB.end() );
     AC.insert( AC.end(), bis.begin(), bis.end() );
-    printf("%i \n", AC.size());
+    
     //merging RVs+fwhm+BIS wuth Rhk
     std::vector<double> AD;
     AD.reserve( AC.size() + rhk.size() ); // preallocate memory
     AD.insert( AD.end(), AC.begin(), AC.end() );
     AD.insert( AD.end(), rhk.begin(), rhk.end() );
-    printf("%i \n", AD.size());
     return AD;
 }
 
 
+//to merge all errors into a single vector
+std::vector<double> Data::get_sig() const
+{
+    //merging RVs and fwhm
+    std::vector<double> AB;
+    AB.reserve( rv.size() + fwhm.size() ); // preallocate memory
+    AB.insert( AB.end(), rverr.begin(), rverr.end() );
+    std::vector<double> fwhm_err = get_fwhmerr();
+    AB.insert( AB.end(), fwhm_err.begin(), fwhm_err.end() );
+    
+    //merging RVs+fwhm with BIS
+    std::vector<double> AC;
+    AC.reserve( AB.size() + bis.size() ); // preallocate memory
+    AC.insert( AC.end(), AB.begin(), AB.end() );
+    std::vector<double> bis_err = get_biserr();
+    AC.insert( AC.end(), bis_err.begin(), bis_err.end() );
+    
+    //merging RVs+fwhm+BIS wuth Rhk
+    std::vector<double> AD;
+    AD.reserve( AC.size() + rhk.size() ); // preallocate memory
+    AD.insert( AD.end(), AC.begin(), AC.end() );
+    AD.insert( AD.end(), rhkerr.begin(), rhkerr.end() );   
+    return AD;
+}
 
 

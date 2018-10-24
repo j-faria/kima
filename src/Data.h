@@ -44,16 +44,18 @@ class Data
 		//slope
 		double topslope() const {return std::abs(get_rv_max() - get_rv_min()) / (t.back() - t.front());}
 		
-		//The fwhm, BIS, Rhk and Rhk error
+		//The fwhm, BIS, Rhk and respective errors
         const std::vector<double>& get_fwhm() const { return fwhm; }
+        std::vector<double> get_fwhmerr() const;
         const std::vector<double>& get_bis() const { return bis; }
-
+        std::vector<double> get_biserr() const;
         const std::vector<double>& get_rhk() const { return rhk; }
         const std::vector<double>& get_rhkerr() const { return rhkerr; }
 
-        //Vector with RVs, fwhm, BIS and Rhk 
+        //Single vectors with RVs, fwhm, BIS and Rhk and respective errors  
         std::vector<double> get_y() const;
-       
+        std::vector<double> get_sig() const;
+        
 	// Singleton
 	private:
 		static Data instance;
