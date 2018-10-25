@@ -57,8 +57,7 @@ class KimaResults(object):
             need_model_setup(exc)
         
         setup.read('kima_model_setup.txt')
-        self.setup = setup
-
+        
         if sys.version_info < (3, 0):
             setup = setup._sections
             # because we cheated, we need to cheat a bit more...
