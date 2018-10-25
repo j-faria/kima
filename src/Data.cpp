@@ -120,7 +120,7 @@ void Data::load(const char* filename, const char* units, int skip)
         t.push_back(data[n][0]);
         rv.push_back(data[n][1] * factor);
         rverr.push_back(data[n][2] * factor);
-        fwhm.push_back(data[n][3]);
+        fwhm.push_back(data[n][3] * factor);
         bis.push_back(data[n][4] * factor);
         rhk.push_back(data[n][5]);
         rhkerr.push_back(data[n][6]);
@@ -128,7 +128,7 @@ void Data::load(const char* filename, const char* units, int skip)
 
     // How many points did we read?
     printf("# Loaded %d data points from file %s\n", t.size(), filename);
-    if(units == "kms") printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+    if(units == "kms") printf("# Multiplied all RVs and BIS by 1000; units are now m/s.\n");
 
     for(unsigned i=0; i<data.size(); i++)
     {
@@ -184,10 +184,10 @@ std::vector<double> Data::create_fwhmerr() const
 //    //    std::cout << ' ' << fwhmerr[i];
 //    //std::cout << '\n';
     std::vector<double> fwhmerr;
-    fwhmerr.reserve( rverr.size() ); //preallocate memory
+    fwhmerr.reserve(rverr.size()); //preallocate memory
     for(int n = 0; n < rverr.size(); n++)
     {
-        fwhmerr.insert( fwhmerr.end(), 2.35 *rverr[n] );
+        fwhmerr.insert(fwhmerr.end(), 2.35 *rverr[n]);
     }
     return fwhmerr;
 }
@@ -205,10 +205,10 @@ std::vector<double> Data::create_biserr() const
 //    //now put value into vector
 //    std::vector<double> biserr(bis.size(), 0.2 * rms);
     std::vector<double> biserr;
-    biserr.reserve( rverr.size() ); //preallocate memory
+    biserr.reserve(rverr.size()); //preallocate memory
     for(int n = 0; n < rverr.size(); n++)
     {
-        biserr.insert( biserr.end(), 2.0 *rverr[n] );
+        biserr.insert(biserr.end(), 2.0 *rverr[n]);
     }
     return biserr;
 }
@@ -218,11 +218,11 @@ std::vector<double> Data::create_biserr() const
 std::vector<double> Data::get_y() const
 {
     std::vector<double> y;
-    y.reserve( rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
-    y.insert( y.end(), rv.begin(), rv.end() );
-    y.insert( y.end(), fwhm.begin(), fwhm.end() );
-    y.insert( y.end(), bis.begin(), bis.end() );
-    y.insert( y.end(), rhk.begin(), rhk.end() );
+    y.reserve(rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
+    y.insert(y.end(), rv.begin(), rv.end());
+    y.insert(y.end(), fwhm.begin(), fwhm.end());
+    y.insert(y.end(), bis.begin(), bis.end());
+    y.insert(y.end(), rhk.begin(), rhk.end());
     printf("%i \n", y.size());
     return y;
 }
@@ -234,12 +234,12 @@ std::vector<double> Data::get_sig() const
     //merging RVs and fwhm
     std::vector<double> sig;
     sig.reserve(rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
-    sig.insert( sig.end(), rverr.begin(), rverr.end() );
+    sig.insert(sig.end(), rverr.begin(), rverr.end());
     std::vector<double> fwhmerr = create_fwhmerr();
-    sig.insert( sig.end(), fwhmerr.begin(), fwhmerr.end() );
+    sig.insert(sig.end(), fwhmerr.begin(), fwhmerr.end());
     std::vector<double> biserr = create_biserr();
-    sig.insert( sig.end(), biserr.begin(), biserr.end() );
-    sig.insert( sig.end(), rhkerr.begin(), rhkerr.end() );
+    sig.insert(sig.end(), biserr.begin(), biserr.end());
+    sig.insert(sig.end(), rhkerr.begin(), rhkerr.end());
     printf("%i \n", sig.size());
     return sig;
 }
