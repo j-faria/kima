@@ -17,6 +17,7 @@ from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import gaussian_kde
 import corner
 
 try:
@@ -772,9 +773,17 @@ class KimaResults(object):
 
         t = self.data[:,0].copy()
         tt = np.linspace(t[0]-over*t.ptp(), t[-1]+over*t.ptp(), 
-                         10000+int(100*over))
+                         5000+int(100*over))
+
         # let's be more reasonable for the number of GP prediction points
-        ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
+        ## OLD: linearly spaced points (lots of useless points within gaps)
+        # ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
+        ## NEW: have more points near where there is data
+        kde = gaussian_kde(t)
+        ttGP = kde.resample(2000 + t.size*3).reshape(-1)
+        # constrain ttGP within observed times, to not waste (this could go...)
+        ttGP = (ttGP + t[0]) % t.ptp() + t[0]
+        ttGP.sort() # in-place
 
         y = self.data[:,1].copy()
         yerr = self.data[:,2].copy()
@@ -826,7 +835,7 @@ class KimaResults(object):
                                          self.eta3[i], self.eta4[i]
                 self.GP.kernel.setpars(eta1, eta2, eta3, eta4)
                 mu = self.GP.predict(y - v_at_t, ttGP, return_std=False)
-                ax.plot(ttGP, mu + v_at_ttGP, alpha=0.3, color='m')
+                ax.plot(ttGP, mu + v_at_ttGP, alpha=0.1, color='plum')
 
 
             ax.plot(tt, v, alpha=0.2, color='k')
