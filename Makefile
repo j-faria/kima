@@ -10,7 +10,15 @@ includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH)
 SRCDIR = ./src
 SRCS =\
 $(SRCDIR)/Data.cpp \
-$(SRCDIR)/main.cpp 
+$(SRCDIR)/Nodes.cpp \
+$(SRCDIR)/Weights.cpp \
+$(SRCDIR)/GPRN.cpp \
+$(SRCDIR)/main.cpp
+
+#$(SRCDIR)/GPRN_functions.cpp
+#$(SRCDIR)/RVmodel.cpp \
+#$(SRCDIR)/Nodes.cpp \
+#$(SRCDIR)/Weights.cpp 
 
 # Original was:
 #SRCDIR = ./src
