@@ -3,6 +3,7 @@ from scipy.spatial.distance import squareform, pdist, cdist
 from scipy.linalg import cholesky, cho_solve, solve_triangular
 
 class QPkernel():
+    """ The quasi-periodic kernel """
     def __init__(self, eta1, eta2, eta3, eta4):
         self.eta1 = eta1
         self.eta2 = eta2
