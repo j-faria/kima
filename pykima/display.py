@@ -846,7 +846,7 @@ class KimaResults(object):
             # ax.plot(tt, v, alpha=0.2, color='k')
             
             # add the instrument offsets, if present
-            if self.multi:
+            if self.multi and len(self.data_file) > 1:
                 for j in range(self.inst_offsets.shape[1]):
                     of = self.inst_offsets[i, j]
                     
