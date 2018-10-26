@@ -1,5 +1,7 @@
-#include "Nodes.h"
 #include "Data.h"
+#include "GPRN.h"
+#include "Nodes.h"
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -9,19 +11,18 @@
 using namespace std;
 using namespace Eigen;
 
+Nodes Nodes::instance;
 Nodes::Nodes()
 {
 
 }
 
-
-const vector<double>& t = Data::get_instance().get_t();
-const vector<double>& sig = Data::get_instance().get_sig();
-int N = Data::get_instance().get_t().size();
+extern vector<double> t; //= Data::get_instance().get_t();
+extern vector<double> sig; //= Data::get_instance().get_sig();
+extern int N; //= Data::get_instance().get_t().size();
 
 //just to compile for now
-double extra_sigma;
-
+extern double extra_sigma;
 
 Eigen::MatrixXd Nodes::constant(std::vector<double> vec)
 // vec = [constant]

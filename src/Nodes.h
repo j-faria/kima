@@ -2,6 +2,7 @@
 #define NODES_H
 
 #include "Data.h"
+#include "RVmodel.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
@@ -29,10 +30,14 @@ class Nodes
         //matern 5/2 kernel
         Eigen::MatrixXd matern52(std::vector<double> vec);
 
-
     private:
         Eigen::MatrixXd C {Data::get_instance().N(), Data::get_instance().N()};
-    
+
+    //Singleton
+    public:
+        static Nodes& get_instance() {return instance ;}
+    private:
+        static Nodes instance;
 };
 
 #endif // NODES_H
