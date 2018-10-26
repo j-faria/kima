@@ -61,6 +61,6 @@ cleanout:
 	@rm -f sample.txt sample_info.txt levels.txt \
 			kima_model_setup.txt \
 			weights.txt posterior_sample.txt sampler_state.txt \
-			posterior_sample_lnlikelihoods.txt
+			posterior_sample_info.txt
 
 cleanall: cleanout clean cleanexamples cleandnest4

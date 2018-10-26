@@ -80,7 +80,19 @@ class KimaResults(object):
             self.data[:, 1] *= 1e3
             self.data[:, 2] *= 1e3
 
+        self.tmiddle = self.data[:,0].min() + 0.5*self.data[:,0].ptp()
+
         self.posterior_sample = np.atleast_2d(np.loadtxt(posterior_samples_file))
+
+        try:
+            self.posterior_lnlike = np.atleast_2d(
+                                      np.loadtxt('posterior_sample_info.txt'))
+            self.lnlike_available = True
+        except IOError:
+            self.lnlike_available = False
+            print('Could not find file "posterior_sample_info.txt", '\
+                  'log-likelihoods will not be available.')
+
         try:
             self.sample = np.loadtxt('sample.txt')
         except IOError:
@@ -378,6 +390,42 @@ class KimaResults(object):
         # print '%8s %11.4f +- %7.4f [AU]' % ('a', a.n, a.s)
 
 
+    def maximum_likelihood_sample(self, printit=True):
+        """ Get the posterior sample with the highest log likelihood """
+        if not self.lnlike_available:
+            print('log-likelihoods are not available! '\
+                  'maximum_likelihood_sample() doing nothing...')
+            return
+
+        ind = np.argmax(self.posterior_lnlike[:,1])
+        maxlike = self.posterior_lnlike[ind,1]
+        pars = self.posterior_sample[ind]
+        if printit:
+            print('Posterior sample with the highest likelihood value '\
+                  '({:.2f})'.format(maxlike) + 
+                  '\n-> might not be representative of the full posterior distribution\n')
+            print('extra_sigma: ', pars[0])
+            npl = int(pars[self.index_component])
+            if npl>0:
+                print('number of planets: ', npl)
+                print('orbital parameters: ', end='')
+                for i in range(0, npl):
+                    s = (self.n_dimensions * ' {:10.5f} ').format(
+                            *pars[self.index_component+1 + i*self.n_dimensions: 
+                                self.index_component+1+self.n_dimensions*(i+1)])
+                    if i>0:
+                        s = 20*' ' + s
+                    print(s)
+
+            if self.GPmodel:
+                print('GP parameters: ', self.eta1[ind], self.eta2[ind],
+                                         self.eta3[ind], self.eta4[ind])
+            if self.trend:
+                print('slope: ', self.trendpars[ind])
+
+            print('vsys: ', pars[-1])
+
+        return pars
 
     def make_plot1(self):
         """ Plot the histogram of the posterior for Np """
@@ -766,11 +814,11 @@ class KimaResults(object):
             v_at_ttGP += vsys
 
             if self.trend:
-                v += self.trendpars[i]*(tt - t[0])
-                v_at_t += self.trendpars[i]*(t - t[0])
-                v_at_ttGP += self.trendpars[i]*(ttGP - t[0])
+                v += self.trendpars[i]*(tt - self.tmiddle)
+                v_at_t += self.trendpars[i]*(t - self.tmiddle)
+                v_at_ttGP += self.trendpars[i]*(ttGP - self.tmiddle)
                 if show_trend:
-                    ax.plot(tt, vsys+self.trendpars[i]*(tt - t[0]), 
+                    ax.plot(tt, vsys+self.trendpars[i]*(tt - self.tmiddle), 
                             alpha=0.2, color='m', ls=':')
 
             if not medianGP:
