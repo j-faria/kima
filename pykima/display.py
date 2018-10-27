@@ -11,11 +11,13 @@ except ImportError:
     import ConfigParser as configparser
 
 from .keplerian import keplerian
+from .GP import GP, QPkernel
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
                    percentile68_ranges, percentile68_ranges_latex
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import gaussian_kde
 import corner
 
 try:
@@ -148,10 +150,17 @@ class KimaResults(object):
 
         if self.GPmodel:
             n_hyperparameters = 4
+            start_hyperpars = start_parameters + n_trend + n_offsets + 1
+            self.etas = self.posterior_sample[:,
+                          start_hyperpars : start_hyperpars+n_hyperparameters]
+
             for i in range(n_hyperparameters):
                 name = 'eta' + str(i+1)
-                ind = start_parameters + n_trend + n_offsets + 1 + i
+                ind = start_hyperpars + i
                 setattr(self, name, self.posterior_sample[:, ind])
+            
+            self.GP = GP(QPkernel(1, 1, 1, 1), 
+                         self.data[:,0], self.data[:,2], white_noise=0.)
         else:
             n_hyperparameters = 0
 
@@ -533,7 +542,8 @@ class KimaResults(object):
             print('Model does not have GP! make_plot4() doing nothing...')
             return
 
-        available_etas = [v for v in dir(self) if v.startswith('eta')]
+        # available_etas = [v for v in dir(self) if v.startswith('eta')]
+        available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
         labels = [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
         units = ['m/s', 'days', 'days', None]
         xlabels = []
@@ -568,7 +578,8 @@ class KimaResults(object):
         if self.eta3.max() > self.pmax:
             self.pmax = np.ceil(self.eta3.max())
 
-        available_etas = [v for v in dir(self) if v.startswith('eta')]
+        # available_etas = [v for v in dir(self) if v.startswith('eta')]
+        available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
         labels = [r'$s$'] + [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
         units = ['m/s', 'm/s', 'days', 'days', None]
         xlabels = []
@@ -748,9 +759,10 @@ class KimaResults(object):
                             show_vsys=False, show_trend=False):
         """
         Display the RV data together with curves from the posterior predictive.
-        A total of `ncurves` random samples are chosen,
-        and the Keplerian curves are calculated covering 100 + `over`%
-        of the timespan of the data.
+        A total of `ncurves` random samples are chosen, and the Keplerian 
+        curves are calculated covering 100 + `over`% of the data timespan.
+        If the model has a GP component, the prediction is calculated using the
+        GP hyperparameters for each of the random samples.
         """
         samples = self.get_sorted_planet_samples()
         if self.max_components > 0:
@@ -761,7 +773,18 @@ class KimaResults(object):
 
         t = self.data[:,0].copy()
         tt = np.linspace(t[0]-over*t.ptp(), t[-1]+over*t.ptp(), 
-                         10000+int(100*over))
+                         5000+int(100*over))
+
+        if self.GPmodel:
+            # let's be more reasonable for the number of GP prediction points
+            ## OLD: linearly spaced points (lots of useless points within gaps)
+            # ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
+            ## NEW: have more points near where there is data
+            kde = gaussian_kde(t)
+            ttGP = kde.resample(2000 + t.size*3).reshape(-1)
+            # constrain ttGP within observed times, to not waste (this could go...)
+            ttGP = (ttGP + t[0]) % t.ptp() + t[0]
+            ttGP.sort() # in-place
 
         y = self.data[:,1].copy()
         yerr = self.data[:,2].copy()
@@ -771,10 +794,15 @@ class KimaResults(object):
         ii = np.random.randint(samples.shape[0], size=ncurves)
 
         _, ax = plt.subplots(1,1)
+        ax.set_title('Posterior samples in RV data space')
 
         ## plot the Keplerian curves
         for i in ii:
             v = np.zeros_like(tt)
+            if self.GPmodel:
+                v_at_t = np.zeros_like(t)
+                v_at_ttGP = np.zeros_like(ttGP)
+
             pars = samples[i, :].copy()
             nplanets = pars.size / self.n_dimensions
             for j in range(int(nplanets)):
@@ -786,20 +814,59 @@ class KimaResults(object):
                 t0 = t[0] - (P*phi)/(2.*np.pi)
                 ecc = pars[j + 3*self.max_components]
                 w = pars[j + 4*self.max_components]
-                # print(P)
                 v += keplerian(tt, P, K, ecc, w, t0, 0.)
+                if self.GPmodel:
+                    v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
+                    v_at_ttGP += keplerian(ttGP, P, K, ecc, w, t0, 0.)
 
             vsys = self.posterior_sample[mask][i, -1]
             v += vsys
+            if self.GPmodel:
+                v_at_t += vsys
+                v_at_ttGP += vsys
+
             if self.trend:
                 v += self.trendpars[i]*(tt - self.tmiddle)
+                if self.GPmodel:
+                    v_at_t += self.trendpars[i]*(t - self.tmiddle)
+                    v_at_ttGP += self.trendpars[i]*(ttGP - self.tmiddle)
                 if show_trend:
                     ax.plot(tt, vsys+self.trendpars[i]*(tt - self.tmiddle), 
                             alpha=0.2, color='m', ls=':')
 
+            # plot the GP prediction
+            if self.GPmodel:
+                self.GP.kernel.setpars(self.eta1[i], self.eta2[i], self.eta3[i], 
+                                       self.eta4[i])
+                mu = self.GP.predict(y - v_at_t, ttGP, return_std=False)
+                ax.plot(ttGP, mu + v_at_ttGP, alpha=0.1, color='plum')
+
+            # v only has the Keplerian components, not the GP predictions
             ax.plot(tt, v, alpha=0.2, color='k')
             if show_vsys:
                 ax.plot(t, vsys*np.ones_like(t), alpha=0.2, color='r', ls='--')
+
+
+        ## we could also choose to plot the GP prediction using the median of
+        ## the hyperparameters posterior distributions
+        # if self.GPmodel:
+        #     # set the GP parameters to the median (or mean?) of their posteriors
+        #     eta1, eta2, eta3, eta4 = np.median(self.etas, axis=0)
+        #     # eta1, eta2, eta3, eta4 = np.mean(self.etas, axis=0)
+        #     self.GP.kernel.setpars(eta1, eta2, eta3, eta4)
+        #
+        #     # set the orbital parameters to the median of their posteriors
+        #     P,K,phi,ecc,w = np.median(samples, axis=0)
+        #     t0 = t[0] - (P*phi)/(2.*np.pi)
+        #     mu_orbital = keplerian(t, P, K, ecc, w, t0, 0.)
+        #
+        #     # calculate the mean and std prediction from the GP model
+        #     mu, std = self.GP.predict(y - mu_orbital, ttGP, return_std=True)
+        #     mu_orbital = keplerian(ttGP, P, K, ecc, w, t0, 0.)
+        #
+        #     # 2-sigma region around the predictive mean
+        #     ax.fill_between(ttGP, y1=mu+mu_orbital-2*std, y2=mu+mu_orbital+2*std, 
+        #                     alpha=0.3, color='m')
 
 
         ## plot the data
@@ -815,7 +882,6 @@ class KimaResults(object):
 
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
         plt.tight_layout()
-        # plt.show()
 
 
     def hist_offset(self):
