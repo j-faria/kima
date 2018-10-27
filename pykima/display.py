@@ -45,11 +45,12 @@ class KimaResults(object):
             print()
 
         setup = configparser.ConfigParser()
+        try:
+            open('kima_model_setup.txt')
+        except IOError as exc:
+            need_model_setup(exc)
+        
         setup.read('kima_model_setup.txt')
-
-        if len(setup) == 0:
-            need_model_setup()
-            sys.exit(0)
 
         if sys.version_info < (3, 0):
             setup = setup._sections
