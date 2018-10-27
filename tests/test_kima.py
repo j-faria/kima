@@ -11,7 +11,7 @@ def test_import():
 
 def test_true_ecc_anomaly():
     from pykima.keplerian import true_anomaly, ecc_anomaly
-    
+
     # true anomaly f
     npt.assert_allclose(true_anomaly(0., 0.), 0.0)
     npt.assert_allclose(true_anomaly(np.pi, 0.), np.pi)
@@ -101,15 +101,15 @@ def test_logsumexp():
 def simple_results_dir(tmpdir_factory):
     """ Create dummy dir with sample.txt, sample_info.txt, and levels.txt """
     directory = tmpdir_factory.getbasetemp()
-    
+
     p = directory.join("sample.txt")
     p.write("# header\n")
     p.write("0.0")
-    
+
     p = directory.join("sample_info.txt")
     p.write("# header\n")
     p.write("0 -1.0e+308 0.0 1")
-    
+
     p = directory.join("levels.txt")
     p.write("# header\n")
     p.write("0 -1.0e+308 0 2 2 2 2")
@@ -132,6 +132,8 @@ def write_dummy_model_setup(directory):
 
 def test_showresults_fails(tmpdir, simple_results_dir, capfd):
     from pykima import showresults
+
+    olddir = os.getcwd()
 
     # in an empty directory, no levels.txt, should fail
     os.chdir(str(tmpdir))
@@ -159,11 +161,13 @@ def test_showresults_fails(tmpdir, simple_results_dir, capfd):
             match="kima_model_setup.txt"):
             showresults()
             # out, err = capfd.readouterr()
-    
+
         write_dummy_model_setup(simple_results_dir)
         with pytest.raises(OSError, match='filename.txt'):
             showresults()
-    
-    # with pytest.raises(SystemExit):
-    #     showresults('wrong_option')
-    
+
+    with pytest.raises(SystemExit):
+        showresults('wrong_option')
+
+    # go back to where we started
+    os.chdir(olddir)
