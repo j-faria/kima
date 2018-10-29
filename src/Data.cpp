@@ -206,15 +206,15 @@ void Data::load_multi(const char* filename, const char* units, int skip)
   }
 
 void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
-  /* 
-  Read in tab/space separated file `filename` with columns
-  time  vrad  error  obs
-  ...   ...   ...    ...
-  where vrad and error are in `units` (either "kms" or "ms").
-  The obs column should be an integer identifying the instrument.
-  Skip the first `skip` lines.
-  */
-  {
+/* 
+Read in tab/space separated file `filename` with columns
+time  vrad  error  obs
+...   ...   ...    ...
+where vrad and error are in `units` (either "kms" or "ms").
+The obs column should be an integer identifying the instrument.
+Skip the first `skip` lines.
+*/
+{
 
   data_t data;
 
@@ -223,6 +223,7 @@ void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
   y.clear();
   sig.clear();
   obsi.clear();
+
 
   int filecount = 1;
   int last_file_size = 0;
@@ -285,7 +286,39 @@ void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
   if(units == "kms") 
     cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
 
+  if(number_instruments > 1)
+  {
+    // We need to sort t because it comes from different instruments
+    int N = t.size();
+    std::vector<double> tt(N), yy(N);
+    std::vector<double> sigsig(N), obsiobsi(N);
+    std::vector<int> order(N);
+
+    // order = argsort(t)
+    int x=0;
+    std::iota(order.begin(), order.end(), x++);
+    sort( order.begin(),order.end(), [&](int i,int j){return t[i] < t[j];} );
+
+    for(unsigned i=0; i<N; i++){
+      tt[i] = t[order[i]];
+      yy[i] = y[order[i]];
+      sigsig[i] = sig[order[i]];
+      obsiobsi[i] = obsi[order[i]];
+    }
+
+    for(unsigned i=0; i<N; i++){
+      t[i] = tt[i];
+      y[i] = yy[i];
+      sig[i] = sigsig[i];
+      obsi[i] = obsiobsi[i];
+    }
+
+    // for(std::vector<int>::size_type i = 0; i != t.size(); i++)
+    //     cout << t[i] << "\t" << y[i] << "\t" << sig[i] << "\t" << obsi[i] <<  endl;
+  
   }
+}
+
 
 
 double Data::get_RV_var() const
