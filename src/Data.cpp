@@ -315,8 +315,17 @@ Skip the first `skip` lines.
 
     // for(std::vector<int>::size_type i = 0; i != t.size(); i++)
     //     cout << t[i] << "\t" << y[i] << "\t" << sig[i] << "\t" << obsi[i] <<  endl;
-  
   }
+
+  for(unsigned i=0; i<data.size(); i++)
+  {
+      if (t[i] > 57170.)
+      {
+          index_fibers = i;
+          break;
+      }
+  }
+
 }
 
 
