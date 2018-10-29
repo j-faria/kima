@@ -55,9 +55,9 @@ class KimaResults(object):
             open('kima_model_setup.txt')
         except IOError as exc:
             need_model_setup(exc)
-        
+
         setup.read('kima_model_setup.txt')
-        
+
         if sys.version_info < (3, 0):
             setup = setup._sections
             # because we cheated, we need to cheat a bit more...
@@ -78,7 +78,7 @@ class KimaResults(object):
                     # raise NotImplementedError('TO DO')
             else:
                 data_file = setup['kima']['file']
-        
+
         self.data_skip = int(setup['kima']['skip'])
         self.units = setup['kima']['units']
 
@@ -88,14 +88,14 @@ class KimaResults(object):
 
         self.data_skip = int(setup['kima']['skip'])
         self.units = setup['kima']['units']
-        
+
         if debug:
             print('--- skipping first %d rows of data file' % self.data_skip)
 
         if self.multi:
             self.data, self.obs = read_datafile(self.data_file, self.data_skip)
         else:
-            self.data = np.loadtxt(self.data_file, 
+            self.data = np.loadtxt(self.data_file,
                                    skiprows=self.data_skip, usecols=(0,1,2))
 
         # to m/s
@@ -575,12 +575,13 @@ class KimaResults(object):
             return
 
         available_etas = [v for v in dir(self) if v.startswith('eta')]
-        
+        labels = ['eta1', 'eta2', 'eta3', 'eta4']
+
         _, axes = plt.subplots(2, int(len(available_etas)/2))
         for i, eta in enumerate(available_etas):
             ax = np.ravel(axes)[i]
             ax.hist(getattr(self, eta), bins=40)
-            ax.set(xlabel=xlabels[i], ylabel='posterior samples')
+            ax.set(xlabel=labels[i], ylabel='posterior samples')
         
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
@@ -945,7 +946,7 @@ class KimaResults(object):
         _, ax = plt.subplots(1,1)
         ax.hist(self.trendpars.ravel())
         title = 'Posterior distribution for slope \n %s' % estimate
-        ax.set(xlabel='slope' + units   , ylabel='posterior samples',
+        ax.set(xlabel='slope' + units, ylabel='posterior samples',
                title=title)
 
     def hist_vsys(self, show_offsets=True):
@@ -960,6 +961,18 @@ class KimaResults(object):
         ax.set(xlabel='vsys' + units, ylabel='posterior samples',
                title=title)
 
+        if show_offsets and self.multi:
+            n_inst_offsets = self.inst_offsets.shape[1]
+            _, axs = plt.subplots(1, n_inst_offsets, sharey=True,
+                                  figsize=(n_inst_offsets*3, 5),
+                                  squeeze=True)
+            if n_inst_offsets == 1:
+                axs = [axs,]
+
+            for i in range(n_inst_offsets):
+                a = self.inst_offsets[:,i]
+                axs[i].hist(a)
+                axs[i].set_xlabel('offset %d' % (i+1))
 
     def hist_extra_sigma(self):
         """ Plot the histogram of the posterior for the additional white noise """
@@ -967,17 +980,8 @@ class KimaResults(object):
         estimate = percentile68_ranges_latex(self.extra_sigma) + units
 
         _, ax = plt.subplots(1,1)
-        ax.hist(vsys/1e3)
-        ax.set(xlabel='vsys (m/s)', ylabel='posterior samples')
-        plt.show()
+        ax.hist(self.extra_sigma)
+        title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
+        ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
+               title=title)
 
-        if show_offsets and self.multi:
-            n_inst_offsets = self.inst_offsets.shape[1]
-            _, axs = plt.subplots(1, n_inst_offsets, sharey=True,
-                                  figsize=(n_inst_offsets*3, 5),
-                                  squeeze=True)
-            for i in range(n_inst_offsets):
-                a = self.inst_offsets[:,i]
-                axs[i].hist(a)
-                axs[i].set_xlabel('offset %d' % (i+1))
-            plt.show()
