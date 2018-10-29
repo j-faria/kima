@@ -129,7 +129,6 @@ void Data::load(const char* filename, const char* units, int skip)
     // How many points did we read?
     printf("# Loaded %d data points from file %s\n", t.size(), filename);
     if(units == "kms") printf("# Multiplied all RVs and BIS by 1000; units are now m/s.\n");
-
     for(unsigned i=0; i<data.size(); i++)
     {
         if (t[i] > 57170.)
@@ -138,8 +137,8 @@ void Data::load(const char* filename, const char* units, int skip)
         break;
         }
     }
-    get_y();
-    get_sig();
+    //create_y();
+    //create_sig();
 }
 
 
@@ -215,23 +214,36 @@ std::vector<double> Data::create_biserr() const
 
 
 //to merge Rvs, fwhm, BIS and Rhk into a single vector
-std::vector<double> Data::get_y() const
+std::vector<double> Data::create_y() const
 {
+    if((GP) && ((RN)))
+    {
+    printf("--- gprn \n");
     std::vector<double> y;
     y.reserve(rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
     y.insert(y.end(), rv.begin(), rv.end());
     y.insert(y.end(), fwhm.begin(), fwhm.end());
     y.insert(y.end(), bis.begin(), bis.end());
     y.insert(y.end(), rhk.begin(), rhk.end());
-    printf("%i \n", y.size());
+    }
+    else
+    {
+    printf("--- not in gprn \n");
+    std::vector<double> y = rv;
+    printf("----- %i \n", y.size());
+    }
+    
     return y;
 }
 
 
 //to merge all errors into a single vector
-std::vector<double> Data::get_sig() const
+std::vector<double> Data::create_sig() const
 {
-    //merging RVs and fwhm
+    if((GP) && ((RN)))
+    {
+    //merging RVs and the rest
+    printf("--- we are here \n");
     std::vector<double> sig;
     sig.reserve(rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
     sig.insert(sig.end(), rverr.begin(), rverr.end());
@@ -240,7 +252,13 @@ std::vector<double> Data::get_sig() const
     std::vector<double> biserr = create_biserr();
     sig.insert(sig.end(), biserr.begin(), biserr.end());
     sig.insert(sig.end(), rhkerr.begin(), rhkerr.end());
-    printf("%i \n", sig.size());
+    }
+    else
+    {
+    printf("--- we are here!!!!! \n");
+    std::vector<double> sig = rverr;
+    printf("----- %i \n", sig.size());
+    }
     return sig;
 }
 

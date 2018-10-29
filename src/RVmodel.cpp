@@ -10,6 +10,8 @@
 #include <chrono>
 #include <time.h> 
 
+#include "GPRN.h"
+
 using namespace std;
 using namespace Eigen;
 using namespace DNest4;
@@ -62,29 +64,48 @@ void RVmodel::from_prior(RNG& rng)
 
     if(GP) calculate_C();
 
+
 }
 
 void RVmodel::calculate_C()
 {
     // Get the data
-    const vector<double>& t = Data::get_instance().get_t();
-    const vector<double>& sig = Data::get_instance().get_sig();
-    int N = Data::get_instance().get_t().size();
-
-    // auto begin = std::chrono::high_resolution_clock::now();  // start timing
-
-    for(size_t i=0; i<N; i++)
+    if((GP) && (RN))
     {
-        for(size_t j=i; j<N; j++)
-        {
-            C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) 
-                        -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
+        printf("Making the GPRN \n");
+        const vector<double>& t = Data::get_instance().get_t();
+        const vector<double>& sig = Data::get_instance().get_sig();
+        int N = Data::get_instance().get_t().size();
 
-            if(i==j)
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
-            else
-                C(j, i) = C(i, j);
+        std::vector<double> a = {10};
+        std::vector<double> b = {1};
+        //Getting the data
+        Eigen::MatrixXd C = GPRN::get_instance().branch(a, b);
+    
+    }
+    else
+    {
+        printf("\n Making the GP 1\n");
+        const vector<double>& t = Data::get_instance().get_t();
+        const vector<double>& sig = Data::get_instance().get_sig();
+        int N = Data::get_instance().get_t().size();
+        //printf("$i", N);
+        // auto begin = std::chrono::high_resolution_clock::now();  // start timing
+
+        for(size_t i=0; i<N; i++)
+        {
+            for(size_t j=i; j<N; j++)
+            {
+                C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) 
+                            -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
+
+                if(i==j)
+                    C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                else
+                    C(j, i) = C(i, j);
+            }
         }
+        printf("Making the GP 2\n");
     }
 
     // auto end = std::chrono::high_resolution_clock::now();

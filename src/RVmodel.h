@@ -13,6 +13,9 @@
 // whether the model includes a GP component
 extern const bool GP;
 
+// whether the model is to be a GPRN
+extern const bool RN;
+
 // whether there are observations after the change in HARPS fibers
 extern const bool obs_after_HARPS_fibers;
 

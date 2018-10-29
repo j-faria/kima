@@ -15,6 +15,11 @@ class GPRN
     private:
         Eigen::MatrixXd C {Data::get_instance().N(), Data::get_instance().N()};
     
+    //Singleton
+    public:
+        static GPRN& get_instance() {return instance; }
+    private:
+        static GPRN instance;
 };
 
 #endif // GPRN_H

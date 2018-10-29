@@ -5,6 +5,12 @@
 #include <algorithm>
 #include <cmath>
 
+// whether the model includes a GP component
+extern const bool GP;
+
+// whether the model is to be a GPRN
+extern const bool RN;
+
 class Data
 {
     private:
@@ -37,7 +43,7 @@ class Data
         double get_rv_max() const { return *std::max_element(rv.begin(), rv.end()); }
         double get_rv_span() const { return get_rv_max() - get_rv_min(); }
         double get_rv_var() const;
-        double get_rv_std() const { return std::sqrt(get_rv_var()); }
+        double get_vr_std() const { return std::sqrt(get_rv_var()); }
 
         //RVs error
         const std::vector<double>& get_rverr() const { return rverr; }
@@ -47,11 +53,13 @@ class Data
 
         //The fwhm, BIS, Rhk and respective errors
         const std::vector<double>& get_fwhm() const { return fwhm; }
+        
         std::vector<double> create_fwhmerr() const;
         const std::vector<double>& get_fwhmerr() const { return fwhmerr; } //getter
         void set_fwhmerr(std::vector<double> create_fwhmerr()) { fwhmerr = create_fwhmerr(); } //setter
 
         const std::vector<double>& get_bis() const { return bis; }
+        
         std::vector<double> create_biserr() const;
         const std::vector<double>& get_biserr() const {return biserr; } //getter
         void set_biserr(std::vector<double> create_biserr()) { biserr = create_biserr(); } //setter
@@ -59,13 +67,23 @@ class Data
         const std::vector<double>& get_rhk() const { return rhk; }
         const std::vector<double>& get_rhkerr() const { return rhkerr; }
 
-        //Single vectors with RVs, fwhm, BIS and Rhk and respective errors  
-        std::vector<double> get_y() const;
-        std::vector<double> get_sig() const;
+        //Single vectors with RVs, fwhm, BIS and Rhk and errors
+        std::vector<double> create_y() const;
+        const std::vector<double>& get_y() const {return set_y(); } //getter
+        void set_y(std::vector<double>& create_y()) { create_y(); } //setter
+
+        std::vector<double> create_sig() const;
+        const std::vector<double>& get_sig() const {return set_sig(); } //getter
+        void set_sig(std::vector<double>& create_sig()) { create_sig(); } //setter
+//        std::vector<double> get_y() const;
+//        std::vector<double> get_sig() const;
+        //const std::vector<double>& get_y() const { return y; }
+        //const std::vector<double>& get_sig() const { return sig; }
         
     // Singleton
     private:
         static Data instance;
+
     public:
         static Data& get_instance() { return instance; }
 };

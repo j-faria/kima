@@ -13,9 +13,9 @@ $(SRCDIR)/Data.cpp \
 $(SRCDIR)/Nodes.cpp \
 $(SRCDIR)/Weights.cpp \
 $(SRCDIR)/GPRN.cpp \
+$(SRCDIR)/RVConditionalPrior.cpp \
+$(SRCDIR)/RVmodel.cpp \
 $(SRCDIR)/main.cpp
-
-#$(SRCDIR)/GPRN_functions.cpp
 #$(SRCDIR)/RVmodel.cpp \
 #$(SRCDIR)/Nodes.cpp \
 #$(SRCDIR)/Weights.cpp 

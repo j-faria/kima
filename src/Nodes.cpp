@@ -13,9 +13,7 @@ using namespace Eigen;
 
 Nodes Nodes::instance;
 Nodes::Nodes()
-{
-
-}
+{}
 
 extern vector<double> t; //= Data::get_instance().get_t();
 extern vector<double> sig; //= Data::get_instance().get_sig();
