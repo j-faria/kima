@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <boost/lambda/lambda.hpp>
+#include <functional>
 
 using namespace std;
 
@@ -129,6 +130,7 @@ void Data::load(const char* filename, const char* units, int skip)
     // How many points did we read?
     printf("# Loaded %d data points from file %s\n", t.size(), filename);
     if(units == "kms") printf("# Multiplied all RVs and BIS by 1000; units are now m/s.\n");
+    //printf("--- t size = %i \n", t.size());
     for(unsigned i=0; i<data.size(); i++)
     {
         if (t[i] > 57170.)
@@ -137,8 +139,9 @@ void Data::load(const char* filename, const char* units, int skip)
         break;
         }
     }
-    //create_y();
-    //create_sig();
+    create_y();
+    create_sig();
+    create_fwhmerr();
 }
 
 
@@ -168,57 +171,31 @@ double Data::get_rv_var() const
 
 
 //fwhm rms error
-std::vector<double> Data::create_fwhmerr() const
+void Data::create_fwhmerr()
 {
-//    double sum_of_elems;
-//    double rms;
-//    //sum of the squared elements
-//    sum_of_elems = std::accumulate(fwhm.begin(), fwhm.end(), 0, square<int>() );
-//    //sqrt(sum/n)
-//    rms = std::sqrt(sum_of_elems / fwhm.size());
-//    //now put values into vector
-//    std::vector<double> fwhmerr(fwhm.size(), 0.1 * rms);
-//    //std::cout << "myvector contains:";
-//    //for (unsigned i=0; i<fwhmerr.size() ; i++)
-//    //    std::cout << ' ' << fwhmerr[i];
-//    //std::cout << '\n';
-    std::vector<double> fwhmerr;
-    fwhmerr.reserve(rverr.size()); //preallocate memory
     for(int n = 0; n < rverr.size(); n++)
     {
-        fwhmerr.insert(fwhmerr.end(), 2.35 *rverr[n]);
+        fwhmerr.push_back(2.35 *rverr[n]);
     }
-    return fwhmerr;
 }
 
 
 //BIS rms error
-std::vector<double> Data::create_biserr() const
+void Data::create_biserr() 
 {
-//    double sum_of_elems;
-//    double rms;
-//    //sum of the squared elements
-//    sum_of_elems = std::accumulate(bis.begin(), bis.end(), 0, square<int>() );
-//    //sqrt(sum/n)
-//    rms = std::sqrt(sum_of_elems / bis.size());
-//    //now put value into vector
-//    std::vector<double> biserr(bis.size(), 0.2 * rms);
-    std::vector<double> biserr;
-    biserr.reserve(rverr.size()); //preallocate memory
     for(int n = 0; n < rverr.size(); n++)
     {
-        biserr.insert(biserr.end(), 2.0 *rverr[n]);
+        biserr.push_back(2.0 *rverr[n]);
     }
-    return biserr;
+
 }
 
 
 //to merge Rvs, fwhm, BIS and Rhk into a single vector
-std::vector<double> Data::create_y() const
+void Data::create_y()
 {
     if((GP) && ((RN)))
     {
-    printf("--- gprn \n");
     std::vector<double> y;
     y.reserve(rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
     y.insert(y.end(), rv.begin(), rv.end());
@@ -228,38 +205,34 @@ std::vector<double> Data::create_y() const
     }
     else
     {
-    printf("--- not in gprn \n");
-    std::vector<double> y = rv;
-    printf("----- %i \n", y.size());
+    y = rv;
     }
-    
-    return y;
 }
 
 
 //to merge all errors into a single vector
-std::vector<double> Data::create_sig() const
+void Data::create_sig()
 {
     if((GP) && ((RN)))
     {
     //merging RVs and the rest
-    printf("--- we are here \n");
+    printf("--- we are in sig gprn \n");
     std::vector<double> sig;
     sig.reserve(rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
     sig.insert(sig.end(), rverr.begin(), rverr.end());
-    std::vector<double> fwhmerr = create_fwhmerr();
+    //fwhmerr = create_fwhmerr();
     sig.insert(sig.end(), fwhmerr.begin(), fwhmerr.end());
-    std::vector<double> biserr = create_biserr();
+    //biserr = create_biserr();
     sig.insert(sig.end(), biserr.begin(), biserr.end());
     sig.insert(sig.end(), rhkerr.begin(), rhkerr.end());
+    printf("--- sig size = %i \n", sig.size());
     }
     else
     {
-    printf("--- we are here!!!!! \n");
-    std::vector<double> sig = rverr;
-    printf("----- %i \n", sig.size());
+    sig = rverr;
+
     }
-    return sig;
+
 }
 
 
