@@ -14,7 +14,7 @@ from .keplerian import keplerian
 from .GP import GP, QPkernel
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
                    percentile68_ranges, percentile68_ranges_latex,\
-                   read_datafile
+                   read_datafile, lighten_color
 
 
 import matplotlib.pyplot as plt
@@ -848,8 +848,12 @@ class KimaResults(object):
             
             # add the instrument offsets, if present
             if self.multi and len(self.data_file) > 1:
-                for j in range(self.inst_offsets.shape[1]):
-                    of = self.inst_offsets[i, j]
+                number_offsets = self.inst_offsets.shape[1]
+                for j in range(number_offsets + 1):
+                    if j == number_offsets:
+                        of = 0.
+                    else:
+                        of = self.inst_offsets[i, j]
                     
                     instrument_mask = self.obs == j+1
                     start = self.data[instrument_mask,0].min()
@@ -858,7 +862,8 @@ class KimaResults(object):
 
                     v_i = v.copy()
                     v_i[time_mask] += of
-                    ax.plot(tt[time_mask], v_i[time_mask], alpha=0.2, color='k')
+                    ax.plot(tt[time_mask], v_i[time_mask], 
+                            alpha=0.2, color=lighten_color(colors[j], 1.5))
             else:
                 ax.plot(tt, v, alpha=0.2, color='k')
 
@@ -901,10 +906,15 @@ class KimaResults(object):
         ## plot the data
         if self.fiber_offset:
             mask = t < 57170
-            ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
+            if self.multi:
+                for j in range(self.inst_offsets.shape[1]+1):
+                    m = self.obs == j+1
+                    ax.errorbar(t[m&mask], y[m&mask], yerr[m&mask], fmt='o', color=colors[j])
+            # ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
+
             yshift = np.vstack([y[~mask], y[~mask]-self.offset.mean()])
             for i, ti in enumerate(t[~mask]):
-                ax.errorbar(ti, yshift[0,i], fmt='o', color='m', alpha=0.3)
+                ax.errorbar(ti, yshift[0,i], fmt='o', color='m', alpha=0.2)
                 ax.errorbar(ti, yshift[1,i], yerr[~mask][i], fmt='o', color='r')
         else:
             if self.multi:
