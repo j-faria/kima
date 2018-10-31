@@ -574,10 +574,10 @@ class KimaResults(object):
             print('Model does not have GP! make_plot4() doing nothing...')
             return
 
-        available_etas = [v for v in dir(self) if v.startswith('eta')]
+        available_etas = [v for v in dir(self) if v.startswith('eta')][:-1]
         labels = ['eta1', 'eta2', 'eta3', 'eta4']
 
-        _, axes = plt.subplots(2, int(len(available_etas)/2))
+        fig, axes = plt.subplots(2, int(len(available_etas)/2))
         for i, eta in enumerate(available_etas):
             ax = np.ravel(axes)[i]
             ax.hist(getattr(self, eta), bins=40)
