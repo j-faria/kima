@@ -53,28 +53,23 @@ class Data
 
         //The fwhm, BIS, Rhk and respective errors
         const std::vector<double>& get_fwhm() const { return fwhm; }
-        
         void create_fwhmerr();
-        const std::vector<double>& get_fwhmerr() const { return fwhmerr; } //getter
-        //void set_fwhmerr(std::vector<double> create_fwhmerr()) { fwhmerr = create_fwhmerr(); } //setter
+        const std::vector<double>& get_fwhmerr() const { return fwhmerr; }
 
         const std::vector<double>& get_bis() const { return bis; }
-        
         void create_biserr();
-        const std::vector<double>& get_biserr() const {return biserr; } //getter
-        //void set_biserr(std::vector<double> create_biserr()) { biserr = create_biserr(); } //setter
+        const std::vector<double>& get_biserr() const {return biserr; }
         
         const std::vector<double>& get_rhk() const { return rhk; }
         const std::vector<double>& get_rhkerr() const { return rhkerr; }
 
-        //single vector of y and sig
+        //single vector of tt, y and sig
+        void create_tt();
+        const std::vector<double>& get_tt() const {return tt; }
         void create_y();
-        const std::vector<double>& get_y() const {return y; } //getter
-        //void set_y(std::vector<double>& create_y()) { y = create_y(); } //setter
-
+        const std::vector<double>& get_y() const {return y; }
         void create_sig();
-        const std::vector<double>& get_sig() const {return sig; } //getter
-        //void set_sig(std::vector<double>& create_sig()) { sig = create_sig(); } //setter
+        const std::vector<double>& get_sig() const {return sig; }
         
     // Singleton
     private:

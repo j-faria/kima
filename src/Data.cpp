@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include <boost/lambda/lambda.hpp>
 #include <functional>
 
 using namespace std;
@@ -140,8 +139,10 @@ void Data::load(const char* filename, const char* units, int skip)
         }
     }
     create_y();
-    create_sig();
     create_fwhmerr();
+    create_biserr();
+    create_sig();
+    create_tt();
 }
 
 
@@ -196,7 +197,6 @@ void Data::create_y()
 {
     if((GP) && ((RN)))
     {
-    std::vector<double> y;
     y.reserve(rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
     y.insert(y.end(), rv.begin(), rv.end());
     y.insert(y.end(), fwhm.begin(), fwhm.end());
@@ -216,20 +216,35 @@ void Data::create_sig()
     if((GP) && ((RN)))
     {
     //merging RVs and the rest
-    printf("--- we are in sig gprn \n");
-    std::vector<double> sig;
     sig.reserve(rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
     sig.insert(sig.end(), rverr.begin(), rverr.end());
-    //fwhmerr = create_fwhmerr();
     sig.insert(sig.end(), fwhmerr.begin(), fwhmerr.end());
-    //biserr = create_biserr();
     sig.insert(sig.end(), biserr.begin(), biserr.end());
     sig.insert(sig.end(), rhkerr.begin(), rhkerr.end());
-    printf("--- sig size = %i \n", sig.size());
     }
     else
     {
     sig = rverr;
+
+    }
+
+}
+
+//to merge all errors into a single vector
+void Data::create_tt()
+{
+    if((GP) && ((RN)))
+    {
+    //merging RVs and the rest
+    tt.reserve(4* t.size()); //preallocate memory
+    tt.insert(tt.end(), t.begin(), t.end());
+    tt.insert(tt.end(), t.begin(), t.end());
+    tt.insert(tt.end(), t.begin(), t.end());
+    tt.insert(tt.end(), t.begin(), t.end());
+    }
+    else
+    {
+    tt = t;
 
     }
 

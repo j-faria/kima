@@ -1,9 +1,11 @@
 #include <iostream>
 #include <typeinfo>
+#include <string>
 #include "DNest4.h"
 #include "Data.h"
 #include "RVmodel.h"
 #include "RVConditionalPrior.h"
+#include "GPRN.h"
 
 using namespace std;
 using namespace DNest4;
@@ -39,6 +41,29 @@ RVmodel::RVmodel()
     save_setup();
 }
 
+// instead of defining it at the GPRN.cpp file we can make it here
+GPRN::GPRN()
+:C(Data::get_instance().get_tt().size(), Data::get_instance().get_tt().size())
+{
+    // Node functions of our GPRN
+    node = {"QP", "P"};
+    // Weight funtion of our GPRN
+    weight = {"SE"};
+
+    /*  LIST OF AVAILABLE KERNELS
+    C   = constant
+    SE  = squared exponential
+    P   = periodic
+    QP  = quasi-periodic
+    RQ  = rational quadratic
+    COS = cosine
+    EXP = exponential
+    M32 = matern 3/2
+    M52 = matern 5/2
+    */
+
+}
+
 
 int main(int argc, char** argv)
 {
@@ -49,11 +74,13 @@ int main(int argc, char** argv)
     /* load the file (RVs are in km/s) */
     /* don't skip any lines in the header */
     Data::get_instance().load(datafile, "kms", 2);
-
+    //GPRN obj;
+    //obj.nodeBuilt();
+    //obj.weightBuilt();
 
     // set the sampler and run it!
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
-    sampler.run();
+    //sampler.run();
 
 
 return 0;
