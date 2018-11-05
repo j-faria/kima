@@ -26,7 +26,14 @@ Uniform *log_eta2_prior = new Uniform(0, 5);
 Uniform *eta3_prior = new Uniform(10., 40.);
 Uniform *log_eta4_prior = new Uniform(-1, 1);
 
-
+///* gprn parameters */
+//Uniform *sigmaPrior = new Uniform(0, 100);  //white noise, m/s
+//Uniform *constantPrior = new Uniform(0, 100);                       //c from constant kernel
+//Uniform *ellPrior = new Uniform(0, 100);                            //lenght scale
+//Uniform *periodPrior = new Uniform(0, 100);                         //period
+//Uniform *ellePrior = new Uniform(0, 100);                           //aperiodic lenght scale
+//Uniform *ellpPrior = new Uniform(0, 100);                           //periodic lenght scale
+//Uniform *alphaPrior = new Uniform(0, 100);                          //alpha from RQ kernel
 
 /* hyper parameters */
 

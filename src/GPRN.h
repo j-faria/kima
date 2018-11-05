@@ -3,6 +3,9 @@
 
 #include "Data.h"
 #include "RVmodel.h"
+#include "DNest4.h"
+#include "RNG.h"
+
 #include <string>
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -13,18 +16,21 @@ class GPRN
     public:
         GPRN();
         Eigen::MatrixXd matrixCalculation(std::vector<double> vec1, std::vector<double> vec2);
-        Eigen::MatrixXd nodeCheck(std::string check, std::vector<double> vec1);
-        Eigen::MatrixXd weightCheck(std::string check, std::vector<double> vec2);
-        
+        Eigen::MatrixXd nodeCheck(std::string check, std::vector<double> vec1, double sigmaPrior);
+        Eigen::VectorXd weightCheck(std::string check, std::vector<double> vec2);
+
         Eigen::MatrixXd nodeBuilt(std::vector<double> vec1);
-        Eigen::MatrixXd weightBuilt(std::vector<double> vec2);
+        Eigen::VectorXd weightBuilt(std::vector<double> vec2);
 
 
     private:
+        double extra_sigma;
         //block matrix
         Eigen::MatrixXd k {Data::get_instance().get_t().size(), Data::get_instance().get_t().size()};
         //final matrix
         Eigen::MatrixXd C {Data::get_instance().get_tt().size(), Data::get_instance().get_tt().size()};
+        //comes from main.cpp
+        DNest4::ModifiedLogUniform sigmaPrior;
         //comes from main.cpp
         std::vector<std::string> node;
         //comes from main.cpp
@@ -34,7 +40,13 @@ class GPRN
         //node we are working with
         Eigen::MatrixXd nkernel;
         //weight we are working with
-        Eigen::MatrixXd wkernel;
+        Eigen::VectorXd wkernel;
+        //math between weight and node
+        Eigen::MatrixXd wn;
+        Eigen::MatrixXd wnw;
+        
+        //const int dataset_size = Data::get_instance().get_t().size();
+        //const int ii;
 
 
     //Singleton

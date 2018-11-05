@@ -62,6 +62,15 @@ GPRN::GPRN()
     M52 = matern 5/2
     */
 
+    // Priors of our nodes and weights
+    //sigmaPrior = new Uniform(0, 100);  //white noise, m/s
+    //printf("sigmaPrior %f \n", sigmaPrior);
+    //constantPrior = new Uniform(0, 100);            //c from constant kernel
+    //ellPrior = new Uniform(0, 100);                 //lenght scale
+    //periodPrior = new Uniform(0, 100);              //period
+    //ellePrior = new Uniform(0, 100);                //aperiodic lenght scale
+    //ellpPrior = new Uniform(0, 100);                //periodic lenght scale
+    //alphaPrior = new Uniform(0, 100);               //alpha from RQ kernel
 }
 
 

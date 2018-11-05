@@ -1,4 +1,7 @@
 #include "Data.h"
+#include "DNest4.h"
+#include "RNG.h"
+
 #include "GPRN.h"
 #include "Nodes.h"
 
@@ -20,9 +23,9 @@ extern vector<double> sig; //= Data::get_instance().get_sig();
 extern int N; //= Data::get_instance().get_t().size();
 
 //just to compile for now
-extern double extra_sigma;
+//extern double extra_sigma;
 
-Eigen::MatrixXd Nodes::constant(std::vector<double> vec)
+Eigen::MatrixXd Nodes::constant(std::vector<double> vec, double extra_sigma)
 // vec = [constant]
 {
     for(size_t i=0; i<N; i++)
@@ -40,7 +43,7 @@ Eigen::MatrixXd Nodes::constant(std::vector<double> vec)
 }
 
 
-Eigen::MatrixXd Nodes::squaredExponential(std::vector<double> vec)
+Eigen::MatrixXd Nodes::squaredExponential(std::vector<double> vec, double extra_sigma)
 // vec = [ell]
 {
     for(size_t i=0; i<N; i++)
@@ -58,7 +61,7 @@ Eigen::MatrixXd Nodes::squaredExponential(std::vector<double> vec)
 }
 
 
-Eigen::MatrixXd Nodes::periodic(std::vector<double> vec)
+Eigen::MatrixXd Nodes::periodic(std::vector<double> vec, double extra_sigma)
 // vec = [ell, P]
 {
     for(size_t i=0; i<N; i++)
@@ -76,7 +79,7 @@ Eigen::MatrixXd Nodes::periodic(std::vector<double> vec)
 }
 
 
-Eigen::MatrixXd Nodes::quasiPeriodic(std::vector<double> vec)
+Eigen::MatrixXd Nodes::quasiPeriodic(std::vector<double> vec, double extra_sigma)
 // vec = [ell_e, P, ell_p]
 {
     for(size_t i=0; i<N; i++)
@@ -95,7 +98,7 @@ Eigen::MatrixXd Nodes::quasiPeriodic(std::vector<double> vec)
 }
 
 
-Eigen::MatrixXd Nodes::rationalQuadratic(std::vector<double> vec)
+Eigen::MatrixXd Nodes::rationalQuadratic(std::vector<double> vec, double extra_sigma)
 // vec = [alpha, ell]
 {
     for(size_t i=0; i<N; i++)
@@ -113,7 +116,7 @@ Eigen::MatrixXd Nodes::rationalQuadratic(std::vector<double> vec)
 }
 
 
-Eigen::MatrixXd Nodes::cosine(std::vector<double> vec)
+Eigen::MatrixXd Nodes::cosine(std::vector<double> vec, double extra_sigma)
 // vec = [P]
 {
     for(size_t i=0; i<N; i++)
@@ -131,7 +134,7 @@ Eigen::MatrixXd Nodes::cosine(std::vector<double> vec)
 }
 
 
-Eigen::MatrixXd Nodes::exponential(std::vector<double> vec)
+Eigen::MatrixXd Nodes::exponential(std::vector<double> vec, double extra_sigma)
 // vec = [ell]
 {
     for(size_t i=0; i<N; i++)
@@ -149,7 +152,7 @@ Eigen::MatrixXd Nodes::exponential(std::vector<double> vec)
 }
 
 
-Eigen::MatrixXd Nodes::matern32(std::vector<double> vec)
+Eigen::MatrixXd Nodes::matern32(std::vector<double> vec, double extra_sigma)
 // vec = [ell]
 {
     for(size_t i=0; i<N; i++)
@@ -166,7 +169,7 @@ Eigen::MatrixXd Nodes::matern32(std::vector<double> vec)
     return C;
 }
 
-Eigen::MatrixXd Nodes::matern52(std::vector<double> vec)
+Eigen::MatrixXd Nodes::matern52(std::vector<double> vec, double extra_sigma)
 // vec = [ell]
 {
     for(size_t i=0; i<N; i++)

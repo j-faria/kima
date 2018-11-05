@@ -376,16 +376,6 @@ double RVmodel::log_likelihood() const
     else
     {
         // The following code calculates the log likelihood 
-        // in the case of a t-Student model
-        //  for(size_t i=0; i<y.size(); i++)
-        //  {
-        //      var = sig[i]*sig[i] + extra_sigma*extra_sigma;
-        //      logL += gsl_sf_lngamma(0.5*(nu + 1.)) - gsl_sf_lngamma(0.5*nu)
-        //          - 0.5*log(M_PI*nu) - 0.5*log(var)
-        //          - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
-        //  }
-
-        // The following code calculates the log likelihood 
         // in the case of a Gaussian likelihood
         double var;
         for(size_t i=0; i<y.size(); i++)
