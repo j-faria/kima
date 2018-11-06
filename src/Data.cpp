@@ -207,12 +207,11 @@ void Data::load_multi(const char* filename, const char* units, int skip)
 
 void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
 /* 
-Read in tab/space separated file `filename` with columns
-time  vrad  error  obs
-...   ...   ...    ...
-where vrad and error are in `units` (either "kms" or "ms").
-The obs column should be an integer identifying the instrument.
-Skip the first `skip` lines.
+Read in tab/space separated files `filenames`, each with columns
+time  vrad  error
+...   ...   ...
+where vrad and error are in `units` (either "kms" or "ms"). All files should 
+have values in the same units. Skip the first `skip` lines (of all files).
 */
 {
 
@@ -224,13 +223,15 @@ Skip the first `skip` lines.
   sig.clear();
   obsi.clear();
 
-
+  std::string dump; // to dump the first skip lines of each file
   int filecount = 1;
   int last_file_size = 0;
 
   // Read the files into the data container
   for (auto &filename : filenames) {
     ifstream infile( filename );
+    for (int i=0; i<skip; i++)  // skip the first `skip` lines of each file
+      getline(infile, dump);
     infile >> data;
 
     // Complain if something went wrong.
@@ -243,8 +244,9 @@ Skip the first `skip` lines.
     infile.close();
 
     // Assign instrument int identifier to obsi
-    for(unsigned i=last_file_size; i<data.size(); i++)
+    for(unsigned i=last_file_size; i<data.size(); i++){
       obsi.push_back(filecount);
+    }
     
     last_file_size = data.size();
     filecount++;
@@ -262,8 +264,7 @@ Skip the first `skip` lines.
 
   for (unsigned n=0; n<data.size(); n++)
     {
-      // cout << n << endl;
-      if (n<skip) continue;
+      // if (n<skip) continue;
       t.push_back(data[n][0]);
       y.push_back(data[n][1] * factor);
       sig.push_back(data[n][2] * factor);
@@ -313,6 +314,7 @@ Skip the first `skip` lines.
       obsi[i] = obsiobsi[i];
     }
 
+    // debug
     // for(std::vector<int>::size_type i = 0; i != t.size(); i++)
     //     cout << t[i] << "\t" << y[i] << "\t" << sig[i] << "\t" << obsi[i] <<  endl;
   }
