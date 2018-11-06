@@ -94,6 +94,10 @@ class KimaResults(object):
 
         if self.multi:
             self.data, self.obs = read_datafile(self.data_file, self.data_skip)
+            # make sure the times are sorted when coming from multiple instruments
+            ind = self.data[:,0].argsort()
+            self.data = self.data[ind]
+            self.obs = self.obs[ind]
         else:
             self.data = np.loadtxt(self.data_file,
                                    skiprows=self.data_skip, usecols=(0,1,2))
