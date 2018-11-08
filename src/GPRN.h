@@ -15,20 +15,16 @@ class GPRN
 {
     public:
         GPRN();
-        Eigen::MatrixXd matrixCalculation(std::vector<double> vec1, std::vector<double> vec2);
+        //Eigen::MatrixXd matrixCalculation(std::vector<double> vec1, std::vector<double> vec2);
+        std::vector<Eigen::MatrixXd> matrixCalculation(std::vector<double> vec1, std::vector<double> vec2);
         Eigen::MatrixXd nodeCheck(std::string check, std::vector<double> vec1, double sigmaPrior);
         Eigen::VectorXd weightCheck(std::string check, std::vector<double> vec2);
-
-        Eigen::MatrixXd nodeBuilt(std::vector<double> vec1);
-        Eigen::VectorXd weightBuilt(std::vector<double> vec2);
 
 
     private:
         double extra_sigma;
-        //block matrix
+        //block matrices
         Eigen::MatrixXd k {Data::get_instance().get_t().size(), Data::get_instance().get_t().size()};
-        //final matrix
-        Eigen::MatrixXd C {Data::get_instance().get_tt().size(), Data::get_instance().get_tt().size()};
         //comes from main.cpp
         DNest4::ModifiedLogUniform sigmaPrior;
         //comes from main.cpp
@@ -44,9 +40,6 @@ class GPRN
         //math between weight and node
         Eigen::MatrixXd wn;
         Eigen::MatrixXd wnw;
-        
-        //const int dataset_size = Data::get_instance().get_t().size();
-        //const int ii;
 
 
     //Singleton

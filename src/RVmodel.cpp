@@ -75,26 +75,28 @@ void RVmodel::calculate_C()
         //printf("\n Making the GPRN \n");
         // Get the data
         auto data = Data::get_instance();
-        const vector<double>& t = data.get_tt();
+        const vector<double>& t = data.get_t();
         const vector<double>& sig = data.get_sig();
         int N = data.get_t().size();
-
-        std::vector<double> a = {10};
+        
+        std::vector<double> a = {10, 5, 0.5};
         std::vector<double> b = {1};
-        //Getting the data
-        Eigen::MatrixXd C = GPRN::get_instance().matrixCalculation(a, b);
-        printf("\n --- we went to the GPRN and came back traumatized --- ");
+
+        Cs = GPRN::get_instance().matrixCalculation(a, b);
+        //cout << Cs[3] << endl;
+        
+        C = Cs[0];
     }
     //otherwise we just do a GP
     else
     {
+        //printf("why am I here? \n");
         // Get the data
         auto data = Data::get_instance();
         const vector<double>& t = data.get_t();
         const vector<double>& sig = data.get_sig();
         int N = data.get_t().size();
         
-
         for(std::size_t i=0; i<N; i++)
         {
             for(std::size_t j=i; j<N; j++)
@@ -110,7 +112,7 @@ void RVmodel::calculate_C()
             }
         }
     }
-
+//printf("did we ended this? \n");
 }
 
 void RVmodel::calculate_mu()
@@ -336,55 +338,119 @@ double RVmodel::perturb(RNG& rng)
 double RVmodel::log_likelihood() const
 {
     double logL = 0.;
+    double logLikelihoods = 0.;
     auto data = Data::get_instance();
     int N = data.N();
-    const vector<double>& y = data.get_y();
-    const vector<double>& sig = data.get_sig();
-
-    #if TIMING
-    auto begin = std::chrono::high_resolution_clock::now();  // start timing
-    #endif
+    //#if TIMING
+    //auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    //#endif
 
     if(GP)
     {
-        /** The following code calculates the log likelihood in the case of a GP model */
-        // residual vector (observed y minus model y)
-        VectorXd residual(y.size());
-        for(size_t i=0; i<y.size(); i++)
-            residual(i) = y[i] - mu[i];
+    //printf("We have entered in the gp \n");
+        if(RN)
+        {
+        //printf("We started the RN \n");
+        vector<double> y;
+        const vector<double>& rv = data.get_rv();
+        const vector<double>& fwhm = data.get_fwhm();
+        const vector<double>& bis = data.get_bis();
+        const vector<double>& rhk = data.get_rhk();
+        const vector<double>& sig = data.get_sig();
+        const vector<double>& t = data.get_t();
+        //printf("variables and stuff done \n");
+        float finalLog = 1;
+            for(int i=0; i<4; i++)
+            {
+                printf("%i", i);
+                // residual vector (observed y minus model y)
+                VectorXd residual(t.size());
+                //printf("we reached the first for \n");
+                if(i==0)
+                    y = rv;
+                if(i==1)
+                    y = fwhm;
+                if(i==2)
+                    y = bis;
+                if(i==3)
+                    y = rhk;
+                for(size_t j=0; j<t.size(); j++)
+                    residual(j) = y[j];
+//                  with no mean for start
+//                    residual(i) = y[i] - mu[i];
 
-        // perform the cholesky decomposition of C
-        Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
-        // get the lower triangular matrix L
-        MatrixXd L = cholesky.matrixL();
+                // perform the cholesky decomposition of C
+                //C = Cs[i];
+                Eigen::LLT<Eigen::MatrixXd> cholesky = Cs[i].llt();
+                // get the lower triangular matrix L
+                MatrixXd L = cholesky.matrixL();
 
-        double logDeterminant = 0.;
-        for(size_t i=0; i<y.size(); i++)
-            logDeterminant += 2.*log(L(i,i));
+                double logDeterminant = 0.;
+                for(size_t j=0; j<t.size(); j++)
+                    logDeterminant += 2.*log(L(j,j));
 
-        VectorXd solution = cholesky.solve(residual);
+                VectorXd solution = cholesky.solve(residual);
 
-        // y*solution
-        double exponent = 0.;
-        for(size_t i=0; i<y.size(); i++)
-            exponent += residual(i)*solution(i);
+                // y*solution
+                double exponent = 0.;
+                for(size_t j=0; j<t.size(); j++)
+                    exponent += residual(j)*solution(j);
 
-        logL = -0.5*y.size()*log(2*M_PI)
-                - 0.5*logDeterminant - 0.5*exponent;
+                logLikelihoods = -0.5*y.size()*log(2*M_PI)
+                        - 0.5*logDeterminant - 0.5*exponent;
+                printf("log like = %f ", logLikelihoods);
+                finalLog = finalLog * logLikelihoods;
+            printf("final log = %f \n", finalLog);
+            }
+        //printf("We ended the RN \n");
+        logL = finalLog;
+        }
+        else
+        {
+            printf("How did I ended up in here?");
+            const vector<double>& y = data.get_y();
+            /** The following code calculates the log likelihood in the case of a GP model */
+            // residual vector (observed y minus model y)
+            VectorXd residual(y.size());
+            for(size_t i=0; i<y.size(); i++)
+                residual(i) = y[i] - mu[i];
 
-    } 
+            // perform the cholesky decomposition of C
+            Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
+            // get the lower triangular matrix L
+            MatrixXd L = cholesky.matrixL();
+
+            double logDeterminant = 0.;
+            for(size_t i=0; i<y.size(); i++)
+                logDeterminant += 2.*log(L(i,i));
+
+            VectorXd solution = cholesky.solve(residual);
+
+            // y*solution
+            double exponent = 0.;
+            for(size_t i=0; i<y.size(); i++)
+                exponent += residual(i)*solution(i);
+
+            logL = -0.5*y.size()*log(2*M_PI)
+                    - 0.5*logDeterminant - 0.5*exponent;
+        }
+    }
+
+
     else
     {
         // The following code calculates the log likelihood 
         // in the case of a Gaussian likelihood
         double var;
+        const vector<double>& y = data.get_y();
+        const vector<double>& sig = data.get_sig();
         for(size_t i=0; i<y.size(); i++)
         {
             var = sig[i]*sig[i] + extra_sigma*extra_sigma;
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
         }
-    printf("we got here");
+    //printf("we got here");
     }
 
     #if TIMING

@@ -32,7 +32,7 @@ class Weights
         Eigen::VectorXd matern52(std::vector<double> vec);
 
     private:
-        Eigen::VectorXd C {Data::get_instance().N()};
+        Eigen::VectorXd C {Data::get_instance().get_t().size()};
 
     //Singleton
     public:

@@ -32,19 +32,14 @@ int N = Data::get_instance().get_t().size();
 //ModifiedLogUniform *Jprior = new ModifiedLogUniform(1.0, 99.); // additional white noise, m/s
 //extra_sigma = Jprior;
 
-//Construction of the covariance matrix
-Eigen::MatrixXd GPRN::matrixCalculation(std::vector<double> vec1, std::vector<double> vec2)
+//Construction of the covariance matrices
+std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<double> vec1, std::vector<double> vec2)
 {
-//    Eigen::MatrixXd w = Weights::get_instance().constant(vec1);
-//    Eigen::MatrixXd n = Nodes::get_instance().squaredExponential(vec2);
-//    Eigen::MatrixXd wn = w.cwiseProduct(n);
-
     //number of nodes
     int n_size = node.size();
     //just to compile for now
     //extra_sigma = sigmaPrior.generate(DNest4::RNG rng);
-    double extra_sigma = 1;
-    
+    double extra_sigma = 0.01;
     
     //if we have n nodes, we will have 4n weigths
     weights = weight;
@@ -57,26 +52,25 @@ Eigen::MatrixXd GPRN::matrixCalculation(std::vector<double> vec1, std::vector<do
     Eigen::MatrixXd nkernel;
     //weight kernels
     Eigen::VectorXd wkernel;
-    //final matrix will look like this
-    Eigen::MatrixXd C {Data::get_instance().get_tt().size(), Data::get_instance().get_tt().size()};
+    //vector with the 4 matrices
+    std::vector<Eigen::MatrixXd> matrices_vector {4};
     //now we do math
     for(int i=0; i<4; i++)
     {
     //block matrix to be built
-    Eigen::MatrixXd k {dataset_size, dataset_size};
+    Eigen::MatrixXd k {Data::get_instance().get_t().size(), Data::get_instance().get_t().size()};
         for(int j=0; j <n_size; j++)
         {
             nkernel = nodeCheck(node[j], vec1, extra_sigma);
             wkernel = weightCheck(weights[j + n_size*i], vec2);
-            Eigen::MatrixXd wn = wkernel.cwiseProduct(nkernel);
-            Eigen::MatrixXd wnw = wn.cwiseProduct(wkernel.transpose());
-            k += wnw;
+            Eigen::MatrixXd wn = wkernel.asDiagonal() * nkernel;
+            Eigen::MatrixXd wnw = nkernel * wkernel.asDiagonal();
+            k = k + wnw;
         }
-
-    C.block<i*Data::get_instance().get_tt().size(),i*Data::get_instance().get_tt().size()>(0,0) = k;
+    matrices_vector[i] = k;
     }
-
-    return C;
+    
+return matrices_vector;
 }
 
 // To check what type of kernel we have into the nodes
@@ -102,11 +96,7 @@ Eigen::MatrixXd GPRN::nodeCheck(std::string check, std::vector<double> vec1, dou
         nkernel = Nodes::get_instance().matern32(vec1, sigmaPrior);
     if(check == "M52")
         nkernel = Nodes::get_instance().matern52(vec1, sigmaPrior);
-    else
-        printf("Check your nodes!");
-        //break();
-
-    return nkernel;
+return nkernel;
 }
 
 // To check what type of kernel we have into the weight
@@ -132,37 +122,7 @@ Eigen::VectorXd GPRN::weightCheck(std::string check, std::vector<double> vec2)
         wkernel = Weights::get_instance().matern32(vec2);
     if(check == "M52")
         wkernel = Weights::get_instance().matern52(vec2);
-    else
-        printf("Check your weights!");
-        //break();
-
-    return wkernel;
+return wkernel;
 }
-
-
-//// In here we should count the nodes and put priors
-//Eigen::MatrixXd GPRN::nodeBuilt(std::vector<double> vec1)
-//{
-//    auto nn = Nodes::get_instance();
-//    int n_size = node.size();
-//    
-//    for(int i=0; i<n_size; i++)
-//    {
-//        nodeCheck(node, vec1);
-//    }
-//    printf("It is over ... for now ...");
-//    //std::vector<Eigen::MatrixXd> = {n.nodes[0], n.nodes[1]};
-//}
-
-
-////In here we should count the weights and put priors
-//Eigen::VectorXd GPRN::weightBuilt(std::vector<double> vec2)
-//{
-//    cout << "Selected weight: " << weight[0] << endl;
-//    auto ww = Weights::get_instance();
-//}
-
-
-
 
 

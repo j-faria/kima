@@ -16,7 +16,7 @@ using namespace DNest4;
 
 const bool obs_after_HARPS_fibers = false; //if there are observations after the change in HARPS fibers
 const bool GP = true; //the model includes a GP component
-const bool RN = false; //the model its a GP regression network
+const bool RN = true; //the model its a GP regression network
 const bool hyperpriors = false;
 const bool trend = false; //the model includes a linear trend
 
@@ -43,12 +43,11 @@ RVmodel::RVmodel()
 
 // instead of defining it at the GPRN.cpp file we can make it here
 GPRN::GPRN()
-:C(Data::get_instance().get_tt().size(), Data::get_instance().get_tt().size())
 {
     // Node functions of our GPRN
     node = {"QP", "P"};
     // Weight funtion of our GPRN
-    weight = {"SE"};
+    weight = {"C"};
 
     /*  LIST OF AVAILABLE KERNELS
     C   = constant
@@ -84,12 +83,14 @@ int main(int argc, char** argv)
     /* don't skip any lines in the header */
     Data::get_instance().load(datafile, "kms", 2);
     //GPRN obj;
-    //obj.nodeBuilt();
+    //obj.matrixCalculation({10, 5, 0.5}, {0.2});
     //obj.weightBuilt();
 
+    //RVmodel obj;
+    //obj.calculate_C();
     // set the sampler and run it!
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
-    //sampler.run();
+    sampler.run();
 
 
 return 0;

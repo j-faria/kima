@@ -35,7 +35,7 @@ class Nodes
 
     private:
         //double extra_sigma;
-        Eigen::MatrixXd C {Data::get_instance().N(), Data::get_instance().N()};
+        Eigen::MatrixXd C {Data::get_instance().get_t().size(), Data::get_instance().get_t().size()};
 
     //Singleton
     public:

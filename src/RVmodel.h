@@ -68,6 +68,8 @@ class RVmodel
         // The covariance matrix for the data
         Eigen::MatrixXd C {Data::get_instance().N(), Data::get_instance().N()};
         void calculate_C();
+        std::vector<Eigen::MatrixXd> Cs {4};
+        //std::vector<Eigen::MatrixXd> Cs;
 
         //QPkernel *kernel;
         //HODLR_Tree<QPkernel> *A;
