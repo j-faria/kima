@@ -3,6 +3,7 @@ from __future__ import print_function
 import __main__
 from .classic import postprocess
 from .display import KimaResults
+from .utils import show_tips
 import sys, os
 from collections import namedtuple
 from matplotlib.pyplot import show
@@ -128,6 +129,8 @@ def showresults(options=''):
     except IOError as e:
         print(e)
         sys.exit(1)
+
+    show_tips()
 
     res = KimaResults(list(set(plots)))
     show() # render the plots
