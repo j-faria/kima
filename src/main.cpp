@@ -12,7 +12,7 @@ using namespace DNest4;
 
 /* edit from here on */
 #include "default_priors.h"
-
+#include "default_GPRN_priors.h"
 
 const bool obs_after_HARPS_fibers = false; //if there are observations after the change in HARPS fibers
 const bool GP = true; //the model includes a GP component
@@ -22,7 +22,7 @@ const bool trend = false; //the model includes a linear trend
 
 
 RVmodel::RVmodel()
-:planets(5, 0, true, RVConditionalPrior())
+:planets(5, 2, false, RVConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
@@ -61,15 +61,6 @@ GPRN::GPRN()
     M52 = matern 5/2
     */
 
-    // Priors of our nodes and weights
-    //sigmaPrior = new Uniform(0, 100);  //white noise, m/s
-    //printf("sigmaPrior %f \n", sigmaPrior);
-    //constantPrior = new Uniform(0, 100);            //c from constant kernel
-    //ellPrior = new Uniform(0, 100);                 //lenght scale
-    //periodPrior = new Uniform(0, 100);              //period
-    //ellePrior = new Uniform(0, 100);                //aperiodic lenght scale
-    //ellpPrior = new Uniform(0, 100);                //periodic lenght scale
-    //alphaPrior = new Uniform(0, 100);               //alpha from RQ kernel
 }
 
 

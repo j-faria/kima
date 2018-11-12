@@ -10,6 +10,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
 
+#include "GPRN.h"
+
 // whether the model includes a GP component
 extern const bool GP;
 
@@ -71,6 +73,12 @@ class RVmodel
         std::vector<Eigen::MatrixXd> Cs {4};
         //std::vector<Eigen::MatrixXd> Cs;
 
+        //GPRN priors
+        int n_size = GPRN::get_instance().node.size(); //number of nodes
+        int w_size = 4*n_size; //number of weights
+        std::vector<std::vector<double>> node_priors {n_size};
+        std::vector<std::vector<double>> weight_priors {w_size};
+        double prior1, prior2, prior3, prior4, prior5;
         //QPkernel *kernel;
         //HODLR_Tree<QPkernel> *A;
 

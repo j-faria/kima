@@ -1,5 +1,5 @@
 #include "Data.h"
-#include "RVmodel.h"
+//#include "RVmodel.h"
 #include "DNest4.h"
 #include "RNG.h"
 
@@ -33,41 +33,54 @@ int N = Data::get_instance().get_t().size();
 //extra_sigma = Jprior;
 
 //Construction of the covariance matrices
-std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<double> vec1, std::vector<double> vec2)
+std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<double>> vec1, 
+                                                    std::vector<std::vector<double>> vec2)
 {
+//printf(" \n we are in  GPRN::matrixCalculation \n");
     //number of nodes
-    int n_size = node.size();
+    //const int n_size = node.size();
     //just to compile for now
     //extra_sigma = sigmaPrior.generate(DNest4::RNG rng);
     double extra_sigma = 0.01;
-    
-    //if we have n nodes, we will have 4n weigths
-    weights = weight;
-    for(int i=0; i<4*n_size; i++)
-        {
-            weights.insert(weights.end(), weight[0]);
-        }
 
+    //cout << "\nnodes QP ----- " << vec1[0][0] << " "<< vec1[0][1] << " "<< vec1[0][2] << " "  << endl;
+    //cout << "nodes P ----- " << vec1[1][0] << " "<< vec1[1][1] << " "  << endl;
+    
     //node kernel
     Eigen::MatrixXd nkernel;
     //weight kernels
     Eigen::VectorXd wkernel;
     //vector with the 4 matrices
-    std::vector<Eigen::MatrixXd> matrices_vector {4};
+    //std::vector<Eigen::MatrixXd> matrices_vector {4};
     //now we do math
+    printf("\n we have %i node and %i weights \n ", vec1.size(), vec2.size());
+    int n_size = node.size();
     for(int i=0; i<4; i++)
     {
-    //block matrix to be built
-    Eigen::MatrixXd k {Data::get_instance().get_t().size(), Data::get_instance().get_t().size()};
-        for(int j=0; j <n_size; j++)
+        printf(" \n %i", i);
+        //block matrix to be built
+        Eigen::MatrixXd k {Data::get_instance().get_t().size(), Data::get_instance().get_t().size()};
+        //printf("are we breathing? \n");
+        for(int j=0; j < n_size; j++)
         {
-            nkernel = nodeCheck(node[j], vec1, extra_sigma);
-            wkernel = weightCheck(weights[j + n_size*i], vec2);
+            printf("\n node j= %i, weight = %i \n", j, j+n_size*i);
+            //cout << vec1 << endl;
+            nkernel = nodeCheck(node[j], vec1[i], extra_sigma);
+            //printf("\n 2 --- we got here --- \n");
+            wkernel = weightCheck(weight[0], vec2[0]); //vec2[j + n_size*i]);
+            printf("\n 1 --- we got here --- \n");
             Eigen::MatrixXd wn = wkernel.asDiagonal() * nkernel;
+            printf("\n 2 --- we got here --- \n");
             Eigen::MatrixXd wnw = nkernel * wkernel.asDiagonal();
+            printf("\n 3 --- we got here --- \n");
+            //printf("Im gonna assume math was made before this point \n");
             k = k + wnw;
         }
+//        printf("whyyyyyyyyyy? \n");
+    //printf("\n 4 --- we got here tooo!--- \n");
     matrices_vector[i] = k;
+    //printf("\n node = %i ", vec1[0][0]); 
+    //printf("weight = %i ", vec2[0][0]);
     }
     
 return matrices_vector;
@@ -76,6 +89,7 @@ return matrices_vector;
 // To check what type of kernel we have into the nodes
 Eigen::MatrixXd GPRN::nodeCheck(std::string check, std::vector<double> vec1, double sigmaPrior)
 {
+//printf(" \n we are in  GPRN::nodeCheck \n");
     Eigen::MatrixXd nkernel;
 
     if(check == "C")
@@ -102,6 +116,7 @@ return nkernel;
 // To check what type of kernel we have into the weight
 Eigen::VectorXd GPRN::weightCheck(std::string check, std::vector<double> vec2)
 {
+//printf(" \n we are in  GPRN::weightCheck \n");
     Eigen::VectorXd wkernel;
 
     if(check == "C")
