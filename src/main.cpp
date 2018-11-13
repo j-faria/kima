@@ -22,7 +22,7 @@ const bool trend = false; //the model includes a linear trend
 
 
 RVmodel::RVmodel()
-:planets(5, 2, false, RVConditionalPrior())
+:planets(5, 0, true, RVConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {

@@ -41,7 +41,7 @@ class RVmodel
         double slope, quad;
         double fiber_offset;
 
-        double extra_sigma;
+        //double extra_sigma;
 
         // Parameters for the quasi-periodic extra noise
         double eta1, eta2, eta3, eta4, eta5;
@@ -86,7 +86,7 @@ class RVmodel
 
     public:
         RVmodel();
-
+        double extra_sigma;
         void save_setup();
 
         // Generate the point from the prior

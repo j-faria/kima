@@ -244,8 +244,8 @@ void RVmodel::from_prior(RNG& rng)
             }
         }
     }
-//    cout << "\nnodes QP " << node_priors[0][0] << " "<< node_priors[0][1] << " "<< node_priors[0][2] << " "  << endl;
-//    cout << "nodes P " << node_priors[1][0] << " "<< node_priors[1][1] << " "  << endl;
+    cout << "node QP " << node_priors[0][0] << " "<< node_priors[0][1] << " "<< node_priors[0][2] << " "  << endl;
+    cout << "node P " << node_priors[1][0] << " "<< node_priors[1][1] << " "  << endl;
 //    cout << "weight 1 " << node_priors[0][0] << " " << node_priors[0][1] << endl;
 //    cout << "weight 2 " << node_priors[1][0] << " " << node_priors[1][1] << endl;
     calculate_mu();
@@ -273,10 +273,7 @@ void RVmodel::calculate_C()
         std::vector<double> b = {1};          //this will become weight_priors
 
         //the nodes and weights are empty somehow!
-        //cout << "the first node is " << node_priors.size() << endl;
-        Cs = GPRN::get_instance().matrixCalculation(node_priors, weight_priors);
-        //printf("\n node here = %i ", node_priors[0][0]); 
-        //printf("weight = %i ", weight_priors[0][0]);
+        Cs = GPRN::get_instance().matrixCalculation(node_priors, weight_priors, extra_sigma);
         //I don't know why it doesn't run if we dont define C
         C = Cs[0]*0;
     }
@@ -555,7 +552,7 @@ double RVmodel::log_likelihood() const
         const vector<double>& sig = data.get_sig();
         const vector<double>& t = data.get_t();
         //printf("variables and stuff done \n");
-        float finalLog = 0.;
+        //float finalLog = 0.;
             for(int i=0; i<4; i++)
             {
                 // residual vector (observed y minus model y)
@@ -593,10 +590,10 @@ double RVmodel::log_likelihood() const
                 logLikelihoods = -0.5*y.size()*log(2*M_PI)
                         - 0.5*logDeterminant - 0.5*exponent;
                 //printf("log like = %f \n", logLikelihoods);
-                finalLog = finalLog + logLikelihoods;
+                logLikelihoods += logLikelihoods;
             }
-        //printf("final log = %f \n", finalLog);
-        logL = finalLog;
+        //printf("final log = %f \n", logLikelihoods);
+        logL = logLikelihoods;
         }
         else
         {
