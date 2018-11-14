@@ -1,8 +1,6 @@
 #include "Data.h"
-//#include "RVmodel.h"
 #include "DNest4.h"
 #include "RNG.h"
-
 #include "GPRN.h"
 #include "Nodes.h"
 #include "Weights.h"
@@ -28,9 +26,6 @@ const vector<double>& t = Data::get_instance().get_t();
 const vector<double>& sig = Data::get_instance().get_sig();
 int N = Data::get_instance().get_t().size();
 
-//just to compile for now
-//ModifiedLogUniform *Jprior = new ModifiedLogUniform(1.0, 99.); // additional white noise, m/s
-//extra_sigma = Jprior;
 
 //Construction of the covariance matrices
 std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<double>> node_priors, 
@@ -38,15 +33,10 @@ std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<dou
                                                     double extra_sigma)
 {
 
-    //just to compile for now
-    //extra_sigma = sigmaPrior.generate(DNest4::RNG rng);
-    //double extra_sigma = 0.001;
-
     //node kernel
     Eigen::MatrixXd nkernel;
     //weight kernels
     Eigen::VectorXd wkernel;
-
 
     //now we do math
     int n_size = node.size();
@@ -68,6 +58,7 @@ std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<dou
     }
 return matrices_vector;
 }
+
 
 // To check what type of kernel we have into the nodes
 Eigen::MatrixXd GPRN::nodeCheck(std::string check, std::vector<double> node_prior, double extra_sigma)
@@ -95,10 +86,10 @@ Eigen::MatrixXd GPRN::nodeCheck(std::string check, std::vector<double> node_prio
 return nkernel;
 }
 
+
 // To check what type of kernel we have into the weight
 Eigen::VectorXd GPRN::weightCheck(std::string check, std::vector<double> weight_prior)
 {
-//printf(" \n we are in  GPRN::weightCheck \n");
     Eigen::VectorXd wkernel;
 
     if(check == "C")

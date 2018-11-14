@@ -9,7 +9,6 @@
 #include <fstream>
 #include <chrono>
 #include <time.h> 
-
 #include "GPRN.h"
 
 using namespace std;
@@ -17,8 +16,6 @@ using namespace Eigen;
 using namespace DNest4;
 
 #define TIMING false
-//node size
-//int n_size;
 
 extern ContinuousDistribution *Cprior; // systematic velocity, m/s
 extern ContinuousDistribution *Jprior; // additional white noise, m/s
@@ -54,8 +51,6 @@ extern ContinuousDistribution *m32_ell;
 extern ContinuousDistribution *m52_weight;
 extern ContinuousDistribution *m52_ell;
 
-
-
 // from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
 // mean, std = 14.641789473684208, 2.7783035258938971
 Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
@@ -63,9 +58,10 @@ Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
+
 void RVmodel::from_prior(RNG& rng)
 {
-    //printf(" \n we are in  RVmodel::from_prior \n");
+printf(" \n we are in  RVmodel::from_prior \n");
     planets.from_prior(rng);
     planets.consolidate_diff();
     
@@ -80,208 +76,185 @@ void RVmodel::from_prior(RNG& rng)
 
     if(GP)
     {
-        eta1 = exp(log_eta1_prior->generate(rng)); // m/s
-
-        eta2 = exp(log_eta2_prior->generate(rng)); // days
-
-        eta3 = eta3_prior->generate(rng); // days
-
-        eta4 = exp(log_eta4_prior->generate(rng));
-    }
-
-    if((GP) && (RN))
-    {
-        /* Generate priors accordingly to kernels used */
-        n_size = GPRN::get_instance().node.size(); //number of nodes
-        w_size = 4 * n_size; //number of weights
-
-        //vectors with kernels parameters
-        //std::vector<std::vector<double>> node_priors {n_size};
-        //std::vector<std::vector<double>> weight_priors {w_size};
-
-        //dealing with the nodes
-        std::vector<double> priors;
-        for(int i=0; i<n_size; i++)
+        if(RN)
         {
-            if(GPRN::get_instance().node[i] == "C")
+            /* Generate priors accordingly to kernels used */
+            n_size = GPRN::get_instance().node.size(); //number of nodes
+            w_size = 4 * n_size; //number of weights
+            //dealing with the nodes
+            std::vector<double> priors;
+            for(int i=0; i<n_size; i++)
             {
-                prior1 = constant_prior->generate(rng);
-                node_priors[i] = {prior1};
+                if(GPRN::get_instance().node[i] == "C")
+                {
+                    prior1 = constant_prior->generate(rng);
+                    node_priors[i] = {prior1};
+                }
+                if(GPRN::get_instance().node[i] == "SE")
+                {
+                    prior1 = se_ell->generate(rng);
+                    node_priors[i] = {prior1};
+                }
+                if(GPRN::get_instance().node[i] == "P")
+                {
+                    prior1 = per_ell->generate(rng);
+                    prior2 = per_period->generate(rng);
+                    node_priors[i] = {prior1, prior2};
+                }
+                if(GPRN::get_instance().node[i] == "QP")
+                {   
+                    prior1 = quasi_elle->generate(rng);
+                    prior2 = quasi_period->generate(rng);
+                    prior3 = quasi_ellp->generate(rng);
+                    node_priors[i] = {prior1, prior2, prior3};
+                }
+                if(GPRN::get_instance().node[i] == "RQ")
+                {
+                    prior1 = ratq_alpha->generate(rng);
+                    prior2 = ratq_ell->generate(rng);
+                    node_priors[i] = {prior1, prior2};
+                }
+                if(GPRN::get_instance().node[i] == "COS")
+                {
+                    prior1 = cos_period->generate(rng);
+                    node_priors[i] = {prior1};
+                }
+                if(GPRN::get_instance().node[i] == "EXP")
+                {
+                    prior1 = exp_ell->generate(rng);
+                    node_priors[i] = {prior1};
+                }
+                if(GPRN::get_instance().node[i] == "M32")
+                {
+                    prior1 = m32_ell->generate(rng);
+                    node_priors[i] = {prior1};
+                }
+                if(GPRN::get_instance().node[i] == "M52")
+                {
+                    prior1 = m52_ell->generate(rng);
+                    node_priors[i] = {prior1};
+                }
             }
-            if(GPRN::get_instance().node[i] == "SE")
+            //dealing with the weights
+            if(GPRN::get_instance().weight[0] == "C")
             {
-                prior1 = se_ell->generate(rng);
-                node_priors[i] = {prior1};
+                prior2 = constant_prior->generate(rng); //all weights have the same parameters
+                for(int j=0; j<w_size; j++)
+                {
+                    //printf("j = %i ", j);
+                    prior1 = constant_weight->generate(rng);
+                    weight_priors[j] = {prior1, prior2};
+                }
             }
-            if(GPRN::get_instance().node[i] == "P")
+            if(GPRN::get_instance().weight[0] == "SE")
             {
-                prior1 = per_ell->generate(rng);
-                prior2 = per_period->generate(rng);
-                node_priors[i] = {prior1, prior2};
-                //cout << "P - " << " " << node_priors[i].size() << endl;
+                prior2 = se_ell->generate(rng);
+                for(int j=0; j<w_size; j++)
+                {
+                    prior1 = se_weight->generate(rng);
+                    weight_priors[j] = {prior1, prior2};
+                }
             }
-            if(GPRN::get_instance().node[i] == "QP")
-            {   
-                prior1 = quasi_elle->generate(rng);
-                prior2 = quasi_period->generate(rng);
-                prior3 = quasi_ellp->generate(rng);
-                node_priors[i] = {prior1, prior2, prior3};
-                //cout << "QP - " << " " << node_priors[i].size() << endl;
-            }
-            if(GPRN::get_instance().node[i] == "RQ")
+            if(GPRN::get_instance().weight[0] == "P")
             {
-                prior1 = ratq_alpha->generate(rng);
-                prior2 = ratq_ell->generate(rng);
-                node_priors[i] = {prior1, prior2};
+                prior2 = per_ell->generate(rng);
+                prior3 = per_period->generate(rng);
+                for(int j=0; j<w_size; j++)
+                {
+                    prior1 = per_weight->generate(rng);
+                    weight_priors[j] = {prior1, prior2, prior3};
+                }
             }
-            if(GPRN::get_instance().node[i] == "COS")
+            if(GPRN::get_instance().weight[0] == "QP")
             {
-                prior1 = cos_period->generate(rng);
-                node_priors[i] = {prior1};
+                prior2 = quasi_elle->generate(rng);
+                prior3 = quasi_period->generate(rng);
+                prior4 = quasi_ellp->generate(rng);
+                for(int j=0; j<w_size; j++)
+                {
+                    prior1 = quasi_weight->generate(rng);
+                    weight_priors[j] = {prior1, prior2, prior3, prior4};
+                }
+             }
+            if(GPRN::get_instance().weight[0] == "RQ")
+            {
+                prior2 = ratq_alpha->generate(rng);
+                prior3 = ratq_ell->generate(rng);
+                for(int j=0; j<w_size; j++)
+                {
+                    prior1 = ratq_weight->generate(rng);
+                    weight_priors[j] = {prior1, prior2, prior3};
+                }
             }
-            if(GPRN::get_instance().node[i] == "EXP")
+            if(GPRN::get_instance().weight[0] == "COS")
             {
-                prior1 = exp_ell->generate(rng);
-                node_priors[i] = {prior1};
+                prior2 = cos_period->generate(rng);
+                for(int j=0; j<w_size; j++)
+                {
+                    prior1 = cos_weight->generate(rng);
+                    weight_priors[j] = {prior1, prior2};
+                }
             }
-            if(GPRN::get_instance().node[i] == "M32")
+            if(GPRN::get_instance().weight[0] == "EXP")
             {
-                prior1 = m32_ell->generate(rng);
-                node_priors[i] = {prior1};
+                prior2 = exp_ell->generate(rng);
+                for(int j=0; j<w_size; j++)
+                {
+                    prior1 = exp_weight->generate(rng);
+                    weight_priors[j] = {prior1, prior2};
+                }
             }
-            if(GPRN::get_instance().node[i] == "M52")
+            if(GPRN::get_instance().weight[0] == "M32")
             {
-                prior1 = m52_ell->generate(rng);
-                node_priors[i] = {prior1};
+                prior2 = m32_ell->generate(rng);
+                for(int j=0; j<w_size; j++)
+                {
+                    prior1 = m32_weight->generate(rng);
+                    weight_priors[j] = {prior1, prior2};
+                }
+            }
+            if(GPRN::get_instance().weight[0] == "M52")
+            {
+                prior2 = m52_ell->generate(rng);
+                for(int j=0; j<w_size; j++)
+                {
+                    prior1 = m52_weight->generate(rng);
+                    weight_priors[j] = {prior1, prior2};
+                }
             }
         }
-
-        //dealing with the weights
-        if(GPRN::get_instance().weight[0] == "C")
+        else
         {
-            prior2 = constant_prior->generate(rng); //all weights have the same parameters
-            for(int j=0; j<w_size; j++)
-            {
-                //printf("j = %i ", j);
-                prior1 = constant_weight->generate(rng);
-                weight_priors[j] = {prior1, prior2};
-            }
-        }
-        if(GPRN::get_instance().weight[0] == "SE")
-        {
-            prior2 = se_ell->generate(rng);
-            for(int j=0; j<w_size; j++)
-            {
-                prior1 = se_weight->generate(rng);
-                weight_priors[j] = {prior1, prior2};
-            }
-        }
-        if(GPRN::get_instance().weight[0] == "P")
-        {
-            prior2 = per_ell->generate(rng);
-            prior3 = per_period->generate(rng);
-            for(int j=0; j<w_size; j++)
-            {
-                prior1 = per_weight->generate(rng);
-                weight_priors[j] = {prior1, prior2, prior3};
-            }
-        }
-        if(GPRN::get_instance().weight[0] == "QP")
-        {
-            prior2 = quasi_elle->generate(rng);
-            prior3 = quasi_period->generate(rng);
-            prior4 = quasi_ellp->generate(rng);
-            for(int j=0; j<w_size; j++)
-            {
-                prior1 = quasi_weight->generate(rng);
-                weight_priors[j] = {prior1, prior2, prior3, prior4};
-            }
-        }
-        if(GPRN::get_instance().weight[0] == "RQ")
-        {
-            prior2 = ratq_alpha->generate(rng);
-            prior3 = ratq_ell->generate(rng);
-            for(int j=0; j<w_size; j++)
-            {
-                prior1 = ratq_weight->generate(rng);
-                weight_priors[j] = {prior1, prior2, prior3};
-            }
-        }
-        if(GPRN::get_instance().weight[0] == "COS")
-        {
-            prior2 = cos_period->generate(rng);
-            for(int j=0; j<w_size; j++)
-            {
-                prior1 = cos_weight->generate(rng);
-                weight_priors[j] = {prior1, prior2};
-            }
-        }
-        if(GPRN::get_instance().weight[0] == "EXP")
-        {
-            prior2 = exp_ell->generate(rng);
-            for(int j=0; j<w_size; j++)
-            {
-                prior1 = exp_weight->generate(rng);
-                weight_priors[j] = {prior1, prior2};
-            }
-        }
-        if(GPRN::get_instance().weight[0] == "M32")
-        {
-            prior2 = m32_ell->generate(rng);
-            for(int j=0; j<w_size; j++)
-            {
-                prior1 = m32_weight->generate(rng);
-                weight_priors[j] = {prior1, prior2};
-            }
-        }
-        if(GPRN::get_instance().weight[0] == "M52")
-        {
-            prior2 = m52_ell->generate(rng);
-            for(int j=0; j<w_size; j++)
-            {
-                prior1 = m52_weight->generate(rng);
-                weight_priors[j] = {prior1, prior2};
-            }
+            eta1 = exp(log_eta1_prior->generate(rng));  // m/s
+            eta2 = exp(log_eta2_prior->generate(rng));  // days
+            eta3 = eta3_prior->generate(rng);           // days
+            eta4 = exp(log_eta4_prior->generate(rng));
         }
     }
-    cout << "node QP " << node_priors[0][0] << " "<< node_priors[0][1] << " "<< node_priors[0][2] << " "  << endl;
-    cout << "node P " << node_priors[1][0] << " "<< node_priors[1][1] << " "  << endl;
-//    cout << "weight 1 " << node_priors[0][0] << " " << node_priors[0][1] << endl;
-//    cout << "weight 2 " << node_priors[1][0] << " " << node_priors[1][1] << endl;
     calculate_mu();
-
     if(GP) calculate_C();
-
-
 }
+
 
 void RVmodel::calculate_C()
 {
-    //printf(" \n we are in  RVmodel::calculate_C \n");
-    //if we want a GPRN
-    if((GP) && (RN))
+printf(" \n we are in  RVmodel::calculate_C \n");
+    //if we want a GPRN the RN is set to true
+    if(RN)
     {
-        //printf("\n Making the GPRN \n");
-        // Get the data
+        //data
         auto data = Data::get_instance();
         const vector<double>& t = data.get_t();
         const vector<double>& sig = data.get_sig();
         int N = data.get_t().size();
         
-        //vectors with kernels parameters
-        std::vector<double> a = {10, 5, 0.5}; //this will become node_priors
-        std::vector<double> b = {1};          //this will become weight_priors
-
-        //the nodes and weights are empty somehow!
         Cs = GPRN::get_instance().matrixCalculation(node_priors, weight_priors, extra_sigma);
-        //I don't know why it doesn't run if we dont define C
-        C = Cs[0]*0;
+        C = Cs[0]*0;    //I don't know why it doesn't run if we dont define C
     }
-    //otherwise we just do a GP
+    //otherwise we just a GP and the RN is set to false
     else
     {
-        //printf("why am I here? \n");
-        // Get the data
+        //data
         auto data = Data::get_instance();
         const vector<double>& t = data.get_t();
         const vector<double>& sig = data.get_sig();
@@ -302,12 +275,12 @@ void RVmodel::calculate_C()
             }
         }
     }
-//printf("did we ended this? \n");
 }
+
 
 void RVmodel::calculate_mu()
 {
-//printf(" \n we are in  RVmodel::calculate_mu \n");
+printf(" \n we are in  RVmodel::calculate_mu \n");
     auto data = Data::get_instance();
     // Get the times from the data
     const vector<double>& t = data.get_t();
@@ -391,78 +364,96 @@ double RVmodel::perturb(RNG& rng)
 
     if(GP)
     {
-        if(rng.rand() <= 0.5)
+        if(RN)
         {
-            logH += planets.perturb(rng);
-            planets.consolidate_diff();
-            calculate_mu();
-        }
-        else if(rng.rand() <= 0.5)
-        {
-            if(rng.rand() <= 0.25)
+        printf(" \n we are in  RVmodel::perturb with RN\n");
+            if(rng.rand() <= 0.5)
             {
-                log_eta1 = log(eta1);
-                log_eta1_prior->perturb(log_eta1, rng);
-                eta1 = exp(log_eta1);
+                logH += planets.perturb(rng);
+                planets.consolidate_diff();
+                calculate_mu();
             }
-            else if(rng.rand() <= 0.33330)
-            {
-                log_eta2 = log(eta2);
-                log_eta2_prior->perturb(log_eta2, rng);
-                eta2 = exp(log_eta2);
-            }
-            else if(rng.rand() <= 0.5)
-            {
-                eta3_prior->perturb(eta3, rng);
-            }
-            else
-            {
-                log_eta4 = log(eta4);
-                log_eta4_prior->perturb(log_eta4, rng);
-                eta4 = exp(log_eta4);
-            }
-
-            calculate_C();
-        }
-        else if(rng.rand() <= 0.5)
-        {
-            Jprior->perturb(extra_sigma, rng);
-            calculate_C();
+        
+        
+        
+        
+        
         }
         else
         {
-            for(size_t i=0; i<mu.size(); i++)
+            if(rng.rand() <= 0.5)
             {
-                mu[i] -= background;
-                if(trend) {
-                    mu[i] -= slope*(t[i]-data.get_t_middle());
-                }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
-                }
+                logH += planets.perturb(rng);
+                planets.consolidate_diff();
+                calculate_mu();
             }
-
-            Cprior->perturb(background, rng);
-
-            // propose new fiber offset
-            if (obs_after_HARPS_fibers) {
-                fiber_offset_prior->perturb(fiber_offset, rng);
-            }
-
-            // propose new slope
-            if(trend) {
-                slope_prior->perturb(slope, rng);
-            }
-
-            for(size_t i=0; i<mu.size(); i++)
+            else if(rng.rand() <= 0.5)
             {
-                mu[i] += background;
-                if(trend) {
-                    mu[i] += slope*(t[i]-data.get_t_middle());
+                if(rng.rand() <= 0.25)
+                {
+                    log_eta1 = log(eta1);
+                    log_eta1_prior->perturb(log_eta1, rng);
+                    eta1 = exp(log_eta1);
+                }
+             else if(rng.rand() <= 0.33330)
+                {
+                    log_eta2 = log(eta2);
+                    log_eta2_prior->perturb(log_eta2, rng);
+                    eta2 = exp(log_eta2);
+                }
+                else if(rng.rand() <= 0.5)
+                {
+                    eta3_prior->perturb(eta3, rng);
+                }
+                else
+                {
+                    log_eta4 = log(eta4);
+                    log_eta4_prior->perturb(log_eta4, rng);
+                    eta4 = exp(log_eta4);
                 }
 
+                calculate_C();
+            }
+            else if(rng.rand() <= 0.5)
+            {
+                Jprior->perturb(extra_sigma, rng);
+                calculate_C();
+            }
+           else
+            {
+                for(size_t i=0; i<mu.size(); i++)
+                {
+                    mu[i] -= background;
+                    if(trend) {
+                        mu[i] -= slope*(t[i]-data.get_t_middle());
+                    }
+                    if (obs_after_HARPS_fibers) {
+                        if (i >= data.index_fibers) mu[i] -= fiber_offset;
+                    }
+                }
+
+                Cprior->perturb(background, rng);
+
+                // propose new fiber offset
                 if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] += fiber_offset;
+                    fiber_offset_prior->perturb(fiber_offset, rng);
+                }
+
+             // propose new slope
+                if(trend) {
+                    slope_prior->perturb(slope, rng);
+                }
+
+                for(size_t i=0; i<mu.size(); i++)
+                {
+                    mu[i] += background;
+                    if(trend) {
+                        mu[i] += slope*(t[i]-data.get_t_middle());
+                    }
+
+                    if (obs_after_HARPS_fibers) {
+                        if (i >= data.index_fibers) mu[i] += fiber_offset;
+                    }
                 }
             }
         }
@@ -521,15 +512,13 @@ double RVmodel::perturb(RNG& rng)
             }
         }
     }
-
-
-    return logH;
+return logH;
 }
 
 
 double RVmodel::log_likelihood() const
 {
-//printf(" \n we are in  RVmodel::log_likelihood \n");
+printf(" \n we are in  RVmodel::log_likelihood \n");
     double logL = 0.;
     double logLikelihoods = 0.;
     auto data = Data::get_instance();
@@ -557,19 +546,22 @@ double RVmodel::log_likelihood() const
             {
                 // residual vector (observed y minus model y)
                 VectorXd residual(t.size());
-                //printf("we reached the first for \n");
                 if(i==0)
                     y = rv;
+                    for(size_t j=0; j<t.size(); j++)
+                        residual(j) = y[j]-mu[j];
                 if(i==1)
                     y = fwhm;
+                    for(size_t j=0; j<t.size(); j++)
+                        residual(j) = y[j];
                 if(i==2)
                     y = bis;
+                    for(size_t j=0; j<t.size(); j++)
+                        residual(j) = y[j];
                 if(i==3)
                     y = rhk;
-                for(size_t j=0; j<t.size(); j++)
-                    residual(j) = y[j];
-//                  with no mean for start
-//                   residual(i) = y[i] - mu[i];
+                    for(size_t j=0; j<t.size(); j++)
+                        residual(j) = y[j];
 
                 // perform the cholesky decomposition of C
                 Eigen::LLT<Eigen::MatrixXd> cholesky = Cs[i].llt();

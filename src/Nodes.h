@@ -34,7 +34,6 @@ class Nodes
         Eigen::MatrixXd matern52(std::vector<double> vec, double extra_sigma);
 
     private:
-        //double extra_sigma;
         Eigen::MatrixXd C {Data::get_instance().get_t().size(), Data::get_instance().get_t().size()};
 
     //Singleton

@@ -1,7 +1,6 @@
 #include "Data.h"
 #include "DNest4.h"
 #include "RNG.h"
-
 #include "GPRN.h"
 #include "Weights.h"
 
@@ -26,12 +25,9 @@ const vector<double> t = Data::get_instance().get_t();
 const vector<double> sig = Data::get_instance().get_sig();
 const int N = Data::get_instance().get_t().size();
 Eigen::VectorXd C {N};
-//cout << "size = " << C.size() << endl;
     for(size_t i=0; i<N; i++)
     {
-        //cout << vec[0] << endl;
         C[i] = vec[0];
-        //cout << C[i] << endl;
     }
 return C;
 }
@@ -158,7 +154,5 @@ Eigen::VectorXd C {N};
     }
 return C;
 }
-
-
 
 

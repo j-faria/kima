@@ -22,7 +22,7 @@ const bool trend = false; //the model includes a linear trend
 
 
 RVmodel::RVmodel()
-:planets(5, 0, true, RVConditionalPrior())
+:planets(5, 2, false, RVConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
@@ -41,7 +41,7 @@ RVmodel::RVmodel()
     save_setup();
 }
 
-// instead of defining it at the GPRN.cpp file we can make it here
+
 GPRN::GPRN()
 {
     // Node functions of our GPRN
@@ -60,7 +60,6 @@ GPRN::GPRN()
     M32 = matern 3/2
     M52 = matern 5/2
     */
-
 }
 
 
@@ -68,18 +67,12 @@ int main(int argc, char** argv)
 {
     /* set the RV data file */
     char* datafile = "corot7_harps.rdb";
-    //char* datafile = "corot7.txt";
 
     /* load the file (RVs are in km/s) */
     /* don't skip any lines in the header */
     Data::get_instance().load(datafile, "kms", 2);
-    //GPRN obj;
-    //obj.matrixCalculation({10, 5, 0.5}, {0.2});
-    //obj.weightBuilt();
 
-    //RVmodel obj;
-    //obj.calculate_C();
-    // set the sampler and run it!
+    /* set the sampler and run it! */
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
     sampler.run();
 

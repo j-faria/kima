@@ -19,7 +19,6 @@ Nodes::Nodes()
 {
 }
 
-//just to compile for now
 double extra_sigma;
 
 

@@ -2,7 +2,6 @@
 #define GPRN_H
 
 #include "Data.h"
-//#include "RVmodel.h"
 #include "DNest4.h"
 #include "RNG.h"
 
@@ -29,19 +28,12 @@ class GPRN
 
 
     private:
-        //double extra_sigma;
-        //block matrices
-        //Eigen::MatrixXd k {Data::get_instance().get_t().size(), Data::get_instance().get_t().size()};
-        //comes from main.cpp
-        //DNest4::ModifiedLogUniform sigmaPrior;
-
-
         //number of nodes
         int n_size;
         //data size
         int d_size;
         //covariance matrices
-        Eigen::MatrixXd k; //= Eigen::MatrixXd::Zero(d_size, d_size);
+        Eigen::MatrixXd k; 
         //math between weight and node
         Eigen::MatrixXd wn;
         Eigen::MatrixXd wnw;
