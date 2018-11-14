@@ -61,7 +61,6 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVmodel::from_prior(RNG& rng)
 {
-printf(" \n we are in  RVmodel::from_prior \n");
     planets.from_prior(rng);
     planets.consolidate_diff();
     
@@ -78,7 +77,7 @@ printf(" \n we are in  RVmodel::from_prior \n");
     {
         if(RN)
         {
-            /* Generate priors accordingly to kernels used */
+            /* Generate priors accordingly to the kernels in use */
             n_size = GPRN::get_instance().node.size(); //number of nodes
             w_size = 4 * n_size; //number of weights
             //dealing with the nodes
@@ -141,7 +140,6 @@ printf(" \n we are in  RVmodel::from_prior \n");
                 prior2 = constant_prior->generate(rng); //all weights have the same parameters
                 for(int j=0; j<w_size; j++)
                 {
-                    //printf("j = %i ", j);
                     prior1 = constant_weight->generate(rng);
                     weight_priors[j] = {prior1, prior2};
                 }
@@ -238,7 +236,6 @@ printf(" \n we are in  RVmodel::from_prior \n");
 
 void RVmodel::calculate_C()
 {
-printf(" \n we are in  RVmodel::calculate_C \n");
     //if we want a GPRN the RN is set to true
     if(RN)
     {
@@ -249,7 +246,7 @@ printf(" \n we are in  RVmodel::calculate_C \n");
         int N = data.get_t().size();
         
         Cs = GPRN::get_instance().matrixCalculation(node_priors, weight_priors, extra_sigma);
-        C = Cs[0]*0;    //I don't know why it doesn't run if we dont define C
+        C = Cs[0]*0;    //I dont know why but it doesnt run if we dont define C
     }
     //otherwise we just a GP and the RN is set to false
     else
@@ -280,7 +277,6 @@ printf(" \n we are in  RVmodel::calculate_C \n");
 
 void RVmodel::calculate_mu()
 {
-printf(" \n we are in  RVmodel::calculate_mu \n");
     auto data = Data::get_instance();
     // Get the times from the data
     const vector<double>& t = data.get_t();
@@ -357,28 +353,216 @@ printf(" \n we are in  RVmodel::calculate_mu \n");
 
 double RVmodel::perturb(RNG& rng)
 {
-//printf(" \n we are in  RVmodel::perturb \n");
     auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
     double logH = 0.;
 
     if(GP)
     {
+        //using a GPRN
         if(RN)
         {
-        printf(" \n we are in  RVmodel::perturb with RN\n");
             if(rng.rand() <= 0.5)
             {
                 logH += planets.perturb(rng);
                 planets.consolidate_diff();
                 calculate_mu();
             }
-        
-        
-        
-        
-        
+            else
+            {
+                if(rng.rand() > 0.75)
+                {
+                   //dealing with the nodes
+                    std::vector<double> priors;
+                    for(int i=0; i<n_size; i++)
+                    {
+                        if(GPRN::get_instance().node[i] == "C")
+                        {
+                            constant_prior->perturb(prior1, rng);
+                            node_priors[i] = {prior1};
+                        }
+                        if(GPRN::get_instance().node[i] == "SE")
+                        {
+                            se_ell->perturb(prior1,rng);
+                            node_priors[i] = {prior1};
+                        }
+                        if(GPRN::get_instance().node[i] == "P")
+                        {
+                            per_ell->perturb(prior1, rng);
+                            per_period->perturb(prior2, rng);
+                            node_priors[i] = {prior1, prior2};
+                        }
+                        if(GPRN::get_instance().node[i] == "QP")
+                        {   
+                            quasi_elle->perturb(prior1, rng);
+                            quasi_period->perturb(prior2, rng);
+                            quasi_ellp->perturb(prior3, rng);
+                            node_priors[i] = {prior1, prior2, prior3};
+                        }
+                        if(GPRN::get_instance().node[i] == "RQ")
+                        {
+                            ratq_alpha->perturb(prior1, rng);
+                            ratq_ell->perturb(prior2, rng);
+                            node_priors[i] = {prior1, prior2};
+                        }
+                       if(GPRN::get_instance().node[i] == "COS")
+                        {
+                            cos_period->perturb(prior1, rng);
+                            node_priors[i] = {prior1};
+                        }
+                      if(GPRN::get_instance().node[i] == "EXP")
+                        {
+                            exp_ell->perturb(prior1, rng);
+                            node_priors[i] = {prior1};
+                        }
+                        if(GPRN::get_instance().node[i] == "M32")
+                        {
+                            m32_ell->perturb(prior1, rng);
+                            node_priors[i] = {prior1};
+                        }
+                      if(GPRN::get_instance().node[i] == "M52")
+                        {
+                            m52_ell->perturb(prior1, rng);
+                            node_priors[i] = {prior1};
+                        }
+                    }
+                }
+                if(rng.rand() < 0.75)
+                {
+                    //dealing with the weights
+                    if(GPRN::get_instance().weight[0] == "C")
+                    {
+                        constant_prior->perturb(prior2, rng); //all weights have the same parameters
+                        for(int j=0; j<w_size; j++)
+                        {
+                            constant_weight->perturb(prior1, rng);
+                            weight_priors[j] = {prior1, prior2};
+                        }
+                    }
+                    if(GPRN::get_instance().weight[0] == "SE")
+                    {
+                        se_ell->perturb(prior2, rng);
+                        for(int j=0; j<w_size; j++)
+                        {
+                            se_weight->perturb(prior1, rng);
+                            weight_priors[j] = {prior1, prior2};
+                        }
+                    }
+                    if(GPRN::get_instance().weight[0] == "P")
+                    {
+                        per_ell->perturb(prior2, rng);
+                        per_period->perturb(prior3, rng);
+                        for(int j=0; j<w_size; j++)
+                        {
+                            per_weight->perturb(prior1, rng);
+                            //weight_priors[j] = {prior1, prior2, prior3};
+                        }
+                    }
+                    if(GPRN::get_instance().weight[0] == "QP")
+                    {
+                        quasi_elle->perturb(prior2, rng);
+                        quasi_period->perturb(prior3, rng);
+                        quasi_ellp->perturb(prior4, rng);
+                        for(int j=0; j<w_size; j++)
+                        {
+                            quasi_weight->perturb(prior1, rng);
+                            weight_priors[j] = {prior1, prior2, prior3, prior4};
+                        }
+                    }
+                    if(GPRN::get_instance().weight[0] == "RQ")
+                    {
+                        ratq_alpha->perturb(prior2, rng);
+                        ratq_ell->perturb(prior3, rng);
+                        for(int j=0; j<w_size; j++)
+                        {
+                            ratq_weight->perturb(prior1, rng);
+                            weight_priors[j] = {prior1, prior2, prior3};
+                        }
+                    }
+                    if(GPRN::get_instance().weight[0] == "COS")
+                    {
+                        cos_period->perturb(prior2, rng);
+                        for(int j=0; j<w_size; j++)
+                        {
+                            cos_weight->perturb(prior1, rng);
+                            weight_priors[j] = {prior1, prior2};
+                        }
+                    }
+                    if(GPRN::get_instance().weight[0] == "EXP")
+                    {
+                        exp_ell->perturb(prior2, rng);
+                        for(int j=0; j<w_size; j++)
+                        {
+                            exp_weight->perturb(prior1, rng);
+                            weight_priors[j] = {prior1, prior2};
+                        }
+                    }
+                    if(GPRN::get_instance().weight[0] == "M32")
+                    {
+                        m32_ell->perturb(prior2, rng);
+                        for(int j=0; j<w_size; j++)
+                        {
+                            m32_weight->perturb(prior1, rng);
+                            weight_priors[j] = {prior1, prior2};
+                        }
+                    }
+                    if(GPRN::get_instance().weight[0] == "M52")
+                    {
+                        m52_ell->perturb(prior2, rng);
+                        for(int j=0; j<w_size; j++)
+                        {
+                            m52_weight->perturb(prior1, rng);
+                            weight_priors[j] = {prior1, prior2};
+                        }
+                    }
+                }
+                calculate_C();
+            }
+            
+            if(rng.rand() <= 0.5)
+            {
+                Jprior->perturb(extra_sigma, rng);
+                calculate_C();
+            }
+            else
+            {
+                for(size_t i=0; i<mu.size(); i++)
+                {
+                    mu[i] -= background;
+                    if(trend) {
+                        mu[i] -= slope*(t[i]-data.get_t_middle());
+                    }
+                    if (obs_after_HARPS_fibers) {
+                        if (i >= data.index_fibers) mu[i] -= fiber_offset;
+                    }
+                }
+
+                Cprior->perturb(background, rng);
+
+                // propose new fiber offset
+                if (obs_after_HARPS_fibers) {
+                    fiber_offset_prior->perturb(fiber_offset, rng);
+                }
+
+                // propose new slope
+                if(trend) {
+                    slope_prior->perturb(slope, rng);
+                }
+
+                for(size_t i=0; i<mu.size(); i++)
+                {
+                    mu[i] += background;
+                    if(trend) {
+                        mu[i] += slope*(t[i]-data.get_t_middle());
+                    }
+
+                    if (obs_after_HARPS_fibers) {
+                        if (i >= data.index_fibers) mu[i] += fiber_offset;
+                    }
+                }
+            }
         }
+        //using a simple GP
         else
         {
             if(rng.rand() <= 0.5)
@@ -411,15 +595,15 @@ double RVmodel::perturb(RNG& rng)
                     log_eta4_prior->perturb(log_eta4, rng);
                     eta4 = exp(log_eta4);
                 }
-
                 calculate_C();
+            
             }
             else if(rng.rand() <= 0.5)
             {
                 Jprior->perturb(extra_sigma, rng);
                 calculate_C();
             }
-           else
+            else
             {
                 for(size_t i=0; i<mu.size(); i++)
                 {
@@ -431,27 +615,25 @@ double RVmodel::perturb(RNG& rng)
                         if (i >= data.index_fibers) mu[i] -= fiber_offset;
                     }
                 }
-
                 Cprior->perturb(background, rng);
-
                 // propose new fiber offset
                 if (obs_after_HARPS_fibers) {
                     fiber_offset_prior->perturb(fiber_offset, rng);
                 }
-
-             // propose new slope
-                if(trend) {
+                // propose new slope
+                if(trend)
+                {
                     slope_prior->perturb(slope, rng);
                 }
-
                 for(size_t i=0; i<mu.size(); i++)
                 {
                     mu[i] += background;
-                    if(trend) {
+                    if(trend)
+                    {
                         mu[i] += slope*(t[i]-data.get_t_middle());
                     }
-
-                    if (obs_after_HARPS_fibers) {
+                    if (obs_after_HARPS_fibers)
+                    {
                         if (i >= data.index_fibers) mu[i] += fiber_offset;
                     }
                 }
@@ -459,7 +641,6 @@ double RVmodel::perturb(RNG& rng)
         }
 
     }
-
     else
     {
         if(rng.rand() <= 0.75)
@@ -479,34 +660,35 @@ double RVmodel::perturb(RNG& rng)
             for(size_t i=0; i<mu.size(); i++)
             {
                 mu[i] -= background;
-                if(trend) {
+                if(trend)
+                {
                     mu[i] -= slope*(t[i]-data.get_t_middle());
                 }
-                if (obs_after_HARPS_fibers) {
+                if (obs_after_HARPS_fibers)
+                {
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
             }
-
             Cprior->perturb(background, rng);
-
             // propose new fiber offset
-            if (obs_after_HARPS_fibers) {
+            if (obs_after_HARPS_fibers)
+            {
                 fiber_offset_prior->perturb(fiber_offset, rng);
             }
-
             // propose new slope
-            if(trend) {
+            if(trend)
+            {
                 slope_prior->perturb(slope, rng);
             }
-
             for(size_t i=0; i<mu.size(); i++)
             {
                 mu[i] += background;
-                if(trend) {
+                if(trend)
+                {
                     mu[i] += slope*(t[i]-data.get_t_middle());
                 }
-
-                if (obs_after_HARPS_fibers) {
+                if (obs_after_HARPS_fibers)
+                {
                     if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
             }
@@ -518,21 +700,18 @@ return logH;
 
 double RVmodel::log_likelihood() const
 {
-printf(" \n we are in  RVmodel::log_likelihood \n");
     double logL = 0.;
     double logLikelihoods = 0.;
     auto data = Data::get_instance();
     int N = data.N();
-    //#if TIMING
-    //auto begin = std::chrono::high_resolution_clock::now();  // start timing
-    //#endif
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
 
     if(GP)
     {
-    //printf("We have entered in the gp \n");
         if(RN)
         {
-        //printf("We started the RN \n");
         vector<double> y;
         const vector<double>& rv = data.get_rv();
         const vector<double>& fwhm = data.get_fwhm();
@@ -540,8 +719,6 @@ printf(" \n we are in  RVmodel::log_likelihood \n");
         const vector<double>& rhk = data.get_rhk();
         const vector<double>& sig = data.get_sig();
         const vector<double>& t = data.get_t();
-        //printf("variables and stuff done \n");
-        //float finalLog = 0.;
             for(int i=0; i<4; i++)
             {
                 // residual vector (observed y minus model y)
@@ -581,10 +758,8 @@ printf(" \n we are in  RVmodel::log_likelihood \n");
 
                 logLikelihoods = -0.5*y.size()*log(2*M_PI)
                         - 0.5*logDeterminant - 0.5*exponent;
-                //printf("log like = %f \n", logLikelihoods);
                 logLikelihoods += logLikelihoods;
             }
-        //printf("final log = %f \n", logLikelihoods);
         logL = logLikelihoods;
         }
         else
@@ -630,7 +805,6 @@ printf(" \n we are in  RVmodel::log_likelihood \n");
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
         }
-    //printf("we got here");
     }
 
     #if TIMING
@@ -698,7 +872,7 @@ string RVmodel::description() const
 
 void RVmodel::save_setup() {
     // save the options of the current model in a INI file
-	std::fstream fout("kima_model_setup.txt", std::ios::out);
+    std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
     time_t rawtime;
@@ -707,8 +881,9 @@ void RVmodel::save_setup() {
 
     fout << "[kima]" << endl;
 
-	fout << "obs_after_HARPS_fibers: " << obs_after_HARPS_fibers << endl;
+    fout << "obs_after_HARPS_fibers: " << obs_after_HARPS_fibers << endl;
     fout << "GP: " << GP << endl;
+    fout << "RN: " << RN << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
     fout << endl;
@@ -716,7 +891,7 @@ void RVmodel::save_setup() {
     fout << "units: " << Data::get_instance().dataunits << endl;
     fout << "skip: " << Data::get_instance().dataskip << endl;
 
-	fout.close();
+    fout.close();
 }
 
 
