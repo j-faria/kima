@@ -19,15 +19,15 @@ using namespace DNest4;
 
 extern ContinuousDistribution *Cprior; // systematic velocity, m/s
 extern ContinuousDistribution *Jprior; // additional white noise, m/s
-
 extern ContinuousDistribution *slope_prior; // m/s/day
 
+/* GP priors */
 extern ContinuousDistribution *log_eta1_prior;
 extern ContinuousDistribution *log_eta2_prior;
 extern ContinuousDistribution *eta3_prior;
 extern ContinuousDistribution *log_eta4_prior;
 
-// GPRN priors
+/* GPRN priors */
 extern ContinuousDistribution *constant_weight;
 extern ContinuousDistribution *constant_prior;
 extern ContinuousDistribution *se_weight;
@@ -51,8 +51,8 @@ extern ContinuousDistribution *m32_ell;
 extern ContinuousDistribution *m52_weight;
 extern ContinuousDistribution *m52_ell;
 
-// from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
-// mean, std = 14.641789473684208, 2.7783035258938971
+/* from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
+mean, std = 14.641789473684208, 2.7783035258938971 */
 Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
 //Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
 
@@ -80,7 +80,7 @@ void RVmodel::from_prior(RNG& rng)
             /* Generate priors accordingly to the kernels in use */
             n_size = GPRN::get_instance().node.size(); //number of nodes
             w_size = 4 * n_size; //number of weights
-            //dealing with the nodes
+            /* dealing with the nodes */
             std::vector<double> priors;
             for(int i=0; i<n_size; i++)
             {
@@ -134,7 +134,7 @@ void RVmodel::from_prior(RNG& rng)
                     node_priors[i] = {prior1};
                 }
             }
-            //dealing with the weights
+            /* dealing with the weights */
             if(GPRN::get_instance().weight[0] == "C")
             {
                 prior2 = constant_prior->generate(rng); //all weights have the same parameters
@@ -236,10 +236,10 @@ void RVmodel::from_prior(RNG& rng)
 
 void RVmodel::calculate_C()
 {
-    //if we want a GPRN the RN is set to true
+    /* if we want a GPRN the RN is set to true (RN=true) */
     if(RN)
     {
-        //data
+        /* data */
         auto data = Data::get_instance();
         const vector<double>& t = data.get_t();
         const vector<double>& sig = data.get_sig();
@@ -247,8 +247,9 @@ void RVmodel::calculate_C()
         
         Cs = GPRN::get_instance().matrixCalculation(node_priors, weight_priors, extra_sigma);
         C = Cs[0]*0;    //I dont know why but it doesnt run if we dont define C
+        
     }
-    //otherwise we just a GP and the RN is set to false
+    /* otherwise we just a GP and the RN is set to false (RN=false) */
     else
     {
         //data
@@ -278,21 +279,21 @@ void RVmodel::calculate_C()
 void RVmodel::calculate_mu()
 {
     auto data = Data::get_instance();
-    // Get the times from the data
+    /* Get the times from the data */
     const vector<double>& t = data.get_t();
 
-    // Update or from scratch?
+    /* Update or from scratch? */
     bool update = (planets.get_added().size() < planets.get_components().size()) &&
             (staleness <= 10);
 
-    // Get the components
+    /* Get the components */
     const vector< vector<double> >& components = (update)?(planets.get_added()):
                 (planets.get_components());
-    // at this point, components has:
-    //  if updating: only the added planets' parameters
-    //  if from scratch: all the planets' parameters
+    /* at this point, components has:
+        if updating: only the added planets' parameters
+        if from scratch: all the planets' parameters */
 
-    // Zero the signal
+    /* Zero the signal */
     if(!update) // not updating, means recalculate everything
     {
         mu.assign(mu.size(), background);
@@ -359,7 +360,7 @@ double RVmodel::perturb(RNG& rng)
 
     if(GP)
     {
-        //using a GPRN
+        /* using a GPRN; GP=true and RN=true */
         if(RN)
         {
             if(rng.rand() <= 0.5)
@@ -370,9 +371,9 @@ double RVmodel::perturb(RNG& rng)
             }
             else
             {
-                if(rng.rand() > 0.75)
+                if(rng.rand() > 0.5)
                 {
-                   //dealing with the nodes
+                   /* dealing with the nodes */
                     std::vector<double> priors;
                     for(int i=0; i<n_size; i++)
                     {
@@ -427,9 +428,9 @@ double RVmodel::perturb(RNG& rng)
                         }
                     }
                 }
-                if(rng.rand() < 0.75)
+                if(rng.rand() < 0.5)
                 {
-                    //dealing with the weights
+                    /* dealing with the weights */
                     if(GPRN::get_instance().weight[0] == "C")
                     {
                         constant_prior->perturb(prior2, rng); //all weights have the same parameters
@@ -562,7 +563,7 @@ double RVmodel::perturb(RNG& rng)
                 }
             }
         }
-        //using a simple GP
+        /* using a simple GP; GP=true and RN=false */
         else
         {
             if(rng.rand() <= 0.5)
@@ -651,9 +652,7 @@ double RVmodel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5)
         {
-            //cout << "J: " << extra_sigma;
             Jprior->perturb(extra_sigma, rng);
-            //cout << " --> " << extra_sigma << endl;
         }
         else
         {
@@ -670,12 +669,12 @@ double RVmodel::perturb(RNG& rng)
                 }
             }
             Cprior->perturb(background, rng);
-            // propose new fiber offset
+            /* propose new fiber offset */
             if (obs_after_HARPS_fibers)
             {
                 fiber_offset_prior->perturb(fiber_offset, rng);
             }
-            // propose new slope
+            /* propose new slope */
             if(trend)
             {
                 slope_prior->perturb(slope, rng);
@@ -721,7 +720,7 @@ double RVmodel::log_likelihood() const
         const vector<double>& t = data.get_t();
             for(int i=0; i<4; i++)
             {
-                // residual vector (observed y minus model y)
+                /* residual vector (observed y minus model y) */
                 VectorXd residual(t.size());
                 if(i==0)
                     y = rv;
@@ -740,9 +739,9 @@ double RVmodel::log_likelihood() const
                     for(size_t j=0; j<t.size(); j++)
                         residual(j) = y[j];
 
-                // perform the cholesky decomposition of C
+                /* perform the cholesky decomposition of C */
                 Eigen::LLT<Eigen::MatrixXd> cholesky = Cs[i].llt();
-                // get the lower triangular matrix L
+                /* get the lower triangular matrix L */
                 MatrixXd L = cholesky.matrixL();
 
                 double logDeterminant = 0.;
@@ -751,7 +750,7 @@ double RVmodel::log_likelihood() const
 
                 VectorXd solution = cholesky.solve(residual);
 
-                // y*solution
+                /* y*solution */
                 double exponent = 0.;
                 for(size_t j=0; j<t.size(); j++)
                     exponent += residual(j)*solution(j);
@@ -765,15 +764,15 @@ double RVmodel::log_likelihood() const
         else
         {
             const vector<double>& y = data.get_y();
-            /** The following code calculates the log likelihood in the case of a GP model */
-            // residual vector (observed y minus model y)
+            /* The following code calculates the log likelihood in the case of a GP model */
+            /* residual vector (observed y minus model y) */
             VectorXd residual(y.size());
             for(size_t i=0; i<y.size(); i++)
                 residual(i) = y[i] - mu[i];
 
-            // perform the cholesky decomposition of C
+            /* perform the cholesky decomposition of C */
             Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
-            // get the lower triangular matrix L
+            /* get the lower triangular matrix L */
             MatrixXd L = cholesky.matrixL();
 
             double logDeterminant = 0.;
@@ -782,7 +781,7 @@ double RVmodel::log_likelihood() const
 
             VectorXd solution = cholesky.solve(residual);
 
-            // y*solution
+            /* y*solution */
             double exponent = 0.;
             for(size_t i=0; i<y.size(); i++)
                 exponent += residual(i)*solution(i);
@@ -794,8 +793,8 @@ double RVmodel::log_likelihood() const
 
     else
     {
-        // The following code calculates the log likelihood 
-        // in the case of a Gaussian likelihood
+        /* The following code calculates the log likelihood 
+        in the case of a Gaussian likelihood */
         double var;
         const vector<double>& y = data.get_y();
         const vector<double>& sig = data.get_sig();
@@ -821,7 +820,7 @@ double RVmodel::log_likelihood() const
 
 void RVmodel::print(std::ostream& out) const
 {
-    // output precision
+    /* output precision */
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
@@ -834,7 +833,20 @@ void RVmodel::print(std::ostream& out) const
         out<<fiber_offset<<'\t';
 
     if(GP)
-        out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+    {
+        if(RN)
+        {
+        /* We are going to need to check the kernels used and make out of all the
+        parameters that are in the node_priors and weight_priors */
+        
+        
+        }
+        else
+        {
+            out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+        }
+    }
+
   
     planets.print(out);
 
@@ -853,7 +865,19 @@ string RVmodel::description() const
     if (obs_after_HARPS_fibers)
         desc += "fiber_offset\t";
     if(GP)
-        desc += "eta1\teta2\teta3\teta4\t";
+    {
+        if(RN)
+        {
+        /* We are going to need to check the kernels used and make out of all parameters  */
+        
+        }
+        else
+        {
+            desc += "eta1\teta2\teta3\teta4\t";
+        }
+    }
+
+
 
     desc += "ndim\tmaxNp\t";
     if(hyperpriors)
@@ -871,7 +895,7 @@ string RVmodel::description() const
 
 
 void RVmodel::save_setup() {
-    // save the options of the current model in a INI file
+    /* save the options of the current model in a INI file */
     std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
@@ -895,7 +919,7 @@ void RVmodel::save_setup() {
 }
 
 
-/**
+/*
     Calculates the eccentric anomaly at time t by solving Kepler's equation.
     See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
 
@@ -924,14 +948,14 @@ double RVmodel::ecc_anomaly(double t, double period, double ecc, double time_per
         dE = abs(E-E0);
         E0 = E;
         count++;
-        // failed to converge, this only happens for nearly parabolic orbits
+        /* failed to converge, this only happens for nearly parabolic orbits */
         if (count == 100) break;
     }
     return E;
 }
 
 
-/**
+/*
     Provides a starting value to solve Kepler's equation.
     See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
 
@@ -948,7 +972,7 @@ double RVmodel::keplerstart3(double e, double M)
 }
 
 
-/**
+/*
     An iteration (correction) method to solve Kepler's equation.
     See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
 
@@ -971,7 +995,7 @@ double RVmodel::eps3(double e, double M, double x)
 
 
 
-/**
+/*
     Calculates the true anomaly at time t.
     See Eq. 2.6 of The Exoplanet Handbook, Perryman 2010
 
@@ -985,8 +1009,8 @@ double RVmodel::true_anomaly(double t, double period, double ecc, double t_peri)
 {
     double E = ecc_anomaly(t, period, ecc, t_peri);
     double f = acos( (cos(E)-ecc)/( 1-ecc*cos(E) ) );
-    //acos gives the principal values ie [0:PI]
-    //when E goes above PI we need another condition
+    /* acos gives the principal values ie [0:PI]
+    when E goes above PI we need another condition */
     if(E>M_PI)
       f=2*M_PI-f;
 

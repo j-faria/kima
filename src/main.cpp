@@ -31,22 +31,22 @@ RVmodel::RVmodel()
     double rvmax = data.get_rv_max();
     double topslope = data.topslope();
 
-    // set the prior for the systemic velocity
+    /* set the prior for the systemic velocity */
     Cprior = new Uniform(rvmin, rvmax);
-    // and for the slope parameter
+    /* and for the slope parameter */
     if(trend)
         slope_prior = new Uniform(-topslope, topslope);
     
-    // save the current model for further analysis
+    /* save the current model for further analysis */
     save_setup();
 }
 
 
 GPRN::GPRN()
 {
-    // Node functions of our GPRN
+    /* Node functions of our GPRN */
     node = {"QP", "P"};
-    // Weight funtion of our GPRN
+    /* Weight funtion of our GPRN */
     weight = {"C"};
 
     /*  LIST OF AVAILABLE KERNELS

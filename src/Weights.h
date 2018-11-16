@@ -12,29 +12,29 @@ class Weights
 {
     public:
         Weights();
-        //constant kernel
+        /* constant kernel */
         Eigen::VectorXd constant(std::vector<double> vec);
-        //squared exponential kernel
+        /* squared exponential kernel */
         Eigen::VectorXd squaredExponential(std::vector<double> vec);
-        //periodic kernel
+        /* periodic kernel */
         Eigen::VectorXd periodic(std::vector<double> vec);
-        //quasi periodic kernel
+        /* quasi periodic kernel */
         Eigen::VectorXd quasiPeriodic(std::vector<double> vec);
-        //rational quadratic kernel
+        /* rational quadratic kernel */
         Eigen::VectorXd rationalQuadratic(std::vector<double> vec);
-        //cosine kernel
+        /* cosine kernel */
         Eigen::VectorXd cosine(std::vector<double> vec);
-        //exponential kernel
+        /* exponential kernel */
         Eigen::VectorXd exponential(std::vector<double> vec);
-        //matern 3/2 kernel
+        /* matern 3/2 kernel */
         Eigen::VectorXd matern32(std::vector<double> vec);
-        //matern 5/2 kernel
+        /* matern 5/2 kernel */
         Eigen::VectorXd matern52(std::vector<double> vec);
 
     private:
         Eigen::VectorXd C {Data::get_instance().get_t().size()};
 
-    //Singleton
+    /* Singleton */
     public:
         static Weights& get_instance() {return instance; }
     private:

@@ -83,7 +83,7 @@ void Data::load(const char* filename, const char* units, int skip)
 
     data_t data;
 
-    // Empty the vectors
+    /* Empty the vectors */
     t.clear();
     rv.clear();
     rverr.clear();
@@ -92,13 +92,11 @@ void Data::load(const char* filename, const char* units, int skip)
     rhk.clear();
     rhkerr.clear();
 
-    // Read the file into the data container
+    /* Read the file into the data container */
     ifstream infile( filename );
     infile >> data;
-    //operator>>(infile, data, skip);
 
-
-    // Complain if something went wrong.
+    /* Complain if something went wrong */
     if (!infile.eof())
     {
         printf("Could not read data file (%s)!\n", filename);
@@ -126,10 +124,9 @@ void Data::load(const char* filename, const char* units, int skip)
         rhkerr.push_back(data[n][6]);
     }
 
-    // How many points did we read?
+    /* How many points did we read? */
     printf("# Loaded %d data points from file %s\n", t.size(), filename);
     if(units == "kms") printf("# Multiplied all RVs and BIS by 1000; units are now m/s.\n");
-    //printf("--- t size = %i \n", t.size());
     for(unsigned i=0; i<data.size(); i++)
     {
         if (t[i] > 57170.)
@@ -160,18 +157,7 @@ double Data::get_rv_var() const
 }
 
 
-////functor for getting sum of previous result and square of current element
-//template<typename T>
-//struct square
-//{
-//    T operator()(const T& Left, const T& Right) const
-//    {
-//        return (Left + Right*Right);
-//    }
-//};
-
-
-//fwhm rms error
+/* fwhm rms error */
 void Data::create_fwhmerr()
 {
     for(int n = 0; n < rverr.size(); n++)
@@ -181,7 +167,7 @@ void Data::create_fwhmerr()
 }
 
 
-//BIS rms error
+/* BIS rms error */
 void Data::create_biserr() 
 {
     for(int n = 0; n < rverr.size(); n++)
@@ -192,7 +178,7 @@ void Data::create_biserr()
 }
 
 
-//to merge Rvs, fwhm, BIS and Rhk into a single vector
+/* to merge Rvs, fwhm, BIS and Rhk into a single vector */
 void Data::create_y()
 {
     if((GP) && ((RN)))
@@ -210,12 +196,11 @@ void Data::create_y()
 }
 
 
-//to merge all errors into a single vector
+/* to merge all errors into a single vector */
 void Data::create_sig()
 {
     if((GP) && ((RN)))
     {
-    //merging RVs and the rest
     sig.reserve(rv.size() + fwhm.size() + bis.size() + rhk.size()); //preallocate memory
     sig.insert(sig.end(), rverr.begin(), rverr.end());
     sig.insert(sig.end(), fwhmerr.begin(), fwhmerr.end());
@@ -230,12 +215,11 @@ void Data::create_sig()
 
 }
 
-//to merge all errors into a single vector
+/* to merge the time (4x) into a single vector */
 void Data::create_tt()
 {
     if((GP) && ((RN)))
     {
-    //merging RVs and the rest
     tt.reserve(4* t.size()); //preallocate memory
     tt.insert(tt.end(), t.begin(), t.end());
     tt.insert(tt.end(), t.begin(), t.end());

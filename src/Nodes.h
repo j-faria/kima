@@ -14,29 +14,29 @@ class Nodes
 {
     public:
         Nodes();
-        //constant kernel
+        /* constant kernel */
         Eigen::MatrixXd constant(std::vector<double> vec, double extra_sigma);
-        //squared exponential kernel
+        /* squared exponential kernel */
         Eigen::MatrixXd squaredExponential(std::vector<double> vec, double extra_sigma);
-        //periodic kernel
+        /* periodic kernel */
         Eigen::MatrixXd periodic(std::vector<double> vec, double extra_sigma);
-        //quasi periodic kernel
+        /* quasi periodic kernel */
         Eigen::MatrixXd quasiPeriodic(std::vector<double> vec, double extra_sigma);
-        //rational quadratic kernel
+        /* rational quadratic kernel */
         Eigen::MatrixXd rationalQuadratic(std::vector<double> vec, double extra_sigma);
-        //cosine kernel
+        /* cosine kernel */
         Eigen::MatrixXd cosine(std::vector<double> vec, double extra_sigma);
-        //exponential kernel
+        /* exponential kernel */
         Eigen::MatrixXd exponential(std::vector<double> vec, double extra_sigma);
-        //matern 3/2 kernel
+        /* matern 3/2 kernel */
         Eigen::MatrixXd matern32(std::vector<double> vec, double extra_sigma);
-        //matern 5/2 kernel
+        /* matern 5/2 kernel */
         Eigen::MatrixXd matern52(std::vector<double> vec, double extra_sigma);
 
     private:
         Eigen::MatrixXd C {Data::get_instance().get_t().size(), Data::get_instance().get_t().size()};
 
-    //Singleton
+    /* Singleton */
     public:
         static Nodes& get_instance() {return instance ;}
     private:

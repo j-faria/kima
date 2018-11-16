@@ -27,23 +27,23 @@ const vector<double>& sig = Data::get_instance().get_sig();
 int N = Data::get_instance().get_t().size();
 
 
-//Construction of the covariance matrices
+/* Construction of the covariance matrices */
 std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<double>> node_priors, 
                                                     std::vector<std::vector<double>> weight_priors,
                                                     double extra_sigma)
 {
 
-    //node kernel
+    /* node kernel */
     Eigen::MatrixXd nkernel;
-    //weight kernels
+    /* weight kernels */
     Eigen::VectorXd wkernel;
 
-    //now we do math
+    /* now we do math */
     int n_size = node.size();
     int d_size = Data::get_instance().get_t().size();
     for(int i=0; i<4; i++)
     {
-                //auxiliaty matrices 
+        /* auxiliaty matrices */
         Eigen::MatrixXd wn = Eigen::MatrixXd::Zero(d_size, d_size);
         Eigen::MatrixXd wnw = Eigen::MatrixXd::Zero(d_size, d_size);
         for(int j=0; j < n_size; j++)
@@ -60,7 +60,7 @@ return matrices_vector;
 }
 
 
-// To check what type of kernel we have into the nodes
+/* To check what type of kernel we have into the nodes */
 Eigen::MatrixXd GPRN::nodeCheck(std::string check, std::vector<double> node_prior, double extra_sigma)
 {
     Eigen::MatrixXd nkernel;
@@ -87,7 +87,7 @@ return nkernel;
 }
 
 
-// To check what type of kernel we have into the weight
+/* To check what type of kernel we have into the weight */
 Eigen::VectorXd GPRN::weightCheck(std::string check, std::vector<double> weight_prior)
 {
     Eigen::VectorXd wkernel;
