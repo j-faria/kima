@@ -81,7 +81,6 @@ void RVmodel::from_prior(RNG& rng)
             n_size = GPRN::get_instance().node.size(); //number of nodes
             w_size = 4 * n_size; //number of weights
             /* dealing with the nodes */
-            std::vector<double> priors;
             for(int i=0; i<n_size; i++)
             {
                 if(GPRN::get_instance().node[i] == "C")
@@ -374,7 +373,6 @@ double RVmodel::perturb(RNG& rng)
                 if(rng.rand() > 0.5)
                 {
                    /* dealing with the nodes */
-                    std::vector<double> priors;
                     for(int i=0; i<n_size; i++)
                     {
                         if(GPRN::get_instance().node[i] == "C")
@@ -836,10 +834,26 @@ void RVmodel::print(std::ostream& out) const
     {
         if(RN)
         {
-        /* We are going to need to check the kernels used and make out of all the
-        parameters that are in the node_priors and weight_priors */
-        
-        
+            std::vector<double> gprn_outputs; //to put all parameters inside it
+            /* Lets start by inserting the nodes parameters */
+            for(int i=0; i<node_priors.size(); i++)
+            {
+                for(int j=0; j<node_priors[i].size(); j++)
+                    {
+                    gprn_outputs.push_back(node_priors[i][j]);
+                    }
+            }
+            /* Then we add the weights parameters */
+            for(int i=0; i<weight_priors.size(); i++)
+            {
+                for(int j=0; j<weight_priors[i].size(); j++)
+                    gprn_outputs.push_back(weight_priors[i][j]);
+            }
+            /* Finally we print them all in the file */
+            for (int ii = 0; ii < gprn_outputs.size(); ii++)
+            {
+                out << gprn_outputs[ii] << '\t';
+            }
         }
         else
         {
@@ -856,7 +870,7 @@ void RVmodel::print(std::ostream& out) const
 
 string RVmodel::description() const
 {
-    string desc;
+    std::string desc;
     
     desc += "extra_sigma\t";
 
@@ -868,8 +882,32 @@ string RVmodel::description() const
     {
         if(RN)
         {
-        /* We are going to need to check the kernels used and make out of all parameters  */
-        
+            /* first we name our node babies */
+            for(int i=0; i<node_priors.size(); i++)
+            {
+                for(int j=0; j<node_priors[i].size(); j++)
+                    {
+                    std::string node_header = "node";
+                    node_header += std::to_string(i);
+                    node_header += "_";
+                    node_header += std::to_string(j);
+                    desc += node_header;
+                    desc += '\t';
+                    }
+            }
+            /* Then we name the weights babies */
+            for(int i=0; i<weight_priors.size(); i++)
+            {
+                for(int j=0; j<weight_priors[i].size(); j++)
+                    {
+                    std::string weight_header = "weight";
+                    weight_header += std::to_string(i);
+                    weight_header += "_";
+                    weight_header += std::to_string(j);
+                    desc += weight_header;
+                    desc += '\t';
+                    }
+            }
         }
         else
         {
