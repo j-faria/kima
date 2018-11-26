@@ -41,16 +41,17 @@ void RVmodel::from_prior(RNG& rng)
     planets.consolidate_diff();
     
     background = Cprior->generate(rng);
-    extra_sigma = Jprior->generate(rng);
 
     if(multi_instrument)
     {
-        // auto data = Data::get_instance();
-        // this prior is not exposed to the user
-        // Uniform *offsets_prior = new Uniform(0, data.get_RV_span());
-
-        for(unsigned i=0; i<offsets.size(); i++)
+        for(int i=0; i<offsets.size(); i++)
             offsets[i] = offsets_prior->generate(rng);
+        for(int i=0; i<jitters.size(); i++)
+            jitters[i] = Jprior->generate(rng);
+    }
+    else
+    {
+        extra_sigma = Jprior->generate(rng);
     }
 
     
@@ -305,9 +306,15 @@ double RVmodel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5)
         {
-            //cout << "J: " << extra_sigma;
-            Jprior->perturb(extra_sigma, rng);
-            //cout << " --> " << extra_sigma << endl;
+            if(multi_instrument)
+            {
+                for(int i=0; i<jitters.size(); i++)
+                    Jprior->perturb(jitters[i], rng);
+            }
+            else
+            {
+                Jprior->perturb(extra_sigma, rng);
+            }
         }
         else
         {
@@ -376,6 +383,8 @@ double RVmodel::log_likelihood() const
     int N = data.N();
     const vector<double>& y = data.get_y();
     const vector<double>& sig = data.get_sig();
+    const vector<int>& obsi = data.get_obsi();
+    
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -423,10 +432,17 @@ double RVmodel::log_likelihood() const
 
         // The following code calculates the log likelihood 
         // in the case of a Gaussian likelihood
-        double var;
+        double var, jit;
         for(size_t i=0; i<y.size(); i++)
         {
-            var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+            if(multi_instrument)
+            {
+                jit = jitters[obsi[i]-1];
+                var = sig[i]*sig[i] + jit*jit;
+            }
+            else
+                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
         }
@@ -451,7 +467,13 @@ void RVmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    out<<extra_sigma<<'\t';
+    if (multi_instrument)
+    {
+        for(int j=0; j<jitters.size(); j++)
+            out<<jitters[j]<<'\t';
+    }
+    else
+        out<<extra_sigma<<'\t';
     
     if(trend)
         out<<slope<<'\t';
@@ -460,7 +482,7 @@ void RVmodel::print(std::ostream& out) const
         out<<fiber_offset<<'\t';
     
     if (multi_instrument){
-        for(unsigned j=0; j<offsets.size(); j++){
+        for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
         }
     }
@@ -477,33 +499,39 @@ void RVmodel::print(std::ostream& out) const
 string RVmodel::description() const
 {
     string desc;
-    
-    desc += "extra_sigma\t";
+
+    if (multi_instrument)
+    {
+        for(int j=0; j<jitters.size(); j++)
+           desc += "jitter" + std::to_string(j+1) + "   ";
+    }
+    else
+        desc += "extra_sigma   ";
 
     if(trend)
-        desc += "slope\t";
+        desc += "slope   ";
     
     if (obs_after_HARPS_fibers)
-        desc += "fiber_offset\t";
+        desc += "fiber_offset   ";
 
     if (multi_instrument){
         for(unsigned j=0; j<offsets.size(); j++)
-            desc += "offset" + std::to_string(j+1) + "\t";
+            desc += "offset" + std::to_string(j+1) + "   ";
     }
     
     if(GP)
-        desc += "eta1\teta2\teta3\teta4\t";
+        desc += "eta1   eta2   eta3   eta4   ";
 
-    desc += "ndim\tmaxNp\t";
+    desc += "ndim   maxNp   ";
     if(hyperpriors)
-        desc += "muP\twP\tmuK\t";
+        desc += "muP   wP   muK   ";
 
-    desc += "Np\t";
+    desc += "Np   ";
 
     if (planets.get_max_num_components()>0)
-        desc += "P\tK\tphi\tecc\tw\t";
+        desc += "P   K   phi   ecc   w   ";
 
-    desc += "staleness\tvsys";
+    desc += "staleness   vsys";
 
     return desc;
 }
