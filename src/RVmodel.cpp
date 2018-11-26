@@ -832,40 +832,36 @@ void RVmodel::print(std::ostream& out) const
 
     if(GP)
     {
-        if(RN)
-        {
-            std::vector<double> gprn_outputs; //to put all parameters inside it
-            /* Lets start by inserting the nodes parameters */
-            for(int i=0; i<node_priors.size(); i++)
-            {
-                for(int j=0; j<node_priors[i].size(); j++)
-                    {
-                    gprn_outputs.push_back(node_priors[i][j]);
-                    }
-            }
-            /* Then we add the weights parameters */
-            for(int i=0; i<weight_priors.size(); i++)
-            {
-                for(int j=0; j<weight_priors[i].size(); j++)
-                    gprn_outputs.push_back(weight_priors[i][j]);
-            }
-            /* Finally we print them all in the file */
-            for (int ii = 0; ii < gprn_outputs.size(); ii++)
-            {
-                out << gprn_outputs[ii] << '\t';
-            }
-        }
-        else
-        {
-            out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
-        }
+        out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
     }
 
-  
     planets.print(out);
-
     out<<' '<<staleness<<' ';
-    out<<background;
+    out<<background << '\t';
+
+    if(RN)
+    {
+        std::vector<double> gprn_outputs; //to put all parameters inside it
+        /* Lets start by inserting the nodes parameters */
+        for(int i=0; i<node_priors.size(); i++)
+        {
+            for(int j=0; j<node_priors[i].size(); j++)
+                {
+                gprn_outputs.push_back(node_priors[i][j]);
+                }
+        }
+        /* Then we add the weights parameters */
+        for(int i=0; i<weight_priors.size(); i++)
+        {
+            for(int j=0; j<weight_priors[i].size(); j++)
+                gprn_outputs.push_back(weight_priors[i][j]);
+        }
+        /* Finally we print them all in the file */
+        for (int ii = 0; ii < gprn_outputs.size(); ii++)
+        {
+            out << gprn_outputs[ii] << '\t';
+        }
+    }
 }
 
 string RVmodel::description() const
@@ -878,45 +874,11 @@ string RVmodel::description() const
         desc += "slope\t";
     if (obs_after_HARPS_fibers)
         desc += "fiber_offset\t";
+
     if(GP)
     {
-        if(RN)
-        {
-            /* first we name our node babies */
-            for(int i=0; i<node_priors.size(); i++)
-            {
-                for(int j=0; j<node_priors[i].size(); j++)
-                    {
-                    std::string node_header = "node";
-                    node_header += std::to_string(i);
-                    node_header += "_";
-                    node_header += std::to_string(j);
-                    desc += node_header;
-                    desc += '\t';
-                    }
-            }
-            /* Then we name the weights babies */
-            for(int i=0; i<weight_priors.size(); i++)
-            {
-                for(int j=0; j<weight_priors[i].size(); j++)
-                    {
-                    std::string weight_header = "weight";
-                    weight_header += std::to_string(i);
-                    weight_header += "_";
-                    weight_header += std::to_string(j);
-                    desc += weight_header;
-                    desc += '\t';
-                    }
-            }
-        }
-        else
-        {
-            desc += "eta1\teta2\teta3\teta4\t";
-        }
+        desc += "eta1\teta2\teta3\teta4\t";
     }
-
-
-
     desc += "ndim\tmaxNp\t";
     if(hyperpriors)
         desc += "muP\twP\tmuK\t";
@@ -926,8 +888,37 @@ string RVmodel::description() const
     if (planets.get_max_num_components()>0)
         desc += "P\tK\tphi\tecc\tw\t";
 
-    desc += "staleness\tvsys";
+    desc += "staleness\tvsys\t";
 
+    if(RN)
+    {
+        /* first we name our node babies */
+        for(int i=0; i<node_priors.size(); i++)
+        {
+            for(int j=0; j<node_priors[i].size(); j++)
+                {
+                std::string node_header = "node";
+                node_header += std::to_string(i);
+                node_header += "_";
+                node_header += std::to_string(j);
+                desc += node_header;
+                desc += '\t';
+                }
+        }
+        /* Then we name the weights babies */
+        for(int i=0; i<weight_priors.size(); i++)
+        {
+            for(int j=0; j<weight_priors[i].size(); j++)
+                {
+                std::string weight_header = "weight";
+                weight_header += std::to_string(i);
+                weight_header += "_";
+                weight_header += std::to_string(j);
+                desc += weight_header;
+                desc += '\t';
+                }
+        }
+    }
     return desc;
 }
 
@@ -946,6 +937,16 @@ void RVmodel::save_setup() {
     fout << "obs_after_HARPS_fibers: " << obs_after_HARPS_fibers << endl;
     fout << "GP: " << GP << endl;
     fout << "RN: " << RN << endl;
+    if(RN)
+    {
+        //printing the nodes
+        fout << "nodes: ";
+        for (auto i = GPRN::get_instance().node.begin(); i != GPRN::get_instance().node.end(); ++i)
+            fout << *i << ' ';
+        fout << endl;
+        //printing just the weight[0] because they are all the same
+        fout << "weights: " << GPRN::get_instance().weight[0] << endl;
+    }
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
     fout << endl;

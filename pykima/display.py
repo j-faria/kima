@@ -29,7 +29,7 @@ colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 class KimaResults(object):
     def __init__(self, options, data_file=None, 
                  fiber_offset=None, hyperpriors=None, trend=None, GPmodel=None,
-                 posterior_samples_file='posterior_sample.txt'):
+                 GPRNmodel=None, posterior_samples_file='posterior_sample.txt'):
 
         self.options = options
         debug = False # 'debug' in options
@@ -180,6 +180,22 @@ class KimaResults(object):
         # build the marginal posteriors for planet parameters
         self.get_marginals()
 
+
+        # find the GPRN in the model
+        if GPRNmodel is None:
+            self.GPRNmodel = setup['kima']['RN'] == 'true'
+        else:
+            self.GPRNmodel = GPRNmodel
+
+        if debug:
+            print('GPRN model:', self.GPRNmodel)
+
+        if self.GPRNmodel:
+            # n_hyperparameters = number of columns - "non-GPRN" columns
+            self.n_GPRNparameters = self.sample.shape[1] - (4 + 5 * self.max_components)
+            self.nodes = setup['kima']['nodes'].split()
+            self.weigths = setup['kima']['weights'].split()
+            
         allowed_options = {'1': [self.make_plot1, {}],
                            '2': [self.make_plot2, {}],
                            '3': [self.make_plot3, {}],
@@ -191,6 +207,7 @@ class KimaResults(object):
                                   self.hist_vsys,
                                   self.hist_extra_sigma,
                                   self.hist_trend), {}],
+                           '8': [self.make_plot8, {}],
                           }
 
         for item in allowed_options.items():
@@ -532,6 +549,10 @@ class KimaResults(object):
             print('Model does not have GP! make_plot4() doing nothing...')
             return
 
+        if self.GPRNmodel:
+            print('Model is a GPRN! make_plot4() doing nothing...')
+            return
+
         available_etas = [v for v in dir(self) if v.startswith('eta')]
         labels = [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
         units = ['m/s', 'days', 'days', None]
@@ -556,6 +577,10 @@ class KimaResults(object):
 
         if not self.GPmodel:
             print('Model does not have GP! make_plot5() doing nothing...')
+            return
+
+        if self.GPRNmodel:
+            print('Model is a GPRN! make_plot5() doing nothing...')
             return
 
         # these are the limits of the default prior for eta3
@@ -850,7 +875,7 @@ class KimaResults(object):
 
     def hist_vsys(self):
         """ Plot the histogram of the posterior for the systemic velocity """
-        vsys = self.posterior_sample[:,-1]
+        vsys = self.posterior_sample[:,-1-self.n_GPRNparameters]
         units = ' (m/s)' if self.units=='ms' else ' (km/s)'
         estimate = percentile68_ranges_latex(vsys) + units
 
@@ -871,3 +896,44 @@ class KimaResults(object):
         title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
         ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
                title=title)
+
+    #Dealing with the GPRN plots
+    def _node_param_size(self, node):
+        """ Function to check the number of parameters in a node """
+        if node == "C" or "SE" or "COS" or "EXP" or "M32" or "M52":
+            params_size = 1
+        if node == "P" or "RQ":
+            params_size = 2
+        if node == "QP":
+            params_size = 3
+        return params_size
+
+    def make_plot8(self, show=True, save=False):
+        """ Corner plot for the GPRN nodes hyperparameters """
+        if not self.GPRNmodel:
+            print('Model does not have GPRN! make_plot8() doing nothing...')
+            return
+        print("Image of young anakin screaming ITS WORKING! ITS WORKING!")
+        #self.nodes and self.weights are strings
+        print("nodes = ", self.nodes, "and weights = ", self.weigths)
+        
+        #I will need to keep an eye in the total number of parameters
+        k = 10 + 5 * self.max_components 
+        for i, j in enumerate(self.nodes):
+            #number of parameters of a given node
+            size = self._node_param_size(j)
+            #remaining number of parameters
+            self.sample
+
+            ### all Np together
+            variables = []
+            for i in range(size):
+                variables.append(self.sample[k + i])
+            variables = np.array(variables).T
+            fig = corner.corner(variables, quantiles=[0.16, 0.5, 0.84],
+                          plot_contours=False, plot_datapoints=True, 
+                          plot_density=False, show_titles=True)
+            fig.suptitle("Joint and marginal posteriors for the node {0}".format(j));
+            k += size
+
+
