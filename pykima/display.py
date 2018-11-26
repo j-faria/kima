@@ -98,12 +98,12 @@ class KimaResults(object):
             ind = self.data[:,0].argsort()
             self.data = self.data[ind]
             self.obs = self.obs[ind]
-            n_instruments = np.unique(self.obs).size
-            n_jitters = n_instruments
+            self.n_instruments = np.unique(self.obs).size
+            self.n_jitters = self.n_instruments
         else:
             self.data = np.loadtxt(self.data_file,
                                    skiprows=self.data_skip, usecols=(0,1,2))
-            n_jitters = 1
+            self.n_jitters = 1
 
         # to m/s
         if self.units == 'kms':
@@ -131,8 +131,9 @@ class KimaResults(object):
 
         start_parameters = 0
         if self.multi:
-            self.extra_sigma = self.posterior_sample[:, start_parameters:start_parameters+n_jitters]
-            start_parameters += n_jitters - 1
+            i1, i2 = start_parameters, start_parameters + self.n_jitters
+            self.extra_sigma = self.posterior_sample[:, i1:i2]
+            start_parameters += self.n_jitters - 1
         else:
             self.extra_sigma = self.posterior_sample[:, start_parameters]
 
@@ -172,7 +173,7 @@ class KimaResults(object):
         # multiple instruments ??
         if self.multi:
             # there are n instruments and n-1 offsets
-            n_inst_offsets = n_instruments - 1
+            n_inst_offsets = self.n_instruments - 1
             istart = start_parameters + n_offsets + n_trend + 1
             iend = istart + n_inst_offsets
             ind = np.s_[istart : iend]
@@ -984,7 +985,7 @@ class KimaResults(object):
 
         if show_offsets and self.multi:
             n_inst_offsets = self.inst_offsets.shape[1]
-            _, axs = plt.subplots(1, n_inst_offsets, sharey=True,
+            fig, axs = plt.subplots(1, n_inst_offsets, sharey=True,
                                   figsize=(n_inst_offsets*3, 5),
                                   squeeze=True)
             if n_inst_offsets == 1:
@@ -992,17 +993,37 @@ class KimaResults(object):
 
             for i in range(n_inst_offsets):
                 a = self.inst_offsets[:,i]
+                estimate = percentile68_ranges_latex(a) + units
                 axs[i].hist(a)
-                axs[i].set_xlabel('offset %d' % (i+1))
+                axs[i].set(xlabel='offset %d' % (i+1), title=estimate,
+                           ylabel='posterior samples')
+
+            title = 'Posterior distribution(s) for instrument offset(s)'
+            fig.suptitle(title)
+
 
     def hist_extra_sigma(self):
         """ Plot the histogram of the posterior for the additional white noise """
         units = ' (m/s)' if self.units=='ms' else ' (km/s)'
-        estimate = percentile68_ranges_latex(self.extra_sigma) + units
 
-        _, ax = plt.subplots(1,1)
-        ax.hist(self.extra_sigma)
-        title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
-        ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
-               title=title)
+        if self.multi: # there are n_instruments jitters
+            fig, axs = plt.subplots(1, self.n_instruments, sharey=True,
+                                  figsize=(self.n_instruments*3, 5),
+                                  squeeze=True)
+            for i, jit in enumerate(self.extra_sigma.T):
+                estimate = percentile68_ranges_latex(jit) + units
+                axs[i].hist(jit)
+                axs[i].set(xlabel='jitter %d' % (i+1), title=estimate,
+                           ylabel='posterior samples')
+
+            title = 'Posterior distribution(s) for extra white noise(s)'
+            fig.suptitle(title)
+
+        else:
+            estimate = percentile68_ranges_latex(self.extra_sigma) + units
+            _, ax = plt.subplots(1,1)
+            ax.hist(self.extra_sigma)
+            title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
+            ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
+                title=title)
 
