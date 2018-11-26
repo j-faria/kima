@@ -98,9 +98,12 @@ class KimaResults(object):
             ind = self.data[:,0].argsort()
             self.data = self.data[ind]
             self.obs = self.obs[ind]
+            n_instruments = np.unique(self.obs).size
+            n_jitters = n_instruments
         else:
             self.data = np.loadtxt(self.data_file,
                                    skiprows=self.data_skip, usecols=(0,1,2))
+            n_jitters = 1
 
         # to m/s
         if self.units == 'kms':
@@ -127,7 +130,11 @@ class KimaResults(object):
 
 
         start_parameters = 0
-        self.extra_sigma = self.posterior_sample[:, start_parameters]
+        if self.multi:
+            self.extra_sigma = self.posterior_sample[:, start_parameters:start_parameters+n_jitters]
+            start_parameters += n_jitters - 1
+        else:
+            self.extra_sigma = self.posterior_sample[:, start_parameters]
 
         # find trend in the compiled model
         if trend is None:
@@ -165,7 +172,7 @@ class KimaResults(object):
         # multiple instruments ??
         if self.multi:
             # there are n instruments and n-1 offsets
-            n_inst_offsets = np.unique(self.obs).size - 1
+            n_inst_offsets = n_instruments - 1
             istart = start_parameters + n_offsets + n_trend + 1
             iend = istart + n_inst_offsets
             ind = np.s_[istart : iend]
