@@ -908,8 +908,18 @@ class KimaResults(object):
             params_size = 3
         return params_size
 
+    def _weight_param_size(self, weight):
+        """ Function to check the number of parameters in a node """
+        if weight == "C" or "SE" or "COS" or "EXP" or "M32" or "M52":
+            params_size = 2
+        if weight == "P" or "RQ":
+            params_size = 3
+        if weight == "QP":
+            params_size = 4
+        return params_size
+
     def make_plot8(self, show=True, save=False):
-        """ Corner plot for the GPRN nodes hyperparameters """
+        """ Corner plot for the GPRN nodes and weights hyperparameters """
         if not self.GPRNmodel:
             print('Model does not have GPRN! make_plot8() doing nothing...')
             return
@@ -921,19 +931,29 @@ class KimaResults(object):
         k = 10 + 5 * self.max_components 
         for i, j in enumerate(self.nodes):
             #number of parameters of a given node
-            size = self._node_param_size(j)
+            n_size = self._node_param_size(j)
             #remaining number of parameters
             self.sample
 
             ### all Np together
             variables = []
-            for i in range(size):
+            for i in range(n_size):
                 variables.append(self.sample[k + i])
             variables = np.array(variables).T
             fig = corner.corner(variables, quantiles=[0.16, 0.5, 0.84],
                           plot_contours=False, plot_datapoints=True, 
                           plot_density=False, show_titles=True)
             fig.suptitle("Joint and marginal posteriors for the node {0}".format(j));
-            k += size
+            k += n_size
 
-
+        w_size = self._weight_param_size(self.weigths)
+        for i in range(len(self.nodes) * 4):
+            variables = []
+            for j in range(w_size):
+                variables.append(self.sample[k + j])
+            k += w_size
+            variables = np.array(variables).T
+            fig = corner.corner(variables, quantiles=[0.16, 0.5, 0.84],
+                          plot_contours=False, plot_datapoints=True, 
+                          plot_density=False, show_titles=True)
+            fig.suptitle("Joint and marginal posteriors for the weight number {0}".format(i+1));
