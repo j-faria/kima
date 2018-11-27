@@ -192,7 +192,7 @@ class KimaResults(object):
 
         if self.GPRNmodel:
             # n_hyperparameters = number of columns - "non-GPRN" columns
-            self.n_GPRNparameters = self.sample.shape[1] - (4 + 5 * self.max_components)
+            self.n_GPRNparameters = self.sample.shape[1] - (10 + 5*self.max_components)
             self.nodes = setup['kima']['nodes'].split()
             self.weigths = setup['kima']['weights'].split()
             
@@ -900,60 +900,57 @@ class KimaResults(object):
     #Dealing with the GPRN plots
     def _node_param_size(self, node):
         """ Function to check the number of parameters in a node """
-        if node == "C" or "SE" or "COS" or "EXP" or "M32" or "M52":
+        if node in ['C', 'SE', 'COS', 'EXP', 'M32', 'M52']:
             params_size = 1
-        if node == "P" or "RQ":
+        if node in ['P', 'RQ']:
             params_size = 2
-        if node == "QP":
-            params_size = 3
+        if node in ['QP']:
+            params_size = 3 #it will be a QP kernel
         return params_size
 
     def _weight_param_size(self, weight):
-        """ Function to check the number of parameters in a node """
-        if weight == "C" or "SE" or "COS" or "EXP" or "M32" or "M52":
+        """ Function to check the number of parameters in the weight """
+        if weight in ['C', 'SE', 'COS', 'EXP', 'M32', 'M52']:
             params_size = 2
-        if weight == "P" or "RQ":
+        if weight in ['P', 'RQ']:
             params_size = 3
-        if weight == "QP":
-            params_size = 4
+        if weight in ['QP']:
+            params_size = 4 #it will be a QP kernel
         return params_size
 
     def make_plot8(self, show=True, save=False):
-        """ Corner plot for the GPRN nodes and weights hyperparameters """
+        """ Corner plot for the GPRN nodes and weights parameters """
         if not self.GPRNmodel:
             print('Model does not have GPRN! make_plot8() doing nothing...')
             return
-        print("Image of young anakin screaming ITS WORKING! ITS WORKING!")
-        #self.nodes and self.weights are strings
-        print("nodes = ", self.nodes, "and weights = ", self.weigths)
-        
-        #I will need to keep an eye in the total number of parameters
+
+        #I will need to keep an eye in the total number of columns we used
         k = 10 + 5 * self.max_components 
+
+        #print('k is = ', k)
         for i, j in enumerate(self.nodes):
             #number of parameters of a given node
             n_size = self._node_param_size(j)
-            #remaining number of parameters
-            self.sample
 
             ### all Np together
-            variables = []
+            n_samples = []
             for i in range(n_size):
-                variables.append(self.sample[k + i])
-            variables = np.array(variables).T
-            fig = corner.corner(variables, quantiles=[0.16, 0.5, 0.84],
+                n_samples.append(self.sample[:, k + i])
+            n_samples = np.array(n_samples).T
+            fig = corner.corner(n_samples, quantiles=[0.16, 0.5, 0.84],
                           plot_contours=False, plot_datapoints=True, 
                           plot_density=False, show_titles=True)
-            fig.suptitle("Joint and marginal posteriors for the node {0}".format(j));
+            fig.suptitle("Joint and marginal posteriors for the node {0}".format(j))
             k += n_size
 
-        w_size = self._weight_param_size(self.weigths)
+        w_size = self._weight_param_size(self.weigths[0])
         for i in range(len(self.nodes) * 4):
-            variables = []
+            w_samples = []
             for j in range(w_size):
-                variables.append(self.sample[k + j])
-            k += w_size
-            variables = np.array(variables).T
-            fig = corner.corner(variables, quantiles=[0.16, 0.5, 0.84],
+                w_samples.append(self.sample[:, k + j])
+            w_samples = np.array(w_samples).T
+            fig = corner.corner(w_samples, quantiles=[0.16, 0.5, 0.84],
                           plot_contours=False, plot_datapoints=True, 
                           plot_density=False, show_titles=True)
-            fig.suptitle("Joint and marginal posteriors for the weight number {0}".format(i+1));
+            fig.suptitle("Joint and marginal posteriors for the weight number {0}".format(i+1))
+            k += w_size 
