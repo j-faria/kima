@@ -45,7 +45,8 @@ RVmodel::RVmodel()
 GPRN::GPRN()
 {
     /* Node functions of our GPRN */
-    node = {"QP", "P"};
+    //node = {"QP", "P"};
+    node = {"QP"};
     /* Weight funtion of our GPRN */
     weight = {"C"};
 

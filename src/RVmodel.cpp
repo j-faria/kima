@@ -431,16 +431,16 @@ double RVmodel::perturb(RNG& rng)
                     /* dealing with the weights */
                     if(GPRN::get_instance().weight[0] == "C")
                     {
-                        constant_prior->perturb(prior2, rng); //all weights have the same parameters
+                        //constant_prior->perturb(prior2, rng); //all weights have the same parameters
                         for(int j=0; j<w_size; j++)
                         {
                             constant_weight->perturb(prior1, rng);
-                            weight_priors[j] = {prior1, prior2};
+                            weight_priors[j] = {prior1};//, prior2};
                         }
                     }
                     if(GPRN::get_instance().weight[0] == "SE")
                     {
-                        se_ell->perturb(prior2, rng);
+                        se_ell->perturb(prior2, rng); //all weights have the same parameters
                         for(int j=0; j<w_size; j++)
                         {
                             se_weight->perturb(prior1, rng);
