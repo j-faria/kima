@@ -910,7 +910,9 @@ class KimaResults(object):
 
     def _weight_param_size(self, weight):
         """ Function to check the number of parameters in the weight """
-        if weight in ['C', 'SE', 'COS', 'EXP', 'M32', 'M52']:
+        if weight in ['C']:
+            params_size = 1
+        if weight in ['SE', 'COS', 'EXP', 'M32', 'M52']:
             params_size = 2
         if weight in ['P', 'RQ']:
             params_size = 3
@@ -927,7 +929,6 @@ class KimaResults(object):
         #I will need to keep an eye in the total number of columns we used
         k = 10 + 5 * self.max_components 
 
-        #print('k is = ', k)
         for i, j in enumerate(self.nodes):
             #number of parameters of a given node
             n_size = self._node_param_size(j)
