@@ -122,7 +122,7 @@ Eigen::MatrixXd C {N, N};
     {
         for(size_t j=i; j<N; j++)
         {
-            C(i, j) = 1 / pow(1+ pow((t[i] - t[j]), 2)/ (2* pow(vec[0]*vec[1],2)), vec[0]);
+            C(i, j) = 1 / pow(1+ pow((t[i] - t[j]), 2)/ (2* vec[0]*pow(vec[1],2)), vec[0]);
             if(i==j)
                 C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
             else
@@ -188,7 +188,7 @@ Eigen::MatrixXd C {N, N};
     {
         for(size_t j=i; j<N; j++)
         {
-            C(i, j) = (1.0 + sqrt(3.0)*abs(t[i] - t[j])/vec[0]) *exp(sqrt(3.0)*abs(t[i] - t[j])/ vec[0]);
+            C(i, j) = (1.0 + sqrt(3.0)*abs(t[i] - t[j])/vec[0]) *exp(-sqrt(3.0)*abs(t[i] - t[j])/ vec[0]);
             if(i==j) 
                 C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
             else

@@ -57,7 +57,7 @@ const int N = Data::get_instance().get_t().size();
 Eigen::VectorXd C {N};
     for(size_t i=0; i<N; i++)
     {
-        C[i] = exp(-2 * pow(sin(M_PI*abs(t[i])/vec[1])/vec[0], 2));
+        C[i] = vec[0] * vec[0] * exp(-2 * pow(sin(M_PI*abs(t[i])/vec[2])/vec[1], 2));
     }
 return C;
 }
@@ -88,7 +88,7 @@ const int N = Data::get_instance().get_t().size();
 Eigen::VectorXd C {N};
     for(size_t i=0; i<N; i++)
     {
-        C[i] = vec[0] * vec[0] / pow(1+ pow((t[i]), 2)/ (2* pow(vec[1]*vec[2],2)), vec[1]);
+        C[i] = vec[0] * vec[0] / pow(1+ pow((t[i]), 2)/ (2* vec[1]*pow(vec[2],2)), vec[1]);
     }
 return C;
 }
@@ -134,7 +134,7 @@ Eigen::VectorXd C {N};
     for(size_t i=0; i<N; i++)
     {
         C[i] = vec[0] * vec[0] * (1.0 + sqrt(3.0)*abs(t[i])/vec[1]) 
-                    *exp(sqrt(3.0)*abs(t[i])/ vec[1]);
+                    *exp(-sqrt(3.0)*abs(t[i])/ vec[1]);
     }
 return C;
 }
