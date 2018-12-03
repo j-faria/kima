@@ -71,15 +71,35 @@ class KimaResults(object):
         if debug:
             print('--- skipping first %d rows of data file' % self.data_skip)
 
-        self.data = np.loadtxt(self.data_file, 
-                               skiprows=self.data_skip, usecols=(0,1,2))
+        # find the GPRN in the model
+        if GPRNmodel is None:
+            self.GPRNmodel = setup['kima']['RN'] == 'true'
+        else:
+            self.GPRNmodel = GPRNmodel
 
-        # to m/s
-        if self.units == 'kms':
-            self.data[:, 1] *= 1e3
-            self.data[:, 2] *= 1e3
+        if debug:
+            print('GPRN model:', self.GPRNmodel)
 
-        self.tmiddle = self.data[:,0].min() + 0.5*self.data[:,0].ptp()
+        if self.GPRNmodel:
+            #importing all of harps data
+            self.data = np.loadtxt(self.data_file, 
+                                   skiprows=self.data_skip, 
+                                   usecols=(0,1,2,3,4,5,6))
+            #converting to m/s
+            if self.units == 'kms':
+                self.data[:, 1] *= 1e3 #RVs
+                self.data[:, 2] *= 1e3 #Rvs errors
+                self.data[:, 3] *= 1e3 #fwhm
+                self.data[:, 4] *= 1e3 #BIS
+            self.tmiddle = self.data[:,0].min() + 0.5*self.data[:,0].ptp()
+        else:
+            self.data = np.loadtxt(self.data_file, 
+                                   skiprows=self.data_skip, usecols=(0,1,2))
+            #converting to m/s
+            if self.units == 'kms':
+                self.data[:, 1] *= 1e3 #RVs
+                self.data[:, 2] *= 1e3 #RVs errors
+            self.tmiddle = self.data[:,0].min() + 0.5*self.data[:,0].ptp()
 
         self.posterior_sample = np.atleast_2d(np.loadtxt(posterior_samples_file))
 
@@ -180,22 +200,13 @@ class KimaResults(object):
         # build the marginal posteriors for planet parameters
         self.get_marginals()
 
-
-        # find the GPRN in the model
-        if GPRNmodel is None:
-            self.GPRNmodel = setup['kima']['RN'] == 'true'
-        else:
-            self.GPRNmodel = GPRNmodel
-
-        if debug:
-            print('GPRN model:', self.GPRNmodel)
-
+        #More details of the GPRN
         if self.GPRNmodel:
             # n_hyperparameters = number of columns - "non-GPRN" columns
             self.n_GPRNparameters = self.sample.shape[1] - (10 + 5*self.max_components)
             self.nodes = setup['kima']['nodes'].split()
             self.weigths = setup['kima']['weights'].split()
-            
+
         allowed_options = {'1': [self.make_plot1, {}],
                            '2': [self.make_plot2, {}],
                            '3': [self.make_plot3, {}],
