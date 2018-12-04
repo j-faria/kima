@@ -136,11 +136,10 @@ void RVmodel::from_prior(RNG& rng)
             /* dealing with the weights */
             if(GPRN::get_instance().weight[0] == "C")
             {
-                prior2 = constant_prior->generate(rng); //all weights have the same parameters
                 for(int j=0; j<w_size; j++)
                 {
                     prior1 = constant_weight->generate(rng);
-                    weight_priors[j] = {prior1, prior2};
+                    weight_priors[j] = {prior1};
                 }
             }
             if(GPRN::get_instance().weight[0] == "SE")
