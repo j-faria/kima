@@ -14,6 +14,14 @@ from .keplerian import keplerian
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
                    percentile68_ranges, percentile68_ranges_latex
 
+from .gprn import GPRN, Constant_node, SquaredExponential_node, Periodic_node, \
+                    QuasiPeriodic_node, RationalQuadratic_node, Cosine_node, \
+                    Exponential_node, Matern32_node, Matern52_node, \
+                    Constant_weight, SquaredExponential_weight, Periodic_weight, \
+                    QuasiPeriodic_weight, RationalQuadratic_weight, Cosine_weight, \
+                    Exponential_weight, Matern32_weight, Matern52_weight
+
+
 import matplotlib.pyplot as plt
 import numpy as np
 import corner
@@ -88,10 +96,17 @@ class KimaResults(object):
             #converting to m/s
             if self.units == 'kms':
                 self.data[:, 1] *= 1e3 #RVs
-                self.data[:, 2] *= 1e3 #Rvs errors
+                self.data[:, 2] *= 1e3 #RVs errors
                 self.data[:, 3] *= 1e3 #fwhm
                 self.data[:, 4] *= 1e3 #BIS
+                
             self.tmiddle = self.data[:,0].min() + 0.5*self.data[:,0].ptp()
+            self.data = np.insert(self.data, 5, 
+                                  np.ones_like(self.data[:,0])*2*self.data[:,2], 
+                                  axis=1) #BIS errors
+            self.data = np.insert(self.data, 4, 
+                                  np.ones_like(self.data[:,0])*2.35*self.data[:,2], 
+                                  axis=1) #fwhm errors
         else:
             self.data = np.loadtxt(self.data_file, 
                                    skiprows=self.data_skip, usecols=(0,1,2))
@@ -219,6 +234,7 @@ class KimaResults(object):
                                   self.hist_extra_sigma,
                                   self.hist_trend), {}],
                            '8': [self.make_plot8, {}],
+                           '9': [self.make_plot9, {}],
                           }
 
         for item in allowed_options.items():
@@ -947,7 +963,7 @@ class KimaResults(object):
             ### all Np together
             n_samples = []
             for i in range(n_size):
-                n_samples.append(self.sample[:, k + i])
+                n_samples.append(self.posterior_sample[:, k + i])
             n_samples = np.array(n_samples).T
             fig = corner.corner(n_samples, quantiles=[0.16, 0.5, 0.84],
                           plot_contours=False, plot_datapoints=True, 
@@ -959,10 +975,172 @@ class KimaResults(object):
         for i in range(len(self.nodes) * 4):
             w_samples = []
             for j in range(w_size):
-                w_samples.append(self.sample[:, k + j])
+                w_samples.append(self.posterior_sample[:, k + j])
             w_samples = np.array(w_samples).T
             fig = corner.corner(w_samples, quantiles=[0.16, 0.5, 0.84],
                           plot_contours=False, plot_datapoints=True, 
                           plot_density=False, show_titles=True)
             fig.suptitle("Joint and marginal posteriors for the weight number {0}".format(i+1))
             k += w_size 
+
+    def _gprn_medians(self):
+        """ return the median values of the posterior samples """
+        #Column where we start having the gprn posterior samples
+        k = 10 + 5 * self.max_components 
+
+        #Why? Because I trust more in the median than the mean
+        self.gprn_medians = np.median(self.posterior_sample[:,k:], axis=0)
+        return self.gprn_medians
+
+    def _node_type(self, node):
+#        node_list = ['C', 'SE', 'COS', 'EXP', 'M32', 'M52', 'P', 'RQ', 'QP']
+#        kernel_list = np.array([Constant_node, SquaredExponential_node, 
+#                                SquaredExponential_node, Exponential_node, 
+#                                Matern32_node, Matern52_node, Periodic_node, 
+#                                RationalQuadratic_node, QuasiPeriodic_node])
+#        index = np.where(np.array([node]) == node_list)
+#        print(index[0][0])
+#        return kernel_list(index[0][0])
+        if node in ['C']:
+            return Constant_node(0)
+        if node in ['SE']:
+            return SquaredExponential_node(0, 0)
+        if node in ['COS']:
+            return Cosine_node(0, 0)
+        if node in ['EXP']:
+            return Exponential_node(0, 0)
+        if node in ['M32']:
+            return Matern32_node(0, 0)
+        if node in ['M52']:
+            return Matern52_node(0, 0)
+        if node in ['P']:
+            return Periodic_node(0, 0)
+        if node in ['RQ']:
+            return RationalQuadratic_node(0, 0, 0)
+        if node in ['QP']:
+            return QuasiPeriodic_node(0, 0, 0, 0)
+
+    def _weight_type(self, weight):
+        if weight in ['C']:
+            return Constant_weight(0)
+        if weight in ['SE']:
+            return SquaredExponential_weight(0, 0)
+        if weight in ['COS']:
+            return Cosine_weight(0, 0)
+        if weight in ['EXP']:
+            return Exponential_weight(0, 0)
+        if weight in ['M32']:
+            return Matern32_weight(0, 0)
+        if weight in ['M52']:
+            return Matern52_weight(0, 0)
+        if weight in ['P']:
+            return Periodic_weight(0, 0, 0)
+        if weight in ['RQ']:
+            return RationalQuadratic_weight(0, 0, 0)
+        if weight in ['QP']:
+            return QuasiPeriodic_weight(0, 0, 0)
+
+
+    def make_plot9(self, show=True, save=False):
+        """ Fits for the GPRN nodes and weights parameters """
+        if not self.GPRNmodel:
+            print('Model does not have GPRN! make_plot9() doing nothing...')
+            return
+        
+        medians = self._gprn_medians()
+        #only 1 wn??? Something is wrong, I need to check it later
+        wn = np.median(self.extra_sigma)
+        #I will need to keep an eye in the total number of medians we used
+        k = 0
+        
+        #this will only work with constant weight, needs to be checked later
+        nodes = []
+        for i, j in enumerate(self.nodes):
+            #type of node
+            n_type = self._node_type(j)
+            #number of parameters of a given node
+            n_size = self._node_param_size(j)
+            #lets give parameters to the node
+            pars = np.array(medians[k:n_size])
+            pars = np.insert(pars, pars.size, wn)
+            n_type.pars = pars
+            nodes.append(n_type)
+            k += n_size
+
+        #type of weight
+        w_type = self._weight_type(self.weigths[0])
+        #number of parameters of the weights
+        w_size = self._weight_param_size(self.weigths[0])
+        #lets give parameters to the weight
+        pars = np.array(medians[k:k+w_size])
+        w_type.pars = pars
+        weight = w_type #this is just because I'm being picky
+        #now lets deal with the weights values
+        weight_values = []
+        for i in range(len(self.nodes) * 4):
+            for j in range(w_size):
+                weight_values.append(medians[k])
+                k += w_size
+
+        #means need to be proper implemented
+        means = [None, None, None, None]
+
+        #now lets do plots
+        GPobj = GPRN(nodes, weight, weight_values, means, self.data[:, 0], 
+                  self.data[:, 1], self.data[:, 2], self.data[:, 3], 
+                  self.data[:, 4], self.data[:, 5], self.data[:, 6], 
+                  self.data[:, 7], self.data[:, 8])
+
+        time_to_plot =np.linspace(self.data[:, 0].min(), self.data[:, 0].max(), 
+                                  500)
+        #RVs plot
+        mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
+                                      weight_values = weight_values, means = None,
+                                      time = time_to_plot, dataset = 1)
+        plt.figure()
+        plt.errorbar(self.data[:,0], self.data[:,1], self.data[:,2], fmt = '.')
+        plt.fill_between(time_to_plot, mu+std, mu-std, 
+                         color="grey", alpha=0.5)
+        plt.plot(time_to_plot, mu, "k--", alpha=1, lw=1.5)
+        plt.ylabel('RV (m/s)')
+
+        #fwhm plot
+        mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
+                                      weight_values = weight_values, means = None,
+                                      time = time_to_plot, dataset = 2)
+        plt.figure()
+        plt.errorbar(self.data[:,0], self.data[:,3], self.data[:,4], fmt = '.')
+        plt.fill_between(time_to_plot, mu+std, mu-std, 
+                         color="grey", alpha=0.5)
+        plt.plot(time_to_plot, mu, "k--", alpha=1, lw=1.5)
+        plt.ylabel('fhwm (m/s)')
+
+        #bis plot
+        mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
+                                      weight_values = weight_values, means = None,
+                                      time = time_to_plot, dataset = 3)
+        plt.figure()
+        plt.errorbar(self.data[:,0], self.data[:,5], self.data[:,6], fmt = '.')
+        plt.fill_between(time_to_plot, mu+std, mu-std, 
+                         color="grey", alpha=0.5)
+        plt.plot(time_to_plot, mu, "k--", alpha=1, lw=1.5)
+        plt.ylabel('BIS (m/s)')
+
+        #R_hk plot
+        mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
+                                      weight_values = weight_values, means = None,
+                                      time = time_to_plot, dataset = 4)
+        plt.figure()
+        plt.errorbar(self.data[:,0], self.data[:,7], self.data[:,8], fmt = '.')
+        plt.fill_between(time_to_plot, mu+std, mu-std, 
+                         color="grey", alpha=0.5)
+        plt.plot(time_to_plot, mu, "k--", alpha=1, lw=1.5)
+        plt.ylabel('R_hk (m/s)')
+        plt.show()
+
+
+#nodes = [nodeFunction.QuasiPeriodic(1, 10, 1, 0.1), 
+#         nodeFunction.Periodic(1,15, 0.5)]
+#weight = weightFunction.Constant(0)
+#weight_values = [10, 5, 3, 4]
+#means= [None, None]

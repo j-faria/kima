@@ -7,7 +7,8 @@ Created on Mon Dec  3 15:48:13 2018
 """
 import numpy as np
 from scipy.linalg import cho_factor, cho_solve, LinAlgError
-import matplotlib.pyplot as plt
+from copy import copy
+#import matplotlib.pyplot as plt
 
 #because it will make my life easier down the line
 pi, exp, sine, cosine, sqrt = np.pi, np.exp, np.sin, np.cos, np.sqrt
@@ -85,7 +86,6 @@ class Periodic_node(Node):
     """
         Definition of the periodic kernel.
         Parameters:
-            theta = amplitude
             ell = lenght scale
             P = period
             wn = white noise
@@ -217,7 +217,7 @@ class Matern32_node(Node):
                         *np.exp(-np.sqrt(3.0)*np.abs(r) / self.ell)
 
 # Matern 5/2 kernel
-class Matern52(Node):
+class Matern52_node(Node):
     """
         Definition of the Matern 5/2 kernel. This kernel arise when setting 
     v=5/2 in the matern family of kernels
@@ -226,7 +226,7 @@ class Matern52(Node):
             wn = white noise amplitude
     """
     def __init__(self, ell, wn):
-        super(Matern52, self).__init__(ell, wn)
+        super(Matern52_node, self).__init__(ell, wn)
         self.ell = ell
         self.wn = wn
 
@@ -436,6 +436,14 @@ class Matern52_weight(Weight):
                                           *exp(-np.sqrt(5.0)*np.abs(r)/self.ell)
 
 
+#### mean class ################################################################
+
+#   TO
+#   BE
+#   IMPLEMENTED
+#   ...
+
+
 ##### GPRN class ###############################################################
 class GPRN(object):
     """ 
@@ -514,6 +522,47 @@ class GPRN(object):
             Returns a given kernel hyperparameters
         """
         return kernel.pars
+
+    @property
+    def mean_pars_size(self):
+        return self._mean_pars_size
+
+    @mean_pars_size.getter
+    def mean_pars_size(self):
+        self._mean_pars_size = 0
+        for m in self.means:
+            if m is None: self._mean_pars_size += 0
+            else: self._mean_pars_size += m._parsize
+        return self._mean_pars_size
+
+    @property
+    def mean_pars(self):
+        return self._mean_pars
+
+    @mean_pars.setter
+    def mean_pars(self, pars):
+        pars = list(pars)
+        assert len(pars) == self.mean_pars_size
+        self._mean_pars = copy(pars)
+        for i, m in enumerate(self.means):
+            if m is None: 
+                continue
+            j = 0
+            for j in range(m._parsize):
+                m.pars[j] = pars.pop(0)
+
+    def _mean(self, means):
+        """
+            Returns the values of the mean functions
+        """
+        N = self.time.size
+        m = np.zeros_like(self.tt)
+        for i, meanfun in enumerate(means):
+            if meanfun is None:
+                continue
+            else:
+                m[i*N : (i+1)*N] = meanfun(self.time)
+        return m
 
     def _covariance_matrix(self, nodes, weight, weight_values, time, position_p):
         """ 

@@ -15,6 +15,7 @@ numbered_args_help = """optional numbered arguments:
   6    - plot random posterior samples in data-space, together with the RV data;
   7    - plot posteriors for the HARPS fiber offset and systematic velocity;
   8    - plot the marginal posteriors for the GPRN hyperparameters;
+  9    - plot the final gprn fits;
 """
 
 def findpop(value, lst):
@@ -29,13 +30,13 @@ def findpop(value, lst):
 
 def usage(full=True):
     u = "usage: kima-showresults "\
-        "[rv] [planets] [orbital] [gp] [extra] [gprn] [1, ..., 8]\n"\
+        "[rv] [planets] [orbital] [gp] [extra] [gprn] [fits] [1, ..., 9]\n"\
         "                        [-h/--help] [--version]"
     u += '\n\n'
     if not full: return u
 
     pos = ["positional arguments:\n"]
-    names = ['rv', 'planets', 'orbital', 'gp', 'extra']
+    names = ['rv', 'planets', 'orbital', 'gp', 'extra', 'gprn', 'fits']
     descriptions = \
         ["Plot posterior realizations of the model over the RV measurements",
          "Plot posterior for number of planets",
@@ -43,6 +44,7 @@ def usage(full=True):
          "Plot posteriors for GP hyperparameters",
          "Plot posteriors for fiber offset, systematic velocity, and extra white noise",
          "Plot posteriors for the GPRN hyperparameters",
+         "Plot the final fits for the GPRN",
         ]
     for n, d in zip(names, descriptions):
         pos.append("  %-10s\t%s\n" % (n,d))
@@ -70,22 +72,23 @@ def _parse_args(options):
         sys.exit(0)
 
                          
-    number_options = ['1','2','3','4','5','6','7','8']
+    number_options = ['1','2','3','4','5','6','7','8', '9']
     argstuple = namedtuple('Arguments', 
-                                ['rv', 'planets', 'orbital', 'gp', 'extra', 'gprn'] \
+                                ['rv', 'planets', 'orbital', 'gp', 'extra', 'gprn', 'fits'] \
                                 + ['diagnostic'] \
                                 + ['plot_number'])
     
     if 'all' in args:
         diag = findpop('diagnostic', args)
         return argstuple(rv=True, planets=True, orbital=True, 
-                         gp=True, extra=True, gprn=True, diagnostic=diag, 
-                         plot_number=[])
+                         gp=True, extra=True, gprn=True, fits=True,
+                         diagnostic=diag, plot_number=[])
 
     rv = findpop('rv', args)
     gp = findpop('gp', args)
     extra = findpop('extra', args)
     gprn = findpop('gprn', args)
+    fits = findpop('fits', args)
     planets = findpop('planets', args)
     orbital = findpop('orbital', args)
     diag = findpop('diagnostic', args)
@@ -98,7 +101,7 @@ def _parse_args(options):
         print('error: could not recognize argument:', "'%s'" % args[0])
         sys.exit(1)
 
-    return argstuple(rv, planets, orbital, gp, extra, gprn, diag, plot_number=plots)
+    return argstuple(rv, planets, orbital, gp, extra, gprn, fits, diag, plot_number=plots)
 
 
 def showresults(options=''):
@@ -123,7 +126,9 @@ def showresults(options=''):
     if args.extra:
         plots.append('7')
     if args.gprn:
-        plots.append('8'); 
+        plots.append('8')
+    if args.fits:
+        plots.append('9')
     for number in args.plot_number:
         plots.append(number)
     
