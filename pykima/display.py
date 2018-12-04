@@ -19,7 +19,9 @@ from .gprn import GPRN, Constant_node, SquaredExponential_node, Periodic_node, \
                     Exponential_node, Matern32_node, Matern52_node, \
                     Constant_weight, SquaredExponential_weight, Periodic_weight, \
                     QuasiPeriodic_weight, RationalQuadratic_weight, Cosine_weight, \
-                    Exponential_weight, Matern32_weight, Matern52_weight
+                    Exponential_weight, Matern32_weight, Matern52_weight, \
+                    Constant_mean, Linear_mean, Parabola_mean, Cubic_mean, \
+                    Sine_mean, Keplerian_mean
 
 
 import matplotlib.pyplot as plt
@@ -993,14 +995,6 @@ class KimaResults(object):
         return self.gprn_medians
 
     def _node_type(self, node):
-#        node_list = ['C', 'SE', 'COS', 'EXP', 'M32', 'M52', 'P', 'RQ', 'QP']
-#        kernel_list = np.array([Constant_node, SquaredExponential_node, 
-#                                SquaredExponential_node, Exponential_node, 
-#                                Matern32_node, Matern52_node, Periodic_node, 
-#                                RationalQuadratic_node, QuasiPeriodic_node])
-#        index = np.where(np.array([node]) == node_list)
-#        print(index[0][0])
-#        return kernel_list(index[0][0])
         if node in ['C']:
             return Constant_node(0)
         if node in ['SE']:
@@ -1083,6 +1077,16 @@ class KimaResults(object):
                 k += w_size
 
         #means need to be proper implemented
+#        planets = self.max_components
+#        planets_params =  np.median(self.posterior_sample[:,8:8+5*planets], axis=0)
+#        k_mean = Keplerian_mean(0, 0, 0, 0, 0)
+#        rv_mean = 0
+#        for i in range(planets):
+#            params = np.zeros(5)
+#            for j in range(5):
+#                params[j] = planets_params[(i*5)+j]
+#                k_mean.pars = params
+#            rv_mean += k_mean
         means = [None, None, None, None]
 
         #now lets do plots
@@ -1097,6 +1101,9 @@ class KimaResults(object):
         mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
                                       weight_values = weight_values, means = None,
                                       time = time_to_plot, dataset = 1)
+        #plt.figure()
+        #plt.errorbar(self.data[:,0], self.data[:,1], self.data[:,2], fmt = '.')
+        
         plt.figure()
         plt.errorbar(self.data[:,0], self.data[:,1], self.data[:,2], fmt = '.')
         plt.fill_between(time_to_plot, mu+std, mu-std, 

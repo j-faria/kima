@@ -9,16 +9,19 @@ import numpy as np
 from scipy.linalg import cho_factor, cho_solve, LinAlgError
 from copy import copy
 #import matplotlib.pyplot as plt
+#from scipy.stats import multivariate_normal
+
 
 #because it will make my life easier down the line
 pi, exp, sine, cosine, sqrt = np.pi, np.exp, np.sin, np.cos, np.sqrt
 
 
-##### node class ###############################################################
-class Node(object):
+##### Kernel class #############################################################
+class Kernel(object):
     """
-        Definition the node functions (kernels) of our GPRN, by default and 
-    because it simplifies my life, all kernels include a white noise term
+        Definition the kernels for our GPRN, by default and  because it 
+        simplifies my life, all kernels include a white noise term when we are
+        working with the nodes making it the f hat in Wilson et al. (2012)
     """
     def __init__(self, *args):
         """
@@ -39,8 +42,9 @@ class Node(object):
         return "{0}({1})".format(self.__class__.__name__,
                                  ", ".join(map(str, self.pars)))
 
+##### Nodes
 # Constant kernel
-class Constant_node(Node):
+class Constant_node(Kernel):
     """
         This kernel returns its constant argument c with white noise
         Parameters:
@@ -60,7 +64,7 @@ class Constant_node(Node):
             return self.c * np.ones_like(r)
 
 # Squared exponential kernel
-class SquaredExponential_node(Node):
+class SquaredExponential_node(Kernel):
     """
         Squared Exponential kernel, also known as radial basis function or RBF 
     kernel in other works.
@@ -82,7 +86,7 @@ class SquaredExponential_node(Node):
             return exp(-0.5 * r**2 / self.ell**2)
 
 # Periodic kernel 
-class Periodic_node(Node):
+class Periodic_node(Kernel):
     """
         Definition of the periodic kernel.
         Parameters:
@@ -104,7 +108,7 @@ class Periodic_node(Node):
             return exp( -2 * sine(pi*np.abs(r)/self.P)**2 / self.ell**2)
 
 # Quasi-periodic kernel
-class QuasiPeriodic_node(Node):
+class QuasiPeriodic_node(Kernel):
     """
         This kernel is the product between the exponential sine squared kernel 
     and the squared exponential kernel, commonly known as the quasi-periodic 
@@ -132,7 +136,7 @@ class QuasiPeriodic_node(Node):
                        /self.ell_p**2 - r**2/(2*self.ell_e**2))
 
 # Rational quadratic kernel 
-class RationalQuadratic_node(Node):
+class RationalQuadratic_node(Kernel):
     """
         Definition of the rational quadratic kernel.
         Parameters:
@@ -154,7 +158,7 @@ class RationalQuadratic_node(Node):
             return 1 / (1+ r**2/ (2*self.alpha*self.ell**2))**self.alpha
 
 # Cosine kernel
-class Cosine_node(Node):
+class Cosine_node(Kernel):
     """
         Definition of the cosine kernel.
         Parameters:
@@ -174,7 +178,7 @@ class Cosine_node(Node):
             return cosine(2*pi*np.abs(r) / self.P)
 
 # Exponential kernel
-class Exponential_node(Node):
+class Exponential_node(Kernel):
     """
         Definition of the exponential kernel. This kernel arises when 
     setting v=1/2 in the matern family of kernels
@@ -195,7 +199,7 @@ class Exponential_node(Node):
             return exp(- np.abs(r)/self.ell) 
 
 # Matern 3/2 kernel
-class Matern32_node(Node):
+class Matern32_node(Kernel):
     """
         Definition of the Matern 3/2 kernel. This kernel arise when setting 
     v=3/2 in the matern family of kernels
@@ -217,7 +221,7 @@ class Matern32_node(Node):
                         *np.exp(-np.sqrt(3.0)*np.abs(r) / self.ell)
 
 # Matern 5/2 kernel
-class Matern52_node(Node):
+class Matern52_node(Kernel):
     """
         Definition of the Matern 5/2 kernel. This kernel arise when setting 
     v=5/2 in the matern family of kernels
@@ -241,33 +245,9 @@ class Matern52_node(Node):
                            +5*np.abs(r)**2)/(3*self.ell**2) ) \
                            *exp(-np.sqrt(5.0)*np.abs(r)/self.ell)
 
-
-##### weight class #############################################################
-class Weight(object):
-    """
-        Definition the weight functions (kernels) of our GPRN.
-    """
-    def __init__(self, *args):
-        """
-            Puts all kernel arguments in an array pars
-        """
-        self.pars = np.array(args)
-
-    def __call__(self, r):
-        """
-            r = t - t' 
-        """
-        raise NotImplementedError
-
-    def __repr__(self):
-        """
-            Representation of each kernel instance
-        """
-        return "{0}({1})".format(self.__class__.__name__,
-                                 ", ".join(map(str, self.pars)))
-
+##### Weights
 # Constant kernel
-class Constant_weight(Weight):
+class Constant_weight(Kernel):
     """
         This kernel returns its constant argument c 
         Parameters:
@@ -281,7 +261,7 @@ class Constant_weight(Weight):
         return self.c * np.ones_like(r)
 
 # Squared exponential kernel
-class SquaredExponential_weight(Weight):
+class SquaredExponential_weight(Kernel):
     """
         Squared Exponential kernel, also known as radial basis function or RBF 
     kernel in other works.
@@ -298,7 +278,7 @@ class SquaredExponential_weight(Weight):
         return self.weight**2 * exp(-0.5 * r**2 / self.ell**2)
 
 # Periodic kernel
-class Periodic_weight(Weight):
+class Periodic_weight(Kernel):
     """
         Definition of the periodic kernel.
         Parameters:
@@ -319,7 +299,7 @@ class Periodic_weight(Weight):
         return self.weight**2 * exp( -2 * sine(pi*np.abs(r)/self.P)**2 /self.ell**2)
 
 # Quasi-periodic kernel
-class QuasiPeriodic_weight(Weight):
+class QuasiPeriodic_weight(Kernel):
     """
         This kernel is the product between the exponential sine squared kernel 
     and the squared exponential kernel, commonly known as the quasi-periodic 
@@ -342,7 +322,7 @@ class QuasiPeriodic_weight(Weight):
                                    /self.ell_p**2 - r**2/(2*self.ell_e**2))
 
 # Rational quadratic kernel 
-class RationalQuadratic_weight(Weight):
+class RationalQuadratic_weight(Kernel):
     """
         Definition of the rational quadratic kernel.
         Parameters:
@@ -360,7 +340,7 @@ class RationalQuadratic_weight(Weight):
         return self.weight**2 / (1+ r**2/ (2*self.alpha*self.ell**2))**self.alpha
 
 # Cosine kernel
-class Cosine_weight(Weight):
+class Cosine_weight(Kernel):
     """
         Definition of the cosine kernel.
         Parameters:
@@ -376,7 +356,7 @@ class Cosine_weight(Weight):
         return self.weight**2 * cosine(2*pi*np.abs(r) / self.P)
 
 # Exponential kernel
-class Exponential_weight(Weight):
+class Exponential_weight(Kernel):
     """
         Definition of the exponential kernel. This kernel arises when 
     setting v=1/2 in the matern family of kernels
@@ -396,7 +376,7 @@ class Exponential_weight(Weight):
         return self.weight**2 * exp(- np.abs(r)/self.ell)
 
 # Matern 3/2 kernel 
-class Matern32_weight(Weight):
+class Matern32_weight(Kernel):
     """
         Definition of the Matern 3/2 kernel. This kernel arise when setting 
     v=3/2 in the matern family of kernels
@@ -417,7 +397,7 @@ class Matern32_weight(Weight):
                     *np.exp(-np.sqrt(3.0)*np.abs(r) / self.ell)
 
 # Matern 5/2 kernel
-class Matern52_weight(Weight):
+class Matern52_weight(Kernel):
     """
         Definition of the Matern 5/2 kernel. This kernel arise when setting 
     v=5/2 in the matern family of kernels
@@ -436,12 +416,169 @@ class Matern52_weight(Weight):
                                           *exp(-np.sqrt(5.0)*np.abs(r)/self.ell)
 
 
-#### mean class ################################################################
+#### Mean class ################################################################
+from functools import wraps
+def array_input(f):
+    """
+        decorator to provide the __call__ methods with an array
+    """
+    @wraps(f)
+    def wrapped(self, t):
+        t = np.atleast_1d(t)
+        r = f(self, t)
+        return r
+    return wrapped
 
-#   TO
-#   BE
-#   IMPLEMENTED
-#   ...
+
+class MeanModel(object):
+    _parsize = 0
+    def __init__(self, *pars):
+        #self.pars = list(pars)
+        self.pars = np.array(pars)
+
+    def __repr__(self):
+        """ Representation of each instance """
+        return "{0}({1})".format(self.__class__.__name__,
+                                 ", ".join(map(str, self.pars)))
+
+    @classmethod
+    def initialize(cls):
+        """ Initialize instance, setting all parameters to 0. """
+        return cls( *([0.]*cls._parsize) )
+
+    def __add__(self, b):
+        return Sum(self, b)
+    def __radd__(self, b):
+        return self.__add__(b)
+
+class Sum(MeanModel):
+    """
+        Sum of two mean functions
+    """
+    def __init__(self, m1, m2):
+        self.m1, self.m2 = m1, m2
+
+    @property
+    def _parsize(self):
+        return self.m1._parsize + self.m2._parsize
+
+    @property
+    def pars(self):
+        return self.m1.pars + self.m2.pars
+
+    def initialize(self):
+        return
+
+    def __repr__(self):
+        return "{0} + {1}".format(self.m1, self.m2)
+
+    @array_input
+    def __call__(self, t):
+        return self.m1(t) + self.m2(t)
+
+class Constant_mean(MeanModel):
+    """ 
+        A constant offset mean function
+    """
+    _parsize = 1
+    def __init__(self, c):
+        super(Constant_mean, self).__init__(c)
+
+    @array_input
+    def __call__(self, t):
+        return np.full(t.shape, self.pars[0])
+
+class Linear_mean(MeanModel):
+    """ 
+        A linear mean function
+        m(t) = slope * t + intercept 
+    """
+    _parsize = 2
+    def __init__(self, slope, intercept):
+        super(Linear_mean, self).__init__(slope, intercept)
+
+    @array_input
+    def __call__(self, t):
+        return self.pars[0] * t + self.pars[1]
+
+class Parabola_mean(MeanModel):
+    """ 
+        A 2nd degree polynomial mean function
+        m(t) = quad * t**2 + slope * t + intercept 
+    """
+    _parsize = 3
+    def __init__(self, quad, slope, intercept):
+        super(Parabola_mean, self).__init__(quad, slope, intercept)
+
+    @array_input
+    def __call__(self, t):
+        return np.polyval(self.pars, t)
+
+class Cubic_mean(MeanModel):
+    """ 
+        A 3rd degree polynomial mean function
+        m(t) = cub * t**3 + quad * t**2 + slope * t + intercept 
+    """
+    _parsize = 4
+    def __init__(self, cub, quad, slope, intercept):
+        super(Cubic_mean, self).__init__(cub, quad, slope, intercept)
+
+    @array_input
+    def __call__(self, t):
+        return np.polyval(self.pars, t)
+
+class Sine_mean(MeanModel):
+    """ 
+        A sinusoidal mean function
+        m(t) = amplitude * sine(ang_freq * t + phase)
+    """
+    _parsize = 3
+    def __init__(self, amp, w, phi):
+        super(Sine_mean, self).__init__(amp, w, phi)
+
+    @array_input
+    def __call__(self, t):
+        return self.pars[0] * np.sin(self.pars[1]*t + self.pars[2])
+
+class Keplerian_mean(MeanModel):
+    """
+        Keplerian function with T0
+        tan[phi(t) / 2 ] = sqrt(1+e / 1-e) * tan[E(t) / 2] = true anomaly
+        E(t) - e*sin[E(t)] = M(t) = eccentric anomaly
+        M(t) = (2*pi*t/tau) + M0 = Mean anomaly
+        P  = period in days
+        e = eccentricity
+        K = RV amplitude in m/s 
+        w = longitude of the periastron
+        phi = orbital phase
+
+        RV = K[cos(w+v) + e*cos(w)] + sis_vel
+    """
+    _parsize = 5
+    def __init__(self, P, K, e, w, phi):
+        super(Keplerian_mean, self).__init__(P, K, e, w, phi)
+
+    @array_input
+    def __call__(self, t):
+        P, K, e, w, phi = self.pars
+        #mean anomaly
+        T = t[0] - (P*phi)/(2.*np.pi)
+        Mean_anom = [2*np.pi*(x1-T)/P  for x1 in t]
+        #eccentric anomaly -> E0=M + e*sin(M) + 0.5*(e**2)*sin(2*M)
+        E0 = Mean_anom + e*np.sin(Mean_anom) + 0.5*(e**2)*np.sin(2*Mean_anom)
+        #mean anomaly -> M0=E0 - e*sin(E0)
+        M0 = E0 - e*np.sin(E0)
+        niter=0
+        while niter < 500:
+            aux = Mean_anom - M0
+            E1 = E0 + aux/(1 - e*np.cos(E0))
+            M1 = E0 - e*np.sin(E0)
+            niter += 1
+            E0 = E1
+            M0 = M1
+        nu = 2*np.arctan(np.sqrt((1+e)/(1-e))*np.tan(E0/2))
+        RV = K*(e*np.cos(w)+np.cos(w+nu))
+        return RV
 
 
 ##### GPRN class ###############################################################
@@ -658,6 +795,19 @@ class GPRN(object):
         y_std = np.sqrt(y_var) #standard deviation
         return y_mean, y_std, y_cov
 
+#    def sample(self, kernel, time):
+#        """ 
+#            Returns samples from the kernel
+#            Parameters:
+#                kernel = covariance funtion
+#                time = time array
+#            Returns:
+#                Sample of K 
+#        """
+#        mean = np.zeros_like(time)
+#        cov = self.compute_matrix(kernel, time)
+#        norm = multivariate_normal(mean, cov, allow_singular=True)
+#        return norm.rvs()
 
 
 
