@@ -2,8 +2,7 @@ import sys
 import numpy as np
 
 # CONSTANTS
-mjup2mearth = 317.8284065946748 # 1 Mjup in Mearth
-
+mjup2mearth = 317.8284065946748  # 1 Mjup in Mearth
 
 template_setup = """
 
@@ -18,6 +17,7 @@ units: ms / kms
 skip: 0
 """
 
+
 def need_model_setup(exception):
     print()
     print("[FATAL] Couldn't find the file kima_model_setup.txt")
@@ -27,17 +27,17 @@ def need_model_setup(exception):
     print("and add to it (after editting!) the following options:")
     print(template_setup)
 
-    sys.tracebacklimit=0
+    sys.tracebacklimit = 0
     raise exception
 
 
 
 def read_datafile(datafile, skip):
     """
-    Read data from `datafile` for multiple instruments. 
+    Read data from `datafile` for multiple instruments.
     Can be str, in which case the 4th column is assumed to contain an integer
     identifier of the instrument.
-    Or list, in which case each element will be one different filename 
+    Or list, in which case each element will be one different filename
     containing three columns each.
     """
     if isinstance(datafile, list):
@@ -52,6 +52,18 @@ def read_datafile(datafile, skip):
         data = np.loadtxt(datafile, usecols=(0,1,2), skiprows=skip)
         obs = np.loadtxt(datafile, usecols=(3,), skiprows=skip, dtype=int)
         return data, obs
+
+
+def show_tips():
+    """ Show a few tips on how to use kima """
+    tips = (
+        "Press Ctrl+C in any of kima's plots to copy the figure.",
+        "Run 'kima-showresults all' to plot every figure.",
+        "Use the 'kima-template' script to create a new bare-bones directory.")
+    if np.random.rand() < 0.2:  # only sometimes, otherwise it's annoying :)
+        tip = np.random.choice(tips)
+        print('[kima TIP] ' + tip)
+
 
 def apply_argsort(arr1, arr2, axis=-1):
     """
@@ -75,7 +87,8 @@ def percentile68_ranges(a, min=None, max=None):
     else:
         mask = (a > min) & (a < max)
     lp, median, up = np.percentile(a[mask], [16, 50, 84])
-    return (median, up-median, median-lp)
+    return (median, up - median, median - lp)
+
 
 def percentile68_ranges_latex(a, min=None, max=None):
     median, plus, minus = percentile68_ranges(a, min, max)
@@ -86,6 +99,7 @@ def clipped_mean(arr, min, max):
     """ Mean of `arr` between `min` and `max` """
     mask = (arr > min) & (arr < max)
     return np.mean(arr[mask])
+
 
 def clipped_std(arr, min, max):
     """ std of `arr` between `min` and `max` """
@@ -116,23 +130,24 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
         assert isinstance(K, float) and isinstance(e, float)
         assert isinstance(star_mass, float)
 
-        m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1-e**2)
+        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(
+            1. / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
         return m_mj, m_me
     else:
         # calculate for an array of periods
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
-            star_mass = star_mass[0] + star_mass[1]*np.random.randn(P.size)
+            star_mass = star_mass[0] + star_mass[1] * np.random.randn(P.size)
 
-        m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1-e**2)
+        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(
+            1. / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
-      
+
         if full_output:
             return m_mj.mean(), m_mj.std(), m_mj
         else:
             return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
-
 
 
 def get_planet_mass_latex(P, K, e, star_mass=1.0, earth=False, **kargs):
@@ -144,13 +159,19 @@ def get_planet_mass_latex(P, K, e, star_mass=1.0, earth=False, **kargs):
         else:
             return '$%f$' % out[0]
     else:
+<<<<<<< HEAD
         if earth:
             return percentile68_ranges_latex(out[2]*mjup2mearth)
         else:
             return percentile68_ranges_latex(out[2])
+=======
+        if earth: return percentile68_ranges_latex(out[2] * mjup2mearth)
+        else: return percentile68_ranges_latex(out[2])
+>>>>>>> master
 
 
-def get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False, verbose=False):
+def get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False,
+                              verbose=False):
     """
     Calculate the semi-major axis of the planet's orbit given
     orbital period `P`, semi-amplitude `K`, and stellar mass.
@@ -174,13 +195,13 @@ def get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False, verbose=Fa
         # then K and star_mass should also be floats
         assert isinstance(K, float)
         assert isinstance(star_mass, float)
-        a = f * star_mass**(1./3) * (P/(2*np.pi))**(2./3)
-        return a # in AU
+        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
+        return a  # in AU
     else:
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            star_mass = star_mass[0] + star_mass[1]*np.random.randn(P.size)
-        a = f * star_mass**(1./3) * (P/(2*np.pi))**(2./3)
-      
+            star_mass = star_mass[0] + star_mass[1] * np.random.randn(P.size)
+        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
+
         if full_output:
             return a.mean(), a.std(), a
         else:
@@ -188,7 +209,8 @@ def get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False, verbose=Fa
 
 
 def get_planet_semimajor_axis_latex(P, K, star_mass=1.0, earth=False, **kargs):
-    out = get_planet_semimajor_axis(P, K, star_mass, full_output=True, verbose=False)
+    out = get_planet_semimajor_axis(P, K, star_mass, full_output=True,
+                                    verbose=False)
     if isinstance(P, float):
         return '$%f$' % out
     else:
