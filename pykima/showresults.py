@@ -46,7 +46,7 @@ def usage(full=True):
     for n, d in zip(names, descriptions):
         pos.append("  %-10s\t%s\n" % (n,d))
     u += ''.join(pos)
-    
+
     u+= numbered_args_help
     return u
 
@@ -59,7 +59,7 @@ def _parse_args(options):
             args = options
     else:
         args = options.split()
-    
+
     if '-h' in args or '--help' in args:
         print(usage())
         sys.exit(0)
@@ -68,17 +68,18 @@ def _parse_args(options):
         print('kima', open(version_file).read().strip()) # same as kima
         sys.exit(0)
 
-                         
     number_options = ['1','2','3','4','5','6','7']
     argstuple = namedtuple('Arguments', 
                                 ['rv', 'planets', 'orbital', 'gp', 'extra'] \
-                                + ['diagnostic'] \
+                                + ['diagnostic'] + ['pickle'] \
                                 + ['plot_number'])
-    
+
+    pick = findpop('pickle', args)
+    diag = findpop('diagnostic', args)
+
     if 'all' in args:
-        diag = findpop('diagnostic', args)
         return argstuple(rv=True, planets=True, orbital=True, 
-                         gp=True, extra=True, diagnostic=diag, 
+                         gp=True, extra=True, diagnostic=diag, pickle=pick,
                          plot_number=[])
 
     rv = findpop('rv', args)
@@ -86,7 +87,6 @@ def _parse_args(options):
     extra = findpop('extra', args)
     planets = findpop('planets', args)
     orbital = findpop('orbital', args)
-    diag = findpop('diagnostic', args)
     plots = list(set(args).intersection(number_options))
     for plot in plots:
         findpop(plot, args)
@@ -96,7 +96,8 @@ def _parse_args(options):
         print('error: could not recognize argument:', "'%s'" % args[0])
         sys.exit(1)
 
-    return argstuple(rv, planets, orbital, gp, extra, diag, plot_number=plots)
+    return argstuple(rv, planets, orbital, gp, extra, diag, pick, 
+                     plot_number=plots)
 
 
 def showresults(options=''):
@@ -122,7 +123,7 @@ def showresults(options=''):
         plots.append('7')
     for number in args.plot_number:
         plots.append(number)
-    
+
 
     try:
         evidence, H, logx_samples = postprocess(plot=args.diagnostic)
@@ -133,6 +134,9 @@ def showresults(options=''):
     show_tips()
 
     res = KimaResults(list(set(plots)))
+    if args.pickle:
+        res.save(input('Filename to save pickle model: '))
+
     show() # render the plots
 
     # __main__.__file__ doesn't exist in the interactive interpreter
