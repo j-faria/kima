@@ -36,7 +36,7 @@ def usage(full=True):
     if not full: return u
 
     pos = ["positional arguments:\n"]
-    names = ['rv', 'planets', 'orbital', 'gp', 'extra', 'gprn', 'fits']
+    names = ['rv', 'planets', 'orbital', 'gp', 'extra', 'gprn', 'fits', 'random_gprn']
     descriptions = \
         ["Plot posterior realizations of the model over the RV measurements",
          "Plot posterior for number of planets",
@@ -72,9 +72,10 @@ def _parse_args(options):
         sys.exit(0)
 
                          
-    number_options = ['1','2','3','4','5','6','7','8', '9']
+    number_options = ['1','2','3','4','5','6','7','8', '9', '10']
     argstuple = namedtuple('Arguments', 
-                                ['rv', 'planets', 'orbital', 'gp', 'extra', 'gprn', 'fits'] \
+                                ['rv', 'planets', 'orbital', 'gp', 'extra', 
+                                 'gprn', 'fits', 'random_gprn'] \
                                 + ['diagnostic'] \
                                 + ['plot_number'])
     
@@ -89,6 +90,7 @@ def _parse_args(options):
     extra = findpop('extra', args)
     gprn = findpop('gprn', args)
     fits = findpop('fits', args)
+    random_gprn = findpop('random_gprn', args)
     planets = findpop('planets', args)
     orbital = findpop('orbital', args)
     diag = findpop('diagnostic', args)
@@ -101,7 +103,7 @@ def _parse_args(options):
         print('error: could not recognize argument:', "'%s'" % args[0])
         sys.exit(1)
 
-    return argstuple(rv, planets, orbital, gp, extra, gprn, fits, diag, plot_number=plots)
+    return argstuple(rv, planets, orbital, gp, extra, gprn, fits, random_gprn, diag, plot_number=plots)
 
 
 def showresults(options=''):
@@ -129,6 +131,8 @@ def showresults(options=''):
         plots.append('8')
     if args.fits:
         plots.append('9')
+    if args.random_gprn:
+        plots.append('10')
     for number in args.plot_number:
         plots.append(number)
     

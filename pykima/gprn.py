@@ -688,17 +688,29 @@ class GPRN(object):
             for j in range(m._parsize):
                 m.pars[j] = pars.pop(0)
 
-    def _mean(self, means):
+    def _mean(self, means, time=None):
         """
             Returns the values of the mean functions
         """
-        N = self.time.size
-        m = np.zeros_like(self.tt)
-        for i, meanfun in enumerate(means):
-            if meanfun is None:
-                continue
-            else:
-                m[i*N : (i+1)*N] = meanfun(self.time)
+
+        if time is None:
+            N = self.time.size
+            m = np.zeros_like(self.tt)
+            for i, meanfun in enumerate(means):
+                if meanfun is None:
+                    continue
+                else:
+                    m[i*N : (i+1)*N] = meanfun(self.time)
+            
+        else:
+            N = time.size
+            ttt = np.tile(time, self.p)
+            m = np.zeros_like(ttt)
+            for i, meanfun in enumerate(means):
+                if meanfun is None:
+                    continue
+                else:
+                    m[i*N : (i+1)*N] = meanfun(time)
         return m
 
     def _covariance_matrix(self, nodes, weight, weight_values, time, position_p):
@@ -756,7 +768,7 @@ class GPRN(object):
         weight_values = weight_values if weight_values else self.weight_values
         #means
         yy = np.concatenate(self.y)
-        yy = yy - self._mean(means) if means else yy
+        yy = yy - self._mean(self.means)
         #Time
         time = time if time.any() else self.time
 
@@ -785,11 +797,15 @@ class GPRN(object):
         Kstar = k_ii
         Kstarstar = self._covariance_matrix(nodes, weight, weight_values, time, 
                                             dataset)
-
-        y_mean = np.dot(Kstar, sol) #mean
+        
+        new_mean = np.array_split(self._mean(self.means, time), self.p)
+        y_mean = np.dot(Kstar, sol) + new_mean[dataset-1]#mean
         kstarT_k_kstar = []
         for i, e in enumerate(time):
             kstarT_k_kstar.append(np.dot(Kstar, cho_solve(L1, Kstar[i,:])))
+        #print(type(L1[0]), type(Kstar))
+        #v = np.divide(L1[0],Kstar)
+        #y_cov = Kstarstar - v.T * v
         y_cov = Kstarstar - kstarT_k_kstar
         y_var = np.diag(y_cov) #variance
         y_std = np.sqrt(y_var) #standard deviation

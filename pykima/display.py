@@ -107,7 +107,7 @@ class KimaResults(object):
                                   np.ones_like(self.data[:,0])*2*self.data[:,2], 
                                   axis=1) #BIS errors
             self.data = np.insert(self.data, 4, 
-                                  np.ones_like(self.data[:,0])*2.35*self.data[:,2], 
+                                  np.ones_like(self.data[:,0])*0.5*self.data[:,2], 
                                   axis=1) #fwhm errors
         else:
             self.data = np.loadtxt(self.data_file, 
@@ -237,6 +237,7 @@ class KimaResults(object):
                                   self.hist_trend), {}],
                            '8': [self.make_plot8, {}],
                            '9': [self.make_plot9, {}],
+                           '10': [self.make_plot10, {}],
                           }
 
         for item in allowed_options.items():
@@ -994,6 +995,17 @@ class KimaResults(object):
         self.gprn_medians = np.median(self.posterior_sample[:,k:], axis=0)
         return self.gprn_medians
 
+    def _random_gprn(self):
+        """ Plots the gprn from random samples from the posterior"""
+        #Column where we start having the gprn posterior samples
+        k = 10 + 5 * self.max_components 
+        i = np.random.randint(self.posterior_sample[:,0].size, size=1)
+        
+        self.random_gprn = self.posterior_sample[i, k:]
+        self.random_wn = self.extra_sigma[i]
+        self.random_vys = np.median(self.posterior_sample[i,9])
+        return self.random_gprn, self.random_wn, self.random_vys
+
     def _node_type(self, node):
         if node in ['C']:
             return Constant_node(0)
@@ -1087,8 +1099,10 @@ class KimaResults(object):
 #                params[j] = planets_params[(i*5)+j]
 #                k_mean.pars = params
 #            rv_mean += k_mean
-        means = [None, None, None, None]
-
+        vys = np.median(self.posterior_sample[:,9])
+        means = [Constant_mean(vys), None, None, None]
+        #means = [None, None, None, None]
+        
         #now lets do plots
         GPobj = GPRN(nodes, weight, weight_values, means, self.data[:, 0], 
                   self.data[:, 1], self.data[:, 2], self.data[:, 3], 
@@ -1099,55 +1113,295 @@ class KimaResults(object):
                                   500)
         #RVs plot
         mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
-                                      weight_values = weight_values, means = None,
+                                      weight_values = weight_values, means = means,
                                       time = time_to_plot, dataset = 1)
-        #plt.figure()
-        #plt.errorbar(self.data[:,0], self.data[:,1], self.data[:,2], fmt = '.')
-        
         plt.figure()
         plt.errorbar(self.data[:,0], self.data[:,1], self.data[:,2], fmt = '.')
         plt.fill_between(time_to_plot, mu+std, mu-std, 
                          color="grey", alpha=0.5)
         plt.plot(time_to_plot, mu, "k--", alpha=1, lw=1.5)
-        plt.ylabel('RV (m/s)')
+        plt.ylabel('RV (m/s)', fontsize=15)
+        plt.ticklabel_format(useOffset=False, labelsize=20)
+        plt.tick_params(labelsize=15)
+        plt.xlabel('BJD (days)', fontsize=15)
 
         #fwhm plot
         mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
-                                      weight_values = weight_values, means = None,
+                                      weight_values = weight_values, means = means,
                                       time = time_to_plot, dataset = 2)
         plt.figure()
         plt.errorbar(self.data[:,0], self.data[:,3], self.data[:,4], fmt = '.')
         plt.fill_between(time_to_plot, mu+std, mu-std, 
                          color="grey", alpha=0.5)
         plt.plot(time_to_plot, mu, "k--", alpha=1, lw=1.5)
-        plt.ylabel('fhwm (m/s)')
-
+        plt.ylabel('fhwm (m/s)', fontsize=15)
+        plt.ticklabel_format(useOffset=False, labelsize=20)
+        plt.tick_params(labelsize=15)
+        plt.xlabel('BJD (days)', fontsize=15)
+        
         #bis plot
         mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
-                                      weight_values = weight_values, means = None,
+                                      weight_values = weight_values, means = means,
                                       time = time_to_plot, dataset = 3)
         plt.figure()
         plt.errorbar(self.data[:,0], self.data[:,5], self.data[:,6], fmt = '.')
         plt.fill_between(time_to_plot, mu+std, mu-std, 
                          color="grey", alpha=0.5)
         plt.plot(time_to_plot, mu, "k--", alpha=1, lw=1.5)
-        plt.ylabel('BIS (m/s)')
+        plt.ylabel('BIS (m/s)', fontsize=15)
+        plt.ticklabel_format(useOffset=False, labelsize=20)
+        plt.tick_params(labelsize=15)
+        plt.xlabel('BJD (days)', fontsize=15)
 
         #R_hk plot
         mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
-                                      weight_values = weight_values, means = None,
+                                      weight_values = weight_values, means = means,
                                       time = time_to_plot, dataset = 4)
         plt.figure()
         plt.errorbar(self.data[:,0], self.data[:,7], self.data[:,8], fmt = '.')
         plt.fill_between(time_to_plot, mu+std, mu-std, 
                          color="grey", alpha=0.5)
         plt.plot(time_to_plot, mu, "k--", alpha=1, lw=1.5)
-        plt.ylabel('R_hk (m/s)')
-        plt.show()
+        plt.ylabel('Rhk', fontsize=15)
+        plt.ticklabel_format(useOffset=False, labelsize=20)
+        plt.tick_params(labelsize=15)
+        plt.xlabel('BJD (days)', fontsize=15)
 
 
-#nodes = [nodeFunction.QuasiPeriodic(1, 10, 1, 0.1), 
-#         nodeFunction.Periodic(1,15, 0.5)]
-#weight = weightFunction.Constant(0)
-#weight_values = [10, 5, 3, 4]
-#means= [None, None]
+    def make_plot10(self, show=True, save=False):
+        """ Random fits for the GPRN nodes and weights parameters """
+        if not self.GPRNmodel:
+            print('Model does not have GPRN! make_plot9() doing nothing...')
+            return
+
+        plt.figure()
+        for random_i in range(10):
+            medians, wn, vys = self._random_gprn()
+            #I will need to keep an eye in the total number of medians we used
+            k = 0
+            
+            #this will only work with constant weight, needs to be checked later
+            nodes = []
+            for i, j in enumerate(self.nodes):
+                #type of node
+                n_type = self._node_type(j)
+                #number of parameters of a given node
+                n_size = self._node_param_size(j)
+                #lets give parameters to the node
+                pars = np.array(medians[0][k:n_size])
+                pars = np.insert(pars, pars.size, wn)
+                n_type.pars = pars
+                nodes.append(n_type)
+                k += n_size
+
+            #type of weight
+            w_type = self._weight_type(self.weigths[0])
+            #number of parameters of the weights
+            w_size = self._weight_param_size(self.weigths[0])
+            #lets give parameters to the weight
+            pars = np.array(medians[0][k:k+w_size])
+            w_type.pars = pars
+            weight = w_type #this is just because I'm being picky
+            #now lets deal with the weights values
+            weight_values = []
+            for i in range(len(self.nodes) * 4):
+                for j in range(w_size):
+                    weight_values.append(medians[0][k])
+                    k += w_size
+
+            means = [Constant_mean(vys), None, None, None]
+
+            #now lets do plots
+            GPobj = GPRN(nodes, weight, weight_values, means, self.data[:, 0], 
+                      self.data[:, 1], self.data[:, 2], self.data[:, 3], 
+                      self.data[:, 4], self.data[:, 5], self.data[:, 6], 
+                      self.data[:, 7], self.data[:, 8])
+    
+            time_to_plot =np.linspace(self.data[:, 0].min(), self.data[:, 0].max(), 
+                                      500)
+            #RVs plot
+            mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
+                                          weight_values = weight_values, means = means,
+                                          time = time_to_plot, dataset = 1)
+            plt.errorbar(self.data[:,0], self.data[:,1], self.data[:,2], fmt = 'b.')
+#            plt.fill_between(time_to_plot, mu+std, mu-std, 
+#                             color="grey", alpha=0.5)
+            plt.plot(time_to_plot, mu, "--",color="0.5", alpha=1, lw=1.5)
+            plt.ylabel('RV (m/s)', fontsize=15)
+            plt.ticklabel_format(useOffset=False, labelsize=20)
+            plt.tick_params(labelsize=15)
+            plt.xlabel('BJD (days)', fontsize=15)
+
+        plt.figure()
+        for random_i in range(10):
+            medians, wn, vys = self._random_gprn()
+            #I will need to keep an eye in the total number of medians we used
+            k = 0
+
+            #this will only work with constant weight, needs to be checked later
+            nodes = []
+            for i, j in enumerate(self.nodes):
+                #type of node
+                n_type = self._node_type(j)
+                #number of parameters of a given node
+                n_size = self._node_param_size(j)
+                #lets give parameters to the node
+                pars = np.array(medians[0][k:n_size])
+                pars = np.insert(pars, pars.size, wn)
+                n_type.pars = pars
+                nodes.append(n_type)
+                k += n_size
+
+            #type of weight
+            w_type = self._weight_type(self.weigths[0])
+            #number of parameters of the weights
+            w_size = self._weight_param_size(self.weigths[0])
+            #lets give parameters to the weight
+            pars = np.array(medians[0][k:k+w_size])
+            w_type.pars = pars
+            weight = w_type #this is just because I'm being picky
+            #now lets deal with the weights values
+            weight_values = []
+            for i in range(len(self.nodes) * 4):
+                for j in range(w_size):
+                    weight_values.append(medians[0][k])
+                    k += w_size
+
+            means = [Constant_mean(vys), None, None, None]
+
+            #now lets do plots
+            GPobj = GPRN(nodes, weight, weight_values, means, self.data[:, 0], 
+                      self.data[:, 1], self.data[:, 2], self.data[:, 3], 
+                      self.data[:, 4], self.data[:, 5], self.data[:, 6], 
+                      self.data[:, 7], self.data[:, 8])
+    
+            time_to_plot =np.linspace(self.data[:, 0].min(), self.data[:, 0].max(), 
+                                      500)
+            #fwhm plot
+            mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
+                                          weight_values = weight_values, means = means,
+                                          time = time_to_plot, dataset = 2)
+            plt.errorbar(self.data[:,0], self.data[:,3], self.data[:,4], fmt = 'b.')
+#            plt.fill_between(time_to_plot, mu+std, mu-std, 
+#                             color="grey", alpha=0.5)
+            plt.plot(time_to_plot, mu, "--", color="0.5", alpha=1, lw=1.5)
+            plt.ylabel('fhwm (m/s)', fontsize=15)
+            plt.ticklabel_format(useOffset=False, labelsize=20)
+            plt.tick_params(labelsize=15)
+            plt.xlabel('BJD (days)', fontsize=15)
+
+        plt.figure()
+        for random_i in range(10):
+            medians, wn, vys = self._random_gprn()
+            #I will need to keep an eye in the total number of medians we used
+            k = 0
+
+            #this will only work with constant weight, needs to be checked later
+            nodes = []
+            for i, j in enumerate(self.nodes):
+                #type of node
+                n_type = self._node_type(j)
+                #number of parameters of a given node
+                n_size = self._node_param_size(j)
+                #lets give parameters to the node
+                pars = np.array(medians[0][k:n_size])
+                pars = np.insert(pars, pars.size, wn)
+                n_type.pars = pars
+                nodes.append(n_type)
+                k += n_size
+
+            #type of weight
+            w_type = self._weight_type(self.weigths[0])
+            #number of parameters of the weights
+            w_size = self._weight_param_size(self.weigths[0])
+            #lets give parameters to the weight
+            pars = np.array(medians[0][k:k+w_size])
+            w_type.pars = pars
+            weight = w_type #this is just because I'm being picky
+            #now lets deal with the weights values
+            weight_values = []
+            for i in range(len(self.nodes) * 4):
+                for j in range(w_size):
+                    weight_values.append(medians[0][k])
+                    k += w_size
+
+            means = [Constant_mean(vys), None, None, None]
+
+            #now lets do plots
+            GPobj = GPRN(nodes, weight, weight_values, means, self.data[:, 0], 
+                      self.data[:, 1], self.data[:, 2], self.data[:, 3], 
+                      self.data[:, 4], self.data[:, 5], self.data[:, 6], 
+                      self.data[:, 7], self.data[:, 8])
+    
+            time_to_plot =np.linspace(self.data[:, 0].min(), self.data[:, 0].max(), 
+                                      500)
+            #bis plot
+            mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
+                                          weight_values = weight_values, means = means,
+                                          time = time_to_plot, dataset = 3)
+            plt.errorbar(self.data[:,0], self.data[:,5], self.data[:,6], fmt = 'b.')
+#            plt.fill_between(time_to_plot, mu+std, mu-std, 
+#                             color="grey", alpha=0.5)
+            plt.plot(time_to_plot, mu, "--", color="0.5", alpha=1, lw=1.5)
+            plt.ylabel('BIS (m/s)', fontsize=15)
+            plt.ticklabel_format(useOffset=False, labelsize=20)
+            plt.tick_params(labelsize=15)
+            plt.xlabel('BJD (days)', fontsize=15)
+
+        plt.figure()
+        for random_i in range(10):
+            medians, wn, vys = self._random_gprn()
+            #I will need to keep an eye in the total number of medians we used
+            k = 0
+
+            #this will only work with constant weight, needs to be checked later
+            nodes = []
+            for i, j in enumerate(self.nodes):
+                #type of node
+                n_type = self._node_type(j)
+                #number of parameters of a given node
+                n_size = self._node_param_size(j)
+                #lets give parameters to the node
+                pars = np.array(medians[0][k:n_size])
+                pars = np.insert(pars, pars.size, wn)
+                n_type.pars = pars
+                nodes.append(n_type)
+                k += n_size
+
+            #type of weight
+            w_type = self._weight_type(self.weigths[0])
+            #number of parameters of the weights
+            w_size = self._weight_param_size(self.weigths[0])
+            #lets give parameters to the weight
+            pars = np.array(medians[0][k:k+w_size])
+            w_type.pars = pars
+            weight = w_type #this is just because I'm being picky
+            #now lets deal with the weights values
+            weight_values = []
+            for i in range(len(self.nodes) * 4):
+                for j in range(w_size):
+                    weight_values.append(medians[0][k])
+                    k += w_size
+
+            means = [Constant_mean(vys), None, None, None]
+
+            #now lets do plots
+            GPobj = GPRN(nodes, weight, weight_values, means, self.data[:, 0], 
+                      self.data[:, 1], self.data[:, 2], self.data[:, 3], 
+                      self.data[:, 4], self.data[:, 5], self.data[:, 6], 
+                      self.data[:, 7], self.data[:, 8])
+    
+            time_to_plot =np.linspace(self.data[:, 0].min(), self.data[:, 0].max(), 
+                                      500)
+            #R_hk plot
+            mu, std, cov = GPobj.predict_gp(nodes = nodes, weight = weight, 
+                                          weight_values = weight_values, means = means,
+                                          time = time_to_plot, dataset = 4)
+            plt.errorbar(self.data[:,0], self.data[:,7], self.data[:,8], fmt = 'b.')
+#            plt.fill_between(time_to_plot, mu+std, mu-std, 
+#                             color="grey", alpha=0.5)
+            plt.plot(time_to_plot, mu, "--", color="0.5", alpha=1, lw=1.5)
+            plt.ylabel('Rhk', fontsize=15)
+            plt.ticklabel_format(useOffset=False, labelsize=20)
+            plt.tick_params(labelsize=15)
+            plt.xlabel('BJD (days)', fontsize=15)
