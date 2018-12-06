@@ -22,7 +22,7 @@ const bool trend = false; //the model includes a linear trend
 
 
 RVmodel::RVmodel()
-:planets(5, 2, false, RVConditionalPrior())
+:planets(5, 0, true, RVConditionalPrior())
 ,mu(Data::get_instance().get_t().size())
 ,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
 {
@@ -33,6 +33,7 @@ RVmodel::RVmodel()
 
     /* set the prior for the systemic velocity */
     Cprior = new Uniform(rvmin, rvmax);
+    Jprior = new ModifiedLogUniform(0.01, 1.0);
     /* and for the slope parameter */
     if(trend)
         slope_prior = new Uniform(-topslope, topslope);
@@ -67,11 +68,11 @@ GPRN::GPRN()
 int main(int argc, char** argv)
 {
     /* set the RV data file */
-    char* datafile = "corot7_harps.rdb";
+    char* datafile = "sampled_data.txt";
 
     /* load the file (RVs are in km/s) */
     /* don't skip any lines in the header */
-    Data::get_instance().load(datafile, "ms", 2);
+    Data::get_instance().load(datafile, "ms", 1);
 
     /* set the sampler and run it! */
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);

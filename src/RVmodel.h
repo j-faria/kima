@@ -74,8 +74,8 @@ class RVmodel
         int w_size = 4*n_size; //number of weights
         std::vector<std::vector<double>> node_priors {n_size};
         std::vector<std::vector<double>> weight_priors {w_size};
-        double prior1, prior2, prior3, prior4, prior5;
-        
+        double nprior1, nprior2, nprior3, nprior4, nprior5;
+        double wprior1, wprior2, wprior3, wprior4, wprior5;
         //QPkernel *kernel;
         //HODLR_Tree<QPkernel> *A;
 

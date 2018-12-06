@@ -85,52 +85,52 @@ void RVmodel::from_prior(RNG& rng)
             {
                 if(GPRN::get_instance().node[i] == "C")
                 {
-                    prior1 = constant_prior->generate(rng);
-                    node_priors[i] = {prior1};
+                    nprior1 = constant_prior->generate(rng);
+                    node_priors[i] = {nprior1};
                 }
                 if(GPRN::get_instance().node[i] == "SE")
                 {
-                    prior1 = se_ell->generate(rng);
-                    node_priors[i] = {prior1};
+                    nprior1 = se_ell->generate(rng);
+                    node_priors[i] = {nprior1};
                 }
                 if(GPRN::get_instance().node[i] == "P")
                 {
-                    prior1 = per_ell->generate(rng);
-                    prior2 = per_period->generate(rng);
-                    node_priors[i] = {prior1, prior2};
+                    nprior1 = per_ell->generate(rng);
+                    nprior2 = per_period->generate(rng);
+                    node_priors[i] = {nprior1, nprior2};
                 }
                 if(GPRN::get_instance().node[i] == "QP")
                 {   
-                    prior1 = quasi_elle->generate(rng);
-                    prior2 = quasi_period->generate(rng);
-                    prior3 = quasi_ellp->generate(rng);
-                    node_priors[i] = {prior1, prior2, prior3};
+                    nprior1 = quasi_elle->generate(rng);
+                    nprior2 = quasi_period->generate(rng);
+                    nprior3 = quasi_ellp->generate(rng);
+                    node_priors[i] = {nprior1, nprior2, nprior3};
                 }
                 if(GPRN::get_instance().node[i] == "RQ")
                 {
-                    prior1 = ratq_alpha->generate(rng);
-                    prior2 = ratq_ell->generate(rng);
-                    node_priors[i] = {prior1, prior2};
+                    nprior1 = ratq_alpha->generate(rng);
+                    nprior2 = ratq_ell->generate(rng);
+                    node_priors[i] = {nprior1, nprior2};
                 }
                 if(GPRN::get_instance().node[i] == "COS")
                 {
-                    prior1 = cos_period->generate(rng);
-                    node_priors[i] = {prior1};
+                    nprior1 = cos_period->generate(rng);
+                    node_priors[i] = {nprior1};
                 }
                 if(GPRN::get_instance().node[i] == "EXP")
                 {
-                    prior1 = exp_ell->generate(rng);
-                    node_priors[i] = {prior1};
+                    nprior1 = exp_ell->generate(rng);
+                    node_priors[i] = {nprior1};
                 }
                 if(GPRN::get_instance().node[i] == "M32")
                 {
-                    prior1 = m32_ell->generate(rng);
-                    node_priors[i] = {prior1};
+                    nprior1 = m32_ell->generate(rng);
+                    node_priors[i] = {nprior1};
                 }
                 if(GPRN::get_instance().node[i] == "M52")
                 {
-                    prior1 = m52_ell->generate(rng);
-                    node_priors[i] = {prior1};
+                    nprior1 = m52_ell->generate(rng);
+                    node_priors[i] = {nprior1};
                 }
             }
             /* dealing with the weights */
@@ -138,84 +138,84 @@ void RVmodel::from_prior(RNG& rng)
             {
                 for(int j=0; j<w_size; j++)
                 {
-                    prior1 = constant_weight->generate(rng);
-                    weight_priors[j] = {prior1};
+                    wprior1 = constant_weight->generate(rng);
+                    weight_priors[j] = {wprior1};
                 }
             }
             if(GPRN::get_instance().weight[0] == "SE")
             {
-                prior2 = se_ell->generate(rng);
+                wprior2 = se_ell->generate(rng);
                 for(int j=0; j<w_size; j++)
                 {
-                    prior1 = se_weight->generate(rng);
-                    weight_priors[j] = {prior1, prior2};
+                    wprior1 = se_weight->generate(rng);
+                    weight_priors[j] = {wprior1, wprior2};
                 }
             }
             if(GPRN::get_instance().weight[0] == "P")
             {
-                prior2 = per_ell->generate(rng);
-                prior3 = per_period->generate(rng);
+                wprior2 = per_ell->generate(rng);
+                wprior3 = per_period->generate(rng);
                 for(int j=0; j<w_size; j++)
                 {
-                    prior1 = per_weight->generate(rng);
-                    weight_priors[j] = {prior1, prior2, prior3};
+                    wprior1 = per_weight->generate(rng);
+                    weight_priors[j] = {wprior1, wprior2, wprior3};
                 }
             }
             if(GPRN::get_instance().weight[0] == "QP")
             {
-                prior2 = quasi_elle->generate(rng);
-                prior3 = quasi_period->generate(rng);
-                prior4 = quasi_ellp->generate(rng);
+                wprior2 = quasi_elle->generate(rng);
+                wprior3 = quasi_period->generate(rng);
+                wprior4 = quasi_ellp->generate(rng);
                 for(int j=0; j<w_size; j++)
                 {
-                    prior1 = quasi_weight->generate(rng);
-                    weight_priors[j] = {prior1, prior2, prior3, prior4};
+                    wprior1 = quasi_weight->generate(rng);
+                    weight_priors[j] = {wprior1, wprior2, wprior3, wprior4};
                 }
              }
             if(GPRN::get_instance().weight[0] == "RQ")
             {
-                prior2 = ratq_alpha->generate(rng);
-                prior3 = ratq_ell->generate(rng);
+                wprior2 = ratq_alpha->generate(rng);
+                wprior3 = ratq_ell->generate(rng);
                 for(int j=0; j<w_size; j++)
                 {
-                    prior1 = ratq_weight->generate(rng);
-                    weight_priors[j] = {prior1, prior2, prior3};
+                    wprior1 = ratq_weight->generate(rng);
+                    weight_priors[j] = {wprior1, wprior2, wprior3};
                 }
             }
             if(GPRN::get_instance().weight[0] == "COS")
             {
-                prior2 = cos_period->generate(rng);
+                wprior2 = cos_period->generate(rng);
                 for(int j=0; j<w_size; j++)
                 {
-                    prior1 = cos_weight->generate(rng);
-                    weight_priors[j] = {prior1, prior2};
+                    wprior1 = cos_weight->generate(rng);
+                    weight_priors[j] = {wprior1, wprior2};
                 }
             }
             if(GPRN::get_instance().weight[0] == "EXP")
             {
-                prior2 = exp_ell->generate(rng);
+                wprior2 = exp_ell->generate(rng);
                 for(int j=0; j<w_size; j++)
                 {
-                    prior1 = exp_weight->generate(rng);
-                    weight_priors[j] = {prior1, prior2};
+                    wprior1 = exp_weight->generate(rng);
+                    weight_priors[j] = {wprior1, wprior2};
                 }
             }
             if(GPRN::get_instance().weight[0] == "M32")
             {
-                prior2 = m32_ell->generate(rng);
+                wprior2 = m32_ell->generate(rng);
                 for(int j=0; j<w_size; j++)
                 {
-                    prior1 = m32_weight->generate(rng);
-                    weight_priors[j] = {prior1, prior2};
+                    wprior1 = m32_weight->generate(rng);
+                    weight_priors[j] = {wprior1, wprior2};
                 }
             }
             if(GPRN::get_instance().weight[0] == "M52")
             {
-                prior2 = m52_ell->generate(rng);
+                wprior2 = m52_ell->generate(rng);
                 for(int j=0; j<w_size; j++)
                 {
-                    prior1 = m52_weight->generate(rng);
-                    weight_priors[j] = {prior1, prior2};
+                    wprior1 = m52_weight->generate(rng);
+                    weight_priors[j] = {wprior1, wprior2};
                 }
             }
         }
@@ -376,52 +376,52 @@ double RVmodel::perturb(RNG& rng)
                     {
                         if(GPRN::get_instance().node[i] == "C")
                         {
-                            constant_prior->perturb(prior1, rng);
-                            node_priors[i] = {prior1};
+                            constant_prior->perturb(nprior1, rng);
+                            node_priors[i] = {nprior1};
                         }
                         if(GPRN::get_instance().node[i] == "SE")
                         {
-                            se_ell->perturb(prior1,rng);
-                            node_priors[i] = {prior1};
+                            se_ell->perturb(nprior1, rng);
+                            node_priors[i] = {nprior1};
                         }
                         if(GPRN::get_instance().node[i] == "P")
                         {
-                            per_ell->perturb(prior1, rng);
-                            per_period->perturb(prior2, rng);
-                            node_priors[i] = {prior1, prior2};
+                            per_ell->perturb(nprior1, rng);
+                            per_period->perturb(nprior2, rng);
+                            node_priors[i] = {nprior1, nprior2};
                         }
                         if(GPRN::get_instance().node[i] == "QP")
                         {   
-                            quasi_elle->perturb(prior1, rng);
-                            quasi_period->perturb(prior2, rng);
-                            quasi_ellp->perturb(prior3, rng);
-                            node_priors[i] = {prior1, prior2, prior3};
+                            quasi_elle->perturb(nprior1, rng);
+                            quasi_period->perturb(nprior2, rng);
+                            quasi_ellp->perturb(nprior3, rng);
+                            node_priors[i] = {nprior1, nprior2, nprior3};
                         }
                         if(GPRN::get_instance().node[i] == "RQ")
                         {
-                            ratq_alpha->perturb(prior1, rng);
-                            ratq_ell->perturb(prior2, rng);
-                            node_priors[i] = {prior1, prior2};
+                            ratq_alpha->perturb(nprior1, rng);
+                            ratq_ell->perturb(nprior2, rng);
+                            node_priors[i] = {nprior1, nprior2};
                         }
                        if(GPRN::get_instance().node[i] == "COS")
                         {
-                            cos_period->perturb(prior1, rng);
-                            node_priors[i] = {prior1};
+                            cos_period->perturb(nprior1, rng);
+                            node_priors[i] = {nprior1};
                         }
                       if(GPRN::get_instance().node[i] == "EXP")
                         {
-                            exp_ell->perturb(prior1, rng);
-                            node_priors[i] = {prior1};
+                            exp_ell->perturb(nprior1, rng);
+                            node_priors[i] = {nprior1};
                         }
                         if(GPRN::get_instance().node[i] == "M32")
                         {
-                            m32_ell->perturb(prior1, rng);
-                            node_priors[i] = {prior1};
+                            m32_ell->perturb(nprior1, rng);
+                            node_priors[i] = {nprior1};
                         }
                       if(GPRN::get_instance().node[i] == "M52")
                         {
-                            m52_ell->perturb(prior1, rng);
-                            node_priors[i] = {prior1};
+                            m52_ell->perturb(nprior1, rng);
+                            node_priors[i] = {nprior1};
                         }
                     }
                 }
@@ -433,84 +433,84 @@ double RVmodel::perturb(RNG& rng)
                         //constant_prior->perturb(prior2, rng); //all weights have the same parameters
                         for(int j=0; j<w_size; j++)
                         {
-                            constant_weight->perturb(prior1, rng);
-                            weight_priors[j] = {prior1};//, prior2};
+                            constant_weight->perturb(wprior1, rng);
+                            weight_priors[j] = {wprior1};//, prior2};
                         }
                     }
                     if(GPRN::get_instance().weight[0] == "SE")
                     {
-                        se_ell->perturb(prior2, rng); //all weights have the same parameters
+                        se_ell->perturb(wprior2, rng); //all weights have the same parameters
                         for(int j=0; j<w_size; j++)
                         {
-                            se_weight->perturb(prior1, rng);
-                            weight_priors[j] = {prior1, prior2};
+                            se_weight->perturb(wprior1, rng);
+                            weight_priors[j] = {wprior1, wprior2};
                         }
                     }
                     if(GPRN::get_instance().weight[0] == "P")
                     {
-                        per_ell->perturb(prior2, rng);
-                        per_period->perturb(prior3, rng);
+                        per_ell->perturb(wprior2, rng);
+                        per_period->perturb(wprior3, rng);
                         for(int j=0; j<w_size; j++)
                         {
-                            per_weight->perturb(prior1, rng);
-                            //weight_priors[j] = {prior1, prior2, prior3};
+                            per_weight->perturb(wprior1, rng);
+                            weight_priors[j] = {wprior1, wprior2, wprior3};
                         }
                     }
                     if(GPRN::get_instance().weight[0] == "QP")
                     {
-                        quasi_elle->perturb(prior2, rng);
-                        quasi_period->perturb(prior3, rng);
-                        quasi_ellp->perturb(prior4, rng);
+                        quasi_elle->perturb(wprior2, rng);
+                        quasi_period->perturb(wprior3, rng);
+                        quasi_ellp->perturb(wprior4, rng);
                         for(int j=0; j<w_size; j++)
                         {
-                            quasi_weight->perturb(prior1, rng);
-                            weight_priors[j] = {prior1, prior2, prior3, prior4};
+                            quasi_weight->perturb(wprior1, rng);
+                            weight_priors[j] = {wprior1, wprior2, wprior3, wprior4};
                         }
                     }
                     if(GPRN::get_instance().weight[0] == "RQ")
                     {
-                        ratq_alpha->perturb(prior2, rng);
-                        ratq_ell->perturb(prior3, rng);
+                        ratq_alpha->perturb(wprior2, rng);
+                        ratq_ell->perturb(wprior3, rng);
                         for(int j=0; j<w_size; j++)
                         {
-                            ratq_weight->perturb(prior1, rng);
-                            weight_priors[j] = {prior1, prior2, prior3};
+                            ratq_weight->perturb(wprior1, rng);
+                            weight_priors[j] = {wprior1, wprior2, wprior3};
                         }
                     }
                     if(GPRN::get_instance().weight[0] == "COS")
                     {
-                        cos_period->perturb(prior2, rng);
+                        cos_period->perturb(wprior2, rng);
                         for(int j=0; j<w_size; j++)
                         {
-                            cos_weight->perturb(prior1, rng);
-                            weight_priors[j] = {prior1, prior2};
+                            cos_weight->perturb(wprior1, rng);
+                            weight_priors[j] = {wprior1, wprior2};
                         }
                     }
                     if(GPRN::get_instance().weight[0] == "EXP")
                     {
-                        exp_ell->perturb(prior2, rng);
+                        exp_ell->perturb(wprior2, rng);
                         for(int j=0; j<w_size; j++)
                         {
-                            exp_weight->perturb(prior1, rng);
-                            weight_priors[j] = {prior1, prior2};
+                            exp_weight->perturb(wprior1, rng);
+                            weight_priors[j] = {wprior1, wprior2};
                         }
                     }
                     if(GPRN::get_instance().weight[0] == "M32")
                     {
-                        m32_ell->perturb(prior2, rng);
+                        m32_ell->perturb(wprior2, rng);
                         for(int j=0; j<w_size; j++)
                         {
-                            m32_weight->perturb(prior1, rng);
-                            weight_priors[j] = {prior1, prior2};
+                            m32_weight->perturb(wprior1, rng);
+                            weight_priors[j] = {wprior1, wprior2};
                         }
                     }
                     if(GPRN::get_instance().weight[0] == "M52")
                     {
-                        m52_ell->perturb(prior2, rng);
+                        m52_ell->perturb(wprior2, rng);
                         for(int j=0; j<w_size; j++)
                         {
-                            m52_weight->perturb(prior1, rng);
-                            weight_priors[j] = {prior1, prior2};
+                            m52_weight->perturb(wprior1, rng);
+                            weight_priors[j] = {wprior1, wprior2};
                         }
                     }
                 }

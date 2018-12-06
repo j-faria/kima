@@ -4,8 +4,8 @@
 #include "DNest4.h"
 
 /* Constant kernel*/
-Uniform *constant_weight = new Uniform(0, 150);
-Uniform *constant_prior = new Uniform(0, 100);
+Uniform *constant_weight = new Uniform(0, 20);
+Uniform *constant_prior = new Uniform(0, 20);
 
 /* Squared Exponential kernel */
 Uniform *se_weight = new Uniform(0,100);
@@ -17,10 +17,10 @@ Uniform *per_ell = new Uniform(0,3);
 Uniform *per_period = new Uniform(10,40);
 
 /* Quasi-periodic kernel */
-Uniform *quasi_weight = new Uniform(0, 150);;
-Uniform *quasi_elle = new Uniform(1,150);
-Uniform *quasi_period = new Uniform(10., 40.);
-Uniform *quasi_ellp = new Uniform(0, 3);
+Uniform *quasi_weight = new Uniform(0, 20);;
+Uniform *quasi_elle = new Uniform(1,10);
+Uniform *quasi_period = new Uniform(5., 15.);
+Uniform *quasi_ellp = new Uniform(0, 1);
 
 /* Rational quadratic kernel */
 Uniform *ratq_weight = new Uniform(0,100);

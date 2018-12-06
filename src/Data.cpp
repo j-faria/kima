@@ -162,7 +162,8 @@ void Data::create_fwhmerr()
 {
     for(int n = 0; n < rverr.size(); n++)
     {
-        fwhmerr.push_back(2.35 *rverr[n]);
+//        fwhmerr.push_back(2.35 *rverr[n]);
+        fwhmerr.push_back(0.5 *rverr[n]);
     }
 }
 
