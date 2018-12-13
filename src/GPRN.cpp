@@ -52,11 +52,13 @@ std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<dou
             nkernel = nodeCheck(node[j], node_priors[j], extra_sigma);
             wkernel = weightCheck(weight[0], weight_priors[j + n_size*i]);
             wn = wkernel.asDiagonal() * nkernel;
+            //wnw += nkernel * wkernel.asDiagonal();
             wnw += wn * wkernel.asDiagonal();
         }
-        for(int j = i*d_size; j<(i+1)*d_size, j++)
+        for(int j = i*d_size; j<(i+1)*d_size; j++)
         {
-            wnw(i*d_size % d_size, i*d_size % d_size) = sig[i*d_size] * sig[i*d_size];
+            //cout << "position " << j % d_size << endl;
+            wnw(j % d_size, j % d_size) += sig[j] * sig[j];
         }
 
     matrices_vector[i] = wnw;
