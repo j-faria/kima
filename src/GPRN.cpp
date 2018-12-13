@@ -23,7 +23,6 @@ GPRN::GPRN()
 */
 
 const vector<double>& t = Data::get_instance().get_t();
-const vector<double>& sig = Data::get_instance().get_sig();
 int N = Data::get_instance().get_t().size();
 
 
@@ -37,6 +36,8 @@ std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<dou
     Eigen::MatrixXd nkernel;
     /* weight kernels */
     Eigen::VectorXd wkernel;
+    /* measurements errors */
+    const vector<double>& sig = Data::get_instance().get_sig();
 
     /* now we do math */
     int n_size = node.size();
@@ -51,9 +52,13 @@ std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<dou
             nkernel = nodeCheck(node[j], node_priors[j], extra_sigma);
             wkernel = weightCheck(weight[0], weight_priors[j + n_size*i]);
             wn = wkernel.asDiagonal() * nkernel;
-            wnw = nkernel * wkernel.asDiagonal();
-            wnw += wnw;
+            wnw += wn * wkernel.asDiagonal();
         }
+        for(int j = i*d_size; j<(i+1)*d_size, j++)
+        {
+            wnw(i*d_size % d_size, i*d_size % d_size) = sig[i*d_size] * sig[i*d_size];
+        }
+
     matrices_vector[i] = wnw;
     }
 return matrices_vector;
