@@ -35,7 +35,7 @@ Eigen::MatrixXd C {N, N};
         {
             C(i, j) = vec[0];
             if(i==j)
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                C(i, j) += extra_sigma*extra_sigma;
             else
                 C(j, i) = C(i, j);
         }
@@ -57,7 +57,7 @@ Eigen::MatrixXd C {N, N};
         {
             C(i, j) = exp(-0.5 * pow((t[i] - t[j])/vec[0], 2));
             if(i==j)
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                C(i, j) += extra_sigma*extra_sigma;
             else
                 C(j, i) = C(i, j);
         }
@@ -79,7 +79,7 @@ Eigen::MatrixXd C {N, N};
         {
             C(i, j) = exp(-2 * pow(sin(M_PI*abs(t[i] - t[j])/vec[1])/vec[0], 2));
             if(i==j)
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                C(i, j) += extra_sigma*extra_sigma;
             else
                 C(j, i) = C(i, j);
         }
@@ -102,7 +102,7 @@ Eigen::MatrixXd C {N, N};
             C(i, j) = exp(-0.5*pow((t[i] - t[j])/vec[0], 2) 
                         -2.0*pow(sin(M_PI*abs(t[i] - t[j])/vec[1])/vec[2], 2));
             if(i==j)
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                C(i, j) += extra_sigma*extra_sigma;
             else
                 C(j, i) = C(i, j);
         }
@@ -124,7 +124,7 @@ Eigen::MatrixXd C {N, N};
         {
             C(i, j) = 1 / pow(1+ pow((t[i] - t[j]), 2)/ (2* vec[0]*pow(vec[1],2)), vec[0]);
             if(i==j)
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                C(i, j) += extra_sigma*extra_sigma;
             else
                 C(j, i) = C(i, j);
         }
@@ -146,7 +146,7 @@ Eigen::MatrixXd C {N, N};
         {
             C(i, j) = cos(2 * M_PI * abs(t[i] - t[j]) / vec[0]);
             if(i==j)
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                C(i, j) += extra_sigma*extra_sigma;
             else
                 C(j, i) = C(i, j);
         }
@@ -168,7 +168,7 @@ Eigen::MatrixXd C {N, N};
         {
             C(i, j) = exp(-abs(t[i] - t[j]) / vec[0]) ;
             if(i==j) 
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                C(i, j) += extra_sigma*extra_sigma;
             else
                 C(j, i) = C(i, j);
         }
@@ -190,7 +190,7 @@ Eigen::MatrixXd C {N, N};
         {
             C(i, j) = (1.0 + sqrt(3.0)*abs(t[i] - t[j])/vec[0]) *exp(-sqrt(3.0)*abs(t[i] - t[j])/ vec[0]);
             if(i==j) 
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                C(i, j) += extra_sigma*extra_sigma;
             else
                 C(j, i) = C(i, j);
         }
@@ -211,7 +211,7 @@ Eigen::MatrixXd C {N, N};
         {
             C(i, j) = (1.0 + (3*sqrt(5)*vec[0]*abs(t[i] - t[j]) + 5*pow(abs(t[i] - t[j]),2))/(3*pow(vec[0],2))) * exp(-sqrt(5.0)*abs(t[i] - t[j])/vec[0]);
             if(i==j) 
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                C(i, j) += extra_sigma*extra_sigma;
             else
                 C(j, i) = C(i, j);
         }
