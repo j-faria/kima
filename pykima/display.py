@@ -1062,13 +1062,17 @@ class KimaResults(object):
         #this will only work with constant weight, needs to be checked later
         nodes = []
         for i, j in enumerate(self.nodes):
+            print('node ', i, '; k=',k)
             #type of node
             n_type = self._node_type(j)
             #number of parameters of a given node
             n_size = self._node_param_size(j)
+            print('size', n_size)
             #lets give parameters to the node
-            pars = np.array(medians[k:n_size])
+            pars = np.array(medians[k:k+n_size])
+            print(pars)
             pars = np.insert(pars, pars.size, wn)
+            print(pars)
             n_type.pars = pars
             nodes.append(n_type)
             k += n_size
