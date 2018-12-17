@@ -1054,7 +1054,7 @@ class KimaResults(object):
             return
         
         medians = self._gprn_medians()
-        #only 1 wn??? Something is wrong, I need to check it later
+        #only 1 wn? I need to check it later
         wn = np.median(self.extra_sigma)
         #I will need to keep an eye in the total number of medians we used
         k = 0
@@ -1062,17 +1062,13 @@ class KimaResults(object):
         #this will only work with constant weight, needs to be checked later
         nodes = []
         for i, j in enumerate(self.nodes):
-            print('node ', i, '; k=',k)
             #type of node
             n_type = self._node_type(j)
             #number of parameters of a given node
             n_size = self._node_param_size(j)
-            print('size', n_size)
             #lets give parameters to the node
             pars = np.array(medians[k:k+n_size])
-            print(pars)
             pars = np.insert(pars, pars.size, wn)
-            print(pars)
             n_type.pars = pars
             nodes.append(n_type)
             k += n_size
@@ -1103,6 +1099,7 @@ class KimaResults(object):
 #                params[j] = planets_params[(i*5)+j]
 #                k_mean.pars = params
 #            rv_mean += k_mean
+
         vys = np.median(self.posterior_sample[:,9])
         means = [Constant_mean(vys), None, None, None]
         #means = [None, None, None, None]
