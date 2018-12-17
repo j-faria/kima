@@ -76,6 +76,7 @@ class RVmodel
         std::vector<std::vector<double>> weight_priors {w_size};
         double nprior1, nprior2, nprior3, nprior4, nprior5;
         double wprior1, wprior2, wprior3, wprior4, wprior5;
+        
         //QPkernel *kernel;
         //HODLR_Tree<QPkernel> *A;
 
