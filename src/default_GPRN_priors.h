@@ -43,5 +43,7 @@ Uniform *m32_ell = new Uniform(0,100);
 Uniform *m52_weight = new Uniform(0,100);
 Uniform *m52_ell = new Uniform(0,100);
 
+/* jitter */
+Uniform *jitter_prior = new Uniform(0,1);
 
 #endif

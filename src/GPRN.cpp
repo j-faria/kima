@@ -29,7 +29,7 @@ int N = Data::get_instance().get_t().size();
 /* Construction of the covariance matrices */
 std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<double>> node_priors, 
                                                     std::vector<std::vector<double>> weight_priors,
-                                                    double extra_sigma)
+                                                    std::vector<double> jitter_priors, double extra_sigma)
 {
 
     /* node kernel */
@@ -57,8 +57,8 @@ std::vector<Eigen::MatrixXd> GPRN::matrixCalculation(std::vector<std::vector<dou
         }
         for(int j = i*d_size; j<(i+1)*d_size; j++)
         {
-            //cout << "position " << j % d_size << endl;
-            wnw(j % d_size, j % d_size) += sig[j] * sig[j];
+            wnw(j % d_size, j % d_size) += (sig[j]*sig[j]) 
+                                            + (jitter_priors[i]*jitter_priors[i]);
         }
 
     matrices_vector[i] = wnw;

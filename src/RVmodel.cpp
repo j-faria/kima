@@ -50,6 +50,7 @@ extern ContinuousDistribution *m32_weight;
 extern ContinuousDistribution *m32_ell;
 extern ContinuousDistribution *m52_weight;
 extern ContinuousDistribution *m52_ell;
+extern ContinuousDistribution *jitter_prior;
 
 /* from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
 mean, std = 14.641789473684208, 2.7783035258938971 */
@@ -91,6 +92,14 @@ void RVmodel::from_prior(RNG& rng)
         /* Generate priors accordingly to the kernels in use */
         n_size = GPRN::get_instance().node.size(); //number of nodes
         w_size = 4 * n_size; //number of weights
+
+        /* dealing with the jitters first*/
+        jitter1 = jitter_prior->generate(rng);
+        jitter2 = jitter_prior->generate(rng);
+        jitter3 = jitter_prior->generate(rng);
+        jitter4 = jitter_prior->generate(rng);
+        jitter_priors = {jitter1, jitter2, jitter3, jitter4};
+
         /* dealing with the nodes */
         for(int i=0; i<n_size; i++)
         {
@@ -144,6 +153,7 @@ void RVmodel::from_prior(RNG& rng)
                 node_priors[i] = {nprior1};
             }
         }
+
         /* dealing with the weights */
         if(GPRN::get_instance().weight[0] == "C")
         {
@@ -247,7 +257,8 @@ void RVmodel::calculate_C()
         const vector<double>& sig = data.get_sig();
         int N = data.get_t().size();
         
-        Cs = GPRN::get_instance().matrixCalculation(node_priors, weight_priors, extra_sigma);
+        Cs = GPRN::get_instance().matrixCalculation(node_priors, weight_priors, 
+                                                    jitter_priors, extra_sigma);
         C = Cs[0]*0;    //I dont know why but it doesnt run if we dont define C
         
     }
@@ -602,6 +613,14 @@ double RVmodel::perturb(RNG& rng)
         if(rng.rand() <= 0.5)
         {
             Jprior->perturb(extra_sigma, rng);
+            jitter_prior->perturb(jitter1, rng);
+            jitter_priors[0] = jitter1;
+            jitter_prior->perturb(jitter2, rng);
+            jitter_priors[1] = jitter2;
+            jitter_prior->perturb(jitter3, rng);
+            jitter_priors[2] = jitter3;
+            jitter_prior->perturb(jitter4, rng);
+            jitter_priors[3] = jitter4;
             calculate_C();
         }
         else
@@ -862,6 +881,12 @@ void RVmodel::print(std::ostream& out) const
             for(int j=0; j<weight_priors[i].size(); j++)
                 gprn_outputs.push_back(weight_priors[i][j]);
         }
+        /* And for last the jitter */
+        for(int i=0; i<4; i++)
+        {
+            gprn_outputs.push_back(jitter_priors[i]);
+        }
+        
         /* Finally we print them all in the file */
         for (int ii = 0; ii < gprn_outputs.size(); ii++)
         {
@@ -923,6 +948,14 @@ string RVmodel::description() const
                 desc += weight_header;
                 desc += '\t';
                 }
+        }
+        /* For last are the jitter bastards */
+        for(int i=0; i<4; i++)
+        {
+            std::string jitter_header = "jitter";
+            jitter_header += std::to_string(i);
+            desc += jitter_header;
+            desc += '\t';
         }
     }
     return desc;

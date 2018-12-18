@@ -16,6 +16,7 @@ numbered_args_help = """optional numbered arguments:
   7    - plot posteriors for the HARPS fiber offset and systematic velocity;
   8    - plot the marginal posteriors for the GPRN hyperparameters;
   9    - plot the final gprn fits;
+  10    - plot the marginal posteriors for the GPRN jitters;
 """
 
 def findpop(value, lst):
@@ -30,13 +31,13 @@ def findpop(value, lst):
 
 def usage(full=True):
     u = "usage: kima-showresults "\
-        "[rv] [planets] [orbital] [gp] [extra] [gprn] [fits] [1, ..., 9]\n"\
+        "[rv] [planets] [orbital] [gp] [extra] [gprn] [fits] [jitters] [1, ..., 10]\n"\
         "                        [-h/--help] [--version]"
     u += '\n\n'
     if not full: return u
 
     pos = ["positional arguments:\n"]
-    names = ['rv', 'planets', 'orbital', 'gp', 'extra', 'gprn', 'fits', 'random_gprn']
+    names = ['rv', 'planets', 'orbital', 'gp', 'extra', 'gprn', 'fits', 'jitters']
     descriptions = \
         ["Plot posterior realizations of the model over the RV measurements",
          "Plot posterior for number of planets",
@@ -75,7 +76,7 @@ def _parse_args(options):
     number_options = ['1','2','3','4','5','6','7','8', '9', '10']
     argstuple = namedtuple('Arguments', 
                                 ['rv', 'planets', 'orbital', 'gp', 'extra', 
-                                 'gprn', 'fits', 'random_gprn'] \
+                                 'gprn', 'fits', 'jitters'] \
                                 + ['diagnostic'] \
                                 + ['plot_number'])
     
@@ -90,7 +91,7 @@ def _parse_args(options):
     extra = findpop('extra', args)
     gprn = findpop('gprn', args)
     fits = findpop('fits', args)
-    random_gprn = findpop('random_gprn', args)
+    jitters = findpop('jitters', args)
     planets = findpop('planets', args)
     orbital = findpop('orbital', args)
     diag = findpop('diagnostic', args)
@@ -103,7 +104,7 @@ def _parse_args(options):
         print('error: could not recognize argument:', "'%s'" % args[0])
         sys.exit(1)
 
-    return argstuple(rv, planets, orbital, gp, extra, gprn, fits, random_gprn, diag, plot_number=plots)
+    return argstuple(rv, planets, orbital, gp, extra, gprn, fits, jitters, diag, plot_number=plots)
 
 
 def showresults(options=''):
@@ -131,7 +132,7 @@ def showresults(options=''):
         plots.append('8')
     if args.fits:
         plots.append('9')
-    if args.random_gprn:
+    if args.jitters:
         plots.append('10')
     for number in args.plot_number:
         plots.append(number)
