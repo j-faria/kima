@@ -13,6 +13,7 @@ $(SRCDIR)/Data.cpp \
 $(SRCDIR)/Nodes.cpp \
 $(SRCDIR)/Weights.cpp \
 $(SRCDIR)/GPRN.cpp \
+$(SRCDIR)/Means.cpp \
 $(SRCDIR)/RVConditionalPrior.cpp \
 $(SRCDIR)/RVmodel.cpp \
 $(SRCDIR)/main.cpp

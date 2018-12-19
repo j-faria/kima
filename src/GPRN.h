@@ -22,7 +22,7 @@ class GPRN
         /* comes from main.cpp */
         std::vector<std::string> node;
         std::vector<std::string> weight;
-
+        std::vector<std::string> mean;
 
 
     private:

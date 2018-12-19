@@ -6,6 +6,7 @@
 #include "RVmodel.h"
 #include "RVConditionalPrior.h"
 #include "GPRN.h"
+//#include "Means.h"
 
 using namespace std;
 using namespace DNest4;
@@ -50,7 +51,7 @@ GPRN::GPRN()
     node = {"QP"};
     /* Weight funtion of our GPRN */
     weight = {"C"};
-
+    
     /*  LIST OF AVAILABLE KERNELS
     C   = constant
     SE  = squared exponential
@@ -62,13 +63,25 @@ GPRN::GPRN()
     M32 = matern 3/2
     M52 = matern 5/2
     */
+    
+    /* Mean functions for our GPRN except for the RVs*/
+    mean = {"C", "C", "C"};
+    
+    /*  LIST OF AVAILABLE MEANS
+    C   = constant
+    L   = linear
+    P   = parabolic
+    CUB = cubic
+    SIN = sinusoidal
+    None = no mean
+    */
 }
 
 
 int main(int argc, char** argv)
 {
     /* set the RV data file */
-    char* datafile = "sampled_data.txt";
+    char* datafile = "sampled_data.rdb";
 
     /* load the file (RVs are in km/s) */
     /* don't skip any lines in the header */

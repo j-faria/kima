@@ -9,7 +9,9 @@
 #include <fstream>
 #include <chrono>
 #include <time.h> 
+
 #include "GPRN.h"
+#include "Means.h"
 
 using namespace std;
 using namespace Eigen;
@@ -28,7 +30,7 @@ extern ContinuousDistribution *eta3_prior;
 extern ContinuousDistribution *log_eta4_prior;
 
 /* GPRN priors */
-extern ContinuousDistribution *constant_weight;
+extern ContinuousDistribution *constant_weight; //start of kernel priors
 extern ContinuousDistribution *constant_prior;
 extern ContinuousDistribution *se_weight;
 extern ContinuousDistribution *se_ell;
@@ -50,7 +52,25 @@ extern ContinuousDistribution *m32_weight;
 extern ContinuousDistribution *m32_ell;
 extern ContinuousDistribution *m52_weight;
 extern ContinuousDistribution *m52_ell;
-extern ContinuousDistribution *jitter_prior;
+extern ContinuousDistribution *jitter_prior; //jitters
+extern ContinuousDistribution *const_mean; //start of mean priors
+extern ContinuousDistribution *linear_slope;
+extern ContinuousDistribution *linear_intercept;
+extern ContinuousDistribution *parabolic_quadcoeff;
+extern ContinuousDistribution *parabolic_lincoeff;
+extern ContinuousDistribution *parabolic_free;
+extern ContinuousDistribution *cubic_cubcoeff;
+extern ContinuousDistribution *cubic_quadcoeff;
+extern ContinuousDistribution *cubic_lincoeff;
+extern ContinuousDistribution *cubic_free;
+extern ContinuousDistribution *sine_amp;
+extern ContinuousDistribution *sine_freq;
+extern ContinuousDistribution *sine_phase;
+
+double nprior1, nprior2, nprior3, nprior4;
+double wprior1, wprior2, wprior3, wprior4;
+double jitter1, jitter2, jitter3, jitter4;
+double mean2, mean3, mean4; //mean1 is the RVs stuff, thats why I left it out
 
 /* from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
 mean, std = 14.641789473684208, 2.7783035258938971 */
@@ -125,6 +145,9 @@ void RVmodel::from_prior(RNG& rng)
                 nprior2 = quasi_period->generate(rng);
                 nprior3 = quasi_ellp->generate(rng);
                 node_priors[i] = {nprior1, nprior2, nprior3};
+                /* printing stuff */
+                //cout << "node params = " << nprior1 << " ";
+                //cout << nprior2 << " " << nprior3 << endl;
             }
             if(GPRN::get_instance().node[i] == "RQ")
             {
@@ -161,7 +184,10 @@ void RVmodel::from_prior(RNG& rng)
             {
                 wprior1 = constant_weight->generate(rng);
                 weight_priors[j] = {wprior1};
+                /* printing stuff */
+                //cout << "weights params = " << wprior1 << " ";
             }
+            //cout << endl;
         }
         if(GPRN::get_instance().weight[0] == "SE")
         {
@@ -488,6 +514,9 @@ double RVmodel::perturb(RNG& rng)
                         quasi_period->perturb(nprior2, rng);
                         quasi_ellp->perturb(nprior3, rng);
                         node_priors[i] = {nprior1, nprior2, nprior3};
+                        /* printing stuff */
+                        //cout << "node params = " << nprior1 << " ";
+                        //cout << nprior2 << " " << nprior3 << endl;
                     }
                     if(GPRN::get_instance().node[i] == "RQ")
                     {
@@ -522,11 +551,17 @@ double RVmodel::perturb(RNG& rng)
             {
                 if(GPRN::get_instance().weight[0] == "C")
                 {
+                    //cout << "weights params = ";
                     for(int j=0; j<w_size; j++)
                     {
                         constant_weight->perturb(wprior1, rng);
-                        weight_priors[j] = {wprior1};
+                        if(rng.rand() > 0.5)
+                        {
+                            weight_priors[j] = {wprior1};
+                            //cout << "j" << j << " " << wprior1 << " ";
+                        }
                     }
+                    //cout << endl;
                 }
                 if(GPRN::get_instance().weight[0] == "SE")
                 {

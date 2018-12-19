@@ -71,7 +71,7 @@ return matrices_vector;
 Eigen::MatrixXd GPRN::nodeCheck(std::string check, std::vector<double> node_prior, double extra_sigma)
 {
     Eigen::MatrixXd nkernel;
-
+    //extra_sigma = 0;
     if(check == "C")
         nkernel = Nodes::get_instance().constant(node_prior, extra_sigma);
     if(check == "SE")
