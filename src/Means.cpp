@@ -19,6 +19,9 @@ Means::Means()
 {
 }
 
+
+
+
 double Means::constant(std::vector<double> parameters, double time) const
 /* Constant offset mean function given by
     m(t) = parameters[0]*time */
@@ -72,6 +75,23 @@ parameters[2] = phase */
     return m;
 }
 
-
-
+/* To check and calculate the mean values */
+double Means::meanCalc(std::string check, std::vector<double> priors, double time) const
+{
+    double mean_value;
+    
+    if(check == "C")
+        mean_value = constant(priors, time);
+    if(check == "L")
+        mean_value = linear(priors, time);
+    if(check == "P")
+        mean_value = parabolic(priors, time);
+    if(check == "CUB")
+        mean_value = cubic(priors, time);
+    if(check == "SIN")
+        mean_value = sinusoidal(priors, time);
+    if(check == "None")
+        mean_value = 0;
+    return mean_value;
+}
 

@@ -70,7 +70,7 @@ extern ContinuousDistribution *sine_phase;
 double nprior1, nprior2, nprior3, nprior4;
 double wprior1, wprior2, wprior3, wprior4;
 double jitter1, jitter2, jitter3, jitter4;
-double mean2, mean3, mean4; //mean1 is the RVs stuff, thats why I left it out
+double mean1, mean2, mean3, mean4;
 
 /* from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
 mean, std = 14.641789473684208, 2.7783035258938971 */
@@ -119,6 +119,54 @@ void RVmodel::from_prior(RNG& rng)
         jitter3 = jitter_prior->generate(rng);
         jitter4 = jitter_prior->generate(rng);
         jitter_priors = {jitter1, jitter2, jitter3, jitter4};
+
+        /* dealing with the means */
+        for(int i=0; i<4; i++)
+        {
+            if(GPRN::get_instance().mean[i] == "C")
+            {
+                mean1 = const_mean->generate(rng);
+                mean_priors[i] = {mean1};
+                mean_type[i] == "C";
+            }
+            if(GPRN::get_instance().mean[i] == "L")
+            {
+                mean1 = linear_slope->generate(rng);
+                mean2 = linear_intercept->generate(rng);
+                mean_priors[i] = {mean1, mean2};
+                mean_type[i] == "L";
+            }
+            if(GPRN::get_instance().mean[i] == "P")
+            {
+                mean1 = parabolic_quadcoeff->generate(rng);
+                mean2 = parabolic_lincoeff->generate(rng);
+                mean3 = parabolic_free->generate(rng);
+                mean_priors[i] = {mean1, mean2, mean3};
+                mean_type[i] == "L";
+            }
+            if(GPRN::get_instance().mean[i] == "CUB")
+            {
+                mean1 = cubic_cubcoeff->generate(rng);
+                mean2 = cubic_quadcoeff->generate(rng);
+                mean3 = cubic_lincoeff->generate(rng);
+                mean4 = cubic_free->generate(rng);
+                mean_priors[i] = {mean1, mean2, mean3, mean4};
+                mean_type[i] == "CUB";
+            }
+            if(GPRN::get_instance().mean[i] == "SIN")
+            {
+                mean1 = sine_amp->generate(rng);
+                mean2 = sine_freq->generate(rng);
+                mean3 = sine_phase->generate(rng);
+                mean_priors[i] = {mean1, mean2, mean3};
+                mean_type[i] == "SIN";
+            }
+            if(GPRN::get_instance().mean[i] == "None")
+            {
+                mean_priors[i] = {0};
+                mean_type[i] == "None";
+            }
+        }
 
         /* dealing with the nodes */
         for(int i=0; i<n_size; i++)
@@ -812,22 +860,32 @@ double RVmodel::log_likelihood() const
             /* residual vector (observed y minus model y) */
             VectorXd residual(t.size());
             if(i==0)
+            {
                 y = rv;
                 for(size_t j=0; j<t.size(); j++)
                     residual(j) = y[j]-mu[j];
+            }
             if(i==1)
+            {
                 y = fwhm;
                 for(size_t j=0; j<t.size(); j++)
-                    residual(j) = y[j];
+                    residual(j) = y[j] - Means::get_instance().meanCalc(mean_type[1], 
+                                                mean_priors[1], t[j]);
+            }
             if(i==2)
+            {
                 y = bis;
                 for(size_t j=0; j<t.size(); j++)
-                    residual(j) = y[j];
+                    residual(j) = y[j] - Means::get_instance().meanCalc(mean_type[2], 
+                                                mean_priors[2], t[j]);
+            }
             if(i==3)
+            {
                 y = rhk;
                 for(size_t j=0; j<t.size(); j++)
-                    residual(j) = y[j];
-
+                    residual(j) = y[j] - Means::get_instance().meanCalc(mean_type[3], 
+                                                mean_priors[3], t[j]);
+            }
             /* perform the cholesky decomposition of C */
             Eigen::LLT<Eigen::MatrixXd> cholesky = Cs[i].llt();
             /* get the lower triangular matrix L */
