@@ -121,20 +121,20 @@ void RVmodel::from_prior(RNG& rng)
         jitter_priors = {jitter1, jitter2, jitter3, jitter4};
 
         /* dealing with the means */
-        for(int i=0; i<4; i++)
+        for(int i=0; i<3; i++)
         {
             if(GPRN::get_instance().mean[i] == "C")
             {
                 mean1 = const_mean->generate(rng);
                 mean_priors[i] = {mean1};
-                mean_type[i] == "C";
+                mean_type[i] = "C";
             }
             if(GPRN::get_instance().mean[i] == "L")
             {
                 mean1 = linear_slope->generate(rng);
                 mean2 = linear_intercept->generate(rng);
                 mean_priors[i] = {mean1, mean2};
-                mean_type[i] == "L";
+                mean_type[i] = "L";
             }
             if(GPRN::get_instance().mean[i] == "P")
             {
@@ -142,7 +142,7 @@ void RVmodel::from_prior(RNG& rng)
                 mean2 = parabolic_lincoeff->generate(rng);
                 mean3 = parabolic_free->generate(rng);
                 mean_priors[i] = {mean1, mean2, mean3};
-                mean_type[i] == "L";
+                mean_type[i] = "L";
             }
             if(GPRN::get_instance().mean[i] == "CUB")
             {
@@ -151,7 +151,7 @@ void RVmodel::from_prior(RNG& rng)
                 mean3 = cubic_lincoeff->generate(rng);
                 mean4 = cubic_free->generate(rng);
                 mean_priors[i] = {mean1, mean2, mean3, mean4};
-                mean_type[i] == "CUB";
+                mean_type[i] = "CUB";
             }
             if(GPRN::get_instance().mean[i] == "SIN")
             {
@@ -159,12 +159,12 @@ void RVmodel::from_prior(RNG& rng)
                 mean2 = sine_freq->generate(rng);
                 mean3 = sine_phase->generate(rng);
                 mean_priors[i] = {mean1, mean2, mean3};
-                mean_type[i] == "SIN";
+                mean_type[i] = "SIN";
             }
             if(GPRN::get_instance().mean[i] == "None")
             {
                 mean_priors[i] = {0};
-                mean_type[i] == "None";
+                mean_type[i] = "None";
             }
         }
 
@@ -599,17 +599,14 @@ double RVmodel::perturb(RNG& rng)
             {
                 if(GPRN::get_instance().weight[0] == "C")
                 {
-                    //cout << "weights params = ";
                     for(int j=0; j<w_size; j++)
                     {
                         constant_weight->perturb(wprior1, rng);
                         if(rng.rand() > 0.5)
                         {
                             weight_priors[j] = {wprior1};
-                            //cout << "j" << j << " " << wprior1 << " ";
                         }
                     }
-                    //cout << endl;
                 }
                 if(GPRN::get_instance().weight[0] == "SE")
                 {
@@ -696,6 +693,7 @@ double RVmodel::perturb(RNG& rng)
         if(rng.rand() <= 0.5)
         {
             Jprior->perturb(extra_sigma, rng);
+            /* GPRN jitters */
             jitter_prior->perturb(jitter1, rng);
             jitter_priors[0] = jitter1;
             jitter_prior->perturb(jitter2, rng);
@@ -708,6 +706,47 @@ double RVmodel::perturb(RNG& rng)
         }
         else
         {
+            /* GPRN means */
+            for(int i=0; i<3; i++)
+            {
+                if(GPRN::get_instance().mean[i] == "C")
+                {
+                    const_mean->perturb(mean1, rng);
+                    mean_priors[i] = {mean1};
+                }
+                if(GPRN::get_instance().mean[i] == "L")
+                {
+                    linear_slope->perturb(mean1, rng);
+                    linear_intercept->perturb(mean2, rng);
+                    mean_priors[i] = {mean1, mean2};
+                }
+                if(GPRN::get_instance().mean[i] == "P")
+                {
+                    parabolic_quadcoeff->perturb(mean1, rng);
+                    parabolic_lincoeff->perturb(mean2, rng);
+                    parabolic_free->perturb(mean3, rng);
+                    mean_priors[i] = {mean1, mean2, mean3};
+                }
+                if(GPRN::get_instance().mean[i] == "CUB")
+                {
+                    cubic_cubcoeff->perturb(mean1, rng);
+                    cubic_quadcoeff->perturb(mean2, rng);
+                    cubic_lincoeff->perturb(mean3, rng);
+                    cubic_free->perturb(mean4, rng);
+                    mean_priors[i] = {mean1, mean2, mean3, mean4};
+                }
+                if(GPRN::get_instance().mean[i] == "SIN")
+                {
+                    sine_amp->perturb(mean1, rng);
+                    sine_freq->perturb(mean2, rng);
+                    sine_phase->perturb(mean3, rng);
+                    mean_priors[i] = {mean1, mean2, mean3};
+                }
+                if(GPRN::get_instance().mean[i] == "None")
+                {
+                    mean_priors[i] = {0};
+                }
+            }
             for(size_t i=0; i<mu.size(); i++)
             {
                 mu[i] -= background;
@@ -720,6 +759,9 @@ double RVmodel::perturb(RNG& rng)
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
             }
+            
+            
+            
             Cprior->perturb(background, rng);
             // propose new fiber offset
             if (obs_after_HARPS_fibers)
@@ -869,22 +911,21 @@ double RVmodel::log_likelihood() const
             {
                 y = fwhm;
                 for(size_t j=0; j<t.size(); j++)
-                    residual(j) = y[j] - Means::get_instance().meanCalc(mean_type[1], 
-                                                mean_priors[1], t[j]);
+                    residual(j) = y[j] - Means::get_instance().meanCalc(mean_type[0], mean_priors[0], t[j]);
             }
             if(i==2)
             {
                 y = bis;
                 for(size_t j=0; j<t.size(); j++)
-                    residual(j) = y[j] - Means::get_instance().meanCalc(mean_type[2], 
-                                                mean_priors[2], t[j]);
+                    residual(j) = y[j] - Means::get_instance().meanCalc(mean_type[1], mean_priors[1], t[j]);
             }
             if(i==3)
             {
                 y = rhk;
                 for(size_t j=0; j<t.size(); j++)
-                    residual(j) = y[j] - Means::get_instance().meanCalc(mean_type[3], 
-                                                mean_priors[3], t[j]);
+                {
+                    residual(j) = y[j] - Means::get_instance().meanCalc(mean_type[2], mean_priors[2], t[j]);
+                }
             }
             /* perform the cholesky decomposition of C */
             Eigen::LLT<Eigen::MatrixXd> cholesky = Cs[i].llt();

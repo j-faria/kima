@@ -76,7 +76,7 @@ parameters[2] = phase */
 }
 
 /* To check and calculate the mean values */
-double Means::meanCalc(std::string check, std::vector<double> priors, double time) const
+double Means::meanCalc(std::string check, std::vector<double> priors, double time)
 {
     double mean_value;
     

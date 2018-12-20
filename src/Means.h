@@ -26,7 +26,7 @@ class Means
         double sinusoidal(std::vector<double> parameters, double time) const;
 //        /* sc mean function*/
 //        std::vector Means::sc(std::vector<double> parameters, double time);
-        double meanCalc(std::string check, std::vector<double> priors, double time) const;
+        double meanCalc(std::string check, std::vector<double> priors, double time);
 
 
 
