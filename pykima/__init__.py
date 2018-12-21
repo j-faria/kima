@@ -1,7 +1,7 @@
 from .classic import postprocess
+from .analysis import most_probable_np, passes_threshold_np
 from .display import KimaResults
 from .showresults import showresults
-
 
 ## add Ctrl+C copy to matplotlib figures
 import io
