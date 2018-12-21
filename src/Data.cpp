@@ -38,7 +38,7 @@ istream& operator >> ( istream& ins, record_t& record )
   double f;
   while (ss >> f)
     record.push_back(f);
-  
+
   // Now we have read a single line, converted into a list of fields, converted the fields
   // from strings to doubles, and stored the results in the argument record, so
   // we just return the argument stream as required for this kind of input overload function.
@@ -103,6 +103,7 @@ void Data::load(const char* filename, const char* units, int skip)
   dataunits = units;
   dataskip = skip;
   datamulti = false;
+  number_instruments = 1;
 
 
   double factor = 1.;
@@ -118,12 +119,12 @@ void Data::load(const char* filename, const char* units, int skip)
 
   // How many points did we read?
   printf("# Loaded %d data points from file %s\n", t.size(), filename);
-  if(units == "kms") 
+  if(units == "kms")
     printf("# Multiplied all RVs by 1000; units are now m/s.\n");
 
   for(unsigned i=0; i<data.size(); i++)
   {
-      if (t[i] > 57170.) 
+      if (t[i] > 57170.)
       {
           index_fibers = i;
           break;
