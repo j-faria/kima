@@ -81,11 +81,16 @@ void RVmodel::from_prior(RNG& rng)
 void RVmodel::calculate_C()
 {
     // Get the data
-    const vector<double>& t = Data::get_instance().get_t();
-    const vector<double>& sig = Data::get_instance().get_sig();
-    int N = Data::get_instance().get_t().size();
+    auto data = Data::get_instance();
+    const vector<double>& t = data.get_t();
+    const vector<double>& sig = data.get_sig();
+    const vector<int>& obsi = data.get_obsi();
+    int N = data.N();
+    double jit;
 
-    // auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
 
     for(size_t i=0; i<N; i++)
     {
@@ -95,14 +100,30 @@ void RVmodel::calculate_C()
                         -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
 
             if(i==j)
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+            {
+                if (multi_instrument)
+                {
+                    jit = jitters[obsi[i]-1];
+                    C(i, j) += sig[i]*sig[i] + jit*jit;
+                }
+                else
+                {
+                    C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                }
+            }
             else
+            {
                 C(j, i) = C(i, j);
+            }
         }
     }
 
-    // auto end = std::chrono::high_resolution_clock::now();
-    // cout << "GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << "\t"; // << std::endl;
+    #if TIMING
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "GP build matrix: ";
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    cout << " ns" << "\t"; // << std::endl;
+    #endif
 }
 
 void RVmodel::calculate_mu()
@@ -238,7 +259,15 @@ double RVmodel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5)
         {
-            Jprior->perturb(extra_sigma, rng);
+            if(multi_instrument)
+            {
+                for(int i=0; i<jitters.size(); i++)
+                    Jprior->perturb(jitters[i], rng);
+            }
+            else
+            {
+                Jprior->perturb(extra_sigma, rng);
+            }
             calculate_C();
         }
         else

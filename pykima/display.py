@@ -616,21 +616,26 @@ class KimaResults(object):
 
         # available_etas = [v for v in dir(self) if v.startswith('eta')]
         available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
-        labels = [r'$s$'] + [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
-        units = ['m/s', 'm/s', 'days', 'days', None]
+        labels = [r'$s$']*self.n_jitters
+        labels += [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
+        units = ['m/s']*self.n_jitters + ['m/s', 'days', 'days', None]
         xlabels = []
         for label, unit in zip(labels, units):
             xlabels.append(label + ' (%s)' % unit 
                                 if unit is not None else label)
 
         ### all Np together
-        variables = [self.extra_sigma]
+        if self.multi:
+            variables = list(self.extra_sigma.T)
+        else:
+            variables = [self.extra_sigma]
+
         for eta in available_etas:
             variables.append(getattr(self, eta))
 
         self.post_samples = np.vstack(variables).T
 
-        ranges = [1.]*(len(available_etas)+1)
+        ranges = [1.]*(len(available_etas) + self.extra_sigma.shape[1])
         # ranges[3] = (self.pmin, self.pmax)
 
         c = corner.corner
@@ -640,7 +645,7 @@ class KimaResults(object):
                             # fill_contours=True, smooth=True,
                             # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
                             hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-                            hist_kwargs={'normed':True}, 
+                            hist_kwargs={'density':True},
                             range=ranges, data_kwargs={'alpha':1},
                             )
         except AssertionError as exc:

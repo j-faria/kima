@@ -24,6 +24,9 @@ RVmodel::RVmodel():fix(true),npmax(1)
     // set the prior for the between-instrument offsets
     offsets_prior = new Uniform(-RVspan, RVspan);
 
+    // note: there is one extra white noise (jitter) parameter per instrument
+    // they all share the same prior, defined as Jprior
+
     save_setup();
 }
 
