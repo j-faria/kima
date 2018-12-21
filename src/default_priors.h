@@ -3,13 +3,13 @@
 
 #include "DNest4.h"
 
-Uniform *Cprior = new Uniform(-1000, 1000);
-ModifiedLogUniform *Jprior = new ModifiedLogUniform(1.0, 99.); // additional white noise, m/s
+// Uniform *Cprior = new Uniform(-1000, 1000);
+// ModifiedLogUniform *Jprior = new ModifiedLogUniform(1.0, 99.); // additional white noise, m/s
 
 // this default prior for the slope of a linear trend is awful!
 // the prior probably should depend on the data,
 // -> a good default would be Uniform( -data.topslope(), data.topslope() )
-Uniform *slope_prior = new Uniform(-10, 10);
+// Uniform *slope_prior = new Uniform(-10, 10);
 
 
 LogUniform *Pprior = new LogUniform(1.0, 1E5); // days
@@ -21,10 +21,10 @@ Uniform *wprior = new Uniform(0.0, 2*M_PI);
 
 
 /* GP parameters */
-Uniform *log_eta1_prior = new Uniform(-5, 5);
-Uniform *log_eta2_prior = new Uniform(0, 5);
-Uniform *eta3_prior = new Uniform(10., 40.);
-Uniform *log_eta4_prior = new Uniform(-1, 1);
+// Uniform *log_eta1_prior = new Uniform(-5, 5);
+// Uniform *log_eta2_prior = new Uniform(0, 5);
+// Uniform *eta3_prior = new Uniform(10., 40.);
+// Uniform *log_eta4_prior = new Uniform(-1, 1);
 
 
 

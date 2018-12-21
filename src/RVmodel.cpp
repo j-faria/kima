@@ -16,25 +16,46 @@ using namespace DNest4;
 
 #define TIMING false
 
-extern ContinuousDistribution *Cprior; // systematic velocity, m/s
-extern ContinuousDistribution *Jprior; // additional white noise, m/s
-
-extern ContinuousDistribution *slope_prior; // m/s/day
-
-extern ContinuousDistribution *log_eta1_prior;
-extern ContinuousDistribution *log_eta2_prior;
-extern ContinuousDistribution *eta3_prior;
-extern ContinuousDistribution *log_eta4_prior;
-
-// from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
-// mean, std = 14.641789473684208, 2.7783035258938971
-Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
-//Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
-
 const double halflog2pi = 0.5*log(2.*M_PI);
+
+/* set default priors if the user didn't change them */
+void RVmodel::setPriors(DNest4::RNG& rng){
+    auto data = Data::get_instance();
+
+    if (!Cprior)
+        Cprior = make_prior<Uniform>(data.get_y_min(), data.get_y_max());
+
+    if (!Jprior)
+        Jprior = make_prior<ModifiedLogUniform>(1.0, 100.);
+
+    if (!slope_prior)
+        slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
+
+    if (GP) { /* GP parameters */
+        if (!log_eta1_prior)
+            log_eta1_prior = make_prior<Uniform>(-5, 5);
+        if (!log_eta2_prior)
+            log_eta2_prior = make_prior<Uniform>(0, 5);
+        if (!eta3_prior)
+            eta3_prior = make_prior<Uniform>(10, 40);
+        if (!log_eta4_prior)
+            log_eta4_prior = make_prior<Uniform>(-1, 1);
+    }
+
+    if (!fiber_offset_prior)
+        // from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
+        // mean, std = 14.641789473684208, 2.7783035258938971
+        // for M stars, the offset is close to 0 m/s (!!)
+        fiber_offset_prior = make_prior<Gaussian>(15., 3.);
+}
+
 
 void RVmodel::from_prior(RNG& rng)
 {
+    // preliminaries
+    setPriors(rng); 
+    save_setup();
+
     planets.from_prior(rng);
     planets.consolidate_diff();
     
@@ -453,7 +474,11 @@ void RVmodel::save_setup() {
     fout << "GP: " << GP << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
+
     fout << endl;
+
+    fout << "[data]" << endl;
+
     fout << "file: " << Data::get_instance().datafile << endl;
     fout << "units: " << Data::get_instance().dataunits << endl;
     fout << "skip: " << Data::get_instance().dataskip << endl;
