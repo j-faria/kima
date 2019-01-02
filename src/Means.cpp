@@ -22,7 +22,7 @@ Means::Means()
 
 
 
-double Means::constant(std::vector<double> parameters, double time) const
+double Means::constant(std::vector<double> parameters, double time)
 /* Constant offset mean function given by
     m(t) = parameters[0]*time */
 {
@@ -31,7 +31,7 @@ double Means::constant(std::vector<double> parameters, double time) const
 }
 
 
-double Means::linear(std::vector<double> parameters, double time) const
+double Means::linear(std::vector<double> parameters, double time)
 /* Linear mean function given by
     m(t) = parameters[0]*time + parameters[1]
 where parameters[0] = slope and parameters[1] = intercept */
@@ -41,7 +41,7 @@ where parameters[0] = slope and parameters[1] = intercept */
 }
 
 
-double Means::parabolic(std::vector<double> parameters, double time) const
+double Means::parabolic(std::vector<double> parameters, double time)
 /* Parabolic mean function given by
     m(t) = parameters[0]*time*time + parameters[1]*time + parameters[2]
 where parameters[0] = quadratic coefficient, parameters[1] = linear coefficient,
@@ -52,7 +52,7 @@ and parameters[2] = free term */
 }
 
 
-double Means::cubic(std::vector<double> parameters, double time) const
+double Means::cubic(std::vector<double> parameters, double time)
 /* Cubic mean function given by
     m(t) = parameters[0]*time*time*time + parameters[1]*time*time 
             + parameters[2]*time + parameters[3]
@@ -65,7 +65,7 @@ parameters[2] = linear coefficient, and parameters[3] = free term */
 }
 
 
-double Means::sinusoidal(std::vector<double> parameters, double time) const
+double Means::sinusoidal(std::vector<double> parameters, double time)
 /* Sinusoidal mean function given by
     m(t) = parameters[0] * sine(parameters[1]*time + parameters[2])
 where parameters[0] = amplitude, parameters[1] = angular frequency, and 

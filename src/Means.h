@@ -15,15 +15,15 @@ class Means
     public:
         Means();
         /* constant mean function */
-        double constant(std::vector<double> parameters, double time) const;
+        double constant(std::vector<double> parameters, double time);
         /* linear mean function */
-        double linear(std::vector<double> parameters, double time) const;
+        double linear(std::vector<double> parameters, double time);
         /* parabolic mean funtion */
-        double parabolic(std::vector<double> parameters, double time) const;
+        double parabolic(std::vector<double> parameters, double time);
         /* cubic mean function */
-        double cubic(std::vector<double> parameters, double time) const;
+        double cubic(std::vector<double> parameters, double time);
         /* sinusoidal mean function*/
-        double sinusoidal(std::vector<double> parameters, double time) const;
+        double sinusoidal(std::vector<double> parameters, double time);
 //        /* sc mean function*/
 //        std::vector Means::sc(std::vector<double> parameters, double time);
         double meanCalc(std::string check, std::vector<double> priors, double time);

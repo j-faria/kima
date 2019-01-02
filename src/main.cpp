@@ -38,7 +38,9 @@ RVmodel::RVmodel()
     /* and for the slope parameter */
     if(trend)
         slope_prior = new Uniform(-topslope, topslope);
-    
+
+    //constant_weight = new Uniform(0, 100);
+
     /* save the current model for further analysis */
     save_setup();
 }
@@ -47,11 +49,10 @@ RVmodel::RVmodel()
 GPRN::GPRN()
 {
     /* Node functions of our GPRN */
-    //node = {"QP", "P"};
     node = {"QP"};
     /* Weight funtion of our GPRN */
     weight = {"C"};
-    
+
     /*  LIST OF AVAILABLE KERNELS
     C   = constant
     SE  = squared exponential
@@ -64,8 +65,8 @@ GPRN::GPRN()
     M52 = matern 5/2
     */
     
-    /* Mean functions for our GPRN except for the RVs*/
-    mean = {"C", "C", "C"};
+    /* Mean functions for our GPRN, except for the RVs*/
+    mean = {"None", "None", "None"};
     
     /*  LIST OF AVAILABLE MEANS
     C   = constant
@@ -81,7 +82,7 @@ GPRN::GPRN()
 int main(int argc, char** argv)
 {
     /* set the RV data file */
-    char* datafile = "sampled_data.rdb";
+    char* datafile = "sampled_data_2.rdb";
 
     /* load the file (RVs are in km/s) */
     /* don't skip any lines in the header */

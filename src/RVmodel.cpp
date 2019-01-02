@@ -80,9 +80,8 @@ Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 /*  The GP priors are eta1, eta2, eta3, and eta4
-    For the GPRN the priors are nprior1, nprior2, nprior3, nprior4, and nprior5 
-for the nodes and wprior1, wprior2, wprior3, wprior4, and wprior5 for the 
-weigths */
+    The GPRN priors are nprior1, nprior2, nprior3, nprior4, and nprior5 for the 
+nodes, and wprior1, wprior2, wprior3, wprior4, and wprior5 for the weigths */
 void RVmodel::from_prior(RNG& rng)
 {
     planets.from_prior(rng);
@@ -232,8 +231,7 @@ void RVmodel::from_prior(RNG& rng)
             {
                 wprior1 = constant_weight->generate(rng);
                 weight_priors[j] = {wprior1};
-                /* printing stuff */
-                //cout << "weights params = " << wprior1 << " ";
+            //cout << wprior1 << " "; 
             }
             //cout << endl;
         }
@@ -602,11 +600,12 @@ double RVmodel::perturb(RNG& rng)
                     for(int j=0; j<w_size; j++)
                     {
                         constant_weight->perturb(wprior1, rng);
-                        if(rng.rand() > 0.5)
                         {
                             weight_priors[j] = {wprior1};
+                        //cout << wprior1 << " "; 
                         }
                     }
+                    //cout << endl;
                 }
                 if(GPRN::get_instance().weight[0] == "SE")
                 {
@@ -853,7 +852,7 @@ double RVmodel::log_likelihood() const
     auto begin = std::chrono::high_resolution_clock::now(); // start timing
     #endif
 
-    /* using a standard GP; GP=true and RN=true */
+    /* using a standard GP; GP=true and RN=false */
     if(GP & !RN)
     {
         const vector<double>& y = data.get_y();
