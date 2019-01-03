@@ -38,10 +38,14 @@ int main(int argc, char** argv)
                                      "HD106252_HET.txt",
                                      "HD106252_HJS.txt",
                                      "HD106252_Lick.txt"
-                                     };
+                                   };
 
     // note: all files should have the same structure, and be in the same units
     Data::get_instance().load_multi(datafiles, "ms", 2);
+
+    // could also do (but not both!)
+    //char* datafile = "HD106252_joined.txt";
+    //Data::get_instance().load_multi(datafile, "ms", 1);
 
     // set the sampler and run it
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
