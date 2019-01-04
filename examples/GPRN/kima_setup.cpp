@@ -75,7 +75,7 @@ GPRN::GPRN()
 int main(int argc, char** argv)
 {
     /* set the RV data file */
-    char* datafile = "sampled_data_2.rdb";
+    char* datafile = "sampled_data.rdb";
 
     /* load the file (RVs are in km/s) */
     /* don't skip any lines in the header */
