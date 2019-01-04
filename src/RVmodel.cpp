@@ -52,7 +52,10 @@ extern ContinuousDistribution *m32_weight;
 extern ContinuousDistribution *m32_ell;
 extern ContinuousDistribution *m52_weight;
 extern ContinuousDistribution *m52_ell;
-extern ContinuousDistribution *jitter_prior; //jitters
+extern ContinuousDistribution *jitter1_prior; //start of jitters
+extern ContinuousDistribution *jitter2_prior;
+extern ContinuousDistribution *jitter3_prior;
+extern ContinuousDistribution *jitter4_prior;
 extern ContinuousDistribution *const_mean; //start of mean priors
 extern ContinuousDistribution *linear_slope;
 extern ContinuousDistribution *linear_intercept;
@@ -113,10 +116,10 @@ void RVmodel::from_prior(RNG& rng)
         w_size = 4 * n_size; //number of weights
 
         /* dealing with the jitters first*/
-        jitter1 = jitter_prior->generate(rng);
-        jitter2 = jitter_prior->generate(rng);
-        jitter3 = jitter_prior->generate(rng);
-        jitter4 = jitter_prior->generate(rng);
+        jitter1 = jitter1_prior->generate(rng);
+        jitter2 = jitter2_prior->generate(rng);
+        jitter3 = jitter3_prior->generate(rng);
+        jitter4 = jitter4_prior->generate(rng);
         jitter_priors = {jitter1, jitter2, jitter3, jitter4};
 
         /* dealing with the means */
@@ -536,6 +539,7 @@ double RVmodel::perturb(RNG& rng)
             /* dealing with the nodes */
             if(rng.rand() > 0.5)
             {
+                try{
                 for(int i=0; i<n_size; i++)
                 {
                     if(GPRN::get_instance().node[i] == "C")
@@ -561,7 +565,7 @@ double RVmodel::perturb(RNG& rng)
                         quasi_ellp->perturb(nprior3, rng);
                         node_priors[i] = {nprior1, nprior2, nprior3};
                         /* printing stuff */
-                        //cout << "node params = " << nprior1 << " ";
+                        //cout << "nodes = " << nprior1 << " ";
                         //cout << nprior2 << " " << nprior3 << endl;
                     }
                     if(GPRN::get_instance().node[i] == "RQ")
@@ -591,10 +595,17 @@ double RVmodel::perturb(RNG& rng)
                         node_priors[i] = {nprior1};
                     }
                 }
+                }
+                catch(...)
+                {
+                    cout << "std::domain_error in nodes" << endl;
+                }
             }
             /* dealing with the weights */
             if(rng.rand() < 0.5)
             {
+                try
+                {
                 if(GPRN::get_instance().weight[0] == "C")
                 {
                     for(int j=0; j<w_size; j++)
@@ -602,7 +613,7 @@ double RVmodel::perturb(RNG& rng)
                         constant_weight->perturb(wprior1, rng);
                         {
                             weight_priors[j] = {wprior1};
-                        //cout << wprior1 << " "; 
+                        //cout << "weights = " << wprior1 << " "; 
                         }
                     }
                     //cout << endl;
@@ -686,6 +697,11 @@ double RVmodel::perturb(RNG& rng)
                         weight_priors[j] = {wprior1, wprior2};
                     }
                 }
+                }
+                catch(...)
+                {
+                    cout << "std::domain_error in weights" << endl;
+                }
             }
             calculate_C();
         }
@@ -693,14 +709,23 @@ double RVmodel::perturb(RNG& rng)
         {
             Jprior->perturb(extra_sigma, rng);
             /* GPRN jitters */
-            jitter_prior->perturb(jitter1, rng);
+            try
+            {
+            jitter1_prior->perturb(jitter1, rng);
             jitter_priors[0] = jitter1;
-            jitter_prior->perturb(jitter2, rng);
+            jitter2_prior->perturb(jitter2, rng);
             jitter_priors[1] = jitter2;
-            jitter_prior->perturb(jitter3, rng);
+            jitter3_prior->perturb(jitter3, rng);
             jitter_priors[2] = jitter3;
-            jitter_prior->perturb(jitter4, rng);
+            jitter4_prior->perturb(jitter4, rng);
             jitter_priors[3] = jitter4;
+            //cout << "jitters = " << jitter1 << " " << jitter2 << " ";
+            //cout << jitter3 << " " << " " << jitter4 << endl;
+            }
+            catch(...)
+            {
+                cout << "std::domain_error in jitters" << endl;
+            }
             calculate_C();
         }
         else
@@ -743,7 +768,7 @@ double RVmodel::perturb(RNG& rng)
                 }
                 if(GPRN::get_instance().mean[i] == "None")
                 {
-                    mean_priors[i] = {0};
+                    mean_priors[i] = {0.0};
                 }
             }
             for(size_t i=0; i<mu.size(); i++)
@@ -758,8 +783,6 @@ double RVmodel::perturb(RNG& rng)
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
             }
-            
-            
             
             Cprior->perturb(background, rng);
             // propose new fiber offset
@@ -1062,9 +1085,9 @@ string RVmodel::description() const
             for(int j=0; j<node_priors[i].size(); j++)
                 {
                 std::string node_header = "node";
-                node_header += std::to_string(i);
+                node_header += std::to_string(i+1);
                 node_header += "_";
-                node_header += std::to_string(j);
+                node_header += std::to_string(j+1);
                 desc += node_header;
                 desc += '\t';
                 }
@@ -1075,9 +1098,9 @@ string RVmodel::description() const
             for(int j=0; j<weight_priors[i].size(); j++)
                 {
                 std::string weight_header = "weight";
-                weight_header += std::to_string(i);
+                weight_header += std::to_string(i+1);
                 weight_header += "_";
-                weight_header += std::to_string(j);
+                weight_header += std::to_string(j+1);
                 desc += weight_header;
                 desc += '\t';
                 }
@@ -1086,7 +1109,7 @@ string RVmodel::description() const
         for(int i=0; i<4; i++)
         {
             std::string jitter_header = "jitter";
-            jitter_header += std::to_string(i);
+            jitter_header += std::to_string(i+1);
             desc += jitter_header;
             desc += '\t';
         }

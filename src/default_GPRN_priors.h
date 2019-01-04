@@ -44,7 +44,11 @@ Uniform *m52_weight = new Uniform(0,100);
 Uniform *m52_ell = new Uniform(0,100);
 
 /* jitter terms */
-Uniform *jitter_prior = new Uniform(0,20);
+Uniform  *jitter1_prior =  new Uniform (0.0, 5.0);
+Uniform  *jitter2_prior =  new Uniform (5.0, 20.0);
+Uniform  *jitter3_prior =  new Uniform (1.0, 10.0);
+Uniform  *jitter4_prior =  new Uniform (0.0, 1.0);
+
 
 /* Constant mean */
 Uniform *const_mean = new Uniform(0, 50);
