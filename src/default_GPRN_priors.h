@@ -4,7 +4,8 @@
 #include "DNest4.h"
 
 /* Constant kernel*/
-Uniform *constant_weight = new Uniform(0, 50);
+//Uniform *constant_weight = new Uniform(0, 50);
+Gaussian *constant_weight = new Gaussian(10, 1);
 Uniform *constant_prior = new Uniform(0, 50);
 
 /* Squared Exponential kernel */
@@ -17,10 +18,16 @@ Uniform *per_ell = new Uniform(0,3);
 Uniform *per_period = new Uniform(10,40);
 
 /* Quasi-periodic kernel */
-Uniform *quasi_weight = new Uniform(0, 50);;
-Uniform *quasi_elle = new Uniform(1,10);
-Uniform *quasi_period = new Uniform(5., 15.);
-Uniform *quasi_ellp = new Uniform(0, 1);
+//Uniform *quasi_weight = new Uniform(0, 50);;
+//Uniform *quasi_elle = new Uniform(1,10);
+//Uniform *quasi_period = new Uniform(5., 15.);
+//Uniform *quasi_ellp = new Uniform(0, 1);
+Gaussian *quasi_weight = new Gaussian(10, 1);;
+Gaussian *quasi_elle = new Gaussian(10,1);
+Gaussian *quasi_period = new Gaussian(10, 1);
+Gaussian *quasi_ellp = new Gaussian(1, 1);
+
+
 
 /* Rational quadratic kernel */
 Uniform *ratq_weight = new Uniform(0,100);
@@ -44,11 +51,14 @@ Uniform *m52_weight = new Uniform(0,100);
 Uniform *m52_ell = new Uniform(0,100);
 
 /* jitter terms */
-Uniform  *jitter1_prior =  new Uniform (0.0, 5.0);
-Uniform  *jitter2_prior =  new Uniform (5.0, 20.0);
-Uniform  *jitter3_prior =  new Uniform (1.0, 10.0);
-Uniform  *jitter4_prior =  new Uniform (0.0, 1.0);
-
+//Uniform  *jitter1_prior =  new Uniform (0.0, 5.0);
+//Uniform  *jitter2_prior =  new Uniform (5.0, 20.0);
+//Uniform  *jitter3_prior =  new Uniform (1.0, 10.0);
+//Uniform  *jitter4_prior =  new Uniform (0.0, 1.0);
+Gaussian  *jitter1_prior =  new Gaussian (5.0, 1.0);
+Gaussian  *jitter2_prior =  new Gaussian (5.0, 1.0);
+Gaussian  *jitter3_prior =  new Gaussian (5.0, 1.0);
+Gaussian  *jitter4_prior =  new Gaussian (5.0, 1.0);
 
 /* Constant mean */
 Uniform *const_mean = new Uniform(0, 50);

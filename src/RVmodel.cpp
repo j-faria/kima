@@ -598,7 +598,7 @@ double RVmodel::perturb(RNG& rng)
                 }
                 catch(...)
                 {
-                    cout << "std::domain_error in nodes" << endl;
+                    cout << "\n*** std::domain_error in the nodes ***\n \n";
                 }
             }
             /* dealing with the weights */
@@ -698,9 +698,9 @@ double RVmodel::perturb(RNG& rng)
                     }
                 }
                 }
-                catch(...)
+               catch(...)
                 {
-                    cout << "std::domain_error in weights" << endl;
+                    cout << "\n*** std::domain_error in the weights ***\n \n";
                 }
             }
             calculate_C();
@@ -719,12 +719,10 @@ double RVmodel::perturb(RNG& rng)
             jitter_priors[2] = jitter3;
             jitter4_prior->perturb(jitter4, rng);
             jitter_priors[3] = jitter4;
-            //cout << "jitters = " << jitter1 << " " << jitter2 << " ";
-            //cout << jitter3 << " " << " " << jitter4 << endl;
             }
             catch(...)
             {
-                cout << "std::domain_error in jitters" << endl;
+                cout << "\n*** std::domain_error in the jitters ***\n \n";
             }
             calculate_C();
         }
