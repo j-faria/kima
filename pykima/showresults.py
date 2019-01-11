@@ -135,7 +135,12 @@ def showresults(options=''):
 
     res = KimaResults(list(set(plots)))
     if args.pickle:
-        res.save(input('Filename to save pickle model: '))
+        getinput = input
+        # if Python 2, use raw_input()
+        if sys.version_info[:2] <= (2, 7):
+            getinput = raw_input
+
+        res.save(getinput('Filename to save pickle model: '))
 
     show() # render the plots
 
