@@ -20,6 +20,7 @@ extern ContinuousDistribution *Cprior; // systematic velocity, m/s
 extern ContinuousDistribution *Jprior; // additional white noise, m/s
 
 extern ContinuousDistribution *slope_prior; // m/s/day
+extern ContinuousDistribution *offsets_prior;
 
 extern ContinuousDistribution *log_eta1_prior;
 extern ContinuousDistribution *log_eta2_prior;
@@ -31,6 +32,7 @@ extern ContinuousDistribution *log_eta4_prior;
 Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
 //Uniform *fiber_offset_prior = new Uniform(0., 50.);  // old 
 
+
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVmodel::from_prior(RNG& rng)
@@ -39,8 +41,20 @@ void RVmodel::from_prior(RNG& rng)
     planets.consolidate_diff();
     
     background = Cprior->generate(rng);
-    extra_sigma = Jprior->generate(rng);
 
+    if(multi_instrument)
+    {
+        for(int i=0; i<offsets.size(); i++)
+            offsets[i] = offsets_prior->generate(rng);
+        for(int i=0; i<jitters.size(); i++)
+            jitters[i] = Jprior->generate(rng);
+    }
+    else
+    {
+        extra_sigma = Jprior->generate(rng);
+    }
+
+    
     if(obs_after_HARPS_fibers)
         fiber_offset = fiber_offset_prior->generate(rng);
 
@@ -61,17 +75,22 @@ void RVmodel::from_prior(RNG& rng)
     calculate_mu();
 
     if(GP) calculate_C();
-
+    
 }
 
 void RVmodel::calculate_C()
 {
     // Get the data
-    const vector<double>& t = Data::get_instance().get_t();
-    const vector<double>& sig = Data::get_instance().get_sig();
-    int N = Data::get_instance().get_t().size();
+    auto data = Data::get_instance();
+    const vector<double>& t = data.get_t();
+    const vector<double>& sig = data.get_sig();
+    const vector<int>& obsi = data.get_obsi();
+    int N = data.N();
+    double jit;
 
-    // auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
 
     for(size_t i=0; i<N; i++)
     {
@@ -81,14 +100,30 @@ void RVmodel::calculate_C()
                         -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
 
             if(i==j)
-                C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+            {
+                if (multi_instrument)
+                {
+                    jit = jitters[obsi[i]-1];
+                    C(i, j) += sig[i]*sig[i] + jit*jit;
+                }
+                else
+                {
+                    C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                }
+            }
             else
+            {
                 C(j, i) = C(i, j);
+            }
         }
     }
 
-    // auto end = std::chrono::high_resolution_clock::now();
-    // cout << "GP: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << " ns" << "\t"; // << std::endl;
+    #if TIMING
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "GP build matrix: ";
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    cout << " ns" << "\t"; // << std::endl;
+    #endif
 }
 
 void RVmodel::calculate_mu()
@@ -96,6 +131,8 @@ void RVmodel::calculate_mu()
     auto data = Data::get_instance();
     // Get the times from the data
     const vector<double>& t = data.get_t();
+    // only really needed if multi_instrument
+    const vector<int>& obsi = data.get_obsi();
 
     // Update or from scratch?
     bool update = (planets.get_added().size() < planets.get_components().size()) &&
@@ -118,6 +155,17 @@ void RVmodel::calculate_mu()
             for(size_t i=0; i<t.size(); i++)
             {
                 mu[i] += slope*(t[i] - data.get_t_middle());
+            }
+        }
+
+        if(multi_instrument)
+        {
+            for(size_t j=0; j<offsets.size(); j++)
+            {
+                for(size_t i=0; i<t.size(); i++)
+                {   
+                    if (obsi[i] == j+1) { mu[i] += offsets[j]; }
+                }
             }
         }
 
@@ -171,6 +219,7 @@ double RVmodel::perturb(RNG& rng)
 {
     auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
+    const vector<int>& obsi = data.get_obsi();
     double logH = 0.;
 
     if(GP)
@@ -210,7 +259,15 @@ double RVmodel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5)
         {
-            Jprior->perturb(extra_sigma, rng);
+            if(multi_instrument)
+            {
+                for(int i=0; i<jitters.size(); i++)
+                    Jprior->perturb(jitters[i], rng);
+            }
+            else
+            {
+                Jprior->perturb(extra_sigma, rng);
+            }
             calculate_C();
         }
         else
@@ -221,12 +278,23 @@ double RVmodel::perturb(RNG& rng)
                 if(trend) {
                     mu[i] -= slope*(t[i]-data.get_t_middle());
                 }
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
+                    }
+                }
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
             }
 
             Cprior->perturb(background, rng);
+
+            // propose new instrument offsets
+            if (multi_instrument){
+                for(unsigned j=0; j<offsets.size(); j++)
+                    offsets_prior->perturb(offsets[j], rng);
+            }
 
             // propose new fiber offset
             if (obs_after_HARPS_fibers) {
@@ -244,7 +312,11 @@ double RVmodel::perturb(RNG& rng)
                 if(trend) {
                     mu[i] += slope*(t[i]-data.get_t_middle());
                 }
-
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] += offsets[j]; }
+                    }
+                }
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
@@ -263,9 +335,15 @@ double RVmodel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5)
         {
-            //cout << "J: " << extra_sigma;
-            Jprior->perturb(extra_sigma, rng);
-            //cout << " --> " << extra_sigma << endl;
+            if(multi_instrument)
+            {
+                for(int i=0; i<jitters.size(); i++)
+                    Jprior->perturb(jitters[i], rng);
+            }
+            else
+            {
+                Jprior->perturb(extra_sigma, rng);
+            }
         }
         else
         {
@@ -275,12 +353,24 @@ double RVmodel::perturb(RNG& rng)
                 if(trend) {
                     mu[i] -= slope*(t[i]-data.get_t_middle());
                 }
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
+                    }
+                }
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
             }
 
             Cprior->perturb(background, rng);
+
+            // propose new instrument offsets
+            if (multi_instrument){
+                for(unsigned j=0; j<offsets.size(); j++){
+                    offsets_prior->perturb(offsets[j], rng);
+                }
+            }
 
             // propose new fiber offset
             if (obs_after_HARPS_fibers) {
@@ -298,7 +388,11 @@ double RVmodel::perturb(RNG& rng)
                 if(trend) {
                     mu[i] += slope*(t[i]-data.get_t_middle());
                 }
-
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] += offsets[j]; }
+                    }
+                }
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
@@ -318,6 +412,8 @@ double RVmodel::log_likelihood() const
     int N = data.N();
     const vector<double>& y = data.get_y();
     const vector<double>& sig = data.get_sig();
+    const vector<int>& obsi = data.get_obsi();
+    
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -365,10 +461,17 @@ double RVmodel::log_likelihood() const
 
         // The following code calculates the log likelihood 
         // in the case of a Gaussian likelihood
-        double var;
+        double var, jit;
         for(size_t i=0; i<y.size(); i++)
         {
-            var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+            if(multi_instrument)
+            {
+                jit = jitters[obsi[i]-1];
+                var = sig[i]*sig[i] + jit*jit;
+            }
+            else
+                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
         }
@@ -393,13 +496,25 @@ void RVmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    out<<extra_sigma<<'\t';
+    if (multi_instrument)
+    {
+        for(int j=0; j<jitters.size(); j++)
+            out<<jitters[j]<<'\t';
+    }
+    else
+        out<<extra_sigma<<'\t';
     
     if(trend)
         out<<slope<<'\t';
 
     if (obs_after_HARPS_fibers)
         out<<fiber_offset<<'\t';
+    
+    if (multi_instrument){
+        for(int j=0; j<offsets.size(); j++){
+            out<<offsets[j]<<'\t';
+        }
+    }
 
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
@@ -413,26 +528,39 @@ void RVmodel::print(std::ostream& out) const
 string RVmodel::description() const
 {
     string desc;
-    
-    desc += "extra_sigma\t";
+
+    if (multi_instrument)
+    {
+        for(int j=0; j<jitters.size(); j++)
+           desc += "jitter" + std::to_string(j+1) + "   ";
+    }
+    else
+        desc += "extra_sigma   ";
 
     if(trend)
-        desc += "slope\t";
+        desc += "slope   ";
+    
     if (obs_after_HARPS_fibers)
-        desc += "fiber_offset\t";
+        desc += "fiber_offset   ";
+
+    if (multi_instrument){
+        for(unsigned j=0; j<offsets.size(); j++)
+            desc += "offset" + std::to_string(j+1) + "   ";
+    }
+    
     if(GP)
-        desc += "eta1\teta2\teta3\teta4\t";
+        desc += "eta1   eta2   eta3   eta4   ";
 
-    desc += "ndim\tmaxNp\t";
+    desc += "ndim   maxNp   ";
     if(hyperpriors)
-        desc += "muP\twP\tmuK\t";
+        desc += "muP   wP   muK   ";
 
-    desc += "Np\t";
+    desc += "Np   ";
 
     if (planets.get_max_num_components()>0)
-        desc += "P\tK\tphi\tecc\tw\t";
+        desc += "P   K   phi   ecc   w   ";
 
-    desc += "staleness\tvsys";
+    desc += "staleness   vsys";
 
     return desc;
 }
@@ -440,6 +568,7 @@ string RVmodel::description() const
 
 void RVmodel::save_setup() {
     // save the options of the current model in a INI file
+    auto data = Data::get_instance();
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
@@ -453,10 +582,17 @@ void RVmodel::save_setup() {
     fout << "GP: " << GP << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
+    fout << "multi_instrument: " << multi_instrument << endl;
     fout << endl;
-    fout << "file: " << Data::get_instance().datafile << endl;
-    fout << "units: " << Data::get_instance().dataunits << endl;
-    fout << "skip: " << Data::get_instance().dataskip << endl;
+    fout << "file: " << data.datafile << endl;
+    fout << "units: " << data.dataunits << endl;
+    fout << "skip: " << data.dataskip << endl;
+    fout << "multi: " << data.datamulti << endl;
+    
+    fout << "files: ";
+    for (auto f: data.datafiles)
+        fout << f << ",";
+    fout << endl;
 
 	fout.close();
 }

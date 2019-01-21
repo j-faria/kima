@@ -79,6 +79,12 @@ def test_planet_mass():
                         (0., 0.))
 
 
+def test_planet_semimajor_axis():
+    from pykima.utils import get_planet_semimajor_axis
+    # get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False, verbose=False)
+    pass
+
+
 def test_KimaResults():
     pass
 

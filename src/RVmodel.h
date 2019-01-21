@@ -19,6 +19,10 @@ extern const bool obs_after_HARPS_fibers;
 // whether the model includes a linear trend
 extern const bool trend;
 
+// whether the data comes from different instruments
+// (and offsets should be included in the model)
+extern const bool multi_instrument;
+
 
 class RVmodel
 {
@@ -32,7 +36,12 @@ class RVmodel
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
 
         double background;
-        //std::vector<double> offsets;
+
+        std::vector<double> offsets = // between instruments
+              std::vector<double>(Data::get_instance().number_instruments - 1);
+        std::vector<double> jitters = // for each instrument
+              std::vector<double>(Data::get_instance().number_instruments);
+
         double slope, quad;
         double fiber_offset;
 
@@ -43,16 +52,8 @@ class RVmodel
         double log_eta1, log_eta2, log_eta3, log_eta4, log_eta5;
         double a,b,c,P;
 
-        /*celerite::solver::CholeskySolver<double> solver;
-        Eigen::VectorXd alpha_real,
-                 beta_real,
-                 alpha_complex_real,
-                 alpha_complex_imag,
-                 beta_complex_real,
-                 beta_complex_imag;*/
-
         // The signal
-        std::vector<long double> mu = 
+        std::vector<long double> mu = // the RV model
                             std::vector<long double>(Data::get_instance().N());
         void calculate_mu();
 
@@ -65,9 +66,6 @@ class RVmodel
         // The covariance matrix for the data
         Eigen::MatrixXd C {Data::get_instance().N(), Data::get_instance().N()};
         void calculate_C();
-
-        //QPkernel *kernel;
-        //HODLR_Tree<QPkernel> *A;
 
         unsigned int staleness;
 
