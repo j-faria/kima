@@ -17,7 +17,7 @@ $(SRCDIR)/main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
 
-EXAMPLES = multi_instrument #BL2009 CoRoT7 many_planets 51Peg default_priors
+EXAMPLES = BL2009 CoRoT7 many_planets 51Peg default_priors multi_instrument
 
 all: main examples
 
