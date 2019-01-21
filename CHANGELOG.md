@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### [Unreleased]
 
 #### Added
+
+- ability to analyse data from multiple instruments!!
 - new `kima-template` script to create a directory with all files necessary for a run
 - new `get_timespan()` method of the `Data` class
 - new `load`/`save` methods of `KimaResults` to load and save the model as a pickle file
@@ -14,14 +16,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - histogram of slope when present
 - save log likelihoods in the file _posterior_sample_info.txt_
 - read log likelihoods; new function to get the highest likelihood posterior sample
-- fail when _kima_model_setup.txt_ is not present
 - kima tips 
 - add "pickle" option to `kima-showresults`
 - new helpful analysis functions
 
-
 #### Changed
 
+- fail when _kima_model_setup.txt_ is not present
 - corner plot limits are adjusted if limits of the eta3 prior changed
 
 
