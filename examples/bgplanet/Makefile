@@ -1,4 +1,4 @@
-KIMA_DIR = /home/joao/Work/kima
+KIMA_DIR = ../..
 
 SRC_DIR = $(KIMA_DIR)/src
 DNEST4_PATH = $(KIMA_DIR)/DNest4/code
