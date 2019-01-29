@@ -31,6 +31,29 @@ def need_model_setup(exception):
     raise exception
 
 
+
+def read_datafile(datafile, skip):
+    """
+    Read data from `datafile` for multiple instruments.
+    Can be str, in which case the 4th column is assumed to contain an integer
+    identifier of the instrument.
+    Or list, in which case each element will be one different filename
+    containing three columns each.
+    """
+    if isinstance(datafile, list):
+        data = np.empty((0,3))
+        obs = np.empty((0,))
+        for i, df in enumerate(datafile):
+            d = np.loadtxt(df, usecols=(0,1,2), skiprows=skip)
+            data = np.append(data, d, axis=0)
+            obs = np.append(obs, (i+1)*np.ones((d.shape[0])))
+        return data, obs
+    else:
+        data = np.loadtxt(datafile, usecols=(0,1,2), skiprows=skip)
+        obs = np.loadtxt(datafile, usecols=(3,), skiprows=skip, dtype=int)
+        return data, obs
+
+
 def show_tips():
     """ Show a few tips on how to use kima """
     tips = (
@@ -129,12 +152,17 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
 
 def get_planet_mass_latex(P, K, e, star_mass=1.0, earth=False, **kargs):
     out = get_planet_mass(P, K, e, star_mass, full_output=True, verbose=False)
+
     if isinstance(P, float):
-        if earth: return '$%f$' % out[1]
-        else: return '$%f$' % out[0]
+        if earth:
+            return '$%f$' % out[1]
+        else:
+            return '$%f$' % out[0]
     else:
-        if earth: return percentile68_ranges_latex(out[2] * mjup2mearth)
-        else: return percentile68_ranges_latex(out[2])
+        if earth:
+            return percentile68_ranges_latex(out[2]*mjup2mearth)
+        else:
+            return percentile68_ranges_latex(out[2])
 
 
 def get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False,
@@ -182,3 +210,24 @@ def get_planet_semimajor_axis_latex(P, K, star_mass=1.0, earth=False, **kargs):
         return '$%f$' % out
     else:
         return '$%f$' % out[0]
+
+
+
+def lighten_color(color, amount=0.5):
+    """
+    Lightens the given color by multiplying (1-luminosity) by the given amount.
+    Input can be matplotlib color string, hex string, or RGB tuple.
+
+    Examples:
+    >> lighten_color('g', 0.3)
+    >> lighten_color('#F034A3', 0.6)
+    >> lighten_color((.3,.55,.1), 0.5)
+    """
+    import matplotlib.colors as mc
+    import colorsys
+    try:
+        c = mc.cnames[color]
+    except:
+        c = color
+    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+    return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])

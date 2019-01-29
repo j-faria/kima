@@ -13,7 +13,9 @@ except ImportError:
 from .keplerian import keplerian
 from .GP import GP, QPkernel
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
-                   percentile68_ranges, percentile68_ranges_latex
+                   percentile68_ranges, percentile68_ranges_latex,\
+                   read_datafile, lighten_color
+
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,6 +31,8 @@ except ImportError:
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 
 class KimaResults(object):
+    """ A class to hold, analyse, and display the results from kima """
+
     def __init__(self, options, data_file=None, 
                  fiber_offset=None, hyperpriors=None, trend=None, GPmodel=None,
                  posterior_samples_file='posterior_sample.txt'):
@@ -51,7 +55,7 @@ class KimaResults(object):
             open('kima_model_setup.txt')
         except IOError as exc:
             need_model_setup(exc)
-        
+
         setup.read('kima_model_setup.txt')
 
         if sys.version_info < (3, 0):
@@ -64,18 +68,42 @@ class KimaResults(object):
 
 
         if data_file is None:
-            data_file = setup['kima']['file']
+            self.multi = setup['kima']['multi'] == 'true'
+            if self.multi:
+                if setup['kima']['files'] == '':
+                    # multi is true but in only one file
+                    data_file = setup['kima']['file']
+                else:
+                    data_file = setup['kima']['files'].split(',')[:-1]
+                    # raise NotImplementedError('TO DO')
+            else:
+                data_file = setup['kima']['file']
+
+        self.data_skip = int(setup['kima']['skip'])
+        self.units = setup['kima']['units']
+
+
         print('Loading data file %s' % data_file)
         self.data_file = data_file
 
         self.data_skip = int(setup['kima']['skip'])
         self.units = setup['kima']['units']
-        
+
         if debug:
             print('--- skipping first %d rows of data file' % self.data_skip)
 
-        self.data = np.loadtxt(self.data_file, 
-                               skiprows=self.data_skip, usecols=(0,1,2))
+        if self.multi:
+            self.data, self.obs = read_datafile(self.data_file, self.data_skip)
+            # make sure the times are sorted when coming from multiple instruments
+            ind = self.data[:,0].argsort()
+            self.data = self.data[ind]
+            self.obs = self.obs[ind]
+            self.n_instruments = np.unique(self.obs).size
+            self.n_jitters = self.n_instruments
+        else:
+            self.data = np.loadtxt(self.data_file,
+                                   skiprows=self.data_skip, usecols=(0,1,2))
+            self.n_jitters = 1
 
         # to m/s
         if self.units == 'kms':
@@ -102,7 +130,12 @@ class KimaResults(object):
 
 
         start_parameters = 0
-        self.extra_sigma = self.posterior_sample[:, start_parameters]
+        if self.multi:
+            i1, i2 = start_parameters, start_parameters + self.n_jitters
+            self.extra_sigma = self.posterior_sample[:, i1:i2]
+            start_parameters += self.n_jitters - 1
+        else:
+            self.extra_sigma = self.posterior_sample[:, start_parameters]
 
         # find trend in the compiled model
         if trend is None:
@@ -110,8 +143,7 @@ class KimaResults(object):
         else:
             self.trend = trend
 
-        if debug: 
-            print('trend:', self.trend)
+        if debug: print('trend:', self.trend)
 
         if self.trend:
             n_trend = 1
@@ -128,8 +160,7 @@ class KimaResults(object):
         else:
             self.fiber_offset = fiber_offset
 
-        if debug: 
-            print('obs_after_fibers:', self.fiber_offset)
+        if debug: print('obs_after_fibers:', self.fiber_offset)
 
         if self.fiber_offset:
             n_offsets = 1
@@ -138,6 +169,17 @@ class KimaResults(object):
         else:
             n_offsets = 0
 
+
+        # multiple instruments ??
+        if self.multi:
+            # there are n instruments and n-1 offsets
+            n_inst_offsets = self.n_instruments - 1
+            istart = start_parameters + n_offsets + n_trend + 1
+            iend = istart + n_inst_offsets
+            ind = np.s_[istart : iend]
+            self.inst_offsets = self.posterior_sample[:, ind]
+        else:
+            n_inst_offsets = 0
 
         # find GP in the compiled model
         if GPmodel is None:
@@ -156,7 +198,7 @@ class KimaResults(object):
 
             for i in range(n_hyperparameters):
                 name = 'eta' + str(i+1)
-                ind = start_hyperpars + i
+                ind = start_parameters + n_trend + n_offsets + n_inst_offsets + 1 + i
                 setattr(self, name, self.posterior_sample[:, ind])
             
             self.GP = GP(QPkernel(1, 1, 1, 1), 
@@ -166,7 +208,7 @@ class KimaResults(object):
 
 
 
-        start_objects_print = start_parameters + n_offsets + \
+        start_objects_print = start_parameters + n_offsets + n_inst_offsets + \
                               n_trend + n_hyperparameters + 1
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
@@ -286,6 +328,8 @@ class KimaResults(object):
         self.T = self.T[which].flatten()
         self.A = self.A[which].flatten()
         self.E = self.E[which].flatten()
+        self.Omega = self.Omega[which].flatten()
+        self.T0 = self.T0[which].flatten()
 
 
     def get_medians(self):
@@ -542,22 +586,14 @@ class KimaResults(object):
             print('Model does not have GP! make_plot4() doing nothing...')
             return
 
-        # available_etas = [v for v in dir(self) if v.startswith('eta')]
-        available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
-        labels = [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
-        units = ['m/s', 'days', 'days', None]
-        xlabels = []
-        for label, unit in zip(labels, units):
-            xlabels.append(label + ' (%s)' % unit 
-                                if unit is not None else label)
+        available_etas = [v for v in dir(self) if v.startswith('eta')][:-1]
+        labels = ['eta1', 'eta2', 'eta3', 'eta4']
 
-        fig, axes = plt.subplots(2, len(available_etas)//2)
-        fig.suptitle('Posterior distributions for GP hyperparameters')
-
+        fig, axes = plt.subplots(2, int(len(available_etas)/2))
         for i, eta in enumerate(available_etas):
             ax = np.ravel(axes)[i]
             ax.hist(getattr(self, eta), bins=40)
-            ax.set(xlabel=xlabels[i], ylabel='posterior samples')
+            ax.set(xlabel=labels[i], ylabel='posterior samples')
         
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
@@ -580,52 +616,27 @@ class KimaResults(object):
 
         # available_etas = [v for v in dir(self) if v.startswith('eta')]
         available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
-        labels = [r'$s$'] + [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
-        units = ['m/s', 'm/s', 'days', 'days', None]
+        labels = [r'$s$']*self.n_jitters
+        labels += [r'$\eta_%d$' % (i+1) for i,_ in enumerate(available_etas)]
+        units = ['m/s']*self.n_jitters + ['m/s', 'days', 'days', None]
         xlabels = []
         for label, unit in zip(labels, units):
             xlabels.append(label + ' (%s)' % unit 
                                 if unit is not None else label)
 
-
-        ### color code by number of planets
-        # self.corner1 = None
-        # for N in range(6)[::-1]:
-        #     mask = self.posterior_sample[:, self.index_component] == N
-        #     if mask.any():
-        #         self.post_samples = np.vstack((self.extra_sigma, self.eta1, self.eta2, self.eta3, self.eta4)).T
-        #         self.post_samples = self.post_samples[mask, :]
-        #         # self.post_samples = np.vstack((self.extra_sigma, self.eta1, self.eta2, self.eta3, self.eta4, self.eta5)).T
-        #         print self.post_samples.shape
-        #         # print (self.pmin, self.pmax)
-        #         # labels = ['$\sigma_{extra}$', '$\eta_1$', '$\eta_2$', '$\eta_3$', '$\eta_4$', '$\eta_5$']
-                
-        #         self.corner1 = corner.corner(self.post_samples, fig=self.corner1, labels=labels, show_titles=True,
-        #                                      plot_contours=False, plot_datapoints=True, plot_density=False,
-        #                                      # fill_contours=True, smooth=True,
-        #                                      # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
-        #                                      hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-        #                                      hist_kwargs={'normed':True, 'color':colors[N]},
-        #                                      range=[1., 1., 1., (self.pmin, self.pmax), 1],
-        #                                      shared_axis=True, data_kwargs={'alpha':1, 'color':colors[N]},
-        #                                      )
-
-        #         ax = self.corner1.axes[3]
-        #         ax.plot([2,2.1], color=colors[N], lw=3)
-        #     else:
-        #         print 'Skipping N=%d, no posterior samples...' % N
-        # ax.legend([r'$N_p=%d$'%N for N in range(6)[::-1]])
-
-
         ### all Np together
-        variables = [self.extra_sigma]
+        if self.multi:
+            variables = list(self.extra_sigma.T)
+        else:
+            variables = [self.extra_sigma]
+
         for eta in available_etas:
             variables.append(getattr(self, eta))
 
         self.post_samples = np.vstack(variables).T
 
-        ranges = [1.]*(len(available_etas)+1)
-        ranges[3] = (self.pmin, self.pmax)
+        ranges = [1.]*(len(available_etas) + self.extra_sigma.shape[1])
+        # ranges[3] = (self.pmin, self.pmax)
 
         c = corner.corner
         try:
@@ -634,7 +645,7 @@ class KimaResults(object):
                             # fill_contours=True, smooth=True,
                             # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
                             hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-                            hist_kwargs={'normed':True}, 
+                            hist_kwargs={'density':True},
                             range=ranges, data_kwargs={'alpha':1},
                             )
         except AssertionError as exc:
@@ -764,6 +775,8 @@ class KimaResults(object):
         If the model has a GP component, the prediction is calculated using the
         GP hyperparameters for each of the random samples.
         """
+        colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
+
         samples = self.get_sorted_planet_samples()
         if self.max_components > 0:
             samples, mask = \
@@ -772,8 +785,8 @@ class KimaResults(object):
             mask = np.ones(samples.shape[0], dtype=bool)
 
         t = self.data[:,0].copy()
-        tt = np.linspace(t[0]-over*t.ptp(), t[-1]+over*t.ptp(), 
-                         5000+int(100*over))
+        tt = np.linspace(t.min()-over*t.ptp(), t.max()+over*t.ptp(), 
+                         10000+int(100*over))
 
         if self.GPmodel:
             # let's be more reasonable for the number of GP prediction points
@@ -803,8 +816,11 @@ class KimaResults(object):
                 v_at_t = np.zeros_like(t)
                 v_at_ttGP = np.zeros_like(ttGP)
 
+            # get the planet parameters for the current (ith) sample
             pars = samples[i, :].copy()
+            # how many planets in this sample?
             nplanets = pars.size / self.n_dimensions
+            # add the Keplerians for each of the planets
             for j in range(int(nplanets)):
                 P = pars[j + 0*self.max_components]
                 if P==0.0:
@@ -819,12 +835,15 @@ class KimaResults(object):
                     v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
                     v_at_ttGP += keplerian(ttGP, P, K, ecc, w, t0, 0.)
 
+            # systemic velocity for the current (ith) sample
             vsys = self.posterior_sample[mask][i, -1]
             v += vsys
             if self.GPmodel:
                 v_at_t += vsys
                 v_at_ttGP += vsys
 
+            
+            # add the trend, if present
             if self.trend:
                 v += self.trendpars[i]*(tt - self.tmiddle)
                 if self.GPmodel:
@@ -842,9 +861,41 @@ class KimaResults(object):
                 ax.plot(ttGP, mu + v_at_ttGP, alpha=0.1, color='plum')
 
             # v only has the Keplerian components, not the GP predictions
-            ax.plot(tt, v, alpha=0.2, color='k')
+            # ax.plot(tt, v, alpha=0.2, color='k')
+            
+            # add the instrument offsets, if present
+            if self.multi and len(self.data_file) > 1:
+                number_offsets = self.inst_offsets.shape[1]
+                for j in range(number_offsets + 1):
+                    if j == number_offsets:
+                        of = 0.
+                    else:
+                        of = self.inst_offsets[i, j]
+                    
+                    instrument_mask = self.obs == j+1
+                    start = self.data[instrument_mask,0].min()
+                    end = self.data[instrument_mask,0].max()
+                    time_mask = (tt>start) & (tt<end)
+
+                    v_i = v.copy()
+                    v_i[time_mask] += of
+                    ax.plot(tt[time_mask], v_i[time_mask], 
+                            alpha=0.2, color=lighten_color(colors[j], 1.5))
+            else:
+                ax.plot(tt, v, alpha=0.2, color='k')
+
             if show_vsys:
                 ax.plot(t, vsys*np.ones_like(t), alpha=0.2, color='r', ls='--')
+                if self.multi:
+                    for j in range(self.inst_offsets.shape[1]):
+                        instrument_mask = self.obs == j+1
+                        start = self.data[instrument_mask,0].min()
+                        end = self.data[instrument_mask,0].max()
+
+                        of = self.inst_offsets[i, j]
+                        
+                        ax.hlines(vsys+of, xmin=start, xmax=end, alpha=0.2,
+                                  color=colors[j])
 
 
         ## we could also choose to plot the GP prediction using the median of
@@ -872,13 +923,23 @@ class KimaResults(object):
         ## plot the data
         if self.fiber_offset:
             mask = t < 57170
-            ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
+            if self.multi:
+                for j in range(self.inst_offsets.shape[1]+1):
+                    m = self.obs == j+1
+                    ax.errorbar(t[m&mask], y[m&mask], yerr[m&mask], fmt='o', color=colors[j])
+            # ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
+
             yshift = np.vstack([y[~mask], y[~mask]-self.offset.mean()])
             for i, ti in enumerate(t[~mask]):
-                ax.errorbar(ti, yshift[0,i], fmt='o', color='m', alpha=0.3)
+                ax.errorbar(ti, yshift[0,i], fmt='o', color='m', alpha=0.2)
                 ax.errorbar(ti, yshift[1,i], yerr[~mask][i], fmt='o', color='r')
         else:
-            ax.errorbar(t, y, yerr, fmt='o')
+            if self.multi:
+                for j in range(self.inst_offsets.shape[1]+1):
+                    m = self.obs == j+1
+                    ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j])
+            else:
+                ax.errorbar(t, y, yerr, fmt='o')
 
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
         plt.tight_layout()
@@ -912,10 +973,10 @@ class KimaResults(object):
         _, ax = plt.subplots(1,1)
         ax.hist(self.trendpars.ravel())
         title = 'Posterior distribution for slope \n %s' % estimate
-        ax.set(xlabel='slope' + units   , ylabel='posterior samples',
+        ax.set(xlabel='slope' + units, ylabel='posterior samples',
                title=title)
 
-    def hist_vsys(self):
+    def hist_vsys(self, show_offsets=True):
         """ Plot the histogram of the posterior for the systemic velocity """
         vsys = self.posterior_sample[:,-1]
         units = ' (m/s)' if self.units=='ms' else ' (km/s)'
@@ -927,14 +988,47 @@ class KimaResults(object):
         ax.set(xlabel='vsys' + units, ylabel='posterior samples',
                title=title)
 
+        if show_offsets and self.multi:
+            n_inst_offsets = self.inst_offsets.shape[1]
+            fig, axs = plt.subplots(1, n_inst_offsets, sharey=True,
+                                  figsize=(n_inst_offsets*3, 5),
+                                  squeeze=True)
+            if n_inst_offsets == 1:
+                axs = [axs,]
+
+            for i in range(n_inst_offsets):
+                a = self.inst_offsets[:,i]
+                estimate = percentile68_ranges_latex(a) + units
+                axs[i].hist(a)
+                axs[i].set(xlabel='offset %d' % (i+1), title=estimate,
+                           ylabel='posterior samples')
+
+            title = 'Posterior distribution(s) for instrument offset(s)'
+            fig.suptitle(title)
+
 
     def hist_extra_sigma(self):
         """ Plot the histogram of the posterior for the additional white noise """
         units = ' (m/s)' if self.units=='ms' else ' (km/s)'
-        estimate = percentile68_ranges_latex(self.extra_sigma) + units
 
-        _, ax = plt.subplots(1,1)
-        ax.hist(self.extra_sigma)
-        title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
-        ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
-               title=title)
+        if self.multi: # there are n_instruments jitters
+            fig, axs = plt.subplots(1, self.n_instruments, sharey=True,
+                                  figsize=(self.n_instruments*3, 5),
+                                  squeeze=True)
+            for i, jit in enumerate(self.extra_sigma.T):
+                estimate = percentile68_ranges_latex(jit) + units
+                axs[i].hist(jit)
+                axs[i].set(xlabel='jitter %d' % (i+1), title=estimate,
+                           ylabel='posterior samples')
+
+            title = 'Posterior distribution(s) for extra white noise(s)'
+            fig.suptitle(title)
+
+        else:
+            estimate = percentile68_ranges_latex(self.extra_sigma) + units
+            _, ax = plt.subplots(1,1)
+            ax.hist(self.extra_sigma)
+            title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
+            ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
+                title=title)
+

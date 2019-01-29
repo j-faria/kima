@@ -12,6 +12,7 @@ const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
 const bool hyperpriors = false;
 const bool trend = false;
+const bool multi_instrument = false;
 
 // options for the model
 RVmodel::RVmodel():fix(true),npmax(1)
