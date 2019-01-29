@@ -81,6 +81,7 @@ class RVmodel
         std::shared_ptr<DNest4::ContinuousDistribution> Jprior;
         std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> fiber_offset_prior;
+        std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
 
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta1_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta2_prior;

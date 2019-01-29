@@ -31,6 +31,9 @@ void RVmodel::setPriors(DNest4::RNG& rng){
     if (!slope_prior)
         slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
 
+    if (!offsets_prior)
+        offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+
     if (GP) { /* GP parameters */
         if (!log_eta1_prior)
             log_eta1_prior = make_prior<Uniform>(-5, 5);
