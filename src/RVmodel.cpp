@@ -594,6 +594,26 @@ void RVmodel::save_setup() {
         fout << f << ",";
     fout << endl;
 
+    fout << endl;
+
+    fout << "[priors.general]" << endl;
+    fout << "Cprior: " << *Cprior << endl;
+    fout << "Jprior: " << *Jprior << endl;
+    if (trend)
+        fout << "slope_prior: " << *slope_prior << endl;
+    if (obs_after_HARPS_fibers)
+        fout << "fiber_offset_prior: " << *fiber_offset_prior << endl;
+    if (multi_instrument)
+        fout << "offsets_prior: " << *offsets_prior << endl;
+
+    if (GP){
+        fout << endl << "[priors.GP]" << endl;
+        fout << "log_eta1_prior: " << *log_eta1_prior << endl;
+        fout << "log_eta2_prior: " << *log_eta2_prior << endl;
+        fout << "eta3_prior: " << *eta3_prior << endl;
+        fout << "log_eta4_prior: " << *log_eta4_prior << endl;
+    }
+
 	fout.close();
 }
 
