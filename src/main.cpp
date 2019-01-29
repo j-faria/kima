@@ -26,11 +26,11 @@ int main(int argc, char** argv)
 
     /* load the file (RVs are in km/s) */
     /* don't skip any lines in the header */
-	Data::get_instance().load(datafile, "kms", 0);
+    Data::get_instance().load(datafile, "kms", 0);
 
     // set the sampler and run it!
-	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
-	sampler.run(50);
+    Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
+    sampler.run(50);
 
-	return 0;
+    return 0;
 }
