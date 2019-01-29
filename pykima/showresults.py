@@ -142,6 +142,11 @@ def showresults(options=''):
     show_tips()
 
     res = KimaResults(list(set(plots)))
+
+    res.evidence = evidence
+    res.information = H
+    res.ESS = res.posterior_sample.shape[0]
+
     if args.pickle:
         getinput = input
         # if Python 2, use raw_input()
