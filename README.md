@@ -4,6 +4,8 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/j-faria/kima/blob/master/LICENSE)
 [![Coverage Status](https://coveralls.io/repos/github/j-faria/kima/badge.svg?branch=master)](https://coveralls.io/github/j-faria/kima?branch=master)
 [![status](https://joss.theoj.org/papers/b396d6f8c5566bb67844f05bda0cbc8a/status.svg)](https://joss.theoj.org/papers/b396d6f8c5566bb67844f05bda0cbc8a)
+[![say kima](https://img.shields.io/badge/say-kima-orange.svg)](https://raw.githubusercontent.com/j-faria/kima/master/sounds/all.mp3)
+
 
 <img src="logo/logo.png" width="200"
      alt="Logo created by Solène Ulmer-Moll">
