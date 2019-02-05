@@ -12,26 +12,12 @@
 // Uniform *slope_prior = new Uniform(-10, 10);
 
 
-// this default prior for the instrument offsets is awful!
-// the prior probably should depend on the data,
-// -> a good default would be Uniform( -data.get_RV_span(), data.get_RV_span() )
-Uniform *offsets_prior = new Uniform(-10, 10);
+// // LogUniform *Pprior = new LogUniform(1.0, 1E5); // days
+// ModifiedLogUniform *Kprior = new ModifiedLogUniform(1.0, 2E3); // m/s
 
-// HARPS fiber offset prior
-// Gaussian fit to the offsets determined by Lo Curto et al. 2015
-// (only for FGK stars)
-// mean, std = 14.641789473684208, 2.7783035258938971
-// Gaussian *fiber_offset_prior = new Gaussian(15., 3.);
-// Note that M dwarfs show much smaller offsets, of ~0-1 m/s
-Uniform *fiber_offset_prior = new Uniform(0., 50.);
-
-
-LogUniform *Pprior = new LogUniform(1.0, 1E5); // days
-ModifiedLogUniform *Kprior = new ModifiedLogUniform(1.0, 2E3); // m/s
-
-Uniform *eprior = new Uniform(0., 1.);
-Uniform *phiprior = new Uniform(0.0, 2*M_PI);
-Uniform *wprior = new Uniform(0.0, 2*M_PI);
+// Uniform *eprior = new Uniform(0., 1.);
+// Uniform *phiprior = new Uniform(0.0, 2*M_PI);
+// Uniform *wprior = new Uniform(0.0, 2*M_PI);
 
 
 /* GP parameters */

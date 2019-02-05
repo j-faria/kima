@@ -1,8 +1,10 @@
 #ifndef DNest4_RVConditionalPrior
 #define DNest4_RVConditionalPrior
 
+#include <memory>
 #include "RNG.h"
 #include "RJObject/ConditionalPriors/ConditionalPrior.h"
+#include "DNest4.h"
 
 // whether the model includes hyper-priors 
 // for the orbital period and semi-amplitude
@@ -21,6 +23,14 @@ class RVConditionalPrior:public DNest4::ConditionalPrior
 
 	public:
 		RVConditionalPrior();
+
+		// priors for all planet parameters
+		std::shared_ptr<DNest4::ContinuousDistribution> Pprior;
+		std::shared_ptr<DNest4::ContinuousDistribution> Kprior;
+		std::shared_ptr<DNest4::ContinuousDistribution> eprior;
+		std::shared_ptr<DNest4::ContinuousDistribution> phiprior;
+		std::shared_ptr<DNest4::ContinuousDistribution> wprior;
+
 
 		void from_prior(DNest4::RNG& rng);
 
