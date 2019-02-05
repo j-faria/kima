@@ -13,22 +13,7 @@ const bool trend = false;
 const bool multi_instrument = true; // RVs come from multiple instruments
 
 RVmodel::RVmodel():fix(true),npmax(1)
-{
-    auto data = Data::get_instance();
-    double ymin = data.get_y_min();
-    double ymax = data.get_y_max();
-    double RVspan = data.get_RV_span();
-
-    // set the prior for the systemic velocity
-    Cprior = new Uniform(ymin, ymax);
-    // set the prior for the between-instrument offsets
-    offsets_prior = new Uniform(-RVspan, RVspan);
-
-    // note: there is one extra white noise (jitter) parameter per instrument
-    // they all share the same prior, defined as Jprior
-
-    save_setup();
-}
+{}
 
 
 int main(int argc, char** argv)

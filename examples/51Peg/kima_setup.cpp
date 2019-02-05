@@ -14,15 +14,16 @@ const bool multi_instrument = false;
 
 RVmodel::RVmodel():fix(false),npmax(1)
 {
-    Cprior = new Uniform(-10, 10); // m/s
-    Jprior = new ModifiedLogUniform(1.0, 1000.); // m/s
+    Cprior = make_prior<Uniform>(-10, 10); // m/s
+    Jprior = make_prior<ModifiedLogUniform>(1.0, 1000.); // m/s
 
-    Pprior = new LogUniform(0.2, 2000); // days
-    Kprior = new ModifiedLogUniform(1.0, 1000); // m/s
+    auto conditional = planets.get_conditional_prior();
+    conditional->Pprior = make_prior<LogUniform>(0.2, 2000); // days
+    conditional->Kprior = make_prior<ModifiedLogUniform>(1.0, 1000); // m/s
 
-    eprior = new Uniform(0., 1.);
-    phiprior = new Uniform(0.0, 2*M_PI);
-    wprior = new Uniform(0.0, 2*M_PI);
+    conditional->eprior = make_prior<Uniform>(0., 1.);
+    conditional->phiprior = make_prior<Uniform>(0.0, 2*M_PI);
+    conditional->wprior = make_prior<Uniform>(0.0, 2*M_PI);
 
     save_setup();
 }

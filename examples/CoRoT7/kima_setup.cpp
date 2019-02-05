@@ -4,9 +4,6 @@
 
 using namespace DNest4;
 
-/* priors */
-//  data-dependent priors should be defined in the RVmodel() 
-//  constructor and use Data::get_instance() 
 #include "default_priors.h"
 
 const bool obs_after_HARPS_fibers = false;
@@ -16,16 +13,8 @@ const bool trend = false;
 const bool multi_instrument = false;
 
 // options for the model
-// 
 RVmodel::RVmodel():fix(false),npmax(5)
-{
-    double ymin = Data::get_instance().get_y_min();
-    double ymax = Data::get_instance().get_y_max();
-    // can now use ymin and ymax in setting prior for vsys
-    Cprior = new Uniform(ymin, ymax);
-
-    save_setup();
-}
+{}
 
 
 int main(int argc, char** argv)
