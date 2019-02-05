@@ -18,7 +18,12 @@ const bool hyperpriors = false;
 const bool trend = false;
 const bool multi_instrument = false;
 
-RVmodel::RVmodel():fix(true),npmax(0) {}
+RVmodel::RVmodel() : fix(true), npmax(1)
+{
+    // Cprior = make_prior<Uniform>(0, 1);
+    auto c = planets.get_conditional_prior();
+    // c->Pprior = make_prior<Gaussian>(0, 1);
+}
 
 int main(int argc, char** argv)
 {
