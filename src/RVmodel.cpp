@@ -8,7 +8,7 @@
 #include <limits>
 #include <fstream>
 #include <chrono>
-#include <time.h> 
+#include <time.h>
 
 using namespace std;
 using namespace Eigen;
@@ -56,12 +56,12 @@ void RVmodel::setPriors(DNest4::RNG& rng){
 void RVmodel::from_prior(RNG& rng)
 {
     // preliminaries
-    setPriors(rng); 
+    setPriors(rng);
     save_setup();
 
     planets.from_prior(rng);
     planets.consolidate_diff();
-    
+
     background = Cprior->generate(rng);
 
     if(multi_instrument)
@@ -76,7 +76,7 @@ void RVmodel::from_prior(RNG& rng)
         extra_sigma = Jprior->generate(rng);
     }
 
-    
+
     if(obs_after_HARPS_fibers)
         fiber_offset = fiber_offset_prior->generate(rng);
 
@@ -97,7 +97,7 @@ void RVmodel::from_prior(RNG& rng)
     calculate_mu();
 
     if(GP) calculate_C();
-    
+
 }
 
 void RVmodel::calculate_C()
@@ -118,7 +118,7 @@ void RVmodel::calculate_C()
     {
         for(size_t j=i; j<N; j++)
         {
-            C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2) 
+            C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2)
                         -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
 
             if(i==j)
@@ -172,7 +172,7 @@ void RVmodel::calculate_mu()
     {
         mu.assign(mu.size(), background);
         staleness = 0;
-        if(trend) 
+        if(trend)
         {
             for(size_t i=0; i<t.size(); i++)
             {
@@ -185,7 +185,7 @@ void RVmodel::calculate_mu()
             for(size_t j=0; j<offsets.size(); j++)
             {
                 for(size_t i=0; i<t.size(); i++)
-                {   
+                {
                     if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
             }
@@ -215,7 +215,7 @@ void RVmodel::calculate_mu()
             P = exp(components[j][0]);
         else
             P = components[j][0];
-        
+
         K = components[j][1];
         phi = components[j][2];
         ecc = components[j][3];
@@ -233,12 +233,16 @@ void RVmodel::calculate_mu()
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
     cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
-    #endif    
+    #endif
 
 }
 
 double RVmodel::perturb(RNG& rng)
 {
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
+
     auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
     const vector<int>& obsi = data.get_obsi();
@@ -423,6 +427,13 @@ double RVmodel::perturb(RNG& rng)
     }
 
 
+    #if TIMING
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "Perturb took ";
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6;
+    cout << " ms" << std::endl;
+    #endif
+
     return logH;
 }
 
@@ -435,7 +446,7 @@ double RVmodel::log_likelihood() const
     const vector<double>& y = data.get_y();
     const vector<double>& sig = data.get_sig();
     const vector<int>& obsi = data.get_obsi();
-    
+
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -468,10 +479,10 @@ double RVmodel::log_likelihood() const
         logL = -0.5*y.size()*log(2*M_PI)
                 - 0.5*logDeterminant - 0.5*exponent;
 
-    } 
+    }
     else
     {
-        // The following code calculates the log likelihood 
+        // The following code calculates the log likelihood
         // in the case of a t-Student model
         //  for(size_t i=0; i<y.size(); i++)
         //  {
@@ -481,7 +492,7 @@ double RVmodel::log_likelihood() const
         //          - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
         //  }
 
-        // The following code calculates the log likelihood 
+        // The following code calculates the log likelihood
         // in the case of a Gaussian likelihood
         double var, jit;
         for(size_t i=0; i<y.size(); i++)
@@ -525,13 +536,13 @@ void RVmodel::print(std::ostream& out) const
     }
     else
         out<<extra_sigma<<'\t';
-    
+
     if(trend)
         out<<slope<<'\t';
 
     if (obs_after_HARPS_fibers)
         out<<fiber_offset<<'\t';
-    
+
     if (multi_instrument){
         for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
@@ -540,7 +551,7 @@ void RVmodel::print(std::ostream& out) const
 
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
-  
+
     planets.print(out);
 
     out<<' '<<staleness<<' ';
@@ -561,7 +572,7 @@ string RVmodel::description() const
 
     if(trend)
         desc += "slope   ";
-    
+
     if (obs_after_HARPS_fibers)
         desc += "fiber_offset   ";
 
@@ -569,7 +580,7 @@ string RVmodel::description() const
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + "   ";
     }
-    
+
     if(GP)
         desc += "eta1   eta2   eta3   eta4   ";
 
@@ -610,12 +621,11 @@ void RVmodel::save_setup() {
     fout << "units: " << data.dataunits << endl;
     fout << "skip: " << data.dataskip << endl;
     fout << "multi: " << data.datamulti << endl;
-    
+
     fout << "files: ";
     for (auto f: data.datafiles)
         fout << f << ",";
     fout << endl;
-
     fout << endl;
 
     fout << "[priors.general]" << endl;
@@ -636,6 +646,21 @@ void RVmodel::save_setup() {
         fout << "log_eta4_prior: " << *log_eta4_prior << endl;
     }
 
+    if (planets.get_max_num_components()>0){
+        auto conditional = planets.get_conditional_prior();
+        fout << endl << "[priors.planets]" << endl;
+        fout << "Pprior: " << *conditional->Pprior << endl;
+        fout << "Kprior: " << *conditional->Kprior << endl;
+        fout << "eprior: " << *conditional->eprior << endl;
+        fout << "phiprior: " << *conditional->phiprior << endl;
+        fout << "wprior: " << *conditional->wprior << endl;
+
+        // fout << "log_muP_prior: " << *log_muP_prior << endl;
+        // fout << "wP_prior: " << *wP_prior << endl;
+        // fout << "log_muK_prior: " << *log_muK_prior << endl;
+    }
+
+    fout << endl;
 	fout.close();
 }
 
