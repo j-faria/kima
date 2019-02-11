@@ -107,7 +107,7 @@ def _parse_args(options):
                      plot_number=plots)
 
 
-def showresults(options=''):
+def showresults(options='', force_return=False):
     """
     Generate and plot results from a kima run. 
     The argument `options` should be a string with the same options as for 
@@ -158,7 +158,7 @@ def showresults(options=''):
     show()  # render the plots
 
     # __main__.__file__ doesn't exist in the interactive interpreter
-    if not hasattr(__main__, '__file__'):
+    if not hasattr(__main__, '__file__') or force_return:
         return res
 
 
