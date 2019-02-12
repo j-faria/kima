@@ -25,8 +25,9 @@ def _parse_args():
     else:
         return
 
-def main():
-    args = _parse_args()
+def main(args=None):
+    if args is None:
+        args = _parse_args()
 
     kimadir = '{kimadir}' # filled by setup.py
 
