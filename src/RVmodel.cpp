@@ -46,10 +46,8 @@ void RVmodel::setPriors(DNest4::RNG& rng){
     }
 
     if (!fiber_offset_prior)
-        // from the offsets determined by Lo Curto et al. 2015 (only FGK stars)
-        // mean, std = 14.641789473684208, 2.7783035258938971
-        // for M stars, the offset is close to 0 m/s (!!)
-        fiber_offset_prior = make_prior<Gaussian>(15., 3.);
+        fiber_offset_prior = make_prior<Uniform>(0, 50);
+        // fiber_offset_prior = make_prior<Gaussian>(15., 3.);
 }
 
 
