@@ -3,4 +3,4 @@
 	url = https://github.com/eigenteam/eigen-git-mirror.git
 [submodule "DNest4"]
 	path = DNest4
-	url = https://github.com/eggplantbren/DNest4.git
+	url = https://github.com/j-faria/DNest4.git
