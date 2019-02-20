@@ -6,7 +6,7 @@ EIGEN_PATH = $(KIMA_DIR)/eigen
 
 includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH)
 
-CXXFLAGS = -pthread -std=c++11 -O3 -w
+# CXXFLAGS = -pthread -std=c++11 -O3 -w
 LIBS = -ldnest4 -L/usr/local/lib
 
 KIMA_SRCS =\

@@ -4,6 +4,12 @@ EIGEN_PATH = eigen
 export CXX = g++
 
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
+
+default_pie := $(shell $(CXX) -v 2>&1 >/dev/null | grep enable-default-pie)
+ifneq ($(default_pie),)
+  CXXFLAGS += -no-pie
+endif
+
 LIBS = -L$(DNEST4_PATH) -ldnest4 -L/usr/local/lib
 includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) 
 
