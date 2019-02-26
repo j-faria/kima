@@ -6,7 +6,13 @@ EIGEN_PATH = $(KIMA_DIR)/eigen
 
 includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH)
 
-#CXXFLAGS = -pthread -std=c++11 -O3 -w
+CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
+
+default_pie := $(shell $(CXX) -v 2>&1 >/dev/null | grep enable-default-pie)
+ifneq ($(default_pie),)
+  CXXFLAGS += -no-pie
+endif
+
 LIBS = -ldnest4 -L/usr/local/lib
 
 KIMA_SRCS =\
