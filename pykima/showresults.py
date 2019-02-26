@@ -34,12 +34,16 @@ def findpop(value, lst):
 def usage(full=True):
     u = "usage: kima-showresults "\
         "[rv] [planets] [orbital] [gp] [extra] [1, ..., 7]\n"\
-        "                        [all] [-h/--help] [--version]"
+        "                        [all] [pickle] [--save-plots] "\
+                                "[-h/--help] [--version]"
     u += '\n\n'
     if not full: return u
 
     pos = ["positional arguments:\n"]
-    names = ['rv', 'planets', 'orbital', 'gp', 'extra', 'all', 'pickle']
+    names = [
+        'rv', 'planets', 'orbital', 'gp', 'extra', 'all', 'pickle',
+        '--save-plots'
+    ]
     descriptions = \
         ["Plot posterior realizations of the model over the RV measurements",
          "Plot posterior for number of planets",
@@ -47,7 +51,8 @@ def usage(full=True):
          "Plot posteriors for GP hyperparameters",
          "Plot posteriors for fiber offset, systematic velocity, and extra white noise",
          "Show all plots",
-         "Save the model into a pickle file (filename will be prompted)"
+         "Save the model into a pickle file (filename will be prompted)",
+         "Instead of showing, save the plots as .png files (does not work for diagnostic plots)",
         ]
 
     for n, d in zip(names, descriptions):
@@ -75,11 +80,15 @@ def _parse_args(options):
         print('kima', open(version_file).read().strip())  # same as kima
         sys.exit(0)
 
+    # save all plots?
+    save_plots = findpop('--save-plots', args)
+
     number_options = ['1', '2', '3', '4', '5', '6', '7']
     argstuple = namedtuple('Arguments',
                                 ['rv', 'planets', 'orbital', 'gp', 'extra'] \
                                 + ['diagnostic'] + ['pickle'] \
-                                + ['plot_number'])
+                                + ['plot_number'] \
+                                + ['save_plots'])
 
     pick = findpop('pickle', args)
     diag = findpop('diagnostic', args)
@@ -104,7 +113,7 @@ def _parse_args(options):
         sys.exit(1)
 
     return argstuple(rv, planets, orbital, gp, extra, diag, pick,
-                     plot_number=plots)
+                     plot_number=plots, save_plots=save_plots)
 
 
 def showresults(options='', force_return=False):
@@ -141,7 +150,7 @@ def showresults(options='', force_return=False):
 
     show_tips()
 
-    res = KimaResults(list(set(plots)))
+    res = KimaResults(list(set(plots)), save_plots=args.save_plots)
 
     res.evidence = evidence
     res.information = H
@@ -155,7 +164,8 @@ def showresults(options='', force_return=False):
 
         res.save(getinput('Filename to save pickle model: '))
 
-    show()  # render the plots
+    if not args.save_plots:
+        show()  # render the plots
 
     # __main__.__file__ doesn't exist in the interactive interpreter
     if not hasattr(__main__, '__file__') or force_return:

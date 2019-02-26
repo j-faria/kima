@@ -33,12 +33,13 @@ colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 class KimaResults(object):
     """ A class to hold, analyse, and display the results from kima """
 
-    def __init__(self, options, data_file=None, 
+    def __init__(self, options, data_file=None, save_plots=False,
                  fiber_offset=None, hyperpriors=None, trend=None, GPmodel=None,
                  posterior_samples_file='posterior_sample.txt'):
 
         self.options = options
         debug = False # 'debug' in options
+        self.save_plots = save_plots
 
         pwd = os.getcwd()
         path_to_this_file = os.path.abspath(__file__)
@@ -475,7 +476,7 @@ class KimaResults(object):
 
     def make_plot1(self):
         """ Plot the histogram of the posterior for Np """
-        _, ax = plt.subplots(1,1)
+        fig, ax = plt.subplots(1,1)
         # n, _, _ = plt.hist(self.posterior_sample[:, self.index_component], 100)
         
         bins = np.arange(self.max_components+2)
@@ -492,6 +493,11 @@ class KimaResults(object):
 
         nn = n[np.nonzero(n)]
         print('Np probability ratios: ', nn.flat[1:] / nn.flat[:-1])
+        
+        if self.save_plots:
+            filename = 'kima-showresults-fig1.png'
+            print('saving in', filename)
+            fig.savefig(filename)
 
 
     def make_plot2(self, bins=None):
@@ -532,7 +538,11 @@ class KimaResults(object):
                xlabel=r'(Period/days)',
                ylabel='Number of Posterior Samples',
                title='Posterior distribution for the orbital period(s)')
-        # plt.show()
+
+        if self.save_plots:
+            filename = 'kima-showresults-fig2.png'
+            print('saving in', filename)
+            fig.savefig(filename)
 
 
     def make_plot3(self, points=True):
@@ -555,7 +565,7 @@ class KimaResults(object):
         A, E = self.A, self.E
 
 
-        _, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
         if points:
             ax1.loglog(T, A, '.', markersize=2)
@@ -579,6 +589,11 @@ class KimaResults(object):
                 ylim=[0, 1],
                 xlim=[0.1, 1e7])
 
+        if self.save_plots:
+            filename = 'kima-showresults-fig3.png'
+            print('saving in', filename)
+            fig.savefig(filename)
+
 
     def make_plot4(self):
         """ Plot histograms for the GP hyperparameters """
@@ -597,8 +612,13 @@ class KimaResults(object):
         
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
+        if self.save_plots:
+            filename = 'kima-showresults-fig4.png'
+            print('saving in', filename)
+            fig.savefig(filename)
 
-    def make_plot5(self, show=True, save=False):
+
+    def make_plot5(self, show=True):
         """ Corner plot for the GP hyperparameters """
 
         if not self.GPmodel:
@@ -659,8 +679,11 @@ class KimaResults(object):
         if show:
             self.corner1.tight_layout(rect=[0, 0.03, 1, 0.95])
         
-        if save:
-            self.corner1.savefig(save)
+        if self.save_plots:
+            filename = 'kima-showresults-fig5.png'
+            print('saving in', filename)
+            self.corner1.savefig(filename)
+
 
 
     def get_sorted_planet_samples(self):
@@ -806,7 +829,7 @@ class KimaResults(object):
         # from the (sorted, period-cut) posterior samples
         ii = np.random.randint(samples.shape[0], size=ncurves)
 
-        _, ax = plt.subplots(1,1)
+        fig, ax = plt.subplots(1,1)
         ax.set_title('Posterior samples in RV data space')
 
         ## plot the Keplerian curves
@@ -944,6 +967,11 @@ class KimaResults(object):
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
         plt.tight_layout()
 
+        if self.save_plots:
+            filename = 'kima-showresults-fig6.png'
+            print('saving in', filename)
+            fig.savefig(filename)
+
 
     def hist_offset(self):
         """ Plot the histogram of the posterior for the fiber offset """
@@ -954,27 +982,18 @@ class KimaResults(object):
         units = ' (m/s)' if self.units=='ms' else ' (km/s)'
         estimate = percentile68_ranges_latex(self.offset) + units
 
-        _, ax = plt.subplots(1,1)
+        fig, ax = plt.subplots(1,1)
         ax.hist(self.offset)
         title = 'Posterior distribution for fiber offset \n %s' % estimate
         ax.set(xlabel='fiber offset (m/s)', ylabel='posterior samples',
                title=title)
 
+        if self.save_plots:
+            filename = 'kima-showresults-fig7.1.png'
+            print('saving in', filename)
+            fig.savefig(filename)
 
-    def hist_trend(self):
-        """ Plot the histogram of the posterior for the slope of a linear trend """
-        if not self.trend:
-            print('Model has no trend! hist_trend() doing nothing...')
-            return
 
-        units = ' (m/s/day)' # if self.units=='ms' else ' (km/s)'
-        estimate = percentile68_ranges_latex(self.trendpars) + units
-
-        _, ax = plt.subplots(1,1)
-        ax.hist(self.trendpars.ravel())
-        title = 'Posterior distribution for slope \n %s' % estimate
-        ax.set(xlabel='slope' + units, ylabel='posterior samples',
-               title=title)
 
     def hist_vsys(self, show_offsets=True):
         """ Plot the histogram of the posterior for the systemic velocity """
@@ -982,11 +1001,16 @@ class KimaResults(object):
         units = ' (m/s)' if self.units=='ms' else ' (km/s)'
         estimate = percentile68_ranges_latex(vsys) + units
 
-        _, ax = plt.subplots(1,1)
+        fig, ax = plt.subplots(1,1)
         ax.hist(vsys)
         title = 'Posterior distribution for $v_{\\rm sys}$ \n %s' % estimate
         ax.set(xlabel='vsys' + units, ylabel='posterior samples',
                title=title)
+
+        if self.save_plots:
+            filename = 'kima-showresults-fig7.2.png'
+            print('saving in', filename)
+            fig.savefig(filename)
 
         if show_offsets and self.multi:
             n_inst_offsets = self.inst_offsets.shape[1]
@@ -1005,6 +1029,12 @@ class KimaResults(object):
 
             title = 'Posterior distribution(s) for instrument offset(s)'
             fig.suptitle(title)
+            
+            if self.save_plots:
+                filename = 'kima-showresults-fig7.2.1.png'
+                print('saving in', filename)
+                fig.savefig(filename)
+
 
 
     def hist_extra_sigma(self):
@@ -1026,9 +1056,34 @@ class KimaResults(object):
 
         else:
             estimate = percentile68_ranges_latex(self.extra_sigma) + units
-            _, ax = plt.subplots(1,1)
+            fig, ax = plt.subplots(1,1)
             ax.hist(self.extra_sigma)
             title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
             ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
                 title=title)
 
+        if self.save_plots:
+            filename = 'kima-showresults-fig7.3.png'
+            print('saving in', filename)
+            fig.savefig(filename)
+
+
+    def hist_trend(self):
+        """ Plot the histogram of the posterior for the slope of a linear trend """
+        if not self.trend:
+            print('Model has no trend! hist_trend() doing nothing...')
+            return
+
+        units = ' (m/s/day)' # if self.units=='ms' else ' (km/s)'
+        estimate = percentile68_ranges_latex(self.trendpars) + units
+
+        fig, ax = plt.subplots(1,1)
+        ax.hist(self.trendpars.ravel())
+        title = 'Posterior distribution for slope \n %s' % estimate
+        ax.set(xlabel='slope' + units, ylabel='posterior samples',
+               title=title)
+
+        if self.save_plots:
+            filename = 'kima-showresults-fig7.4.png'
+            print('saving in', filename)
+            fig.savefig(filename)
