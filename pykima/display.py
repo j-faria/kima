@@ -950,7 +950,8 @@ class KimaResults(object):
                 for j in range(self.inst_offsets.shape[1]+1):
                     m = self.obs == j+1
                     ax.errorbar(t[m&mask], y[m&mask], yerr[m&mask], fmt='o', color=colors[j])
-            # ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
+            else:
+                ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
 
             yshift = np.vstack([y[~mask], y[~mask]-self.offset.mean()])
             for i, ti in enumerate(t[~mask]):
