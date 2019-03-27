@@ -11,17 +11,24 @@ class Data
 	private:
 		std::vector<double> t, y, sig;
 		std::vector<int> obsi;
+		std::vector<std::vector<double>> actind;
 
 	public:
 		Data();
 		// to read data from one file, one instrument
-		void load(const char* filename, const char* units, int skip=2);
+		void load(const char* filename, 
+		          const char* units, int skip=2, 
+				  const std::vector<char*>& indicators = std::vector<char*>());
+
 		// to read data from one file, more than one instrument
 		void load_multi(const char* filename, const char* units, int skip=2);
 		// to read data from more than one file, more than one instrument
 		void load_multi(std::vector<char*> filenames, const char* units, int skip=2);
 
 		int index_fibers;
+
+		bool indicator_correlations;
+		int number_indicators;
 
 		const char* datafile;
 		std::vector<char*> datafiles;
@@ -48,6 +55,7 @@ class Data
 		
 		const std::vector<double>& get_sig() const { return sig; }
 		
+		const std::vector<std::vector<double>>& get_actind() const { return actind; }
 		const std::vector<int>& get_obsi() const { return obsi; }
 		int Ninstruments() const {std::set<int> s(obsi.begin(), obsi.end()); return s.size();}
 

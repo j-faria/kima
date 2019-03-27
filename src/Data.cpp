@@ -69,7 +69,7 @@ istream& operator >> ( istream& ins, data_t& data )
   }
 
 
-void Data::load(const char* filename, const char* units, int skip)
+void Data::load(const char* filename, const char* units, int skip, const vector<char*>& indicators)
   /* 
   Read in tab/space separated file `filename` with columns
   time  vrad  error
@@ -85,6 +85,13 @@ void Data::load(const char* filename, const char* units, int skip)
   t.clear();
   y.clear();
   sig.clear();
+  // the indicator vectors as well
+  number_indicators = indicators.size();
+  indicator_correlations = number_indicators > 0;
+  actind.clear();
+  actind.resize(number_indicators);
+  for (unsigned n = 0; n < number_indicators; n++)
+    actind[n].clear();
 
   // Read the file into the data container
   ifstream infile( filename );
@@ -115,7 +122,13 @@ void Data::load(const char* filename, const char* units, int skip)
       t.push_back(data[n][0]);
       y.push_back(data[n][1] * factor);
       sig.push_back(data[n][2] * factor);
+      if (indicator_correlations)
+      {
+        for (unsigned i = 0; i < number_indicators; i++)
+         actind[i].push_back(data[n][3+i] * factor);
+      }
     }
+
 
   // How many points did we read?
   printf("# Loaded %d data points from file %s\n", t.size(), filename);
@@ -206,15 +219,15 @@ void Data::load_multi(const char* filename, const char* units, int skip)
 
   }
 
-void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
-/* 
-Read in tab/space separated files `filenames`, each with columns
-time  vrad  error
-...   ...   ...
-where vrad and error are in `units` (either "kms" or "ms"). All files should 
-have values in the same units. Skip the first `skip` lines (of all files).
-*/
-{
+void Data::load_multi(vector<char*> filenames, const char* units, int skip)
+  /* 
+  Read in tab/space separated files `filenames`, each with columns
+  time  vrad  error
+  ...   ...   ...
+  where vrad and error are in `units` (either "kms" or "ms"). All files should 
+  have values in the same units. Skip the first `skip` lines (of all files).
+  */
+  {
 
   data_t data;
 
@@ -329,7 +342,7 @@ have values in the same units. Skip the first `skip` lines (of all files).
       }
   }
 
-}
+  }
 
 
 

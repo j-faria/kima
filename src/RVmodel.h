@@ -42,6 +42,9 @@ class RVmodel
         std::vector<double> jitters = // for each instrument
               std::vector<double>(Data::get_instance().number_instruments);
 
+        std::vector<double> betas = // "slopes" for each indicator
+              std::vector<double>(Data::get_instance().number_indicators);
+
         double slope, quad;
         double fiber_offset;
 
