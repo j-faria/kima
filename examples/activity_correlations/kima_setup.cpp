@@ -13,13 +13,14 @@ const bool hyperpriors = false;
 const bool trend = false;
 const bool multi_instrument = false;
 
-RVmodel::RVmodel():fix(true),npmax(0)
+RVmodel::RVmodel():fix(false),npmax(5)
 {
-    Cprior = new Uniform(-10, 10); // m/s
-    Jprior = new ModifiedLogUniform(1.0, 1000.); // m/s
+    auto data = Data::get_instance();
+    Cprior = new Uniform(data.get_y_min(), data.get_y_max()); // m/s
+    Jprior = new ModifiedLogUniform(1.0, 100.); // m/s
 
-    Pprior = new LogUniform(0.2, 2000); // days
-    Kprior = new ModifiedLogUniform(1.0, 1000); // m/s
+    Pprior = new LogUniform(0.2, 1000); // days
+    Kprior = new ModifiedLogUniform(1.0, 10); // m/s
 
     eprior = new Uniform(0., 1.);
     phiprior = new Uniform(0.0, 2*M_PI);
@@ -33,11 +34,12 @@ RVmodel::RVmodel():fix(true),npmax(0)
 int main(int argc, char** argv)
 {
     /* set the RV data file */
-    char* datafile = "RVchallenge_system1.rdb";
+    char* datafile = "RVchallenge_system2.rdb";
+    // char* datafile = "dummy2.txt";
 
     // the third (optional) argument, 
     // tells kima not to skip any line in the header of the file
-    Data::get_instance().load(datafile, "kms", 400, {"fwhm"});
+    Data::get_instance().load(datafile, "kms", 2, {"fwhm"});
     
     // set the sampler and run it!
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
