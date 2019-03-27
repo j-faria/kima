@@ -182,6 +182,18 @@ class KimaResults(object):
         else:
             n_inst_offsets = 0
 
+
+        # activity indicator correlations?
+        self.indcorrel = setup['kima']['indicator_correlations'] == 'true'
+        if self.indcorrel:
+            n_act_ind = 1
+            istart = start_parameters + n_offsets + n_trend + n_inst_offsets + 1
+            iend = istart + n_act_ind
+            ind = np.s_[istart : iend]
+            self.betas = self.posterior_sample[:, ind]
+        else:
+            n_act_ind = 0
+
         # find GP in the compiled model
         if GPmodel is None:
             self.GPmodel = setup['kima']['GP'] == 'true'
@@ -210,7 +222,7 @@ class KimaResults(object):
 
 
         start_objects_print = start_parameters + n_offsets + n_inst_offsets + \
-                              n_trend + n_hyperparameters + 1
+                              n_trend + n_act_ind + n_hyperparameters + 1
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
         # maximum number of components
