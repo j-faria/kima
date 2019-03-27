@@ -28,7 +28,7 @@ extern ContinuousDistribution *log_eta2_prior;
 extern ContinuousDistribution *eta3_prior;
 extern ContinuousDistribution *log_eta4_prior;
 
-
+Gaussian *betaprior = new Gaussian(0, 1);
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
@@ -73,7 +73,7 @@ void RVmodel::from_prior(RNG& rng)
     if (data.indicator_correlations)
     {
         for (unsigned i=0; i<data.number_indicators; i++)
-            betas[i] = Gaussian(0, 1).generate(rng);
+            betas[i] = betaprior->generate(rng);
     }
 
     calculate_mu();
@@ -376,7 +376,7 @@ double RVmodel::perturb(RNG& rng)
                 }
 
                 if(data.indicator_correlations) {
-                    mu[i] += betas[0]*actind[0][i];
+                    mu[i] -= betas[0]*actind[0][i];
                 }
             }
 
@@ -400,7 +400,7 @@ double RVmodel::perturb(RNG& rng)
             }
 
             if(data.indicator_correlations)
-                Gaussian(0, 1).perturb(betas[0], rng);
+                betaprior->perturb(betas[0], rng);
 
             for(size_t i=0; i<mu.size(); i++)
             {
@@ -418,7 +418,7 @@ double RVmodel::perturb(RNG& rng)
                 }
 
                 if(data.indicator_correlations) {
-                    mu[i] -= betas[0]*actind[0][i];
+                    mu[i] += betas[0]*actind[0][i];
                 }
             }
         }
@@ -622,6 +622,7 @@ void RVmodel::save_setup() {
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
     fout << "multi_instrument: " << multi_instrument << endl;
+    fout << "indicator_correlations: " << data.indicator_correlations << endl;
     fout << endl;
     fout << "file: " << data.datafile << endl;
     fout << "units: " << data.dataunits << endl;
