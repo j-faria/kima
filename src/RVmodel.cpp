@@ -186,7 +186,8 @@ void RVmodel::calculate_mu()
         {
             for(size_t i=0; i<t.size(); i++)
             {
-                mu[i] += betas[0] * actind[0][i];
+                for(size_t j = 0; j < data.number_indicators; j++)
+                   mu[i] += betas[j] * actind[j][i];
             }   
         }
 
@@ -376,7 +377,9 @@ double RVmodel::perturb(RNG& rng)
                 }
 
                 if(data.indicator_correlations) {
-                    mu[i] -= betas[0]*actind[0][i];
+                    for(size_t j = 0; j < data.number_indicators; j++){
+                        mu[i] -= betas[j] * actind[j][i];
+                    }
                 }
             }
 
@@ -399,8 +402,11 @@ double RVmodel::perturb(RNG& rng)
                 slope_prior->perturb(slope, rng);
             }
 
-            if(data.indicator_correlations)
-                betaprior->perturb(betas[0], rng);
+            if(data.indicator_correlations){
+                for(size_t j = 0; j < data.number_indicators; j++){
+                    betaprior->perturb(betas[j], rng);
+                }
+            }
 
             for(size_t i=0; i<mu.size(); i++)
             {
@@ -418,7 +424,9 @@ double RVmodel::perturb(RNG& rng)
                 }
 
                 if(data.indicator_correlations) {
-                    mu[i] += betas[0]*actind[0][i];
+                    for(size_t j = 0; j < data.number_indicators; j++){
+                        mu[i] += betas[j]*actind[j][i];
+                    }
                 }
             }
         }
@@ -542,7 +550,7 @@ void RVmodel::print(std::ostream& out) const
 
     auto data = Data::get_instance();
     if(data.indicator_correlations){
-        for(int j=0; j<betas.size(); j++){
+        for(int j=0; j<data.number_indicators; j++){
             out<<betas[j]<<'\t';
         }
     }
@@ -581,7 +589,7 @@ string RVmodel::description() const
 
     auto data = Data::get_instance();
     if(data.indicator_correlations){
-        for(int j=0; j<betas.size(); j++){
+        for(int j=0; j<data.number_indicators; j++){
             desc += "beta" + std::to_string(j+1) + "   ";
         }
     }
@@ -624,6 +632,7 @@ void RVmodel::save_setup() {
     fout << "multi_instrument: " << multi_instrument << endl;
     fout << "indicator_correlations: " << data.indicator_correlations << endl;
     fout << endl;
+
     fout << "file: " << data.datafile << endl;
     fout << "units: " << data.dataunits << endl;
     fout << "skip: " << data.dataskip << endl;
