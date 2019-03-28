@@ -631,6 +631,13 @@ void RVmodel::save_setup() {
     fout << "trend: " << trend << endl;
     fout << "multi_instrument: " << multi_instrument << endl;
     fout << "indicator_correlations: " << data.indicator_correlations << endl;
+    fout << "indicators: ";
+    for (auto f: data.indicator_names){
+        fout << f;
+        (f != data.indicator_names.back()) ? fout << ", " : fout << " ";
+    }
+    fout << endl;
+
     fout << endl;
 
     fout << "file: " << data.datafile << endl;
