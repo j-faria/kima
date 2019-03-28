@@ -16,8 +16,7 @@ class Data
 	public:
 		Data();
 		// to read data from one file, one instrument
-		void load(const char* filename, 
-		          const char* units, int skip=2, 
+		void load(const char* filename, const char* units, int skip=2, 
 				  const std::vector<char*>& indicators = std::vector<char*>());
 
 		// to read data from one file, more than one instrument
