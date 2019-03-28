@@ -186,7 +186,8 @@ class KimaResults(object):
         # activity indicator correlations?
         self.indcorrel = setup['kima']['indicator_correlations'] == 'true'
         if self.indcorrel:
-            n_act_ind = 1
+            self.activity_indicators = setup['kima']['indicators'].split(',')
+            n_act_ind = len(self.activity_indicators)
             istart = start_parameters + n_offsets + n_trend + n_inst_offsets + 1
             iend = istart + n_act_ind
             ind = np.s_[istart : iend]
