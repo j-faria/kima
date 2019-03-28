@@ -26,8 +26,10 @@ class Data
 
 		int index_fibers;
 
+
 		bool indicator_correlations;
 		int number_indicators;
+		std::vector<char*> indicator_names;
 
 		const char* datafile;
 		std::vector<char*> datafiles;

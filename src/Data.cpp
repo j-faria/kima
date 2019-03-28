@@ -87,11 +87,16 @@ void Data::load(const char* filename, const char* units,
   y.clear();
   sig.clear();
   
-  // the indicator vectors as well
+  // check for indicator correlations and store stuff
   int nempty = count(indicators.begin(), indicators.end(), "");
   number_indicators = indicators.size() - nempty;
   indicator_correlations = number_indicators > 0;
+  indicator_names = indicators;
+  indicator_names.erase(
+    std::remove( indicator_names.begin(), indicator_names.end(), "" ), 
+    indicator_names.end() );
 
+  // Empty the indicator vectors as well
   actind.clear();
   actind.resize(number_indicators);
   for (unsigned n = 0; n < number_indicators; n++)
