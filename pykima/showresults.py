@@ -96,7 +96,7 @@ def _parse_args(options):
     if 'all' in args:
         return argstuple(rv=True, planets=True, orbital=True, gp=True,
                          extra=True, diagnostic=diag, pickle=pick,
-                         plot_number=[])
+                         plot_number=[], save_plots=save_plots)
 
     rv = findpop('rv', args)
     gp = findpop('gp', args)
