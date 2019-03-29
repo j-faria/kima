@@ -12,16 +12,27 @@ extern ContinuousDistribution *log_muP_prior;
 extern ContinuousDistribution *wP_prior;
 extern ContinuousDistribution *log_muK_prior;
 
-extern ContinuousDistribution *Pprior;
-extern ContinuousDistribution *Kprior;
+// extern ContinuousDistribution *Pprior;
+// extern ContinuousDistribution *Kprior;
 
-extern ContinuousDistribution *eprior;
-extern ContinuousDistribution *phiprior;
-extern ContinuousDistribution *wprior;
+// extern ContinuousDistribution *eprior;
+// extern ContinuousDistribution *phiprior;
+// extern ContinuousDistribution *wprior;
 
 
 RVConditionalPrior::RVConditionalPrior()
 {
+    if (!Pprior)
+        Pprior = make_shared<LogUniform>(1., 1e5);
+    if (!Kprior)
+        Kprior = make_shared<ModifiedLogUniform>(1., 1e3);
+
+    if (!eprior)
+        eprior = make_shared<Uniform>(0, 1);
+    if (!phiprior)
+        phiprior = make_shared<Uniform>(0, 2*M_PI);
+    if (!wprior)
+        wprior = make_shared<Uniform>(0, 2*M_PI);
 }
 
 

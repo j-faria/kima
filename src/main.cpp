@@ -18,24 +18,11 @@ const bool hyperpriors = false;
 const bool trend = false;
 const bool multi_instrument = false;
 
-RVmodel::RVmodel()
-:planets(5, 0, true, RVConditionalPrior())
-,mu(Data::get_instance().get_t().size())
-,C(Data::get_instance().get_t().size(), Data::get_instance().get_t().size())
+RVmodel::RVmodel() : fix(true), npmax(1)
 {
-    auto data = Data::get_instance();
-    double ymin = data.get_y_min();
-    double ymax = data.get_y_max();
-    double topslope = data.topslope();
-
-    // set the prior for the systemic velocity
-    Cprior = new Uniform(ymin, ymax);
-    // and for the slope parameter
-    if(trend)
-    	slope_prior = new Uniform(-topslope, topslope);
-    
-    // save the current model for further analysis
-    save_setup();
+    // Cprior = make_prior<Uniform>(0, 1);
+    auto c = planets.get_conditional_prior();
+    // c->Pprior = make_prior<Gaussian>(0, 1);
 }
 
 int main(int argc, char** argv)
@@ -45,11 +32,11 @@ int main(int argc, char** argv)
 
     /* load the file (RVs are in km/s) */
     /* don't skip any lines in the header */
-	Data::get_instance().load(datafile, "kms", 0);
+    Data::get_instance().load(datafile, "kms", 0);
 
     // set the sampler and run it!
-	Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
-	sampler.run();
+    Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
+    sampler.run(50);
 
-	return 0;
+    return 0;
 }
