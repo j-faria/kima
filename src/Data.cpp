@@ -69,7 +69,8 @@ istream& operator >> ( istream& ins, data_t& data )
   }
 
 
-void Data::load(const char* filename, const char* units, int skip)
+void Data::load(const char* filename, const char* units, 
+                int skip, const vector<char*>& indicators)
   /* 
   Read in tab/space separated file `filename` with columns
   time  vrad  error
@@ -85,6 +86,21 @@ void Data::load(const char* filename, const char* units, int skip)
   t.clear();
   y.clear();
   sig.clear();
+  
+  // check for indicator correlations and store stuff
+  int nempty = count(indicators.begin(), indicators.end(), "");
+  number_indicators = indicators.size() - nempty;
+  indicator_correlations = number_indicators > 0;
+  indicator_names = indicators;
+  indicator_names.erase(
+    std::remove( indicator_names.begin(), indicator_names.end(), "" ), 
+    indicator_names.end() );
+
+  // Empty the indicator vectors as well
+  actind.clear();
+  actind.resize(number_indicators);
+  for (unsigned n = 0; n < number_indicators; n++)
+    actind[n].clear();
 
   // Read the file into the data container
   ifstream infile( filename );
@@ -108,6 +124,7 @@ void Data::load(const char* filename, const char* units, int skip)
 
   double factor = 1.;
   if(units == "kms") factor = 1E3;
+  int j;
 
   for (unsigned n = 0; n < data.size(); n++)
     {
@@ -115,10 +132,38 @@ void Data::load(const char* filename, const char* units, int skip)
       t.push_back(data[n][0]);
       y.push_back(data[n][1] * factor);
       sig.push_back(data[n][2] * factor);
+  
+      if (indicator_correlations)
+      {
+        j = 0;
+        for (unsigned i = 0; i < number_indicators + nempty; i++)
+        {
+          if (indicators[i] == "")
+            continue; // skip column
+          else
+          {
+            actind[j].push_back(data[n][3+i] * factor);
+            j++;
+          }
+        }
+      }
+  
     }
-
+  
   // How many points did we read?
   printf("# Loaded %d data points from file %s\n", t.size(), filename);
+  // Did we read activity indicators? how many?
+  if(indicator_correlations){
+    printf("# Loaded %d observations of %d activity indicators: ", actind[0].size(), actind.size());
+    for (const auto i: indicators){
+      if (i != ""){
+        printf("'%s'", i);
+        (i != indicators.back()) ? cout << ", " : cout << " ";
+      }
+    }
+    cout << endl;
+  }
+  // What are the units?
   if(units == "kms")
     printf("# Multiplied all RVs by 1000; units are now m/s.\n");
 
@@ -206,15 +251,15 @@ void Data::load_multi(const char* filename, const char* units, int skip)
 
   }
 
-void Data::load_multi(std::vector<char*> filenames, const char* units, int skip)
-/* 
-Read in tab/space separated files `filenames`, each with columns
-time  vrad  error
-...   ...   ...
-where vrad and error are in `units` (either "kms" or "ms"). All files should 
-have values in the same units. Skip the first `skip` lines (of all files).
-*/
-{
+void Data::load_multi(vector<char*> filenames, const char* units, int skip)
+  /* 
+  Read in tab/space separated files `filenames`, each with columns
+  time  vrad  error
+  ...   ...   ...
+  where vrad and error are in `units` (either "kms" or "ms"). All files should 
+  have values in the same units. Skip the first `skip` lines (of all files).
+  */
+  {
 
   data_t data;
 
@@ -329,7 +374,7 @@ have values in the same units. Skip the first `skip` lines (of all files).
       }
   }
 
-}
+  }
 
 
 

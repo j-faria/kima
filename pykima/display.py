@@ -182,6 +182,19 @@ class KimaResults(object):
         else:
             n_inst_offsets = 0
 
+
+        # activity indicator correlations?
+        self.indcorrel = setup['kima']['indicator_correlations'] == 'true'
+        if self.indcorrel:
+            self.activity_indicators = setup['kima']['indicators'].split(',')
+            n_act_ind = len(self.activity_indicators)
+            istart = start_parameters + n_offsets + n_trend + n_inst_offsets + 1
+            iend = istart + n_act_ind
+            ind = np.s_[istart : iend]
+            self.betas = self.posterior_sample[:, ind]
+        else:
+            n_act_ind = 0
+
         # find GP in the compiled model
         if GPmodel is None:
             self.GPmodel = setup['kima']['GP'] == 'true'
@@ -210,7 +223,7 @@ class KimaResults(object):
 
 
         start_objects_print = start_parameters + n_offsets + n_inst_offsets + \
-                              n_trend + n_hyperparameters + 1
+                              n_trend + n_act_ind + n_hyperparameters + 1
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
         # maximum number of components
@@ -243,7 +256,8 @@ class KimaResults(object):
                            '7': [(self.hist_offset,
                                   self.hist_vsys,
                                   self.hist_extra_sigma,
-                                  self.hist_trend), {}],
+                                  self.hist_trend,
+                                  self.hist_correlations), {}],
                           }
 
         for item in allowed_options.items():
@@ -1069,6 +1083,35 @@ class KimaResults(object):
             fig.savefig(filename)
 
 
+    def hist_correlations(self):
+        """ Plot the histogram of the posterior for the activity correlations """
+        if not self.indcorrel:
+            print('Model has no activity correlations! hist_correlations() doing nothing...')
+            return
+
+        # units = ' (m/s)' if self.units=='ms' else ' (km/s)'
+        # estimate = percentile68_ranges_latex(self.offset) + units
+
+        n = len(self.activity_indicators)
+        fig, axs = plt.subplots(n, 1, constrained_layout=True)
+
+        for i, ax in enumerate(np.ravel(axs)):
+            estimate = percentile68_ranges_latex(self.betas[:,i])
+            estimate = '$c_{%s}$ = %s' % (self.activity_indicators[i], estimate)
+            ax.hist(self.betas[:,i], label=estimate)
+            ax.set(ylabel='posterior samples',
+                   xlabel='$c_{%s}$' % self.activity_indicators[i])
+            leg = ax.legend(frameon=False)
+            leg.legendHandles[0].set_visible(False)
+
+        title = 'Posterior distribution for activity correlations'
+        fig.suptitle(title)
+
+        if self.save_plots:
+            filename = 'kima-showresults-fig7.4.png'
+            print('saving in', filename)
+            fig.savefig(filename)
+
     def hist_trend(self):
         """ Plot the histogram of the posterior for the slope of a linear trend """
         if not self.trend:
@@ -1085,6 +1128,6 @@ class KimaResults(object):
                title=title)
 
         if self.save_plots:
-            filename = 'kima-showresults-fig7.4.png'
+            filename = 'kima-showresults-fig7.5.png'
             print('saving in', filename)
             fig.savefig(filename)

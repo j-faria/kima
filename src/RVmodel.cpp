@@ -18,10 +18,13 @@ using namespace DNest4;
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
+
 /* set default priors if the user didn't change them */
 void RVmodel::setPriors(DNest4::RNG& rng){
     auto data = Data::get_instance();
 
+    betaprior = make_prior<Gaussian>(0, 1);
+    
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_y_min(), data.get_y_max());
 
@@ -92,6 +95,13 @@ void RVmodel::from_prior(RNG& rng)
         eta4 = exp(log_eta4_prior->generate(rng));
     }
 
+    auto data = Data::get_instance();
+    if (data.indicator_correlations)
+    {
+        for (unsigned i=0; i<data.number_indicators; i++)
+            betas[i] = betaprior->generate(rng);
+    }
+
     calculate_mu();
 
     if(GP) calculate_C();
@@ -153,6 +163,7 @@ void RVmodel::calculate_mu()
     const vector<double>& t = data.get_t();
     // only really needed if multi_instrument
     const vector<int>& obsi = data.get_obsi();
+    auto actind = data.get_actind();
 
     // Update or from scratch?
     bool update = (planets.get_added().size() < planets.get_components().size()) &&
@@ -197,6 +208,14 @@ void RVmodel::calculate_mu()
             }
         }
 
+        if(data.indicator_correlations)
+        {
+            for(size_t i=0; i<t.size(); i++)
+            {
+                for(size_t j = 0; j < data.number_indicators; j++)
+                   mu[i] += betas[j] * actind[j][i];
+            }   
+        }
 
     }
     else // just updating (adding) planets
@@ -244,6 +263,7 @@ double RVmodel::perturb(RNG& rng)
     auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
     const vector<int>& obsi = data.get_obsi();
+    auto actind = data.get_actind();
     double logH = 0.;
 
     if(GP)
@@ -385,6 +405,12 @@ double RVmodel::perturb(RNG& rng)
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
+
+                if(data.indicator_correlations) {
+                    for(size_t j = 0; j < data.number_indicators; j++){
+                        mu[i] -= betas[j] * actind[j][i];
+                    }
+                }
             }
 
             Cprior->perturb(background, rng);
@@ -406,6 +432,12 @@ double RVmodel::perturb(RNG& rng)
                 slope_prior->perturb(slope, rng);
             }
 
+            if(data.indicator_correlations){
+                for(size_t j = 0; j < data.number_indicators; j++){
+                    betaprior->perturb(betas[j], rng);
+                }
+            }
+
             for(size_t i=0; i<mu.size(); i++)
             {
                 mu[i] += background;
@@ -419,6 +451,12 @@ double RVmodel::perturb(RNG& rng)
                 }
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] += fiber_offset;
+                }
+
+                if(data.indicator_correlations) {
+                    for(size_t j = 0; j < data.number_indicators; j++){
+                        mu[i] += betas[j]*actind[j][i];
+                    }
                 }
             }
         }
@@ -547,6 +585,13 @@ void RVmodel::print(std::ostream& out) const
         }
     }
 
+    auto data = Data::get_instance();
+    if(data.indicator_correlations){
+        for(int j=0; j<data.number_indicators; j++){
+            out<<betas[j]<<'\t';
+        }
+    }
+
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
 
@@ -578,6 +623,14 @@ string RVmodel::description() const
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + "   ";
     }
+
+    auto data = Data::get_instance();
+    if(data.indicator_correlations){
+        for(int j=0; j<data.number_indicators; j++){
+            desc += "beta" + std::to_string(j+1) + "   ";
+        }
+    }
+
 
     if(GP)
         desc += "eta1   eta2   eta3   eta4   ";
@@ -614,7 +667,16 @@ void RVmodel::save_setup() {
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
     fout << "multi_instrument: " << multi_instrument << endl;
+    fout << "indicator_correlations: " << data.indicator_correlations << endl;
+    fout << "indicators: ";
+    for (auto f: data.indicator_names){
+        fout << f;
+        (f != data.indicator_names.back()) ? fout << ", " : fout << " ";
+    }
     fout << endl;
+
+    fout << endl;
+
     fout << "file: " << data.datafile << endl;
     fout << "units: " << data.dataunits << endl;
     fout << "skip: " << data.dataskip << endl;

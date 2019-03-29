@@ -44,6 +44,9 @@ class RVmodel
         std::vector<double> jitters = // for each instrument
               std::vector<double>(Data::get_instance().number_instruments);
 
+        std::vector<double> betas = // "slopes" for each indicator
+              std::vector<double>(Data::get_instance().number_indicators);
+
         double slope, quad;
         double fiber_offset;
 
@@ -82,6 +85,7 @@ class RVmodel
         std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> fiber_offset_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
+        std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
 
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta1_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta2_prior;
