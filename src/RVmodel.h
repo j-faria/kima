@@ -74,7 +74,7 @@ class RVmodel
 
         unsigned int staleness;
 
-        void setPriors(DNest4::RNG& rng);
+        void setPriors();
 
     public:
         RVmodel();

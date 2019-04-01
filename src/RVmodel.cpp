@@ -20,7 +20,8 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 
 /* set default priors if the user didn't change them */
-void RVmodel::setPriors(DNest4::RNG& rng){
+void RVmodel::setPriors()
+{
     auto data = Data::get_instance();
 
     betaprior = make_prior<Gaussian>(0, 1);
@@ -57,7 +58,7 @@ void RVmodel::setPriors(DNest4::RNG& rng){
 void RVmodel::from_prior(RNG& rng)
 {
     // preliminaries
-    setPriors(rng);
+    setPriors();
     save_setup();
 
     planets.from_prior(rng);
