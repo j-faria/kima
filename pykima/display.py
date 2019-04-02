@@ -221,9 +221,25 @@ class KimaResults(object):
             n_hyperparameters = 0
 
 
+        # find MA in the compiled model
+        self.MAmodel = setup['kima']['MA'] == 'true'
+     
+        if debug:
+            print('MA model:', self.MAmodel)
+
+        if self.MAmodel:
+            n_MAparameters = 2
+            start_hyperpars = start_parameters + n_trend + n_offsets + n_hyperparameters + 1
+            self.MA = self.posterior_sample[:,
+                          start_hyperpars : start_hyperpars+n_MAparameters]
+        else:
+            n_MAparameters = 0
+
 
         start_objects_print = start_parameters + n_offsets + n_inst_offsets + \
-                              n_trend + n_act_ind + n_hyperparameters + 1
+                              n_trend + n_act_ind + n_hyperparameters + \
+                              n_MAparameters +  1
+
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
         # maximum number of components

@@ -25,6 +25,8 @@ void RVmodel::setPriors()
     auto data = Data::get_instance();
 
     betaprior = make_prior<Gaussian>(0, 1);
+    sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 100.);
+    tauMA_prior = make_prior<LogUniform>(0.1, 10);
     
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_y_min(), data.get_y_max());
@@ -94,6 +96,12 @@ void RVmodel::from_prior(RNG& rng)
         eta3 = eta3_prior->generate(rng); // days
 
         eta4 = exp(log_eta4_prior->generate(rng));
+    }
+
+    if(MA)
+    {
+        sigmaMA = sigmaMA_prior->generate(rng);
+        tauMA = tauMA_prior->generate(rng);
     }
 
     auto data = Data::get_instance();
@@ -248,6 +256,19 @@ void RVmodel::calculate_mu()
         }
     }
 
+
+    if(!update && MA)
+    {
+        const vector<double>& y = data.get_y();
+        for(size_t i=1; i<t.size(); i++) // the loop starts at the 2nd point
+        {
+            // y[i-1] - mu[i-1] is the residual at the i-1 observation
+            mu[i] += sigmaMA * exp(-fabs(t[i-1] - t[i]) / tauMA) * (y[i-1] - mu[i-1]);
+        }   
+    }
+
+
+
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
     cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
@@ -269,13 +290,13 @@ double RVmodel::perturb(RNG& rng)
 
     if(GP)
     {
-        if(rng.rand() <= 0.5)
+        if(rng.rand() <= 0.5) // perturb planet parameters
         {
             logH += planets.perturb(rng);
             planets.consolidate_diff();
             calculate_mu();
         }
-        else if(rng.rand() <= 0.5)
+        else if(rng.rand() <= 0.5) // perturb GP parameters
         {
             if(rng.rand() <= 0.25)
             {
@@ -302,7 +323,7 @@ double RVmodel::perturb(RNG& rng)
 
             calculate_C();
         }
-        else if(rng.rand() <= 0.5)
+        else if(rng.rand() <= 0.5) // perturb jitter(s)
         {
             if(multi_instrument)
             {
@@ -315,7 +336,93 @@ double RVmodel::perturb(RNG& rng)
             }
             calculate_C();
         }
-        else
+        else // perturb other parameters: vsys, slope, offsets
+        {
+            for(size_t i=0; i<mu.size(); i++)
+            {
+                mu[i] -= background;
+                if(trend) {
+                    mu[i] -= slope*(t[i]-data.get_t_middle());
+                }
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
+                    }
+                }
+                if (obs_after_HARPS_fibers) {
+                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
+                }
+            }
+
+            Cprior->perturb(background, rng);
+
+            // propose new instrument offsets
+            if (multi_instrument){
+                for(unsigned j=0; j<offsets.size(); j++)
+                    offsets_prior->perturb(offsets[j], rng);
+            }
+
+            // propose new fiber offset
+            if (obs_after_HARPS_fibers) {
+                fiber_offset_prior->perturb(fiber_offset, rng);
+            }
+
+            // propose new slope
+            if(trend) {
+                slope_prior->perturb(slope, rng);
+            }
+
+            for(size_t i=0; i<mu.size(); i++)
+            {
+                mu[i] += background;
+                if(trend) {
+                    mu[i] += slope*(t[i]-data.get_t_middle());
+                }
+                if(multi_instrument) {
+                    for(size_t j=0; j<offsets.size(); j++){
+                        if (obsi[i] == j+1) { mu[i] += offsets[j]; }
+                    }
+                }
+                if (obs_after_HARPS_fibers) {
+                    if (i >= data.index_fibers) mu[i] += fiber_offset;
+                }
+            }
+        }
+
+    }
+
+
+    else if(MA)
+    {
+        if(rng.rand() <= 0.5) // perturb planet parameters
+        {
+            logH += planets.perturb(rng);
+            planets.consolidate_diff();
+            calculate_mu();
+        }
+        else if(rng.rand() <= 0.5) // perturb MA parameters
+        {
+            if(rng.rand() <= 0.5)
+                sigmaMA_prior->perturb(sigmaMA, rng);
+            else
+                tauMA_prior->perturb(tauMA, rng);
+            
+            calculate_mu();
+        }
+        else if(rng.rand() <= 0.5) // perturb jitter(s)
+        {
+            if(multi_instrument)
+            {
+                for(int i=0; i<jitters.size(); i++)
+                    Jprior->perturb(jitters[i], rng);
+            }
+            else
+            {
+                Jprior->perturb(extra_sigma, rng);
+            }
+            calculate_C();
+        }
+        else // perturb other parameters: vsys, slope, offsets
         {
             for(size_t i=0; i<mu.size(); i++)
             {
@@ -595,6 +702,9 @@ void RVmodel::print(std::ostream& out) const
 
     if(GP)
         out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+    
+    if(MA)
+        out<<sigmaMA<<'\t'<<tauMA<<'\t';
 
     planets.print(out);
 
@@ -635,6 +745,9 @@ string RVmodel::description() const
 
     if(GP)
         desc += "eta1   eta2   eta3   eta4   ";
+    
+    if(MA)
+        desc += "sigmaMA   tauMA   ";
 
     desc += "ndim   maxNp   ";
     if(hyperpriors)
@@ -665,6 +778,7 @@ void RVmodel::save_setup() {
 
 	fout << "obs_after_HARPS_fibers: " << obs_after_HARPS_fibers << endl;
     fout << "GP: " << GP << endl;
+    fout << "MA: " << MA << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
     fout << "multi_instrument: " << multi_instrument << endl;

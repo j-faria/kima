@@ -15,6 +15,9 @@
 // whether the model includes a GP component
 extern const bool GP;
 
+// whether the model includes a MA component
+extern const bool MA;
+
 // whether there are observations after the change in HARPS fibers
 extern const bool obs_after_HARPS_fibers;
 
@@ -49,7 +52,7 @@ class RVmodel
 
         double slope, quad;
         double fiber_offset;
-
+        double sigmaMA, tauMA;
         double extra_sigma;
 
         // Parameters for the quasi-periodic extra noise
@@ -86,6 +89,8 @@ class RVmodel
         std::shared_ptr<DNest4::ContinuousDistribution> fiber_offset_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
+        std::shared_ptr<DNest4::ContinuousDistribution> sigmaMA_prior;
+        std::shared_ptr<DNest4::ContinuousDistribution> tauMA_prior;
 
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta1_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta2_prior;
