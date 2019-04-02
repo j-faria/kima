@@ -150,6 +150,17 @@ void Data::load(const char* filename, const char* units,
   
     }
   
+
+  // subtract means from activity indicators
+  if (indicator_correlations)
+  {
+    double mean;
+    for (auto& i: actind){ // use auto& instead of auto to modify i
+      mean = std::accumulate(i.begin(), i.end(), 0.0) / y.size();
+      std::for_each(i.begin(), i.end(), [mean](double& d) { d -= mean;});
+    }
+  }
+
   // How many points did we read?
   printf("# Loaded %d data points from file %s\n", t.size(), filename);
   // Did we read activity indicators? how many?
