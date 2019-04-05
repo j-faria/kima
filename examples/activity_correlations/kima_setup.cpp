@@ -22,14 +22,13 @@ RVmodel::RVmodel():fix(true),npmax(0)
     auto conditional = planets.get_conditional_prior();
     conditional->Pprior = make_prior<LogUniform>(1, 10*data.get_timespan()); // days
     conditional->Kprior = make_prior<ModifiedLogUniform>(1.0, 100); // m/s
-
     conditional->eprior = make_prior<Kumaraswamy>(0.867, 3.03);
 }
 
 
 int main(int argc, char** argv)
 {
-    char* datafile = "dummy1.txt";
+    char* datafile = "dummy2.txt";
     Data::get_instance().load(datafile, "ms", 0, {"fwhm"});
 
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
