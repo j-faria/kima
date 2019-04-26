@@ -41,6 +41,9 @@ class KimaResults(object):
         debug = False # 'debug' in options
         self.save_plots = save_plots
 
+        self.removed_crossing = False
+        self.removed_roche_crossing = False
+
         pwd = os.getcwd()
         path_to_this_file = os.path.abspath(__file__)
         top_level = os.path.dirname(os.path.dirname(path_to_this_file))
@@ -233,27 +236,8 @@ class KimaResults(object):
         # build the marginal posteriors for planet parameters
         self.get_marginals()
 
-        allowed_options = {'1': [self.make_plot1, {}],
-                           '2': [self.make_plot2, {}],
-                           '3': [self.make_plot3, {}],
-                           '4': [self.make_plot4, {}],
-                           '5': [self.make_plot5, {}],
-                           '6': [self.plot_random_planets, 
-                                    {'show_vsys':True, 'show_trend':True}],
-                           '7': [(self.hist_offset,
-                                  self.hist_vsys,
-                                  self.hist_extra_sigma,
-                                  self.hist_trend), {}],
-                          }
-
-        for item in allowed_options.items():
-            if item[0] in options:
-                methods = item[1][0]
-                kwargs = item[1][1]
-                if isinstance(methods, tuple):
-                    [m() for m in methods]
-                else:
-                    methods(**kwargs)
+        # make plots if requested
+        self.make_plots(options)
 
 
     @classmethod
@@ -275,6 +259,30 @@ class KimaResults(object):
             pickle.dump(self, f, protocol=2)
         print('Wrote to file "%s"' % f.name)
 
+    def make_plots(self, options, save_plots=False):
+        self.save_plots = save_plots
+
+        allowed_options = {'1': [self.make_plot1, {}],
+                           '2': [self.make_plot2, {}],
+                           '3': [self.make_plot3, {}],
+                           '4': [self.make_plot4, {}],
+                           '5': [self.make_plot5, {}],
+                           '6': [self.plot_random_planets, 
+                                    {'show_vsys':True, 'show_trend':True}],
+                           '7': [(self.hist_offset,
+                                  self.hist_vsys,
+                                  self.hist_extra_sigma,
+                                  self.hist_trend), {}],
+                          }
+
+        for item in allowed_options.items():
+            if item[0] in options:
+                methods = item[1][0]
+                kwargs = item[1][1]
+                if isinstance(methods, tuple):
+                    [m() for m in methods]
+                else:
+                    methods(**kwargs)
 
     def get_marginals(self):
         """ 
