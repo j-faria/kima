@@ -3,6 +3,7 @@ from __future__ import print_function
 import __main__
 from .classic import postprocess
 from .display import KimaResults
+from .crossing_orbits import rem_crossing_orbits
 from .utils import show_tips
 import sys, os
 from collections import namedtuple
@@ -15,6 +16,31 @@ numbered_args_help = """optional numbered arguments:
   4, 5 - plot the posteriors for the GP hyperparameters (marginal and joint);
   6    - plot random posterior samples in data-space, together with the RV data;
   7    - plot posteriors for the HARPS fiber offset and systematic velocity;
+"""
+
+other_args_help = """other optional arguments:
+  --save-plots	      Save the plots as .png files (except diagnostic plots)
+  --remove-roche      Remove orbits crossing the Roche limit of the star
+                      (see --help-remove-roche for details)
+  --remove-crossing   Remove crossing orbits
+                      (see --help-remove-crossing for details)
+"""
+
+help_remove_crossing = """
+The --remove-crossing optional argument will remove crossing orbits from the
+posterior samples before doing any plotting. This assumes that the samples are
+"sorted" in such a way that the first planet in the system (one row in the
+posterior_sample.txt file) is the most "likely". This is often the case. Then,
+the check for crossing orbits (based on periastron and apastron distances) is
+done starting from the final Keplerian in a row and ending in the first. Running
+with this option will affect many of the results, including the posteriors for
+the number of planets, and orbital periods.
+WARNING: This is an *a posteriori* analysis; neither the evidence nor any other
+probability are renormalized. BE CAREFUL when taking conclusions from this!
+"""
+
+help_remove_roche = """
+The --remove-roche option will...
 """
 
 
@@ -34,15 +60,20 @@ def findpop(value, lst):
 def usage(full=True):
     u = "usage: kima-showresults "\
         "[rv] [planets] [orbital] [gp] [extra] [1, ..., 7]\n"\
-        "                        [all] [pickle] [--save-plots] "\
-                                "[-h/--help] [--version]"
+        "                        [all] [pickle] [--save-plots]\n"\
+        "                        [-h/--help] [--version]"
     u += '\n\n'
     if not full: return u
 
     pos = ["positional arguments:\n"]
     names = [
-        'rv', 'planets', 'orbital', 'gp', 'extra', 'all', 'pickle',
-        '--save-plots'
+        'rv',
+        'planets',
+        'orbital',
+        'gp',
+        'extra',
+        'all',
+        'pickle',
     ]
     descriptions = \
         ["Plot posterior realizations of the model over the RV measurements",
@@ -52,14 +83,14 @@ def usage(full=True):
          "Plot posteriors for fiber offset, systematic velocity, and extra white noise",
          "Show all plots",
          "Save the model into a pickle file (filename will be prompted)",
-         "Instead of showing, save the plots as .png files (does not work for diagnostic plots)",
         ]
 
     for n, d in zip(names, descriptions):
         pos.append("  %-10s\t%s\n" % (n, d))
 
     u += ''.join(pos)
-    u += numbered_args_help
+    u += '\n' + numbered_args_help
+    u += '\n' + other_args_help
     return u
 
 
@@ -80,15 +111,27 @@ def _parse_args(options):
         print('kima', open(version_file).read().strip())  # same as kima
         sys.exit(0)
 
+    if '--help-remove-crossing' in args:
+        print(help_remove_crossing)
+        sys.exit(0)
+    if '--help-remove-roche' in args:
+        print(help_remove_roche)
+        sys.exit(0)
+
     # save all plots?
     save_plots = findpop('--save-plots', args)
 
+    # other options
+    remove_roche = findpop('--remove-roche', args)
+    remove_crossing = findpop('--remove-crossing', args)
+
     number_options = ['1', '2', '3', '4', '5', '6', '7']
+
     argstuple = namedtuple('Arguments',
                                 ['rv', 'planets', 'orbital', 'gp', 'extra'] \
-                                + ['diagnostic'] + ['pickle'] \
-                                + ['plot_number'] \
-                                + ['save_plots'])
+                                + ['diagnostic'] + ['pickle']
+                                + ['plot_number'] + ['save_plots']
+                                + ['remove_roche', 'remove_crossing'])
 
     pick = findpop('pickle', args)
     diag = findpop('diagnostic', args)
@@ -96,7 +139,9 @@ def _parse_args(options):
     if 'all' in args:
         return argstuple(rv=True, planets=True, orbital=True, gp=True,
                          extra=True, diagnostic=diag, pickle=pick,
-                         plot_number=[], save_plots=save_plots)
+                         plot_number=[], save_plots=save_plots,
+                         remove_roche=remove_roche,
+                         remove_crossing=remove_crossing)
 
     rv = findpop('rv', args)
     gp = findpop('gp', args)
@@ -113,7 +158,9 @@ def _parse_args(options):
         sys.exit(1)
 
     return argstuple(rv, planets, orbital, gp, extra, diag, pick,
-                     plot_number=plots, save_plots=save_plots)
+                     plot_number=plots, save_plots=save_plots,
+                     remove_roche=remove_roche,
+                     remove_crossing=remove_crossing)
 
 
 def showresults(options='', force_return=False):
@@ -125,6 +172,7 @@ def showresults(options='', force_return=False):
 
     # force correct CLI arguments
     args = _parse_args(options)
+    # print(args)
 
     plots = []
     if args.rv:
@@ -150,11 +198,18 @@ def showresults(options='', force_return=False):
 
     show_tips()
 
-    res = KimaResults(list(set(plots)), save_plots=args.save_plots)
+    res = KimaResults('')
+    
+    if args.remove_crossing:
+        res = rem_crossing_orbits(res)
+    
+    res.make_plots(list(set(plots)), save_plots=args.save_plots)
 
     res.evidence = evidence
     res.information = H
     res.ESS = res.posterior_sample.shape[0]
+
+
 
     if args.pickle:
         getinput = input
