@@ -214,6 +214,7 @@ class KimaResults(object):
 
         start_objects_print = start_parameters + n_offsets + n_inst_offsets + \
                               n_trend + n_hyperparameters + 1
+
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
         # maximum number of components
@@ -590,19 +591,36 @@ class KimaResults(object):
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
         if points:
-            ax1.loglog(T, A, '.', markersize=2)
+            ax1.loglog(T, A, '.', markersize=2, zorder=2)
+            ax2.semilogx(T, E, '.', markersize=2, zorder=2)
         else:
             ax1.hexbin(T, A, gridsize=50, 
                        bins='log', xscale='log', yscale='log',
                        cmap=plt.get_cmap('afmhot_r'))
-
-
-        if points:
-            ax2.semilogx(T, E, '.', markersize=2)
-        else:
             ax2.hexbin(T, E, gridsize=50, bins='log', xscale='log',
                        cmap=plt.get_cmap('afmhot_r'))
-        
+
+
+        if self.removed_crossing:
+            if points:
+                mc, ic = self.max_components, self.index_component
+
+                i1, i2 = 0*mc + ic + 1, 0*mc + ic + mc + 1
+                T = self.posterior_sample_original[:,i1:i2]
+                if self.log_period:
+                    T = np.exp(T)
+
+                i1, i2 = 1*mc + ic + 1, 1*mc + ic + mc + 1
+                A = self.posterior_sample_original[:,i1:i2]
+
+                i1, i2 = 3*mc + ic + 1, 3*mc + ic + mc + 1
+                E = self.posterior_sample_original[:,i1:i2]
+
+                ax1.loglog(T, A, '.', markersize=1, alpha=0.05, color='r',
+                           zorder=1)
+                ax2.semilogx(T, E, '.', markersize=1, alpha=0.05, color='r',
+                           zorder=1)
+
         ax1.set(ylabel='Semi-amplitude [m/s]',
                 title='Joint posterior semi-amplitude $-$ orbital period')
         ax2.set(ylabel='Eccentricity',
@@ -868,7 +886,7 @@ class KimaResults(object):
             # add the Keplerians for each of the planets
             for j in range(int(nplanets)):
                 P = pars[j + 0*self.max_components]
-                if P==0.0:
+                if P==0.0 or np.isnan(P):
                     continue
                 K = pars[j + 1*self.max_components]
                 phi = pars[j + 2*self.max_components]
