@@ -15,7 +15,7 @@ from .GP import GP, QPkernel
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
                    percentile68_ranges, percentile68_ranges_latex,\
                    read_datafile, lighten_color
-
+from .analysis import passes_threshold_np
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -490,7 +490,21 @@ class KimaResults(object):
         bins = np.arange(self.max_components+2)
         nplanets = self.posterior_sample[:, self.index_component]
         n, _ = np.histogram(nplanets, bins=bins)
-        ax.bar(bins[:-1], n)
+        ax.bar(bins[:-1], n, zorder=2)
+
+
+        if self.removed_crossing:
+            ic = self.index_component
+            nn = (~np.isnan(self.posterior_sample[:,ic+1:ic+11])).sum(axis=1)
+            nn, _ = np.histogram(nn, bins=bins)
+            ax.bar(bins[:-1], nn, color='r', alpha=0.2, zorder=2)
+            ax.legend(['all posterior samples', 'crossing orbits removed'])
+        else:
+            pt_Np = passes_threshold_np(self)
+            ax.bar(pt_Np, n[pt_Np], color='C3', zorder=2)
+            # top = np.mean(ax.get_ylim())
+            # ax.arrow(pt_Np, top, 0, -.4*top, lw=2, head_length=1, fc='k', ec='k')
+
 
         ax.set(xlabel='Number of Planets',
                ylabel='Number of Posterior Samples',
