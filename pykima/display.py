@@ -467,20 +467,33 @@ class KimaResults(object):
         # print '%8s %11.4f +- %7.4f [AU]' % ('a', a.n, a.s)
 
 
-    def maximum_likelihood_sample(self, printit=True):
-        """ Get the posterior sample with the highest log likelihood """
+    def maximum_likelihood_sample(self, Np=None, printit=True):
+        """ 
+        Get the posterior sample with the highest log likelihood. If `Np` is 
+        given, select only from posterior samples with that number of planets.
+        """
         if not self.lnlike_available:
             print('log-likelihoods are not available! '\
                   'maximum_likelihood_sample() doing nothing...')
             return
 
-        ind = np.argmax(self.posterior_lnlike[:,1])
-        maxlike = self.posterior_lnlike[ind,1]
-        pars = self.posterior_sample[ind]
+        if Np is None:
+            ind = np.argmax(self.posterior_lnlike[:,1])
+            maxlike = self.posterior_lnlike[ind,1]
+            pars = self.posterior_sample[ind]
+        else:
+            mask = self.posterior_sample[:, self.index_component] == Np
+            ind = np.argmax(self.posterior_lnlike[mask,1])
+            maxlike = self.posterior_lnlike[mask][ind,1]
+            pars = self.posterior_sample[mask][ind]
+
         if printit:
             print('Posterior sample with the highest likelihood value '\
-                  '({:.2f})'.format(maxlike) + 
-                  '\n-> might not be representative of the full posterior distribution\n')
+                  '({:.2f})'.format(maxlike))
+            if Np is not None:
+                print('from samples with %d Keplerians only' % Np)
+            print('-> might not be representative of the full posterior distribution\n')
+
             print('extra_sigma: ', pars[0])
             npl = int(pars[self.index_component])
             if npl>0:
