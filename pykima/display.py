@@ -206,13 +206,13 @@ class KimaResults(object):
 
         if self.GPmodel:
             n_hyperparameters = 4
-            start_hyperpars = start_parameters + n_trend + n_offsets + 1
+            start_hyperpars = start_parameters + n_trend + n_offsets + n_inst_offsets + 1
             self.etas = self.posterior_sample[:,
                           start_hyperpars : start_hyperpars+n_hyperparameters]
 
             for i in range(n_hyperparameters):
                 name = 'eta' + str(i+1)
-                ind = start_parameters + n_trend + n_offsets + n_inst_offsets + 1 + i
+                ind = start_hyperpars + i
                 setattr(self, name, self.posterior_sample[:, ind])
             
             self.GP = GP(QPkernel(1, 1, 1, 1), 
@@ -675,17 +675,19 @@ class KimaResults(object):
                                 if unit is not None else label)
 
         ### all Np together
-        if self.multi:
-            variables = list(self.extra_sigma.T)
-        else:
-            variables = [self.extra_sigma]
+        self.post_samples = np.c_[self.extra_sigma, self.etas]
+        # if self.multi:
+        #     variables = list(self.extra_sigma.T)
+        # else:
+        #     variables = [self.extra_sigma]
 
-        for eta in available_etas:
-            variables.append(getattr(self, eta))
+        # for eta in available_etas:
+        #     variables.append(getattr(self, eta))
 
-        self.post_samples = np.vstack(variables).T
+        # self.post_samples = np.vstack(variables).T
+        # ranges = [1.]*(len(available_etas) + self.extra_sigma.shape[1])
 
-        ranges = [1.]*(len(available_etas) + self.extra_sigma.shape[1])
+        ranges = [1.]*self.post_samples.shape[1]
         # ranges[3] = (self.pmin, self.pmax)
 
         c = corner.corner
