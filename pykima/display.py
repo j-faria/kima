@@ -855,6 +855,8 @@ class KimaResults(object):
         y = self.data[:,1].copy()
         yerr = self.data[:,2].copy()
 
+        ncurves = min(ncurves, samples.shape[0])
+
         # select random `ncurves` indices 
         # from the (sorted, period-cut) posterior samples
         ii = np.random.randint(samples.shape[0], size=ncurves)
