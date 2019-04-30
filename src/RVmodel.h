@@ -12,29 +12,29 @@
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
 
-// whether the model includes a GP component
+/// whether the model includes a GP component
 extern const bool GP;
 
-// whether the model includes a MA component
+/// whether the model includes a MA component
 extern const bool MA;
 
-// whether there are observations after the change in HARPS fibers
+/// whether there are observations after the change in HARPS fibers
 extern const bool obs_after_HARPS_fibers;
 
-// whether the model includes a linear trend
+/// whether the model includes a linear trend
 extern const bool trend;
 
-// whether the data comes from different instruments
-// (and offsets should be included in the model)
+/// whether the data comes from different instruments
+/// (and offsets should be included in the model)
 extern const bool multi_instrument;
 
 
 class RVmodel
 {
     private:
-        // Fix the number of planets? (by default, yes)
+        /// Fix the number of planets? (by default, yes)
         bool fix {true};
-        // Maximum number of planets
+        /// Maximum number of planets
         int npmax {1};
 
         DNest4::RJObject<RVConditionalPrior> planets =
@@ -83,37 +83,66 @@ class RVmodel
         RVmodel();
 
         // priors for parameters *not* belonging to the planets
+        /// @brief Prior for the systemic velocity.
         std::shared_ptr<DNest4::ContinuousDistribution> Cprior;
+        /// @brief Prior for the extra white noise (jitter).
         std::shared_ptr<DNest4::ContinuousDistribution> Jprior;
+        /// @brief Prior for the slope (used if `trend = true`).
         std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
+        /// @brief Prior for the HARPS fiber RV offset.
         std::shared_ptr<DNest4::ContinuousDistribution> fiber_offset_prior;
+        /// @brief (Common) prior for the between-instruments offsets.
         std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
+        /// @brief no doc.
         std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
+        /// @brief no doc.
         std::shared_ptr<DNest4::ContinuousDistribution> sigmaMA_prior;
+        /// @brief no doc.
         std::shared_ptr<DNest4::ContinuousDistribution> tauMA_prior;
 
+        // priors for the hyperparameters
+        /// @brief Prior for the log of eta1, the GP variance.
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta1_prior;
-        std::shared_ptr<DNest4::ContinuousDistribution> log_eta2_prior;
+        // std::shared_ptr<DNest4::ContinuousDistribution> log_eta2_prior;
+        /// @brief Prior for eta2, the GP correlation timescale.
+        std::shared_ptr<DNest4::ContinuousDistribution> eta2_prior;
+        /// @brief Prior for eta3, the GP period.
         std::shared_ptr<DNest4::ContinuousDistribution> eta3_prior;
+        /// @brief Prior for the log of eta4, the recurrence timescale.
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta4_prior;
 
 
         // change the name of std::make_shared :)
+        /**
+         * @brief Assign a prior distribution.
+         * 
+         * This function defines, initializes, and assigns a prior distribution.
+         * Possible distributions are ...
+         * 
+         * For example:
+         * 
+         * @code{.cpp}
+         *          Cprior = make_prior<Uniform>(0, 1);
+         * @endcode
+         * 
+         * @tparam T     ContinuousDistribution
+         * @tparam Args  
+         * @param args   Arguments for constructor of distribution
+         * @return std::shared_ptr<T> 
+        */
         template< class T, class... Args >
         std::shared_ptr<T> make_prior( Args&&... args ) { return std::make_shared<T>(args...); }
 
-        void save_setup();
-
-        // Generate the point from the prior
+        /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);
 
-        // Metropolis-Hastings proposals
+        /// @brief Do Metropolis-Hastings proposals.
         double perturb(DNest4::RNG& rng);
 
         // Likelihood function
         double log_likelihood() const;
 
-        // Print to stream
+        // Print parameters to stream
         void print(std::ostream& out) const;
 
         // Return string with column information

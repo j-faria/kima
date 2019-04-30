@@ -69,16 +69,23 @@ istream& operator >> ( istream& ins, data_t& data )
   }
 
 
+/**
+ * @brief Load RV data from a file.
+ *
+ * Read a tab/space separated file with columns  
+ * ```
+ *   time  vrad  error  
+ *   ...   ...   ...
+ * ```
+ * 
+ * @param filename   the name of the file
+ * @param units      units of the RVs and errors, either "kms" or "ms"
+ * @param skip       number of lines to skip in the beginning of the file (default = 2)
+ * @param indicators
+*/
 void Data::load(const char* filename, const char* units, 
                 int skip, const vector<char*>& indicators)
-  /* 
-  Read in tab/space separated file `filename` with columns
-  time  vrad  error
-  ...   ...   ...
-  where vrad and error are in `units` (either "kms" or "ms").
-  Skip the first `skip` lines.
-  */
-  {
+{
 
   data_t data;
 
@@ -187,19 +194,24 @@ void Data::load(const char* filename, const char* units,
       }
   }
 
-  }
+}
 
 
-
+/**
+ * @brief Load RV data from a multi-instrument file.
+ * 
+ * Read a tab/space separated file with columns  
+ * ```
+ *   time  vrad  error  obs
+ *   ...   ...   ...    ...
+ * ```
+ * The `obs` column should be an integer identifying the instrument.
+ * 
+ * @param filename   the name of the file
+ * @param units      units of the RVs and errors, either "kms" or "ms"
+ * @param skip       number of lines to skip in the beginning of the file (default = 2)
+*/
 void Data::load_multi(const char* filename, const char* units, int skip)
-  /* 
-  Read in tab/space separated file `filename` with columns
-  time  vrad  error  obs
-  ...   ...   ...    ...
-  where vrad and error are in `units` (either "kms" or "ms").
-  The obs column should be an integer identifying the instrument.
-  Skip the first `skip` lines.
-  */
   {
 
   data_t data;
@@ -262,15 +274,26 @@ void Data::load_multi(const char* filename, const char* units, int skip)
 
   }
 
-void Data::load_multi(vector<char*> filenames, const char* units, int skip)
-  /* 
-  Read in tab/space separated files `filenames`, each with columns
-  time  vrad  error
-  ...   ...   ...
-  where vrad and error are in `units` (either "kms" or "ms"). All files should 
-  have values in the same units. Skip the first `skip` lines (of all files).
-  */
-  {
+
+
+/**
+ * @brief Load RV data from a multiple files.
+ * 
+ * Read a tab/space separated files, each with columns  
+ * ```
+ *   time  vrad  error
+ *   ...   ...   ...
+ * ```
+ * All files should have the same structure and values in the same units.
+ * 
+ * @param filenames  the names of the files
+ * @param units      units of the RVs and errors, either "kms" or "ms"
+ * @param skip       number of lines to skip in the beginning of the file (default = 2)
+ * @param indicators
+*/
+void Data::load_multi(vector<char*> filenames, const char* units, int skip,
+                      const vector<char*>& indicators)
+{
 
   data_t data;
 
