@@ -1,9 +1,5 @@
 #include <iostream>
-#include <typeinfo>
-#include "DNest4.h"
-#include "Data.h"
-#include "RVmodel.h"
-#include "RVConditionalPrior.h"
+#include "kima.h"
 
 using namespace std;
 using namespace DNest4;

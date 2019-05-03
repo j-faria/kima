@@ -1,6 +1,4 @@
-#include "DNest4.h"
-#include "Data.h"
-#include "RVmodel.h"
+#include "kima.h"
 
 using namespace DNest4;
 

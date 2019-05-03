@@ -15,6 +15,7 @@ includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH)
 
 SRCDIR = ./src
 SRCS =\
+$(SRCDIR)/distributions/*.cpp \
 $(SRCDIR)/Data.cpp \
 $(SRCDIR)/RVConditionalPrior.cpp \
 $(SRCDIR)/RVmodel.cpp \
