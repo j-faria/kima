@@ -20,7 +20,7 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 
 /* set default priors if the user didn't change them */
-void RVmodel::setPriors()
+void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
     auto data = Data::get_instance();
 
@@ -43,8 +43,8 @@ void RVmodel::setPriors()
     if (GP) { /* GP parameters */
         if (!log_eta1_prior)
             log_eta1_prior = make_prior<Uniform>(-5, 5);
-        if (!log_eta2_prior)
-            log_eta2_prior = make_prior<Uniform>(0, 5);
+        if (!eta2_prior)
+            eta2_prior = make_prior<LogUniform>(1, 100);
         if (!eta3_prior)
             eta3_prior = make_prior<Uniform>(10, 40);
         if (!log_eta4_prior)
@@ -91,7 +91,7 @@ void RVmodel::from_prior(RNG& rng)
     {
         eta1 = exp(log_eta1_prior->generate(rng)); // m/s
 
-        eta2 = exp(log_eta2_prior->generate(rng)); // days
+        eta2 = eta2_prior->generate(rng); // days
 
         eta3 = eta3_prior->generate(rng); // days
 
@@ -117,6 +117,10 @@ void RVmodel::from_prior(RNG& rng)
 
 }
 
+/**
+ * @brief Fill the GP covariance matrix.
+ * 
+*/
 void RVmodel::calculate_C()
 {
     // Get the data
@@ -165,6 +169,10 @@ void RVmodel::calculate_C()
     #endif
 }
 
+/**
+ * @brief Calculate the full RV model
+ * 
+*/
 void RVmodel::calculate_mu()
 {
     auto data = Data::get_instance();
@@ -306,9 +314,10 @@ double RVmodel::perturb(RNG& rng)
             }
             else if(rng.rand() <= 0.33330)
             {
-                log_eta2 = log(eta2);
-                log_eta2_prior->perturb(log_eta2, rng);
-                eta2 = exp(log_eta2);
+                // log_eta2 = log(eta2);
+                // log_eta2_prior->perturb(log_eta2, rng);
+                // eta2 = exp(log_eta2);
+                eta2_prior->perturb(eta2, rng);
             }
             else if(rng.rand() <= 0.5)
             {
@@ -581,7 +590,11 @@ double RVmodel::perturb(RNG& rng)
     return logH;
 }
 
-
+/**
+ * @brief Calculate the log-likelihood for the current values of the paramters.
+ * 
+ * @return double the log-likelihood
+*/
 double RVmodel::log_likelihood() const
 {
     double logL = 0.;
@@ -763,9 +776,11 @@ string RVmodel::description() const
     return desc;
 }
 
-
+/**
+ * @brief Save the options of the current model in a INI file.
+ * 
+*/
 void RVmodel::save_setup() {
-    // save the options of the current model in a INI file
     auto data = Data::get_instance();
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
@@ -816,7 +831,8 @@ void RVmodel::save_setup() {
     if (GP){
         fout << endl << "[priors.GP]" << endl;
         fout << "log_eta1_prior: " << *log_eta1_prior << endl;
-        fout << "log_eta2_prior: " << *log_eta2_prior << endl;
+        // fout << "log_eta2_prior: " << *log_eta2_prior << endl;
+        fout << "eta2_prior: " << *eta2_prior << endl;
         fout << "eta3_prior: " << *eta3_prior << endl;
         fout << "log_eta4_prior: " << *log_eta4_prior << endl;
     }

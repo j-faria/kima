@@ -78,6 +78,7 @@ class RVmodel
         unsigned int staleness;
 
         void setPriors();
+        void save_setup();
 
     public:
         RVmodel();
