@@ -35,7 +35,7 @@ install:
   - pip --version
   - conda create -q -n test python=$PYTHON_VERSION
   - source activate test
-  - conda install numpy scipy matplotlib pytest pytest-cov
+  - conda install nomkl numpy scipy matplotlib pytest pytest-cov
   - pip install corner coveralls
 
   # compile the C++
