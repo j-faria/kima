@@ -4,7 +4,7 @@ SRC_DIR = $(KIMA_DIR)/src
 DNEST4_PATH = $(KIMA_DIR)/DNest4/code
 EIGEN_PATH = $(KIMA_DIR)/eigen
 
-includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH)
+includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(KIMA_DIR)/boost
 
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
 
