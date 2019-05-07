@@ -4,10 +4,8 @@
 
 import os
 import numpy as np
-# import astropy.constants as c
-import pandas as pd
 
-# from display import KimaResults
+from .display import KimaResults
 
 # from astropy.constants
 G = 6.67408e-11  # m3/(kg s2)
@@ -176,71 +174,3 @@ def rem_roche(results=None, RHOplanet=7.8, Mstar=Msun, Rstar=Rsun,
 
     # return results, allP, alle, allphi, allK, allomega
 
-
-def rem_timespan(results_path, no_p, no_files, timespan, multiple=4):
-    """
-    Removes any proposed orbits with periods greater than a specified multiple of the data timespan
-    If not specified multiple set to 4
-    Will save a new version of posterior_sample.txt (remtimespan_posterior_sample.txt) in results_path given
-
-    Parameters:
-        results_path       : Str
-                             Path to 'posterior_sample.txt' Kima output file
-        no_p               : Float
-                             Max number of planets set for Kima to explore
-        no_files           : Float
-                             Number of data files input into Kima
-        timespan           : Float
-                             Timespan of your data
-        multiple           : Float Optional
-                             Multiple of timespan to exclude, set to 4
-                             e.g. Any proposed planetary periods and corresponding parameters with
-                             timespans > 4 x timespan will be converted to NaN values
-
-    returns:
-        results: Dataframe object with removed orbits as NaN's
-
-    """
-
-    def _create_headers(hdr, n):
-        return [hdr + str(i + 1) for i in range(n)]
-
-    periods = _create_headers('P', no_p)
-    eccentricities = _create_headers('e', no_p)
-    semiamps = _create_headers('K', no_p)
-    phis = _create_headers('Phi', no_p)
-    omegas = _create_headers('w', no_p)
-
-    header = _create_headers('Jitter', no_files) + _create_headers('Offset', no_files-1) + \
-             ["ndim", "maxNp", "No_p"] + periods + semiamps + phis + eccentricities + omegas \
-             + ["Staleness", "v_sys"]
-
-    results = pd.read_csv('{0}/posterior_sample.txt'.format(results_path),
-                          sep=" ", header=None, skiprows=2, names=header)
-
-    ###############################################################################
-    unphysical_period = multiple * timespan
-
-    a = np.array(results[periods].values.tolist())
-    results[periods] = np.where(a > unphysical_period, np.nan,
-                                results[periods]).tolist()
-    results[eccentricities] = np.where(a > unphysical_period, np.nan,
-                                       results[eccentricities]).tolist()
-    results[phis] = np.where(a > unphysical_period, np.nan,
-                             results[phis]).tolist()
-    results[semiamps] = np.where(a > unphysical_period, np.nan,
-                                 results[semiamps]).tolist()
-    results[omegas] = np.where(a > unphysical_period, np.nan,
-                               results[omegas]).tolist()
-
-    #Convert all 0 values to NaN's
-    results = results.replace(0, np.nan)
-    results["Staleness"] = results["Staleness"].replace(np.nan,
-                                                        0)  #Undo for staleness
-
-    #Save as new results .txt file
-    new_header = ' '.join(header)
-    np.savetxt(r'{0}/remtimespan_posterior_sample.txt'.format(results_path),\
-               results.values, header=new_header)
-
-    return results

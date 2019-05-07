@@ -2,6 +2,7 @@ from .classic import postprocess
 from .analysis import most_probable_np, passes_threshold_np
 from .display import KimaResults
 from .showresults import showresults
+from .crossing_orbits import rem_crossing_orbits, rem_roche
 
 ## add Ctrl+C copy to matplotlib figures
 import io
