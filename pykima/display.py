@@ -4,6 +4,8 @@ import re, os, sys
 pathjoin = os.path.join
 
 import pickle
+import zipfile
+import tempfile
 try:
     import configparser
 except ImportError:
@@ -262,19 +264,111 @@ class KimaResults(object):
         # build the marginal posteriors for planet parameters
         self.get_marginals()
 
-        allowed_options = {'1': [self.make_plot1, {}],
-                           '2': [self.make_plot2, {}],
-                           '3': [self.make_plot3, {}],
-                           '4': [self.make_plot4, {}],
-                           '5': [self.make_plot5, {}],
-                           '6': [self.plot_random_planets, 
-                                    {'show_vsys':True, 'show_trend':True}],
-                           '7': [(self.hist_offset,
-                                  self.hist_vsys,
-                                  self.hist_extra_sigma,
-                                  self.hist_trend,
-                                  self.hist_correlations), {}],
-                          }
+        # make the plots, if requested
+        self.make_plots(options)
+
+    @classmethod
+    def load(cls, filename):
+        """Load a KimaResults object from a pickle or .zip file."""
+        try:
+            if filename.endswith('.zip'):
+                zf = zipfile.ZipFile(filename, 'r')
+                names = zf.namelist()
+                needs = ('sample.txt', 'levels.txt', 'sample_info.txt',
+                         'posterior_sample.txt', 'posterior_sample_info.txt',
+                         'kima_model_setup.txt')
+                for need in needs:
+                    if need not in names:
+                        raise ValueError('%s does not contain a "%s" file' %
+                                         (filename, need))
+
+                with tempfile.TemporaryDirectory() as dirpath:
+                    for need in needs:
+                        zf.extract(need, path=dirpath)
+
+                    pwd = os.getcwd()
+                    os.chdir(dirpath)
+
+                    # get the names of the data files
+                    lines = [
+                        line for line in open('kima_model_setup.txt')
+                        if 'file:' in line or 'files:' in line
+                    ]
+                    for line in lines:
+                        datafiles = line.strip().split(':')[1]
+                        if datafiles == '':
+                            continue
+                        datafiles = datafiles.split(',')[:-1]
+                        datafiles = list(map(os.path.basename, datafiles))
+                        datafiles = [df.strip() for df in datafiles]
+                    for df in datafiles:
+                        zf.extract(df)
+
+                    res = cls('')
+                    os.chdir(pwd)
+
+                return res
+
+            else:
+                try:
+                    with open(filename, 'rb') as f:
+                        return pickle.load(f)
+                except UnicodeDecodeError:
+                    with open(filename, 'rb') as f:
+                        return pickle.load(f, encoding='latin1')
+
+        except Exception as e:
+            # print('Unable to load data from ', filename, ':', e)
+            raise
+
+    def save_pickle(self, filename, verbose=True):
+        """Pickle this KimaResults object into a file."""
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f, protocol=2)
+        if verbose:
+            print('Wrote to file "%s"' % f.name)
+
+    def save_zip(self, filename, verbose=True):
+        """Save this KimaResults object and the text files into a zip."""
+        if not filename.endswith('.zip'):
+            filename = filename + '.zip'
+
+        zf = zipfile.ZipFile(filename, 'w', compression=zipfile.ZIP_DEFLATED)
+        tosave = ('sample.txt', 'sample_info.txt', 'levels.txt',
+                  'sampler_state.txt', 'posterior_sample.txt',
+                  'posterior_sample_info.txt')
+        for f in tosave:
+            zf.write(f)
+
+        text = open('kima_model_setup.txt').read()
+        for f in self.data_file:
+            text = text.replace(f, os.path.basename(f))
+        zf.writestr('kima_model_setup.txt', text)
+
+        for f in self.data_file:
+            zf.write(f, arcname=os.path.basename(f))
+
+        zf.close()
+        if verbose:
+            print('Wrote to file "%s"' % zf.filename)
+
+    def make_plots(self, options):
+        allowed_options = {
+            '1': [self.make_plot1, {}],
+            '2': [self.make_plot2, {}],
+            '3': [self.make_plot3, {}],
+            '4': [self.make_plot4, {}],
+            '5': [self.make_plot5, {}],
+            '6': [
+                self.plot_random_planets,
+                {
+                    'show_vsys': True,
+                    'show_trend': True
+                }
+            ],
+            '7': [(self.hist_offset, self.hist_vsys, self.hist_extra_sigma,
+                   self.hist_trend, self.hist_correlations), {}],
+        }
 
         for item in allowed_options.items():
             if item[0] in options:
@@ -284,27 +378,6 @@ class KimaResults(object):
                     [m() for m in methods]
                 else:
                     methods(**kwargs)
-
-
-    @classmethod
-    def load(cls, filename):
-        """Load a KimaResults object from a pickle file."""
-        try:
-            with open(filename, 'rb') as f:
-                return pickle.load(f)
-        except UnicodeDecodeError:
-            with open(filename, 'rb') as f:
-                return pickle.load(f, encoding='latin1')
-        except Exception as e:
-            print('Unable to load data from ', filename, ':', e)
-            raise
-
-    def save_pickle(self, filename):
-        """Pickle this KimaResults object into a file."""
-        with open(filename, 'wb') as f:
-            pickle.dump(self, f, protocol=2)
-        print('Wrote to file "%s"' % f.name)
-
 
     def get_marginals(self):
         """ 

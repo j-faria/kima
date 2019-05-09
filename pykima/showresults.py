@@ -34,14 +34,14 @@ def findpop(value, lst):
 def usage(full=True):
     u = "usage: kima-showresults "\
         "[rv] [planets] [orbital] [gp] [extra] [1, ..., 7]\n"\
-        "                        [all] [pickle] [--save-plots] "\
+        "                        [all] [pickle] [zip] [--save-plots] "\
                                 "[-h/--help] [--version]"
     u += '\n\n'
     if not full: return u
 
     pos = ["positional arguments:\n"]
     names = [
-        'rv', 'planets', 'orbital', 'gp', 'extra', 'all', 'pickle',
+        'rv', 'planets', 'orbital', 'gp', 'extra', 'all', 'pickle', 'zip',
         '--save-plots'
     ]
     descriptions = \
@@ -52,6 +52,7 @@ def usage(full=True):
          "Plot posteriors for fiber offset, systematic velocity, and extra white noise",
          "Show all plots",
          "Save the model into a pickle file (filename will be prompted)",
+         "Save the model and files into a zip file (filename will be prompted)",
          "Instead of showing, save the plots as .png files (does not work for diagnostic plots)",
         ]
 
@@ -86,16 +87,17 @@ def _parse_args(options):
     number_options = ['1', '2', '3', '4', '5', '6', '7']
     argstuple = namedtuple('Arguments',
                                 ['rv', 'planets', 'orbital', 'gp', 'extra'] \
-                                + ['diagnostic'] + ['pickle'] \
+                                + ['diagnostic'] + ['pickle', 'zip'] \
                                 + ['plot_number'] \
                                 + ['save_plots'])
 
     pick = findpop('pickle', args)
+    zipit = findpop('zip', args)
     diag = findpop('diagnostic', args)
 
     if 'all' in args:
         return argstuple(rv=True, planets=True, orbital=True, gp=True,
-                         extra=True, diagnostic=diag, pickle=pick,
+                         extra=True, diagnostic=diag, pickle=pick, zip=zipip,
                          plot_number=[], save_plots=save_plots)
 
     rv = findpop('rv', args)
@@ -106,13 +108,12 @@ def _parse_args(options):
     plots = list(set(args).intersection(number_options))
     for plot in plots:
         findpop(plot, args)
-
     if len(args) >= 1:
         print(usage(full=False), end='')
         print('error: could not recognize argument:', "'%s'" % args[0])
         sys.exit(1)
 
-    return argstuple(rv, planets, orbital, gp, extra, diag, pick,
+    return argstuple(rv, planets, orbital, gp, extra, diag, pick, zipit,
                      plot_number=plots, save_plots=save_plots)
 
 
@@ -150,19 +151,24 @@ def showresults(options='', force_return=False):
 
     show_tips()
 
-    res = KimaResults(list(set(plots)), save_plots=args.save_plots)
+    res = KimaResults('', save_plots=args.save_plots)
+    res.make_plots(list(set(plots)))
 
     res.evidence = evidence
     res.information = H
     res.ESS = res.posterior_sample.shape[0]
 
-    if args.pickle:
-        getinput = input
-        # if Python 2, use raw_input()
-        if sys.version_info[:2] <= (2, 7):
-            getinput = raw_input
 
+    getinput = input
+    # if Python 2, use raw_input()
+    if sys.version_info[:2] <= (2, 7):
+        getinput = raw_input
+
+    if args.pickle:
         res.save_pickle(getinput('Filename to save pickle model: '))
+    if args.zip:
+        res.save_zip(getinput('Filename to save model (must end with .zip): '))
+
 
     if not args.save_plots:
         show()  # render the plots

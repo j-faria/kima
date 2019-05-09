@@ -65,6 +65,16 @@ def show_tips():
         print('[kima TIP] ' + tip)
 
 
+def rms(array):
+    """ Root mean square of array """
+    return np.sqrt(np.sum(array**2)/array.size)
+
+def wrms(array, weights):
+    """ Weighted root mean square of array, given weights """
+    mu = np.average(array, weights=weights)
+    return np.sqrt(np.sum(weights*(array - mu)**2) / np.sum(weights))
+
+
 def apply_argsort(arr1, arr2, axis=-1):
     """
     Apply arr1.argsort() on arr2, along `axis`.
