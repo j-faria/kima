@@ -298,8 +298,8 @@ class KimaResults(object):
         except Exception as e:
             print('Unable to load data from ', filename, ':', e)
             raise
-    
-    def save(self, filename):
+
+    def save_pickle(self, filename):
         """Pickle this KimaResults object into a file."""
         with open(filename, 'wb') as f:
             pickle.dump(self, f, protocol=2)

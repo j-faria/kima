@@ -162,7 +162,7 @@ def showresults(options='', force_return=False):
         if sys.version_info[:2] <= (2, 7):
             getinput = raw_input
 
-        res.save(getinput('Filename to save pickle model: '))
+        res.save_pickle(getinput('Filename to save pickle model: '))
 
     if not args.save_plots:
         show()  # render the plots
