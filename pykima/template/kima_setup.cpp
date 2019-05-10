@@ -1,10 +1,5 @@
-#include "DNest4.h"
-#include "Data.h"
-#include "RVmodel.h"
-
+#include "kima.h"
 using namespace DNest4;
-
-#include "default_priors.h"
 
 const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
@@ -27,7 +22,7 @@ RVmodel::RVmodel():fix(true),npmax(1)
 
     /// for example, set the prior for some planet parameters
     // auto c = planets.get_conditional_prior();
-    // c->Pprior = make_prior<Gaussian>(0, 1);
+    // c->Pprior = make_prior<Gaussian>(10, 1);
     /// other priors: Kprior, eprior, phiprior, wprior
 }
 
