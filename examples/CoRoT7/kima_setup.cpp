@@ -4,7 +4,7 @@ using namespace DNest4;
 const bool obs_after_HARPS_fibers = false;
 const bool GP = true;
 const bool MA = false;
-const bool hyperpriors = false;
+const bool hyperpriors = true;
 const bool trend = false;
 const bool multi_instrument = false;
 
