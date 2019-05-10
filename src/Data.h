@@ -101,5 +101,13 @@ class Data
 		static Data& get_data() { return instance; }
 };
 
+
+template< class... Args >
+void load( Args&&... args ) { Data::get_instance().load(args...); }
+
+template< class... Args >
+void load_multi( Args&&... args ) { Data::get_instance().load_multi(args...); }
+
+
 #endif
 
