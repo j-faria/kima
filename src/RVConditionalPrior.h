@@ -27,22 +27,35 @@ class RVConditionalPrior:public DNest4::ConditionalPrior
 		RVConditionalPrior();
 
 		// priors for all planet parameters
-		/// @brief Prior for the orbital periods.
+		
+		/// Prior for the orbital periods.
 		std::shared_ptr<DNest4::ContinuousDistribution> Pprior;
-		/// @brief Prior for the semi-amplitudes (in m/s).
+		/// Prior for the semi-amplitudes (in m/s).
 		std::shared_ptr<DNest4::ContinuousDistribution> Kprior;
-		/// @brief Prior for the eccentricities.
+		/// Prior for the eccentricities.
 		std::shared_ptr<DNest4::ContinuousDistribution> eprior;
-		/// @brief Prior for the phases.
+		/// Prior for the phases.
 		std::shared_ptr<DNest4::ContinuousDistribution> phiprior;
-		/// @brief Prior for the .
+		/// Prior for the .
 		std::shared_ptr<DNest4::ContinuousDistribution> wprior;
 
-		/// @brief Generate a point from the prior. 
+		// hyperpriors
+
+		/// Prior for the log of the median orbital period
+		std::shared_ptr<DNest4::ContinuousDistribution> log_muP_prior;
+		/// Prior for the diversity of orbital periods
+		std::shared_ptr<DNest4::ContinuousDistribution> wP_prior;
+		/// Prior for the log of the mean semi-amplitude
+		std::shared_ptr<DNest4::ContinuousDistribution> log_muK_prior;
+
+
+		/// Generate a point from the prior.
 		void from_prior(DNest4::RNG& rng);
 
 		double log_pdf(const std::vector<double>& vec) const;
+		/// Get parameter sample from a uniform sample (CDF)
 		void from_uniform(std::vector<double>& vec) const;
+		/// Get uniform sample from a parameter sample (inverse CDF)
 		void to_uniform(std::vector<double>& vec) const;
 
 		void print(std::ostream& out) const;

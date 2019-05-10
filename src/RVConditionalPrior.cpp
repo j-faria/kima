@@ -1,3 +1,6 @@
+// (c) 2019 João Faria
+// This file is part of kima, which is licensed under the MIT license (see LICENSE for details)
+
 #include "RVConditionalPrior.h"
 #include "DNest4.h"
 #include "Utils.h"
@@ -7,25 +10,46 @@
 using namespace std;
 using namespace DNest4;
 
-
-extern ContinuousDistribution *log_muP_prior;
-extern ContinuousDistribution *wP_prior;
-extern ContinuousDistribution *log_muK_prior;
-
-// extern ContinuousDistribution *Pprior;
-// extern ContinuousDistribution *Kprior;
-
-// extern ContinuousDistribution *eprior;
-// extern ContinuousDistribution *phiprior;
-// extern ContinuousDistribution *wprior;
-
-
 RVConditionalPrior::RVConditionalPrior()
 {
-    if (!Pprior)
-        Pprior = make_shared<LogUniform>(1., 1e5);
-    if (!Kprior)
-        Kprior = make_shared<ModifiedLogUniform>(1., 1e3);
+    if (hyperpriors){
+        if (!log_muP_prior)
+            /** 
+             * By default, Cauchy prior centered on log(365 days), scale=1
+             * for log(muP), with muP in days
+             * truncated to (~-15.1, ~26.9)
+            */
+            log_muP_prior = make_shared<TruncatedCauchy>(log(365), 1., log(365)-21, log(365)+21);
+        // TruncatedCauchy *log_muP_prior = new TruncatedCauchy(log(365), 1., log(365)-21, log(365)+21);
+
+        /**
+         * By default, uniform prior for wP
+        */
+        if (!wP_prior)
+            wP_prior = make_shared<Uniform>(0.1, 3);
+        // Uniform *wP_prior = new Uniform(0.1, 3.);
+    
+
+        /**
+         * By default, Cauchy prior centered on log(1), scale=1
+         * for log(muK), with muK in m/s
+         * truncated to (-21, 21)
+         * NOTE: we actually sample on muK itself, just the prior is for log(muK)
+        */
+        if (!log_muK_prior)
+            log_muK_prior = make_shared<TruncatedCauchy>(0., 1., 0.-21, 0.+21);
+        // TruncatedCauchy *log_muK_prior = new TruncatedCauchy(0., 1., 0.-21, 0.+21);
+
+        Pprior = make_shared<Laplace>();
+        Kprior = make_shared<Exponential>();
+    }
+    else {
+        if (!Pprior)
+            Pprior = make_shared<LogUniform>(1., 1e5);
+        if (!Kprior)
+            Kprior = make_shared<ModifiedLogUniform>(1., 1e3);
+    }
+
 
     if (!eprior)
         eprior = make_shared<Uniform>(0, 1);
