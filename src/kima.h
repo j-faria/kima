@@ -4,3 +4,5 @@
 #include "Data.h"
 #include "RVmodel.h"
 #include "RVConditionalPrior.h"
+
+const double PI = M_PI;
