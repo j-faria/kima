@@ -6,3 +6,5 @@
 #include "RVConditionalPrior.h"
 
 const double PI = M_PI;
+
+using namespace DNest4;

@@ -1,5 +1,4 @@
 #include "kima.h"
-using namespace DNest4;
 
 const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
