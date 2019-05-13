@@ -21,7 +21,8 @@ int main(int argc, char** argv)
 {
     char* datafile = "dummy2.txt";
 
-    Data::get_instance().load(datafile, "ms", 0, {"fwhm"});
+    indicators = {"fwhm"};
+    load(datafile, "ms", 0, indicators);
 
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
     sampler.run(50);

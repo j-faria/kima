@@ -7,4 +7,6 @@
 
 const double PI = M_PI;
 
+std::vector<char*> indicators;
+
 using namespace DNest4;

@@ -13,8 +13,9 @@ numbered_args_help = """optional numbered arguments:
   2    - plot the posterior for the orbital periods;
   3    - plot the joint posterior for semi-amplitudes, eccentricities and orbital periods;
   4, 5 - plot the posteriors for the GP hyperparameters (marginal and joint);
-  6    - plot random posterior samples in data-space, together with the RV data;
-  7    - plot posteriors for the HARPS fiber offset and systematic velocity;
+  6    - plot samples from posterior in data-space together with the RV data;
+  7    - plot the posteriors for other parameters (systemic velocity, extra sigma, etc);
+  8    - plot the posteriors for the moving average parameters;
 """
 
 
@@ -33,7 +34,7 @@ def findpop(value, lst):
 
 def usage(full=True):
     u = "usage: kima-showresults "\
-        "[rv] [planets] [orbital] [gp] [extra] [1, ..., 7]\n"\
+        "[rv] [planets] [orbital] [gp] [extra] [1, ..., 8]\n"\
         "                        [all] [pickle] [zip] [--save-plots] "\
                                 "[-h/--help] [--version]"
     u += '\n\n'
@@ -45,21 +46,21 @@ def usage(full=True):
         '--save-plots'
     ]
     descriptions = \
-        ["Plot posterior realizations of the model over the RV measurements",
-         "Plot posterior for number of planets",
-         "Plot posteriors for some of the orbital parameters",
-         "Plot posteriors for GP hyperparameters",
-         "Plot posteriors for fiber offset, systematic velocity, and extra white noise",
-         "Show all plots",
-         "Save the model into a pickle file (filename will be prompted)",
-         "Save the model and files into a zip file (filename will be prompted)",
-         "Instead of showing, save the plots as .png files (does not work for diagnostic plots)",
+        ["plot posterior realizations of the model over the RV measurements",
+         "plot posterior for number of planets",
+         "plot posteriors for some of the orbital parameters",
+         "plot posteriors for GP hyperparameters",
+         "plot posteriors for fiber offset, systemic velocity, extra white noise, etc",
+         "show all plots",
+         "save the model into a pickle file (filename will be prompted)",
+         "save the model and files into a zip file (filename will be prompted)",
+         "instead of showing, save the plots as .png files (does not work for diagnostic plots)",
         ]
 
     for n, d in zip(names, descriptions):
         pos.append("  %-10s\t%s\n" % (n, d))
 
-    u += ''.join(pos)
+    u += ''.join(pos) + '\n'
     u += numbered_args_help
     return u
 
@@ -84,7 +85,7 @@ def _parse_args(options):
     # save all plots?
     save_plots = findpop('--save-plots', args)
 
-    number_options = ['1', '2', '3', '4', '5', '6', '7']
+    number_options = ['1', '2', '3', '4', '5', '6', '7', '8']
     argstuple = namedtuple('Arguments',
                                 ['rv', 'planets', 'orbital', 'gp', 'extra'] \
                                 + ['diagnostic'] + ['pickle', 'zip'] \
@@ -144,7 +145,7 @@ def showresults(options='', force_return=False):
         plots.append(number)
 
     try:
-        evidence, H, logx_samples = postprocess(plot=args.diagnostic)
+        evidence, H, logx_samples = postprocess(plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
     except IOError as e:
         print(e)
         sys.exit(1)
