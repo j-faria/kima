@@ -119,39 +119,50 @@ def clipped_std(arr, min, max):
 
 def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
     """
-    Calculate the planet (minimum) mass Msini given
-    orbital period `P`, semi-amplitude `K`, eccentricity `e`, and stellar mass.
+    Calculate the planet (minimum) mass Msini given orbital period `P`,
+    semi-amplitude `K`, eccentricity `e`, and stellar mass. If star_mass is a
+    tuple with (estimate, uncertainty), this (Gaussian) uncertainty will be
+    taken into account in the calculation.
+
     Units:
         P [days]
         K [m/s]
         e []
         star_mass [Msun]
     Returns:
-        if P is float: Msini [Mjup], Msini [Mearth]
+        if P is float:
+            if star_mass is float:
+                Msini [Mjup], Msini [Mearth]
+            if star_mass is tuple:
+                (Msini, error_Msini) [Mjup], (Msini, error_Msini) [Mearth]
         if P is array:
             if full_output: mean Msini [Mjup], std Msini [Mjup], Msini [Mjup] (array)
             else: mean Msini [Mjup], std Msini [Mjup], mean Msini [Mearth], std Msini [Mearth]
     """
     if verbose: print('Using star mass = %s solar mass' % star_mass)
 
-    if isinstance(P, float):
+    if type(P) in (int, float):
         # calculate for one value of the orbital period
         # then K, e, and star_mass should also be floats
         assert isinstance(K, float) and isinstance(e, float)
-        assert isinstance(star_mass, float)
+        uncertainty_star_mass = False
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            star_mass = np.random.normal(star_mass[0], star_mass[1], 5000)
+            uncertainty_star_mass = True
 
-        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(
-            1. / 3) * K * np.sqrt(1 - e**2)
+        m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
-        return m_mj, m_me
+        if uncertainty_star_mass:
+            return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
+        else:
+            return m_mj, m_me
     else:
         # calculate for an array of periods
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
-            star_mass = star_mass[0] + star_mass[1] * np.random.randn(P.size)
+            star_mass = np.random.normal(star_mass[0], star_mass[1], P.size)
 
-        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(
-            1. / 3) * K * np.sqrt(1 - e**2)
+        m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
 
         if full_output:
