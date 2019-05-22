@@ -84,21 +84,21 @@ class RVmodel
         RVmodel();
 
         // priors for parameters *not* belonging to the planets
-        /// @brief Prior for the systemic velocity.
+        /// Prior for the systemic velocity.
         std::shared_ptr<DNest4::ContinuousDistribution> Cprior;
-        /// @brief Prior for the extra white noise (jitter).
+        /// Prior for the extra white noise (jitter).
         std::shared_ptr<DNest4::ContinuousDistribution> Jprior;
-        /// @brief Prior for the slope (used if `trend = true`).
+        /// Prior for the slope (used if `trend = true`).
         std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
-        /// @brief Prior for the HARPS fiber RV offset.
+        /// Prior for the HARPS fiber RV offset.
         std::shared_ptr<DNest4::ContinuousDistribution> fiber_offset_prior;
-        /// @brief (Common) prior for the between-instruments offsets.
+        /// (Common) prior for the between-instruments offsets.
         std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
-        /// @brief no doc.
+        /// no doc.
         std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
-        /// @brief no doc.
+        /// no doc.
         std::shared_ptr<DNest4::ContinuousDistribution> sigmaMA_prior;
-        /// @brief no doc.
+        /// no doc.
         std::shared_ptr<DNest4::ContinuousDistribution> tauMA_prior;
 
         // priors for the hyperparameters
