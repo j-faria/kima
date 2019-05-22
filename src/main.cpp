@@ -1,12 +1,6 @@
-#include <iostream>
 #include "kima.h"
 
 using namespace std;
-using namespace DNest4;
-
-/* edit from here on */
-
-#include "default_priors.h"
 
 const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
@@ -25,7 +19,7 @@ RVmodel::RVmodel() : fix(true), npmax(1)
 int main(int argc, char** argv)
 {
     /* set the RV data file */
-    char* datafile = "examples/BL2009/BL2009_dataset1.kms.rv";
+    datafile = "examples/BL2009/BL2009_dataset1.kms.rv";
 
     /* load the file (RVs are in km/s) */
     /* don't skip any lines in the header */

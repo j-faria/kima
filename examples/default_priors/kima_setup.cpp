@@ -13,10 +13,10 @@ RVmodel::RVmodel():fix(true),npmax(1)
 
 int main(int argc, char** argv)
 {
-    char* datafile = "dummy_data.rv";
+    datafile = "dummy_data.rv";
 
     load(datafile, "kms", 0);
-    
+
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
     sampler.run(1000);
 

@@ -15,10 +15,10 @@ RVmodel::RVmodel():fix(false),npmax(5)
 
 int main(int argc, char** argv)
 {
-    char* datafile = "corot7.txt";
+    datafile = "corot7.txt";
 
     load(datafile, "ms");
-    
+
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
     sampler.run(50);
 

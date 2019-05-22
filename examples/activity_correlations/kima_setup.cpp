@@ -9,7 +9,7 @@ const bool multi_instrument = false;
 
 RVmodel::RVmodel():fix(true),npmax(0)
 {
-    auto data = Data::get_instance();
+    auto data = Data::get_data();
     auto conditional = planets.get_conditional_prior();
     conditional->Pprior = make_prior<LogUniform>(1, 10*data.get_timespan()); // days
     conditional->Kprior = make_prior<ModifiedLogUniform>(1.0, 100); // m/s
@@ -19,7 +19,7 @@ RVmodel::RVmodel():fix(true),npmax(0)
 
 int main(int argc, char** argv)
 {
-    char* datafile = "dummy2.txt";
+    datafile = "dummy2.txt";
 
     indicators = {"fwhm"};
     load(datafile, "ms", 0, indicators);

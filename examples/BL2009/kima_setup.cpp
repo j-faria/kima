@@ -24,10 +24,10 @@ RVmodel::RVmodel():fix(false),npmax(1)
 
 int main(int argc, char** argv)
 {
-    char* datafile = "BL2009_dataset1.kms.rv";
+    datafile = "BL2009_dataset2.kms.rv";
 
     load(datafile, "kms", 0);
-    
+
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
     sampler.run(50);
 

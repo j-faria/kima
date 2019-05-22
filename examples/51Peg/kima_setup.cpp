@@ -25,12 +25,12 @@ RVmodel::RVmodel():fix(false),npmax(1)
 int main(int argc, char** argv)
 {
     /* set the RV data file */
-    char* datafile = "51Peg.rv";
+    datafile = "51Peg.rv";
 
     // the second argument is the units of the RVs
     // the third (optional) argument, tells kima not to skip any line in the header of the file
     load(datafile, "ms", 0);
-    
+
     // set the sampler and run it!
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
     sampler.run(50); // print to terminal every 50th iteration

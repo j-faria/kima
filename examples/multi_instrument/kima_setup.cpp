@@ -16,11 +16,11 @@ RVmodel::RVmodel():fix(true),npmax(1)
 int main(int argc, char** argv)
 {
     // set the RV data files from multiple instruments
-    std::vector<char*> datafiles = {"HD106252_ELODIE.txt",
-                                     "HD106252_HET.txt",
-                                     "HD106252_HJS.txt",
-                                     "HD106252_Lick.txt"
-                                   };
+    datafiles = {"HD106252_ELODIE.txt",
+                 "HD106252_HET.txt",
+                 "HD106252_HJS.txt",
+                 "HD106252_Lick.txt"
+                };
 
     // note: all files should have the same structure, and be in the same units
     load_multi(datafiles, "ms", 2);

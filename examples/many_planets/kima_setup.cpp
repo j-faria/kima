@@ -15,10 +15,10 @@ RVmodel::RVmodel():fix(false),npmax(10)
 
 int main(int argc, char** argv)
 {
-    char* datafile = "HD10180.kms.rv";
+    datafile = "HD10180.kms.rv";
 
     load(datafile, "kms", 1);
-    
+
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
     sampler.run(50);
 
