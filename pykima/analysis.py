@@ -1,5 +1,6 @@
 import numpy as np
 
+from .utils import get_planet_mass, get_planet_semimajor_axis
 
 def most_probable_np(results):
     """ 
@@ -28,6 +29,47 @@ def passes_threshold_np(results, threshold=150):
         return values[i]
     else:
         return values[0]
+
+
+
+def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
+    if sample is None:
+        sample = results.maximum_likelihood_sample(printit=printit)
+
+    if printit:
+        print()
+        print('Calculating planet masses with Mstar = %.3f Msun' % star_mass)
+    indices = results.indices
+    mc = results.max_components
+
+    # planet parameters
+    pars = sample[indices['planets']].copy()
+    # number of planets in this sample
+    nplanets = (pars[:mc] != 0).sum()
+
+    if printit:
+        print(20* ' ' + ('%12s' % 'Mp [Mearth]') + ('%12s' % 'Mp [Mjup]'))
+
+    masses = []
+    for j in range(int(nplanets)):
+        P = pars[j + 0 * mc]
+        if P == 0.0:
+            continue
+        K = pars[j + 1 * mc]
+        # phi = pars[j + 2 * mc]
+        # t0 = t[0] - (P * phi) / (2. * np.pi)
+        ecc = pars[j + 3 * mc]
+        # w = pars[j + 4 * mc]
+        m_mjup, m_mearth = get_planet_mass(P, K, ecc, star_mass=star_mass)
+
+        if printit:
+            s = 20 * ' '
+            s += '%12.5f' % m_mearth
+            s += '%12.5f' % m_mjup
+            print(s)
+            masses.append(m_mearth)
+
+    return np.array(masses)
 
 
 
