@@ -401,6 +401,16 @@ class KimaResults(object):
 
     def make_plots(self, options):
         allowed_options = {
+            # keys are allowed options (strings)
+            # values are lists
+            #   first item in the list can be a callable, a tuple of callables
+            #   or a str
+            #       if a callable, it is called
+            #       if a tuple of callables, they are all called without arguments
+            #       if a str, it is exec'd in globals(), locals()
+            #   second item in the list is a dictionary
+            #       each entry is an argument with which the callable is called
+
             '1': [self.make_plot1, {}],
             '2': [self.make_plot2, {}],
             '3': [self.make_plot3, {}],
@@ -423,6 +433,8 @@ class KimaResults(object):
                 kwargs = item[1][1]
                 if isinstance(methods, tuple):
                     [m() for m in methods]
+                elif isinstance(methods, str):
+                    exec(methods)
                 else:
                     methods(**kwargs)
 
