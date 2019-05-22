@@ -25,8 +25,8 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     auto data = Data::get_instance();
 
     betaprior = make_prior<Gaussian>(0, 1);
-    sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 100.);
-    tauMA_prior = make_prior<LogUniform>(0.1, 10);
+    sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 10.);
+    tauMA_prior = make_prior<LogUniform>(1, 10);
     
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_y_min(), data.get_y_max());
@@ -265,7 +265,7 @@ void RVmodel::calculate_mu()
     }
 
 
-    if(!update && MA)
+    if(MA)
     {
         const vector<double>& y = data.get_y();
         for(size_t i=1; i<t.size(); i++) // the loop starts at the 2nd point
@@ -447,6 +447,13 @@ double RVmodel::perturb(RNG& rng)
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] -= fiber_offset;
                 }
+
+                if(data.indicator_correlations) {
+                    for(size_t j = 0; j < data.number_indicators; j++){
+                        mu[i] -= betas[j] * actind[j][i];
+                    }
+                }
+
             }
 
             Cprior->perturb(background, rng);
@@ -467,6 +474,12 @@ double RVmodel::perturb(RNG& rng)
                 slope_prior->perturb(slope, rng);
             }
 
+            if(data.indicator_correlations){
+                for(size_t j = 0; j < data.number_indicators; j++){
+                    betaprior->perturb(betas[j], rng);
+                }
+            }
+
             for(size_t i=0; i<mu.size(); i++)
             {
                 mu[i] += background;
@@ -481,6 +494,13 @@ double RVmodel::perturb(RNG& rng)
                 if (obs_after_HARPS_fibers) {
                     if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
+
+                if(data.indicator_correlations) {
+                    for(size_t j = 0; j < data.number_indicators; j++){
+                        mu[i] += betas[j]*actind[j][i];
+                    }
+                }
+                
             }
         }
 
@@ -591,19 +611,19 @@ double RVmodel::perturb(RNG& rng)
 }
 
 /**
- * @brief Calculate the log-likelihood for the current values of the paramters.
+ * Calculate the log-likelihood for the current values of the parameters.
  * 
  * @return double the log-likelihood
 */
 double RVmodel::log_likelihood() const
 {
-    double logL = 0.;
     auto data = Data::get_instance();
     int N = data.N();
-    const vector<double>& y = data.get_y();
-    const vector<double>& sig = data.get_sig();
-    const vector<int>& obsi = data.get_obsi();
+    auto y = data.get_y();
+    auto sig = data.get_sig();
+    auto obsi = data.get_obsi();
 
+    double logL = 0.;
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -778,7 +798,7 @@ string RVmodel::description() const
 }
 
 /**
- * @brief Save the options of the current model in a INI file.
+ * Save the options of the current model in a INI file.
  * 
 */
 void RVmodel::save_setup() {
