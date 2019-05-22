@@ -318,6 +318,11 @@ class KimaResults(object):
                 with tempfile.TemporaryDirectory() as dirpath:
                     for need in needs:
                         zf.extract(need, path=dirpath)
+                    try:
+                        zf.extract('evidence', path=dirpath)
+                        zf.extract('information', path=dirpath)
+                    except Exception:
+                        pass
 
                     pwd = os.getcwd()
                     os.chdir(dirpath)
@@ -338,6 +343,9 @@ class KimaResults(object):
                         zf.extract(df)
 
                     res = cls('')
+                    res.evidence = float(open('evidence').read())
+                    res.information = float(open('information').read())
+
                     os.chdir(pwd)
 
                 return res
@@ -377,6 +385,12 @@ class KimaResults(object):
         for f in self.data_file:
             text = text.replace(f, os.path.basename(f))
         zf.writestr('kima_model_setup.txt', text)
+
+        try:
+            zf.writestr('evidence', str(self.evidence))
+            zf.writestr('information', str(self.information))
+        except AttributeError:
+            pass
 
         for f in self.data_file:
             zf.write(f, arcname=os.path.basename(f))
