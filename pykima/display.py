@@ -423,8 +423,14 @@ class KimaResults(object):
                     'show_trend': True
                 }
             ],
+            '6p': [
+                'self.plot_random_planets(show_vsys=True, show_trend=True);'\
+                'self.phase_plot(self.maximum_likelihood_sample())',
+                {}
+            ],
             '7': [(self.hist_offset, self.hist_vsys, self.hist_extra_sigma,
                    self.hist_trend, self.hist_correlations), {}],
+            '8': [self.hist_MA, {}],
         }
 
         for item in allowed_options.items():
@@ -715,6 +721,243 @@ class KimaResults(object):
             print('vsys: ', pars[-1])
 
         return pars
+
+    def model(self, sample, t=None):
+        """ 
+        Evaluate the complete model at one posterior sample. If `t` is None, use
+        the data times. Instrument offsets are only added to the model if `t` is
+        None, but the systemic velocity is always added. This function does
+        *not* evaluate the GP component of the model.
+        """
+
+        if sample.shape[0] != self.posterior_sample.shape[1]:
+            n1 = sample.shape[0]
+            n2 = self.posterior_sample.shape[1]
+            raise ValueError(
+                '`sample` has wrong dimensions, should be %d got %d' % (n2,
+                                                                        n1))
+
+        data_t = False
+        if t is None:
+            t = self.data[:, 0].copy()
+            data_t = True
+
+        v = np.zeros_like(t)
+        if self.GPmodel:
+            v_at_t = np.zeros_like(t)
+
+        # get the planet parameters for this sample
+        pars = sample[self.indices['planets']].copy()
+
+        # how many planets in this sample?
+        # nplanets = pars.size / self.n_dimensions
+        nplanets = (pars[:self.max_components] != 0).sum()
+
+        # add the Keplerians for each of the planets
+        for j in range(int(nplanets)):
+            P = pars[j + 0 * self.max_components]
+            if P == 0.0:
+                continue
+            K = pars[j + 1 * self.max_components]
+            phi = pars[j + 2 * self.max_components]
+            t0 = t[0] - (P * phi) / (2. * np.pi)
+            ecc = pars[j + 3 * self.max_components]
+            w = pars[j + 4 * self.max_components]
+            v += keplerian(t, P, K, ecc, w, t0, 0.)
+
+            if self.GPmodel:
+                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
+
+        # systemic velocity for this sample
+        vsys = sample[-1]
+        v += vsys
+        if self.GPmodel:
+            v_at_t += vsys
+
+        # if evaluating at the same times as the data, add instrument offsets
+        if data_t and self.multi and len(self.data_file) > 1:
+            offsets = sample[self.indices['inst_offsets']]
+            number_offsets = offsets.size
+            for j in range(number_offsets + 1):
+                if j == number_offsets:
+                    of = 0.
+                else:
+                    of = offsets[j]
+                instrument_mask = self.obs == j + 1
+                v[instrument_mask] += of
+
+        # add the trend, if present
+        if self.trend:
+            v += sample[self.indices['trend']] * (t - self.tmiddle)
+            if self.GPmodel:
+                v_at_t += sample[self.indices['trend']] * (t - self.tmiddle)
+
+        # the GP prediction
+        # if self.GPmodel:
+        #     self.GP.kernel.setpars(self.eta1[i], self.eta2[i], self.eta3[i],
+        #                             self.eta4[i])
+        #     mu = self.GP.predict(y - v_at_t, ttGP, return_std=False)
+
+        return v
+
+    def residuals(self, sample):
+        return self.y - self.model(sample)
+
+    def phase_plot(self, sample):
+        """ Plot the phase curves given the solution in `sample` """
+        # this is probably the most complicated function in the whole file!!
+
+        if self.max_components == 0:
+            print('Model has no planets! phase_plot() doing nothing...')
+            return
+
+        # make copies to not change attributes
+        t, y, e = self.t.copy(), self.y.copy(), self.e.copy()
+
+        def kima_pars_to_keplerian_pars(p):
+            # transforms kima planet pars (P,K,phi,ecc,w)
+            # to pykima.keplerian.keplerian pars (P,K,ecc,w,T0)
+            assert p.size == self.n_dimensions
+            P = p[0]
+            phi = p[2]
+            t0 = self.t[0] - (P * phi) / (2. * np.pi)
+            return np.array([P, p[1], p[3], p[4], t0])
+
+        mc = self.max_components
+
+        # get the planet parameters for this sample
+        pars = sample[self.indices['planets']].copy()
+
+        # sort by decreasing amplitude (arbitrary)
+        ind = np.argsort(pars[1 * mc:2 * mc])[::-1]
+        for i in range(self.n_dimensions):
+            pars[i * mc:(i + 1) * mc] = pars[i * mc:(i + 1) * mc][ind]
+
+        # (function to) get parameters for individual planets
+        this_planet_pars = lambda i: pars[i::self.max_components]
+        parsi = lambda i: kima_pars_to_keplerian_pars(this_planet_pars(i))
+
+        # extract periods, phases and calculate times of periastron
+        P = pars[0 * mc:1 * mc]
+        phi = pars[2 * mc:3 * mc]
+        T0 = self.t[0] - (P * phi) / (2. * np.pi)
+
+        # how many planets in this sample?
+        # nplanets = int(pars.size / self.n_dimensions) <-- this is wrong!
+        nplanets = (pars[:self.max_components] != 0).sum()
+        planetis = list(range(nplanets))
+
+        # get the model for this sample
+        # (this adds in the instrument offsets and the systemic velocity)
+        v = self.model(sample)
+
+        # put all data around zero
+        y -= sample[-1]  # subtract this sample's systemic velocity
+        if self.multi:
+            # subtract each instrument's offset
+            for i in range(self.n_instruments - 1):
+                of = sample[self.indices['inst_offsets']][i]
+                y[self.obs == i + 1] -= sample[self.indices['inst_offsets']][i]
+        if self.trend:  # and subtract the trend
+            y -= sample[self.indices['trend']] * (t - self.tmiddle)
+
+        ekwargs = {
+            'fmt': 'o',
+            'mec': 'none',
+            'ms': 3,
+            'capsize': 0,
+            'elinewidth': 0.8,
+        }
+
+        # very complicated logic just to make the figure the right size
+        fs = (max(6.4, 6.4 + 1 * (nplanets - 2)),
+              max(4.8, 4.8 + 1 * (nplanets - 3)))
+        fig = plt.figure('phase plot', constrained_layout=True, figsize=fs)
+        nrows = {1: 2, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3}[nplanets]
+        ncols = nplanets if nplanets <= 3 else 3
+        gs = gridspec.GridSpec(nrows, ncols, figure=fig,
+                               height_ratios=[2] * (nrows - 1) + [1])
+        gs_indices = {i: (i // 3, i % 3) for i in range(50)}
+
+        # for each planet in this sample
+        for i, letter in zip(range(nplanets), ascii_lowercase[1:]):
+            ax = fig.add_subplot(gs[gs_indices[i]])
+
+            p = P[i]
+            t0 = T0[i]
+
+            ## plot the keplerian curve in phase (3 times)
+            phase = np.linspace(0, 1, 200)
+            tt = phase * p + t0
+            vv = keplerian(tt, *parsi(i), 0.)
+            for j in (-1, 0, 1):
+                alpha = 0.3 if j in (-1, 1) else 1
+                ax.plot(
+                    np.sort(phase) + j, vv[np.argsort(phase)], 'k',
+                    alpha=alpha)
+
+            ## the other planets which are not the ith
+            other = copy(planetis)
+            other.remove(i)
+
+            ## subtract the other planets from the data and plot it (the data)
+            if self.multi:
+                for k in range(1, self.n_instruments + 1):
+                    m = self.obs == k
+                    phase = ((t[m] - t0) / p) % 1.0
+                    other_planet_v = np.array(
+                        [keplerian(t[m], *parsi(i), 0.) for i in other])
+                    other_planet_v = other_planet_v.sum(axis=0)
+                    yy = y[m].copy()
+                    yy -= other_planet_v
+
+                    # one color for each instrument
+                    color = ax._get_lines.prop_cycler.__next__()['color']
+
+                    for j in (-1, 0, 1):
+                        alpha = 0.3 if j in (-1, 1) else 1
+                        label = self.data_file[k - 1] if j == 0 else None
+                        ax.errorbar(
+                            np.sort(phase) + j, yy[np.argsort(phase)],
+                            e[np.argsort(phase)], **ekwargs, color=color,
+                            alpha=alpha, label=label)
+                ax.legend()
+
+            else:
+                phase = ((t - t0) / p) % 1.0
+                other_planet_v = np.array(
+                    [keplerian(t, *parsi(i), 0.) for i in other])
+                other_planet_v = other_planet_v.sum(axis=0)
+                yy = y.copy()
+                yy -= other_planet_v
+
+                color = ax._get_lines.prop_cycler.__next__()['color']
+
+                for j in (-1, 0, 1):
+                    alpha = 0.3 if j in (-1, 1) else 1
+                    ax.errorbar(
+                        np.sort(phase) + j, yy[np.argsort(phase)],
+                        e[np.argsort(phase)], **ekwargs, color=color,
+                        alpha=alpha)
+
+            ax.set_xlim(-0.2, 1.2)
+            ax.set(xlabel="phase", ylabel="radial velocity [m/s]")
+            ax.set_title('%s' % letter, loc='left')
+            ax.set_title('P=%.2f days' % p, loc='right')
+
+        ax = fig.add_subplot(gs[-1, :])
+        if self.multi:
+            for k in range(1, self.n_instruments + 1):
+                m = self.obs == k
+                ax.errorbar(t[m], self.y[m] - v[m], e[m], **ekwargs)
+        else:
+            ax.errorbar(t, self.y - v, e, **ekwargs)
+
+        ax.axhline(y=0, ls='--', alpha=0.5, color='k')
+        ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
+        ax.set(xlabel='Time [days]', ylabel='residuals [m/s]')
+        ax.set_title('rms=%.2f m/s' % wrms(self.y - v, 1 / e**2), loc='right')
+        #
 
     def make_plot1(self):
         """ Plot the histogram of the posterior for Np """
