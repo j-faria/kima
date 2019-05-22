@@ -22,6 +22,7 @@ from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import gaussian_kde
+from scipy.signal import find_peaks
 import corner
 
 try:
@@ -615,11 +616,14 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
-
-    def make_plot2(self, bins=None):
+    def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
+                   kde=False, kde_bw=None, show_peaks=False):
         """ 
-        Plot the histogram of the posterior for orbital period P.
-        Optionally provide the histogram bins.
+        Plot the histogram (or the kde) of the posterior for orbital period P.
+        Optionally provide the number of histogram bins, the bins themselves,
+        the limits in orbital period, or the kde bandwidth. If both kde and
+        show_peaks are true, the routine attempts to plot the most prominent
+        peaks in the posterior.
         """
 
         if self.max_components == 0:
@@ -631,35 +635,76 @@ class KimaResults(object):
             # print('exponentiating period!')
         else:
             T = self.T
-        
+
         fig, ax = plt.subplots(1, 1)
 
-        # mark 1 year and 0.5 year
+        # mark 1 year
         year = 365.25
         ax.axvline(x=year, ls='--', color='r', lw=3, alpha=0.6)
         # ax.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
         # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
 
         # mark the timespan of the data
-        ax.axvline(x=self.data[:,0].ptp(), ls='--', color='b', lw=3, alpha=0.5)
+        ax.axvline(x=self.t.ptp(), ls='--', color='b', lw=3, alpha=0.5)
 
-        # by default, 100 bins in log between 0.1 and 1e7
-        if bins is None:
-            bins = 10 ** np.linspace(np.log10(1e-1), np.log10(1e7), 100)
+        if kde:
+            NN = 3000
+            kdef = gaussian_kde(T, bw_method=kde_bw)
+            if plims is None:
+                if logx:
+                    xx = np.logspace(np.log10(T.min()), np.log10(T.max()), NN)
+                    y = kdef(xx)
+                    ax.semilogx(xx, y)
+                else:
+                    xx = np.linspace(T.min(), T.max(), NN)
+                    y = kdef(xx)
+                    ax.plot(xx, y)
+            else:
+                a, b = plims
+                if logx:
+                    xx = np.logspace(np.log10(a), np.log10(b), NN)
+                    y = kdef(xx)
+                    ax.semilogx(xx, y)
+                else:
+                    xx = np.linspace(a, b, NN)
+                    y = kdef(xx)
+                    ax.plot(xx, y)
 
-        ax.hist(T, bins=bins, alpha=0.5)
+            # show the limits of the kde evaluation
+            ax.vlines([xx.min(), xx.max()], ymin=0, ymax=0.03, color='k',
+                      transform=ax.get_xaxis_transform())
+
+            if show_peaks:
+                peaks, _ = find_peaks(y, prominence=0.1)
+                for peak in peaks:
+                    ax.text(xx[peak], y[peak], 'P$\simeq$%.2f' % xx[peak],
+                            ha='left')
+
+        else:
+            if bins is None:
+                if plims is None:
+                    # by default, 100 bins in log between 0.1 and 1e7
+                    bins = 10**np.linspace(
+                        np.log10(1e-1), np.log10(1e7), nbins)
+                else:
+                    bins = 10**np.linspace(
+                        np.log10(plims[0]), np.log10(plims[1]), nbins)
+
+            ax.hist(T, bins=bins, alpha=0.5)
 
         ax.legend(['1 year', 'timespan'])
-        ax.set(xscale="log",
-               xlabel=r'(Period/days)',
-               ylabel='Number of Posterior Samples',
+        ax.set(xscale='log' if logx else 'linear', xlabel=r'(Period/days)',
+               ylabel='KDE density' if kde else 'Number of Posterior Samples',
                title='Posterior distribution for the orbital period(s)')
+        ax.set_ylim(bottom=0)
+
+        if plims is not None:
+            ax.set_xlim(plims)
 
         if self.save_plots:
             filename = 'kima-showresults-fig2.png'
             print('saving in', filename)
             fig.savefig(filename)
-
 
     def make_plot3(self, points=True):
         """
@@ -667,7 +712,7 @@ class KimaResults(object):
         and orbital period and eccentricity and orbital period.
         If `points` is True, plot each posterior sample, else plot hexbins
         """
-        
+
         if self.max_components == 0:
             print('Model has no planets! make_plot3() doing nothing...')
             return
