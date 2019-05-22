@@ -1,6 +1,7 @@
 from .classic import postprocess
 from .analysis import most_probable_np, passes_threshold_np
 from .display import KimaResults
+load = KimaResults.load
 from .showresults import showresults
 
 from os.path import dirname
@@ -26,7 +27,7 @@ except ImportError:
             replace_figure = False
     
 
-def add_clipboard_to_figures():
+def _add_clipboard_to_figures():
     # replace the original plt.figure() function with one that supports 
     # clipboard-copying
     oldfig = plt.figure
@@ -50,4 +51,4 @@ def add_clipboard_to_figures():
 
     plt.figure = newfig
 
-if replace_figure: add_clipboard_to_figures()
+if replace_figure: _add_clipboard_to_figures()
