@@ -71,6 +71,9 @@ class RVmodel
         double keplerstart3(double e, double M);
         double true_anomaly(double time, double prd, double ecc, double peri_pass);
 
+        template <typename T> inline void sin_cos_reduc (T x, T* SnReduc, T* CsReduc);
+        template <typename T> inline T solve_kepler (T t, T period, T ecc, T time_peri);
+
         // The covariance matrix for the data
         Eigen::MatrixXd C {Data::get_instance().N(), Data::get_instance().N()};
         void calculate_C();
