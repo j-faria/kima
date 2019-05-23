@@ -3,6 +3,7 @@ import re
 import numpy as np
 from scipy import stats
 from loguniform import LogUniform, ModifiedLogUniform
+from kumaraswamy import kumaraswamy
 
 # CONSTANTS
 mjup2mearth = 317.8284065946748  # 1 Mjup in Mearth
@@ -34,7 +35,6 @@ def need_model_setup(exception):
     raise exception
 
 
-
 def read_datafile(datafile, skip):
     """
     Read data from `datafile` for multiple instruments.
@@ -44,16 +44,16 @@ def read_datafile(datafile, skip):
     containing three columns each.
     """
     if isinstance(datafile, list):
-        data = np.empty((0,3))
-        obs = np.empty((0,))
+        data = np.empty((0, 3))
+        obs = np.empty((0, ))
         for i, df in enumerate(datafile):
-            d = np.loadtxt(df, usecols=(0,1,2), skiprows=skip)
+            d = np.loadtxt(df, usecols=(0, 1, 2), skiprows=skip)
             data = np.append(data, d, axis=0)
-            obs = np.append(obs, (i+1)*np.ones((d.shape[0])))
+            obs = np.append(obs, (i + 1) * np.ones((d.shape[0])))
         return data, obs
     else:
-        data = np.loadtxt(datafile, usecols=(0,1,2), skiprows=skip)
-        obs = np.loadtxt(datafile, usecols=(3,), skiprows=skip, dtype=int)
+        data = np.loadtxt(datafile, usecols=(0, 1, 2), skiprows=skip)
+        obs = np.loadtxt(datafile, usecols=(3, ), skiprows=skip, dtype=int)
         return data, obs
 
 
@@ -70,12 +70,13 @@ def show_tips():
 
 def rms(array):
     """ Root mean square of array """
-    return np.sqrt(np.sum(array**2)/array.size)
+    return np.sqrt(np.sum(array**2) / array.size)
+
 
 def wrms(array, weights):
     """ Weighted root mean square of array, given weights """
     mu = np.average(array, weights=weights)
-    return np.sqrt(np.sum(weights*(array - mu)**2) / np.sum(weights))
+    return np.sqrt(np.sum(weights * (array - mu)**2) / np.sum(weights))
 
 
 def apply_argsort(arr1, arr2, axis=-1):
@@ -118,7 +119,7 @@ def percentile_ranges(a, percentile=68, min=None, max=None):
     else:
         mask = (a > min) & (a < max)
     half = percentile / 2
-    lp, median, up = np.percentile(a[mask], [50-half, 50, 50+half])
+    lp, median, up = np.percentile(a[mask], [50 - half, 50, 50 + half])
     return (median, up - median, median - lp)
 
 
@@ -172,7 +173,8 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
             star_mass = np.random.normal(star_mass[0], star_mass[1], 5000)
             uncertainty_star_mass = True
 
-        m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1 - e**2)
+        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(
+            1. / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
         if uncertainty_star_mass:
             return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
@@ -184,7 +186,8 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
             # include (Gaussian) uncertainty on the stellar mass
             star_mass = np.random.normal(star_mass[0], star_mass[1], P.size)
 
-        m_mj = 4.919e-3 * star_mass**(2./3) * P**(1./3) * K * np.sqrt(1 - e**2)
+        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(
+            1. / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
 
         if full_output:
@@ -203,7 +206,7 @@ def get_planet_mass_latex(P, K, e, star_mass=1.0, earth=False, **kargs):
             return '$%f$' % out[0]
     else:
         if earth:
-            return percentile68_ranges_latex(out[2]*mjup2mearth)
+            return percentile68_ranges_latex(out[2] * mjup2mearth)
         else:
             return percentile68_ranges_latex(out[2])
 
@@ -255,7 +258,6 @@ def get_planet_semimajor_axis_latex(P, K, star_mass=1.0, earth=False, **kargs):
         return '$%f$' % out[0]
 
 
-
 def lighten_color(color, amount=0.5):
     """
     Lightens the given color by multiplying (1-luminosity) by the given amount.
@@ -284,6 +286,7 @@ def _prior_to_dist():
         'ModifiedLogUniform': ModifiedLogUniform,
         'Gaussian': stats.norm,
         'Exponential': stats.expon,
+        'Kumaraswamy': kumaraswamy,
     }
     return d
 
@@ -313,15 +316,24 @@ def find_prior_limits(prior):
     if name == 'Gaussian':
         return (-np.inf, np.inf)
 
+    if name == 'Kumaraswamy':
+        return (0.0, 1.0)
+
 
 def find_prior_parameters(prior):
     """ Find parameters of a prior from the kima_model_setup.txt file. """
     inparens, name = _get_prior_parts(prior)
 
-    if name in ('Uniform', 'LogUniform', 'ModifiedLogUniform', 'Gaussian'):
+    twopars = ('Uniform', 'LogUniform', 'ModifiedLogUniform', 'Gaussian',
+               'Kumaraswamy')
+
+    if name in twopars:
         return tuple(float(v) for v in inparens.split(';'))
+    elif name == 'Exponential':
+        return (float(inparens), )
     else:
-        return (np.nan,)
+        return (np.nan, )
+
 
 def get_prior(prior):
     """ Return a scipt.stats-like prior from a kima_model_setup.txt prior """
@@ -329,4 +341,3 @@ def get_prior(prior):
     pars = find_prior_parameters(prior)
     d = _prior_to_dist()
     return d[name](*pars)
-
