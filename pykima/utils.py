@@ -287,6 +287,7 @@ def _prior_to_dist():
         'Gaussian': stats.norm,
         'Exponential': stats.expon,
         'Kumaraswamy': kumaraswamy,
+        'Laplace': stats.laplace,
     }
     return d
 
