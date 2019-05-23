@@ -7,7 +7,7 @@ const bool hyperpriors = false;
 const bool trend = false;
 const bool multi_instrument = false;
 
-RVmodel::RVmodel():fix(true),npmax(0)
+RVmodel::RVmodel():fix(false),npmax(2)
 {
     auto data = Data::get_data();
     auto conditional = planets.get_conditional_prior();
@@ -19,10 +19,27 @@ RVmodel::RVmodel():fix(true),npmax(0)
 
 int main(int argc, char** argv)
 {
-    datafile = "dummy2.txt";
+    /* Four options to demonstrate the linear correlations with indicators */
 
-    indicators = {"fwhm"};
-    load(datafile, "ms", 0, indicators);
+    // Load the first file without any correlation (just reads time, RV, error)
+    datafile = "simulated1.txt";
+    load(datafile, "ms", 4);
+
+    /* Load the first file with linear correlation with indicator "b", in the 4th column */
+    // datafile = "simulated1.txt";
+    // indicators = {"b"};
+    // load(datafile, "ms", 4, indicators);
+
+    /* Load the second file with linear correlation with indicator "b" only */
+    // datafile = "simulated2.txt";
+    // indicators = {"b"};
+    // load(datafile, "ms", 4, indicators);
+
+    /* Load the second file, with linear correlation with "b" and "c", skip 5th column */
+    // datafile = "simulated2.txt";
+    // indicators = {"b", "", "indc"};
+    // load(datafile, "ms", 4, indicators);
+
 
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
     sampler.run(50);
