@@ -19,7 +19,10 @@ from .keplerian import keplerian
 from .GP import GP, QPkernel
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
                    percentile68_ranges, percentile68_ranges_latex,\
-                   read_datafile, lighten_color, wrms, get_prior
+                   read_datafile, lighten_color, wrms, get_prior, \
+                   hyperprior_samples
+
+from .analysis import passes_threshold_np
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -89,6 +92,11 @@ class KimaResults(object):
         except KeyError:
             pass
         try:
+            priors += list(setup['priors.hyperpriors'].values())
+            prior_names += list(setup['priors.hyperpriors'].keys())
+        except KeyError:
+            pass
+        try:
             priors += list(setup['priors.GP'].values())
             prior_names += list(setup['priors.GP'].keys())
         except KeyError:
@@ -98,7 +106,6 @@ class KimaResults(object):
             n: v
             for n, v in zip(prior_names, [get_prior(p) for p in priors])
         }
-
 
         if data_file is None:
             self.multi = setup['kima']['multi'] == 'true'
@@ -435,7 +442,7 @@ class KimaResults(object):
             #       each entry is an argument with which the callable is called
 
             '1': [self.make_plot1, {}],
-            '2': [self.make_plot2, {}],
+            '2': [self.make_plot2, {'show_prior':True}],
             '3': [self.make_plot3, {}],
             '4': [self.make_plot4, {}],
             '5': [self.make_plot5, {}],
@@ -448,7 +455,7 @@ class KimaResults(object):
             ],
             '6p': [
                 'self.plot_random_planets(show_vsys=True, show_trend=True);'\
-                'self.phase_plot(self.maximum_likelihood_sample())',
+                'self.phase_plot(self.maximum_likelihood_sample(Np=passes_threshold_np(self)))',
                 {}
             ],
             '7': [(self.hist_offset, self.hist_vsys, self.hist_extra_sigma,
@@ -800,7 +807,18 @@ class KimaResults(object):
         fs = (max(6.4, 6.4 + 1 * (nplanets - 2)),
               max(4.8, 4.8 + 1 * (nplanets - 3)))
         fig = plt.figure('phase plot', constrained_layout=True, figsize=fs)
-        nrows = {1: 2, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3}[nplanets]
+        nrows = {
+            1: 2,
+            2: 2,
+            3: 2,
+            4: 3,
+            5: 3,
+            6: 3,
+            7: 4,
+            8: 4,
+            9: 4,
+            10: 4
+        }[nplanets]
         ncols = nplanets if nplanets <= 3 else 3
         gs = gridspec.GridSpec(nrows, ncols, figure=fig,
                                height_ratios=[2] * (nrows - 1) + [1])
@@ -932,15 +950,15 @@ class KimaResults(object):
 
         fig, ax = plt.subplots(1, 1)
 
+        kwargs = {'ls':'--', 'lw':2, 'alpha':0.5, 'zorder':-1}
         # mark 1 year
         year = 365.25
-        ax.axvline(x=year, ls='--', color='r', lw=3, alpha=0.6, label='1 year')
+        ax.axvline(x=year, **kwargs, color='r', label='1 year')
         # ax.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
         # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
 
         # mark the timespan of the data
-        ax.axvline(x=self.t.ptp(), ls='--', color='b', lw=3, alpha=0.5,
-                   label='timespan')
+        ax.axvline(x=self.t.ptp(), **kwargs, color='b', label='timespan')
 
         if kde:
             NN = 3000
@@ -993,15 +1011,28 @@ class KimaResults(object):
                     bins = 10**np.linspace(
                         np.log10(plims[0]), np.log10(plims[1]), nbins)
 
-            ax.hist(T, bins=bins, alpha=0.5)
+            ax.hist(T, bins=bins, alpha=0.8)
 
             if show_prior:
                 if T.size < 100:
-                    print('warning: prior may look weird')
-                prior = get_prior(self.setup['priors.planets']['Pprior'])
-                ax.hist(
-                    prior.rvs(T.size), bins=bins, alpha=0.1, color='k',
-                    zorder=-1, label='prior')
+                    print(
+                        'warning: too few samples, prior would look weird, not plotting'
+                    )
+
+                kwargs = {
+                    'bins': bins,
+                    'alpha': 0.1,
+                    'color': 'k',
+                    'zorder': -1,
+                    'label': 'prior'
+                }
+
+                if self.hyperpriors:
+                    P = hyperprior_samples(T.size)
+                    ax.hist(P, **kwargs)
+                else:
+                    prior = get_prior(self.setup['priors.planets']['Pprior'])
+                    ax.hist(prior.rvs(T.size), **kwargs)
 
         ax.legend()
         ax.set(xscale='log' if logx else 'linear', xlabel=r'(Period/days)',
@@ -1277,7 +1308,7 @@ class KimaResults(object):
 
         plt.show()
 
-    def plot_random_planets(self, ncurves=50, over=0.1, pmin=None, pmax=None,
+    def plot_random_planets(self, ncurves=20, over=0.1, pmin=None, pmax=None,
                             show_vsys=False, show_trend=False):
         """
         Display the RV data together with curves from the posterior predictive.
@@ -1297,7 +1328,7 @@ class KimaResults(object):
 
         t = self.data[:, 0].copy()
         tt = np.linspace(t.min() - over * t.ptp(),
-                         t.max() + over * t.ptp(), 10000 + int(100 * over))
+                         t.max() + over * t.ptp(), 5000 + int(100 * over))
 
         if self.GPmodel:
             # let's be more reasonable for the number of GP prediction points
