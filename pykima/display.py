@@ -19,13 +19,14 @@ from .keplerian import keplerian
 from .GP import GP, QPkernel
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
                    percentile68_ranges, percentile68_ranges_latex,\
-                   read_datafile, lighten_color, wrms
+                   read_datafile, lighten_color, wrms, get_prior
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import numpy as np
 from scipy.stats import gaussian_kde
 from scipy.signal import find_peaks
+from scipy.stats._continuous_distns import reciprocal_gen
 import corner
 
 try:
@@ -889,7 +890,7 @@ class KimaResults(object):
             fig.savefig(filename)
 
     def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
-                   kde=False, kde_bw=None, show_peaks=False):
+                   kde=False, kde_bw=None, show_peaks=False, show_prior=False):
         """ 
         Plot the histogram (or the kde) of the posterior for orbital period P.
         Optionally provide the number of histogram bins, the bins themselves,
@@ -912,12 +913,13 @@ class KimaResults(object):
 
         # mark 1 year
         year = 365.25
-        ax.axvline(x=year, ls='--', color='r', lw=3, alpha=0.6)
+        ax.axvline(x=year, ls='--', color='r', lw=3, alpha=0.6, label='1 year')
         # ax.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
         # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
 
         # mark the timespan of the data
-        ax.axvline(x=self.t.ptp(), ls='--', color='b', lw=3, alpha=0.5)
+        ax.axvline(x=self.t.ptp(), ls='--', color='b', lw=3, alpha=0.5,
+                   label='timespan')
 
         if kde:
             NN = 3000
@@ -946,11 +948,19 @@ class KimaResults(object):
             ax.vlines([xx.min(), xx.max()], ymin=0, ymax=0.03, color='k',
                       transform=ax.get_xaxis_transform())
 
+            if show_prior:
+                prior = get_prior(self.setup['priors.planets']['Pprior'])
+                if isinstance(prior.dist, reciprocal_gen):
+                    # show pdf per logarithmic interval
+                    ax.plot(xx, xx * prior.pdf(xx), 'k', label='prior')
+                else:
+                    ax.plot(xx, prior.pdf(xx), 'k', label='prior')
+
             if show_peaks:
                 peaks, _ = find_peaks(y, prominence=0.1)
                 for peak in peaks:
-                    ax.text(xx[peak], y[peak], 'P$\simeq$%.2f' % xx[peak],
-                            ha='left')
+                    s = r'P$\simeq$%.2f' % xx[peak]
+                    ax.text(xx[peak], y[peak], s, ha='left')
 
         else:
             if bins is None:
@@ -964,7 +974,13 @@ class KimaResults(object):
 
             ax.hist(T, bins=bins, alpha=0.5)
 
-        ax.legend(['1 year', 'timespan'])
+            if show_prior:
+                prior = get_prior(self.setup['priors.planets']['Pprior'])
+                ax.hist(
+                    prior.rvs(T.size), bins=bins, alpha=0.1, color='k',
+                    zorder=-1, label='prior')
+
+        ax.legend()
         ax.set(xscale='log' if logx else 'linear', xlabel=r'(Period/days)',
                ylabel='KDE density' if kde else 'Number of Posterior Samples',
                title='Posterior distribution for the orbital period(s)')
@@ -1455,7 +1471,7 @@ class KimaResults(object):
             print('Model has no fiber offset! hist_offset() doing nothing...')
             return
 
-        units = ' (m/s)' if self.units == 'ms' else ' (km/s)'
+        units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
         estimate = percentile68_ranges_latex(self.offset) + units
 
         fig, ax = plt.subplots(1, 1)
@@ -1472,7 +1488,7 @@ class KimaResults(object):
     def hist_vsys(self, show_offsets=True):
         """ Plot the histogram of the posterior for the systemic velocity """
         vsys = self.posterior_sample[:, -1]
-        units = ' (m/s)' if self.units == 'ms' else ' (km/s)'
+        units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
         estimate = percentile68_ranges_latex(vsys) + units
 
         fig, ax = plt.subplots(1, 1)
@@ -1512,7 +1528,7 @@ class KimaResults(object):
 
     def hist_extra_sigma(self):
         """ Plot the histogram of the posterior for the additional white noise """
-        units = ' (m/s)' if self.units == 'ms' else ' (km/s)'
+        units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
 
         if self.multi:  # there are n_instruments jitters
             fig, axs = plt.subplots(1, self.n_instruments, sharey=True,
@@ -1572,17 +1588,25 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
-    def hist_trend(self):
-        """ Plot the histogram of the posterior for the slope of a linear trend """
+    def hist_trend(self, per_year=True):
+        """ 
+        Plot the histogram of the posterior for the slope of a linear trend
+        """
         if not self.trend:
             print('Model has no trend! hist_trend() doing nothing...')
             return
 
-        units = ' (m/s/day)'  # if self.units=='ms' else ' (km/s)'
-        estimate = percentile68_ranges_latex(self.trendpars) + units
+        units = ' (m/s/yr)'  # if self.units=='ms' else ' (km/s)'
+
+        trend = self.trendpars.copy()
+
+        if per_year:  # transfrom from m/s/day to m/s/yr
+            trend *= 365.25
+
+        estimate = percentile68_ranges_latex(trend) + units
 
         fig, ax = plt.subplots(1, 1)
-        ax.hist(self.trendpars.ravel())
+        ax.hist(trend.ravel())
         title = 'Posterior distribution for slope \n %s' % estimate
         ax.set(xlabel='slope' + units, ylabel='posterior samples', title=title)
 

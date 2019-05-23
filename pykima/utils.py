@@ -1,5 +1,8 @@
 import sys
+import re
 import numpy as np
+from scipy import stats
+from loguniform import LogUniform, ModifiedLogUniform
 
 # CONSTANTS
 mjup2mearth = 317.8284065946748  # 1 Mjup in Mearth
@@ -271,3 +274,59 @@ def lighten_color(color, amount=0.5):
         c = color
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
+
+
+def _prior_to_dist():
+    """ Convert a prior name to a prior object """
+    d = {
+        'Uniform': stats.uniform,
+        'LogUniform': stats.reciprocal,
+        'ModifiedLogUniform': ModifiedLogUniform,
+        'Gaussian': stats.norm,
+        'Exponential': stats.expon,
+    }
+    return d
+
+
+def _get_prior_parts(prior):
+    if not isinstance(prior, str):
+        raise ValueError('`prior` should be a string, got', prior)
+
+    inparens = re.search(r'\((.*?)\)', prior).group(1)
+    name = prior[:prior.find('(')]
+
+    return inparens, name
+
+
+def find_prior_limits(prior):
+    """
+    Find lower and upper limits of a prior from the kima_model_setup.txt file.
+    """
+    inparens, name = _get_prior_parts(prior)
+
+    if name == 'ModifiedLogUniform':
+        return (0.0, float(inparens.split(';')[1]))
+
+    if name in ('Uniform', 'LogUniform'):
+        return tuple(float(v) for v in inparens.split(';'))
+
+    if name == 'Gaussian':
+        return (-np.inf, np.inf)
+
+
+def find_prior_parameters(prior):
+    """ Find parameters of a prior from the kima_model_setup.txt file. """
+    inparens, name = _get_prior_parts(prior)
+
+    if name in ('Uniform', 'LogUniform', 'ModifiedLogUniform', 'Gaussian'):
+        return tuple(float(v) for v in inparens.split(';'))
+    else:
+        return (np.nan,)
+
+def get_prior(prior):
+    """ Return a scipt.stats-like prior from a kima_model_setup.txt prior """
+    _, name = _get_prior_parts(prior)
+    pars = find_prior_parameters(prior)
+    d = _prior_to_dist()
+    return d[name](*pars)
+

@@ -28,6 +28,7 @@ setup(name='pykima',
         'scipy',
         'matplotlib>=1.5.3',
         'corner',
+        'loguniform',
       ],
       entry_points={
         'console_scripts': [
