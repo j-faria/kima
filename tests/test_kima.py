@@ -142,7 +142,9 @@ def write_dummy_model_setup(directory):
                       "units: kms \n"
                       "skip: 0 \n"
                       "multi: false \n"
-                      "files: \n")
+                      "files: \n"
+                      "[priors.general] \n"
+                      "Cprior: Uniform(0; 1)")
     directory.join('kima_model_setup.txt').write(template_setup)
 
 
