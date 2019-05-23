@@ -62,6 +62,8 @@ class KimaResults(object):
             print()
 
         setup = configparser.ConfigParser()
+        setup.optionxform = str
+
         try:
             open('kima_model_setup.txt')
         except IOError as exc:
@@ -77,6 +79,26 @@ class KimaResults(object):
             setup['kima']['GP'] = setup['kima'].pop('gp')
 
         self.setup = setup
+
+        # read the priors
+        priors = list(setup['priors.general'].values())
+        prior_names = list(setup['priors.general'].keys())
+        try:
+            priors += list(setup['priors.planets'].values())
+            prior_names += list(setup['priors.planets'].keys())
+        except KeyError:
+            pass
+        try:
+            priors += list(setup['priors.GP'].values())
+            prior_names += list(setup['priors.GP'].keys())
+        except KeyError:
+            pass
+
+        self.priors = {
+            n: v
+            for n, v in zip(prior_names, [get_prior(p) for p in priors])
+        }
+
 
         if data_file is None:
             self.multi = setup['kima']['multi'] == 'true'
@@ -509,7 +531,6 @@ class KimaResults(object):
         self.medians = np.median(self.posterior_sample, axis=0)
         self.means = np.mean(self.posterior_sample, axis=0)
         return self.medians, self.means
-
 
     def maximum_likelihood_sample(self, Np=None, printit=True):
         """ 
@@ -975,6 +996,8 @@ class KimaResults(object):
             ax.hist(T, bins=bins, alpha=0.5)
 
             if show_prior:
+                if T.size < 100:
+                    print('warning: prior may look weird')
                 prior = get_prior(self.setup['priors.planets']['Pprior'])
                 ax.hist(
                     prior.rvs(T.size), bins=bins, alpha=0.1, color='k',
