@@ -285,9 +285,11 @@ def _prior_to_dist():
         'LogUniform': stats.reciprocal,
         'ModifiedLogUniform': ModifiedLogUniform,
         'Gaussian': stats.norm,
+        'TruncatedGaussian': stats.truncnorm,
         'Exponential': stats.expon,
         'Kumaraswamy': kumaraswamy,
         'Laplace': stats.laplace,
+        'Cauchy': stats.cauchy,
     }
     return d
 
@@ -296,17 +298,28 @@ def _get_prior_parts(prior):
     if not isinstance(prior, str):
         raise ValueError('`prior` should be a string, got', prior)
 
-    inparens = re.search(r'\((.*?)\)', prior).group(1)
+    try:
+        inparens = re.search(r'\((.*?)\)', prior).group(1)
+    except AttributeError:
+        raise ValueError('Cannot decode "%s", seems badly formed' % prior)
+    try:
+        truncs = re.search(r'\[(.*?)\]', prior).group(1)
+    except AttributeError:
+        truncs = ''
+
     name = prior[:prior.find('(')]
 
-    return inparens, name
+    return inparens, truncs, name
 
 
 def find_prior_limits(prior):
     """
     Find lower and upper limits of a prior from the kima_model_setup.txt file.
     """
-    inparens, name = _get_prior_parts(prior)
+    inparens, truncs, name = _get_prior_parts(prior)
+
+    if 'Truncated' in name:
+        return tuple(float(v) for v in truncs.split(','))
 
     if name == 'ModifiedLogUniform':
         return (0.0, float(inparens.split(';')[1]))
@@ -323,22 +336,49 @@ def find_prior_limits(prior):
 
 def find_prior_parameters(prior):
     """ Find parameters of a prior from the kima_model_setup.txt file. """
-    inparens, name = _get_prior_parts(prior)
+    inparens, _, name = _get_prior_parts(prior)
+
+    truncated = False
+    if 'Truncated' in name:
+        inparens = ';'.join(inparens.split(';')[:-1])
+        name = name.replace('Truncated', '')
+        truncated = True
 
     twopars = ('Uniform', 'LogUniform', 'ModifiedLogUniform', 'Gaussian',
-               'Kumaraswamy')
+               'Kumaraswamy', 'Cauchy')
 
     if name in twopars:
-        return tuple(float(v) for v in inparens.split(';'))
+        r = [float(v) for v in inparens.split(';')]
     elif name == 'Exponential':
-        return (float(inparens), )
+        r = [
+            float(inparens),
+        ]
     else:
-        return (np.nan, )
+        r = [
+            np.nan,
+        ]
+
+    if truncated:
+        r.append('T')
+
+    return tuple(r)
 
 
 def get_prior(prior):
     """ Return a scipt.stats-like prior from a kima_model_setup.txt prior """
-    _, name = _get_prior_parts(prior)
+    _, _, name = _get_prior_parts(prior)
     pars = find_prior_parameters(prior)
-    d = _prior_to_dist()
-    return d[name](*pars)
+    try:
+        d = _prior_to_dist()
+        return d[name](*pars)
+    except KeyError:
+        return None
+
+
+def hyperprior_samples(size):
+    pi, log, rng = np.pi, np.log, np.random
+    U = rng.rand(size)
+    muP = 5.901 + np.tan(pi * (0.97 * rng.rand(size) - 0.485))
+    wP = 0.1 + 2.9 * rng.rand(size)
+    P = np.where(U < 0.5, muP + wP * log(2. * U), muP - wP * log(2. - 2. * U))
+    return np.exp(P)
