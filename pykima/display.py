@@ -1013,15 +1013,10 @@ class KimaResults(object):
 
             ax.hist(T, bins=bins, alpha=0.8)
 
-            if show_prior:
-                if T.size < 100:
-                    print(
-                        'warning: too few samples, prior would look weird, not plotting'
-                    )
-
+            if show_prior and T.size > 100:
                 kwargs = {
                     'bins': bins,
-                    'alpha': 0.1,
+                    'alpha': 0.15,
                     'color': 'k',
                     'zorder': -1,
                     'label': 'prior'
