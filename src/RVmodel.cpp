@@ -858,18 +858,23 @@ void RVmodel::save_setup() {
         fout << "log_eta4_prior: " << *log_eta4_prior << endl;
     }
 
+
     if (planets.get_max_num_components()>0){
         auto conditional = planets.get_conditional_prior();
+
+        if (hyperpriors){
+            fout << "[prior.hyperpriors]" << endl;
+            fout << "log_muP_prior: " << *conditional->log_muP_prior << endl;
+            fout << "wP_prior: " << *conditional->wP_prior << endl;
+            fout << "log_muK_prior: " << *conditional->log_muK_prior << endl;
+        }
+
         fout << endl << "[priors.planets]" << endl;
         fout << "Pprior: " << *conditional->Pprior << endl;
         fout << "Kprior: " << *conditional->Kprior << endl;
         fout << "eprior: " << *conditional->eprior << endl;
         fout << "phiprior: " << *conditional->phiprior << endl;
         fout << "wprior: " << *conditional->wprior << endl;
-
-        // fout << "log_muP_prior: " << *log_muP_prior << endl;
-        // fout << "wP_prior: " << *wP_prior << endl;
-        // fout << "log_muK_prior: " << *log_muK_prior << endl;
     }
 
     fout << endl;
