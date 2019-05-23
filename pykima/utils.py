@@ -105,6 +105,25 @@ def percentile68_ranges_latex(a, min=None, max=None):
     return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, plus, minus)
 
 
+def percentile_ranges(a, percentile=68, min=None, max=None):
+    if min is None and max is None:
+        mask = np.ones_like(a, dtype=bool)
+    elif min is None:
+        mask = a < max
+    elif max is None:
+        mask = a > min
+    else:
+        mask = (a > min) & (a < max)
+    half = percentile / 2
+    lp, median, up = np.percentile(a[mask], [50-half, 50, 50+half])
+    return (median, up - median, median - lp)
+
+
+def percentile_ranges_latex(a, percentile, min=None, max=None):
+    median, plus, minus = percentile_ranges(a, percentile, min, max)
+    return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, plus, minus)
+
+
 def clipped_mean(arr, min, max):
     """ Mean of `arr` between `min` and `max` """
     mask = (arr > min) & (arr < max)
