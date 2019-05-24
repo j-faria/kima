@@ -747,6 +747,8 @@ class KimaResults(object):
 
         # make copies to not change attributes
         t, y, e = self.t.copy(), self.y.copy(), self.e.copy()
+        if t[0] > 24e5:
+            t -= 24e5
 
         def kima_pars_to_keplerian_pars(p):
             # transforms kima planet pars (P,K,phi,ecc,w)
@@ -754,7 +756,7 @@ class KimaResults(object):
             assert p.size == self.n_dimensions
             P = p[0]
             phi = p[2]
-            t0 = self.t[0] - (P * phi) / (2. * np.pi)
+            t0 = t[0] - (P * phi) / (2. * np.pi)
             return np.array([P, p[1], p[3], p[4], t0])
 
         mc = self.max_components
@@ -774,7 +776,7 @@ class KimaResults(object):
         # extract periods, phases and calculate times of periastron
         P = pars[0 * mc:1 * mc]
         phi = pars[2 * mc:3 * mc]
-        T0 = self.t[0] - (P * phi) / (2. * np.pi)
+        T0 = t[0] - (P * phi) / (2. * np.pi)
 
         # how many planets in this sample?
         # nplanets = int(pars.size / self.n_dimensions) <-- this is wrong!
@@ -902,7 +904,12 @@ class KimaResults(object):
         ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
         ax.set(xlabel='Time [days]', ylabel='residuals [m/s]')
         ax.set_title('rms=%.2f m/s' % wrms(self.y - v, 1 / e**2), loc='right')
-        #
+
+        if self.save_plots:
+            filename = 'kima-showresults-fig6.1.png'
+            print('saving in', filename)
+            fig.savefig(filename)
+
 
     def make_plot1(self):
         """ Plot the histogram of the posterior for Np """
@@ -1322,6 +1329,9 @@ class KimaResults(object):
             mask = np.ones(samples.shape[0], dtype=bool)
 
         t = self.data[:, 0].copy()
+        if t[0] > 24e5:
+            t -= 24e5
+
         tt = np.linspace(t.min() - over * t.ptp(),
                          t.max() + over * t.ptp(), 5000 + int(100 * over))
 
@@ -1419,9 +1429,9 @@ class KimaResults(object):
                         of = self.inst_offsets[i, j]
 
                     instrument_mask = self.obs == j + 1
-                    start = self.data[instrument_mask, 0].min()
-                    end = self.data[instrument_mask, 0].max()
-                    ptp = self.data[instrument_mask, 0].ptp()
+                    start = t[instrument_mask].min()
+                    end = t[instrument_mask].max()
+                    ptp = t[instrument_mask].ptp()
                     time_mask = (tt > start - over * ptp) & (tt <
                                                              end + over * ptp)
 
@@ -1451,8 +1461,8 @@ class KimaResults(object):
                 if self.multi:
                     for j in range(self.inst_offsets.shape[1]):
                         instrument_mask = self.obs == j + 1
-                        start = self.data[instrument_mask, 0].min()
-                        end = self.data[instrument_mask, 0].max()
+                        start = t[instrument_mask].min()
+                        end = t[instrument_mask].max()
 
                         of = self.inst_offsets[i, j]
 
