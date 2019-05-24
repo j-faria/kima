@@ -54,6 +54,9 @@ class KimaResults(object):
         self.save_plots = save_plots
         self.verbose = verbose
 
+        self.removed_crossing = False
+        self.removed_roche_crossing = False
+
         pwd = os.getcwd()
         path_to_this_file = os.path.abspath(__file__)
         top_level = os.path.dirname(os.path.dirname(path_to_this_file))
@@ -919,7 +922,21 @@ class KimaResults(object):
         bins = np.arange(self.max_components + 2)
         nplanets = self.posterior_sample[:, self.index_component]
         n, _ = np.histogram(nplanets, bins=bins)
-        ax.bar(bins[:-1], n)
+        ax.bar(bins[:-1], n, zorder=2)
+
+
+        if self.removed_crossing:
+            ic = self.index_component
+            nn = (~np.isnan(self.posterior_sample[:,ic+1:ic+11])).sum(axis=1)
+            nn, _ = np.histogram(nn, bins=bins)
+            ax.bar(bins[:-1], nn, color='r', alpha=0.2, zorder=2)
+            ax.legend(['all posterior samples', 'crossing orbits removed'])
+        else:
+            pt_Np = passes_threshold_np(self)
+            ax.bar(pt_Np, n[pt_Np], color='C3', zorder=2)
+            # top = np.mean(ax.get_ylim())
+            # ax.arrow(pt_Np, top, 0, -.4*top, lw=2, head_length=1, fc='k', ec='k')
+
 
         xlim = (-0.5, self.max_components + 0.5)
         xticks = np.arange(self.max_components + 1)
@@ -1072,16 +1089,35 @@ class KimaResults(object):
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
         if points:
-            ax1.loglog(T, A, '.', markersize=2)
+            ax1.loglog(T, A, '.', markersize=2, zorder=2)
+            ax2.semilogx(T, E, '.', markersize=2, zorder=2)
         else:
-            ax1.hexbin(T, A, gridsize=50, bins='log', xscale='log',
-                       yscale='log', cmap=plt.get_cmap('afmhot_r'))
-
-        if points:
-            ax2.semilogx(T, E, '.', markersize=2)
-        else:
+            ax1.hexbin(T, A, gridsize=50, 
+                       bins='log', xscale='log', yscale='log',
+                       cmap=plt.get_cmap('afmhot_r'))
             ax2.hexbin(T, E, gridsize=50, bins='log', xscale='log',
                        cmap=plt.get_cmap('afmhot_r'))
+
+
+        if self.removed_crossing:
+            if points:
+                mc, ic = self.max_components, self.index_component
+
+                i1, i2 = 0*mc + ic + 1, 0*mc + ic + mc + 1
+                T = self.posterior_sample_original[:,i1:i2]
+                if self.log_period:
+                    T = np.exp(T)
+
+                i1, i2 = 1*mc + ic + 1, 1*mc + ic + mc + 1
+                A = self.posterior_sample_original[:,i1:i2]
+
+                i1, i2 = 3*mc + ic + 1, 3*mc + ic + mc + 1
+                E = self.posterior_sample_original[:,i1:i2]
+
+                ax1.loglog(T, A, '.', markersize=1, alpha=0.05, color='r',
+                           zorder=1)
+                ax2.semilogx(T, E, '.', markersize=1, alpha=0.05, color='r',
+                           zorder=1)
 
         ax1.set(ylabel='Semi-amplitude [m/s]',
                 title='Joint posterior semi-amplitude $-$ orbital period')
@@ -1376,7 +1412,7 @@ class KimaResults(object):
             # add the Keplerians for each of the planets
             for j in range(int(nplanets)):
                 P = pars[j + 0 * self.max_components]
-                if P == 0.0:
+                if P==0.0 or np.isnan(P):
                     continue
                 K = pars[j + 1 * self.max_components]
                 phi = pars[j + 2 * self.max_components]

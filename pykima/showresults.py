@@ -3,6 +3,7 @@ from __future__ import print_function
 import __main__
 from .classic import postprocess
 from .display import KimaResults
+from .crossing_orbits import rem_crossing_orbits
 from .utils import show_tips
 import sys, os
 from collections import namedtuple
@@ -17,6 +18,31 @@ numbered_args_help = """optional numbered arguments:
   6p   - same as 6 plus the phase curves of the maximum likelihood solution;
   7    - plot the posteriors for other parameters (systemic velocity, extra sigma, etc);
   8    - plot the posteriors for the moving average parameters;
+"""
+
+other_args_help = """other optional arguments:
+  --save-plots	      Save the plots as .png files (except diagnostic plots)
+  --remove-roche      Remove orbits crossing the Roche limit of the star
+                      (see --help-remove-roche for details)
+  --remove-crossing   Remove crossing orbits
+                      (see --help-remove-crossing for details)
+"""
+
+help_remove_crossing = """
+The --remove-crossing optional argument will remove crossing orbits from the
+posterior samples before doing any plotting. This assumes that the samples are
+"sorted" in such a way that the first planet in the system (one row in the
+posterior_sample.txt file) is the most "likely". This is often the case. Then,
+the check for crossing orbits (based on periastron and apastron distances) is
+done starting from the final Keplerian in a row and ending in the first. Running
+with this option will affect many of the results, including the posteriors for
+the number of planets, and orbital periods.
+WARNING: This is an *a posteriori* analysis; neither the evidence nor any other
+probability are renormalized. BE CAREFUL when taking conclusions from this!
+"""
+
+help_remove_roche = """
+The --remove-roche option will...
 """
 
 
@@ -62,8 +88,9 @@ def usage(full=True):
     for n, d in zip(names, descriptions):
         pos.append("  %-10s\t%s\n" % (n, d))
 
-    u += ''.join(pos) + '\n'
-    u += numbered_args_help
+    u += ''.join(pos)
+    u += '\n' + numbered_args_help
+    u += '\n' + other_args_help
     return u
 
 
@@ -84,8 +111,19 @@ def _parse_args(options):
         print('kima', open(version_file).read().strip())  # same as kima
         sys.exit(0)
 
+    if '--help-remove-crossing' in args:
+        print(help_remove_crossing)
+        sys.exit(0)
+    if '--help-remove-roche' in args:
+        print(help_remove_roche)
+        sys.exit(0)
+
     # save all plots?
     save_plots = findpop('--save-plots', args)
+
+    # other options
+    remove_roche = findpop('--remove-roche', args)
+    remove_crossing = findpop('--remove-crossing', args)
 
     number_options = ['1', '2', '3', '4', '5', '6', '6p', '7', '8']
     argstuple = namedtuple('Arguments', [
@@ -100,6 +138,8 @@ def _parse_args(options):
         'zip',
         'plot_number',
         'save_plots',
+        'remove_roche',
+        'remove_crossing',
     ])
 
     pick = findpop('pickle', args)
@@ -107,9 +147,11 @@ def _parse_args(options):
     diag = findpop('diagnostic', args)
 
     if 'all' in args:
-        return argstuple(rv=False, phase=True, planets=True, orbital=True, gp=True,
-                         extra=True, diagnostic=diag, pickle=pick, zip=zipit,
-                         plot_number=[], save_plots=save_plots)
+        return argstuple(rv=False, phase=True, planets=True, orbital=True,
+                         gp=True, extra=True, diagnostic=diag, pickle=pick,
+                         zip=zipit, plot_number=[], save_plots=save_plots,
+                         remove_roche=remove_roche,
+                         remove_crossing=remove_crossing)
 
     rv = findpop('rv', args)
     phase = findpop('phase', args)
@@ -128,7 +170,9 @@ def _parse_args(options):
         sys.exit(1)
 
     return argstuple(rv, phase, planets, orbital, gp, extra, diag, pick, zipit,
-                     plot_number=plots, save_plots=save_plots)
+                     plot_number=plots, save_plots=save_plots,
+                     remove_roche=remove_roche,
+                     remove_crossing=remove_crossing)
 
 
 def showresults(options='', force_return=False):
@@ -139,6 +183,7 @@ def showresults(options='', force_return=False):
 
     # force correct CLI arguments
     args = _parse_args(options)
+    # print(args)
 
     plots = []
     if args.rv:
@@ -157,14 +202,13 @@ def showresults(options='', force_return=False):
         plots.append('7')
     for number in args.plot_number:
         plots.append(number)
-    
+
     # don't repeat plot 6
     if '6p' in plots:
         try:
             plots.remove('6')
         except ValueError:
             pass
-
 
     try:
         evidence, H, logx_samples = postprocess(
@@ -176,8 +220,12 @@ def showresults(options='', force_return=False):
     # show kima tips
     show_tips()
 
-    res = KimaResults('', save_plots=args.save_plots)
-    res.make_plots(list(set(plots)))
+    res = KimaResults('')
+
+    if args.remove_crossing:
+        res = rem_crossing_orbits(res)
+
+    res.make_plots(list(set(plots)), save_plots=args.save_plots)
 
     res.evidence = evidence
     res.information = H
