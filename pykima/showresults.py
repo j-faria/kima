@@ -23,7 +23,6 @@ numbered_args_help = """optional numbered arguments:
 other_args_help = """other optional arguments:
   --save-plots	      Save the plots as .png files (except diagnostic plots)
   --remove-roche      Remove orbits crossing the Roche limit of the star
-                      (see --help-remove-roche for details)
   --remove-crossing   Remove crossing orbits
                       (see --help-remove-crossing for details)
 """
@@ -42,7 +41,7 @@ probability are renormalized. BE CAREFUL when taking conclusions from this!
 """
 
 help_remove_roche = """
-The --remove-roche option will...
+No extra documentation yet...
 """
 
 
