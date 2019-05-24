@@ -431,7 +431,7 @@ class KimaResults(object):
             print('Wrote to file "%s"' % zf.filename)
 
     def make_plots(self, options, save_plots=False):
-        if options == 'all': # can be 'all' if called from the interpreter
+        if options == 'all':  # can be 'all' if called from the interpreter
             options = ('1', '2', '3', '4', '5', '6p', '7', '8')
 
         allowed_options = {
@@ -1091,12 +1091,26 @@ class KimaResults(object):
 
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
+        # the y scale in loglog looks bad if the semi-amplitude doesn't have
+        # high dynamic range; the threshold of 30 is arbitrary
+        Khdr_threshold = 30
+
         if points:
-            ax1.loglog(T, A, '.', markersize=2, zorder=2)
+            if A.ptp() > Khdr_threshold:
+                ax1.loglog(T, A, '.', markersize=2, zorder=2)
+            else:
+                ax1.semilogx(T, A, '.', markersize=2, zorder=2)
+
             ax2.semilogx(T, E, '.', markersize=2, zorder=2)
+
         else:
-            ax1.hexbin(T, A, gridsize=50, bins='log', xscale='log',
-                       yscale='log', cmap=plt.get_cmap('afmhot_r'))
+            if A.ptp() > 30:
+                ax1.hexbin(T, A, gridsize=50, bins='log', xscale='log',
+                           yscale='log', cmap=plt.get_cmap('afmhot_r'))
+            else:
+                ax1.hexbin(T, A, gridsize=50, bins='log', xscale='log',
+                           yscale='linear', cmap=plt.get_cmap('afmhot_r'))
+
             ax2.hexbin(T, E, gridsize=50, bins='log', xscale='log',
                        cmap=plt.get_cmap('afmhot_r'))
 
@@ -1115,8 +1129,13 @@ class KimaResults(object):
                 i1, i2 = 3 * mc + ic + 1, 3 * mc + ic + mc + 1
                 E = self.posterior_sample_original[:, i1:i2]
 
-                ax1.loglog(T, A, '.', markersize=1, alpha=0.05, color='r',
-                           zorder=1)
+                if A.ptp() > Khdr_threshold:
+                    ax1.loglog(T, A, '.', markersize=1, alpha=0.05, color='r',
+                               zorder=1)
+                else:
+                    ax1.semilogx(T, A, '.', markersize=1, alpha=0.05,
+                                 color='r', zorder=1)
+
                 ax2.semilogx(T, E, '.', markersize=1, alpha=0.05, color='r',
                              zorder=1)
 
