@@ -331,7 +331,7 @@ class KimaResults(object):
         self.get_marginals()
 
         # make the plots, if requested
-        self.make_plots(options)
+        self.make_plots(options, self.save_plots)
 
     @classmethod
     def load(cls, filename):
@@ -360,18 +360,16 @@ class KimaResults(object):
                     pwd = os.getcwd()
                     os.chdir(dirpath)
 
-                    # get the names of the data files
-                    lines = [
-                        line for line in open('kima_model_setup.txt')
-                        if 'file:' in line or 'files:' in line
-                    ]
-                    for line in lines:
-                        datafiles = line.strip().split(':')[1]
-                        if datafiles == '':
-                            continue
-                        datafiles = datafiles.split(',')[:-1]
-                        datafiles = list(map(os.path.basename, datafiles))
-                        datafiles = [df.strip() for df in datafiles]
+                    setup = configparser.ConfigParser()
+                    setup.optionxform = str
+                    setup.read('kima_model_setup.txt')
+
+                    if setup['kima']['multi'] == 'true':
+                        datafiles = setup['kima']['files'].split(',')
+                    else:
+                        datafiles = np.atleast_1d(setup['kima']['file'])
+
+                    datafiles = list(map(os.path.basename, datafiles))
                     for df in datafiles:
                         zf.extract(df)
 
@@ -425,14 +423,17 @@ class KimaResults(object):
         except AttributeError:
             pass
 
-        for f in self.data_file:
+        for f in np.atleast_1d(self.data_file):
             zf.write(f, arcname=os.path.basename(f))
 
         zf.close()
         if verbose:
             print('Wrote to file "%s"' % zf.filename)
 
-    def make_plots(self, options):
+    def make_plots(self, options, save_plots=False):
+        if options == 'all': # can be 'all' if called from the interpreter
+            options = ('1', '2', '3', '4', '5', '6p', '7', '8')
+
         allowed_options = {
             # keys are allowed options (strings)
             # values are lists
@@ -913,7 +914,6 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
-
     def make_plot1(self):
         """ Plot the histogram of the posterior for Np """
         fig, ax = plt.subplots(1, 1)
@@ -924,10 +924,10 @@ class KimaResults(object):
         n, _ = np.histogram(nplanets, bins=bins)
         ax.bar(bins[:-1], n, zorder=2)
 
-
         if self.removed_crossing:
             ic = self.index_component
-            nn = (~np.isnan(self.posterior_sample[:,ic+1:ic+11])).sum(axis=1)
+            nn = (~np.isnan(self.posterior_sample[:, ic + 1:ic + 11])).sum(
+                axis=1)
             nn, _ = np.histogram(nn, bins=bins)
             ax.bar(bins[:-1], nn, color='r', alpha=0.2, zorder=2)
             ax.legend(['all posterior samples', 'crossing orbits removed'])
@@ -936,7 +936,6 @@ class KimaResults(object):
             ax.bar(pt_Np, n[pt_Np], color='C3', zorder=2)
             # top = np.mean(ax.get_ylim())
             # ax.arrow(pt_Np, top, 0, -.4*top, lw=2, head_length=1, fc='k', ec='k')
-
 
         xlim = (-0.5, self.max_components + 0.5)
         xticks = np.arange(self.max_components + 1)
@@ -974,7 +973,7 @@ class KimaResults(object):
 
         fig, ax = plt.subplots(1, 1)
 
-        kwargs = {'ls':'--', 'lw':2, 'alpha':0.5, 'zorder':-1}
+        kwargs = {'ls': '--', 'lw': 2, 'alpha': 0.5, 'zorder': -1}
         # mark 1 year
         year = 365.25
         ax.axvline(x=year, **kwargs, color='r', label='1 year')
@@ -1092,32 +1091,30 @@ class KimaResults(object):
             ax1.loglog(T, A, '.', markersize=2, zorder=2)
             ax2.semilogx(T, E, '.', markersize=2, zorder=2)
         else:
-            ax1.hexbin(T, A, gridsize=50, 
-                       bins='log', xscale='log', yscale='log',
-                       cmap=plt.get_cmap('afmhot_r'))
+            ax1.hexbin(T, A, gridsize=50, bins='log', xscale='log',
+                       yscale='log', cmap=plt.get_cmap('afmhot_r'))
             ax2.hexbin(T, E, gridsize=50, bins='log', xscale='log',
                        cmap=plt.get_cmap('afmhot_r'))
-
 
         if self.removed_crossing:
             if points:
                 mc, ic = self.max_components, self.index_component
 
-                i1, i2 = 0*mc + ic + 1, 0*mc + ic + mc + 1
-                T = self.posterior_sample_original[:,i1:i2]
+                i1, i2 = 0 * mc + ic + 1, 0 * mc + ic + mc + 1
+                T = self.posterior_sample_original[:, i1:i2]
                 if self.log_period:
                     T = np.exp(T)
 
-                i1, i2 = 1*mc + ic + 1, 1*mc + ic + mc + 1
-                A = self.posterior_sample_original[:,i1:i2]
+                i1, i2 = 1 * mc + ic + 1, 1 * mc + ic + mc + 1
+                A = self.posterior_sample_original[:, i1:i2]
 
-                i1, i2 = 3*mc + ic + 1, 3*mc + ic + mc + 1
-                E = self.posterior_sample_original[:,i1:i2]
+                i1, i2 = 3 * mc + ic + 1, 3 * mc + ic + mc + 1
+                E = self.posterior_sample_original[:, i1:i2]
 
                 ax1.loglog(T, A, '.', markersize=1, alpha=0.05, color='r',
                            zorder=1)
                 ax2.semilogx(T, E, '.', markersize=1, alpha=0.05, color='r',
-                           zorder=1)
+                             zorder=1)
 
         ax1.set(ylabel='Semi-amplitude [m/s]',
                 title='Joint posterior semi-amplitude $-$ orbital period')
@@ -1412,7 +1409,7 @@ class KimaResults(object):
             # add the Keplerians for each of the planets
             for j in range(int(nplanets)):
                 P = pars[j + 0 * self.max_components]
-                if P==0.0 or np.isnan(P):
+                if P == 0.0 or np.isnan(P):
                     continue
                 K = pars[j + 1 * self.max_components]
                 phi = pars[j + 2 * self.max_components]
