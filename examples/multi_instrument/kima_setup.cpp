@@ -7,7 +7,7 @@ const bool hyperpriors = false;
 const bool trend = false;
 const bool multi_instrument = true;
 
-RVmodel::RVmodel():fix(true),npmax(1)
+RVmodel::RVmodel():fix(false),npmax(1)
 {
   // use the default priors
 }
