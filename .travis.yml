@@ -52,6 +52,7 @@ script:
   - kima-showresults -h
   - kima-checkpriors -h
   - cd; kima-template; cd -
+  - cd examples/51Peg; timeout 180s ./kima -t 2 -s 42; cd -
   # run tests
   - py.test -v --cov=pykima tests
 
