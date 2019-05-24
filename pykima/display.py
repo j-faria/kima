@@ -787,6 +787,10 @@ class KimaResults(object):
         nplanets = (pars[:self.max_components] != 0).sum()
         planetis = list(range(nplanets))
 
+        if nplanets == 0:
+            print('Sample has no planets! phase_plot() doing nothing...')
+            return
+
         # get the model for this sample
         # (this adds in the instrument offsets and the systemic velocity)
         v = self.model(sample)
