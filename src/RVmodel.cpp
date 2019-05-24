@@ -863,7 +863,7 @@ void RVmodel::save_setup() {
         auto conditional = planets.get_conditional_prior();
 
         if (hyperpriors){
-            fout << "[prior.hyperpriors]" << endl;
+            fout << endl << "[prior.hyperpriors]" << endl;
             fout << "log_muP_prior: " << *conditional->log_muP_prior << endl;
             fout << "wP_prior: " << *conditional->wP_prior << endl;
             fout << "log_muK_prior: " << *conditional->log_muK_prior << endl;
