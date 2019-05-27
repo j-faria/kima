@@ -423,3 +423,57 @@ double Data::get_RV_var() const
     });
     return accum / (y.size()-1);
 }
+
+
+double Data::get_adjusted_RV_span() const
+/* Return the span of the RVs, after subtracting the mean for each instrument */
+{
+    int ni;
+    double sum, mean;
+    std::vector<double> rva(t.size());
+
+    for(size_t j=0; j<number_instruments; j++)
+    {
+      ni = 0;
+      sum = 0.;
+      for (size_t i=0; i<t.size(); i++)
+        if(obsi[i] == j+1) {sum += y[i]; ni++;}
+      mean = sum / ni;
+      // cout << "sum: " << sum << endl;
+      // cout << "mean: " << mean << endl;
+      for (size_t i=0; i<t.size(); i++)
+        if(obsi[i] == j+1) rva[i] = y[i] - mean;
+    }
+
+    double min = *std::min_element(rva.begin(), rva.end());
+    double max = *std::max_element(rva.begin(), rva.end());
+    return max - min;
+}
+
+
+double Data::get_adjusted_RV_var() const
+{
+    int ni;
+    double sum, mean;
+    std::vector<double> rva(t.size());
+
+    for(size_t j=0; j<number_instruments; j++)
+    {
+      ni = 0;
+      sum = 0.;
+      for (size_t i=0; i<t.size(); i++)
+        if(obsi[i] == j+1) {sum += y[i]; ni++;}
+      mean = sum / ni;
+      // cout << "sum: " << sum << endl;
+      // cout << "mean: " << mean << endl;
+      for (size_t i=0; i<t.size(); i++)
+        if(obsi[i] == j+1) rva[i] = y[i] - mean;
+    }
+
+    mean = std::accumulate(rva.begin(), rva.end(), 0.0) / rva.size();
+    double accum = 0.0;
+    std::for_each (rva.begin(), rva.end(), [&](const double d) {
+        accum += (d - mean) * (d - mean);
+    });
+    return accum / (y.size()-1);
+}
