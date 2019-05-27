@@ -366,6 +366,7 @@ class KimaResults(object):
 
                     if setup['kima']['multi'] == 'true':
                         datafiles = setup['kima']['files'].split(',')
+                        datafiles = list(filter(None, datafiles))  # remove ''
                     else:
                         datafiles = np.atleast_1d(setup['kima']['file'])
 
@@ -875,8 +876,7 @@ class KimaResults(object):
                         ax.errorbar(
                             np.sort(phase) + j, yy[np.argsort(phase)],
                             e[np.argsort(phase)], **ekwargs, color=color,
-                            alpha=alpha, label=label)
-                ax.legend()
+                            alpha=alpha)
 
             else:
                 phase = ((t - t0) / p) % 1.0
@@ -904,10 +904,12 @@ class KimaResults(object):
         if self.multi:
             for k in range(1, self.n_instruments + 1):
                 m = self.obs == k
+                # label = self.data_file[k - 1]
                 ax.errorbar(t[m], self.y[m] - v[m], e[m], **ekwargs)
         else:
             ax.errorbar(t, self.y - v, e, **ekwargs)
 
+        # ax.legend()
         ax.axhline(y=0, ls='--', alpha=0.5, color='k')
         ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
         ax.set(xlabel='Time [days]', ylabel='residuals [m/s]')
