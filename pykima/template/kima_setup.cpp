@@ -29,20 +29,19 @@ RVmodel::RVmodel():fix(true),npmax(1)
 int main(int argc, char** argv)
 {
     /* only one instrument */
-    char* datafile = "your data file here"; // set the RV data file
+        datafile = "your data file here"; // set the RV data file
 
-    /// load the file. the second argument sets the units of the RVs (can be 
-    /// either "ms" or "kms") and the third (optional) argument, tells kima not 
-    /// to skip any line in the header of the file
-    Data::get_instance().load(datafile, "ms", 0);
-    
+        /// load the file. the second argument sets the units of the RVs (can be
+        /// either "ms" or "kms") and the third (optional) argument, is the number
+        /// of lines to skip in the header of the file
+        load(datafile, "ms", 0);
 
-    /* more than one instrument */
-    // std::vector<char*> datafiles = {"data file 1", "data file 2"};
 
-    /// load the files, same arguments as for load()
-    // Data::get_instance().load_multi(datafiles, "ms", 0);
+    /* more than one instrument (don't forget to set multi_instrument=true) */
+        // datafiles = {"data file 1", "data file 2"};
 
+        /// load the files, same arguments as for load()
+        // load_multi(datafiles, "ms", 0);
 
 
     /// set the sampler and run it!
