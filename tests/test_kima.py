@@ -102,7 +102,13 @@ def test_KimaResults():
 
 def test_logsumexp():
     from pykima.classic import logsumexp
-    from scipy.special import logsumexp as s_logsumexp
+    try:
+        from scipy.special import logsumexp as s_logsumexp
+    except ImportError:
+        try:
+            from scipy.misc import logsumexp as s_logsumexp
+        except ImportError:
+            return True
 
     a = np.random.rand(10)
     npt.assert_allclose(logsumexp(a), s_logsumexp(a))
