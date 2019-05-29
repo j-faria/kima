@@ -28,7 +28,10 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import numpy as np
 from scipy.stats import gaussian_kde
-from scipy.signal import find_peaks
+try: # only available in scipy 1.1.0
+    from scipy.signal import find_peaks
+except ImportError:
+    find_peaks = None
 from scipy.stats._continuous_distns import reciprocal_gen
 import corner
 
@@ -1025,7 +1028,7 @@ class KimaResults(object):
                 else:
                     ax.plot(xx, prior.pdf(xx), 'k', label='prior')
 
-            if show_peaks:
+            if show_peaks and find_peaks:
                 peaks, _ = find_peaks(y, prominence=0.1)
                 for peak in peaks:
                     s = r'P$\simeq$%.2f' % xx[peak]
