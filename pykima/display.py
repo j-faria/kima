@@ -757,12 +757,12 @@ class KimaResults(object):
 
         def kima_pars_to_keplerian_pars(p):
             # transforms kima planet pars (P,K,phi,ecc,w)
-            # to pykima.keplerian.keplerian pars (P,K,ecc,w,T0)
+            # to pykima.keplerian.keplerian pars (P,K,ecc,w,T0,vsys=0)
             assert p.size == self.n_dimensions
             P = p[0]
             phi = p[2]
             t0 = t[0] - (P * phi) / (2. * np.pi)
-            return np.array([P, p[1], p[3], p[4], t0])
+            return np.array([P, p[1], p[3], p[4], t0, 0.0])
 
         mc = self.max_components
 
@@ -845,7 +845,7 @@ class KimaResults(object):
             ## plot the keplerian curve in phase (3 times)
             phase = np.linspace(0, 1, 200)
             tt = phase * p + t0
-            vv = keplerian(tt, *parsi(i), 0.)
+            vv = keplerian(tt, *parsi(i))
             for j in (-1, 0, 1):
                 alpha = 0.3 if j in (-1, 1) else 1
                 ax.plot(
@@ -862,7 +862,7 @@ class KimaResults(object):
                     m = self.obs == k
                     phase = ((t[m] - t0) / p) % 1.0
                     other_planet_v = np.array(
-                        [keplerian(t[m], *parsi(i), 0.) for i in other])
+                        [keplerian(t[m], *parsi(i)) for i in other])
                     other_planet_v = other_planet_v.sum(axis=0)
                     yy = y[m].copy()
                     yy -= other_planet_v
@@ -882,7 +882,7 @@ class KimaResults(object):
             else:
                 phase = ((t - t0) / p) % 1.0
                 other_planet_v = np.array(
-                    [keplerian(t, *parsi(i), 0.) for i in other])
+                    [keplerian(t, *parsi(i)) for i in other])
                 other_planet_v = other_planet_v.sum(axis=0)
                 yy = y.copy()
                 yy -= other_planet_v
