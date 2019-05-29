@@ -876,8 +876,8 @@ class KimaResults(object):
                         label = self.data_file[k - 1] if j == 0 else None
                         ax.errorbar(
                             np.sort(phase) + j, yy[np.argsort(phase)],
-                            ee[np.argsort(phase)], **ekwargs, color=color,
-                            alpha=alpha)
+                            ee[np.argsort(phase)], color=color, alpha=alpha, 
+                            **ekwargs)
 
             else:
                 phase = ((t - t0) / p) % 1.0
@@ -893,8 +893,8 @@ class KimaResults(object):
                     alpha = 0.3 if j in (-1, 1) else 1
                     ax.errorbar(
                         np.sort(phase) + j, yy[np.argsort(phase)],
-                        e[np.argsort(phase)], **ekwargs, color=color,
-                        alpha=alpha)
+                        e[np.argsort(phase)], color=color, alpha=alpha, 
+                        **ekwargs)
 
             ax.set_xlim(-0.2, 1.2)
             ax.set(xlabel="phase", ylabel="radial velocity [m/s]")
