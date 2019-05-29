@@ -866,6 +866,7 @@ class KimaResults(object):
                     other_planet_v = other_planet_v.sum(axis=0)
                     yy = y[m].copy()
                     yy -= other_planet_v
+                    ee = e[m].copy()
 
                     # one color for each instrument
                     color = ax._get_lines.prop_cycler.__next__()['color']
@@ -875,7 +876,7 @@ class KimaResults(object):
                         label = self.data_file[k - 1] if j == 0 else None
                         ax.errorbar(
                             np.sort(phase) + j, yy[np.argsort(phase)],
-                            e[np.argsort(phase)], **ekwargs, color=color,
+                            ee[np.argsort(phase)], **ekwargs, color=color,
                             alpha=alpha)
 
             else:
@@ -982,12 +983,12 @@ class KimaResults(object):
         kwargs = {'ls': '--', 'lw': 2, 'alpha': 0.5, 'zorder': -1}
         # mark 1 year
         year = 365.25
-        ax.axvline(x=year, **kwargs, color='r', label='1 year')
+        ax.axvline(x=year, color='r', label='1 year', **kwargs)
         # ax.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
         # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
 
         # mark the timespan of the data
-        ax.axvline(x=self.t.ptp(), **kwargs, color='b', label='timespan')
+        ax.axvline(x=self.t.ptp(), color='b', label='timespan', **kwargs)
 
         if kde:
             NN = 3000
