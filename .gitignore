@@ -5,6 +5,7 @@ __init__.py
 *sublime*
 .cache
 .vscode
+.vs
 
 *.o
 *.d
@@ -23,3 +24,5 @@ main
 
 celerite
 boost
+
+build/
