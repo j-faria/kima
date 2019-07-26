@@ -28,13 +28,16 @@ extern const bool trend;
 /// (and offsets should be included in the model)
 extern const bool multi_instrument;
 
+/// include a (better) known extra Keplerian curve? (KO mode!)
+extern const bool known_object;
+
 
 class RVmodel
 {
     private:
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
-        /// Maximum number of planets
+        /// Maximum number of planets (by default 1)
         int npmax {1};
 
         DNest4::RJObject<RVConditionalPrior> planets =
@@ -60,10 +63,15 @@ class RVmodel
         double log_eta1, log_eta2, log_eta3, log_eta4, log_eta5;
         double a,b,c,P;
 
+        // Parameters for the known object, if set
+        double KO_P, KO_K, KO_e, KO_phi, KO_w;
+
         // The signal
         std::vector<long double> mu = // the RV model
                             std::vector<long double>(Data::get_instance().N());
         void calculate_mu();
+        void add_known_object();
+        void remove_known_object();
 
         // eccentric and true anomalies
         double ecc_anomaly(double time, double prd, double ecc, double peri_pass);
@@ -115,6 +123,13 @@ class RVmodel
         /// @brief Prior for the log of eta4, the recurrence timescale.
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta4_prior;
 
+
+        // priors for KO mode!
+        std::shared_ptr<DNest4::ContinuousDistribution> KO_Pprior;
+        std::shared_ptr<DNest4::ContinuousDistribution> KO_Kprior;
+        std::shared_ptr<DNest4::ContinuousDistribution> KO_eprior;
+        std::shared_ptr<DNest4::ContinuousDistribution> KO_phiprior;
+        std::shared_ptr<DNest4::ContinuousDistribution> KO_wprior;
 
         // change the name of std::make_shared :)
         /**
