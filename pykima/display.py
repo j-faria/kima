@@ -812,7 +812,7 @@ class KimaResults(object):
         ekwargs = {
             'fmt': 'o',
             'mec': 'none',
-            'ms': 3,
+            'ms': 5,
             'capsize': 0,
             'elinewidth': 0.8,
         }
