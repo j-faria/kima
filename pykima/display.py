@@ -301,10 +301,24 @@ class KimaResults(object):
         else:
             n_MAparameters = 0
 
+        # find KO in the compiled model
+        try:
+            self.KO = setup['kima']['known_object'] == 'true'
+        except KeyError:
+            self.KO = False
+
+        if self.KO:
+            n_KOparameters = 5
+            start = start_parameters + n_trend + n_offsets + n_inst_offsets + n_hyperparameters + n_MAparameters + 1
+            koinds = slice(start, start + n_KOparameters)
+            self.KOpars = self.posterior_sample[:, koinds]
+        else:
+            n_KOparameters = 0
+
 
         start_objects_print = start_parameters + n_offsets + n_inst_offsets + \
                               n_trend + n_act_ind + n_hyperparameters + \
-                              n_MAparameters +  1
+                              n_MAparameters + n_KOparameters + 1
 
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
@@ -534,6 +548,7 @@ class KimaResults(object):
         self.T = self.T[which].flatten()
         self.A = self.A[which].flatten()
         self.E = self.E[which].flatten()
+        self.phi = self.phi[which].flatten()
         self.Omega = self.Omega[which].flatten()
         self.T0 = self.T0[which].flatten()
 
@@ -1372,6 +1387,19 @@ class KimaResults(object):
 
         plt.show()
 
+    def corner_known_object(self, fig=None):
+        """ Corner plot of the posterior samples for the known object parameters """
+        if not self.KO:
+            print(
+                'Model has no known object! corner_known_object() doing nothing...'
+            )
+            return
+
+        labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w']
+        corner.corner(self.KOpars, fig=fig, labels=labels,
+                      hist_kwars={'normed': True})
+
+
     def plot_random_planets(self, ncurves=20, over=0.1, pmin=None, pmax=None,
                             show_vsys=False, show_trend=False):
         """
@@ -1430,6 +1458,18 @@ class KimaResults(object):
             v_at_t = np.zeros_like(t)
             if self.GPmodel:
                 v_at_ttGP = np.zeros_like(ttGP)
+
+            # known object, if set
+            if self.KO:
+                pars = self.KOpars[i]
+                P = pars[0]
+                K = pars[1]
+                phi = pars[2]
+                t0 = t[0] - (P * phi) / (2. * np.pi)
+                ecc = pars[3]
+                w = pars[4]
+                v += keplerian(tt, P, K, ecc, w, t0, 0.)
+                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
 
             # get the planet parameters for the current (ith) sample
             pars = samples[i, :].copy()
