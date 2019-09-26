@@ -939,6 +939,13 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
+    @property
+    def ratios(self):
+        bins = np.arange(self.max_components + 2)
+        nplanets = self.posterior_sample[:, self.index_component]
+        n, _ = np.histogram(nplanets, bins=bins)
+        return n.flat[1:] / n.flat[:-1]
+
     def make_plot1(self):
         """ Plot the histogram of the posterior for Np """
         fig, ax = plt.subplots(1, 1)
