@@ -18,7 +18,6 @@ using namespace DNest4;
 
 const double halflog2pi = 0.5*log(2.*M_PI);
 
-const bool known_object = false;
 
 
 /* set default priors if the user didn't change them */
