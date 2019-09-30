@@ -947,6 +947,15 @@ void RVmodel::save_setup() {
         fout << "wprior: " << *conditional->wprior << endl;
     }
 
+    if (known_object) {
+        fout << endl << "[priors.known_object]" << endl;
+        fout << "Pprior: " << *KO_Pprior << endl;
+        fout << "Kprior: " << *KO_Kprior << endl;
+        fout << "eprior: " << *KO_eprior << endl;
+        fout << "phiprior: " << *KO_phiprior << endl;
+        fout << "wprior: " << *KO_wprior << endl;
+    }
+
     fout << endl;
 	fout.close();
 }
