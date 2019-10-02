@@ -1,5 +1,6 @@
 #include "DNest4.h"
 #include "distributions/Fixed.h"
+#include "distributions/Empirical.h"
 
 #include "Data.h"
 #include "RVmodel.h"
