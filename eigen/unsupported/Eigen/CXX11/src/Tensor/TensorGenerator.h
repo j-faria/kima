@@ -88,10 +88,13 @@ struct TensorEvaluator<const TensorGeneratorOp<Generator, ArgType>, Device>
   typedef typename XprType::Scalar Scalar;
   typedef typename XprType::CoeffReturnType CoeffReturnType;
   typedef typename PacketType<CoeffReturnType, Device>::type PacketReturnType;
+  typedef StorageMemory<CoeffReturnType, Device> Storage;
+  typedef typename Storage::Type EvaluatorPointerType;
   enum {
     IsAligned         = false,
     PacketAccess      = (PacketType<CoeffReturnType, Device>::size > 1),
     BlockAccess       = true,
+    BlockAccessV2     = false,
     PreferBlockAccess = true,
     Layout            = TensorEvaluator<ArgType, Device>::Layout,
     CoordAccess       = false,  // to be implemented
@@ -103,23 +106,26 @@ struct TensorEvaluator<const TensorGeneratorOp<Generator, ArgType>, Device>
   typedef internal::TensorBlock<CoeffReturnType, Index, NumDims, Layout>
       TensorBlock;
 
+  //===- Tensor block evaluation strategy (see TensorBlock.h) -------------===//
+  typedef internal::TensorBlockNotImplemented TensorBlockV2;
+  //===--------------------------------------------------------------------===//
+
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE TensorEvaluator(const XprType& op, const Device& device)
-      : m_device(device), m_generator(op.generator())
-#ifdef EIGEN_USE_SYCL
-      , m_argImpl(op.expression(), device)
-#endif
+      :  m_device(device), m_generator(op.generator())
   {
     TensorEvaluator<ArgType, Device> argImpl(op.expression(), device);
     m_dimensions = argImpl.dimensions();
 
     if (static_cast<int>(Layout) == static_cast<int>(ColMajor)) {
       m_strides[0] = 1;
+      EIGEN_UNROLL_LOOP
       for (int i = 1; i < NumDims; ++i) {
         m_strides[i] = m_strides[i - 1] * m_dimensions[i - 1];
         if (m_strides[i] != 0) m_fast_strides[i] = IndexDivisor(m_strides[i]);
       }
     } else {
       m_strides[NumDims - 1] = 1;
+      EIGEN_UNROLL_LOOP
       for (int i = NumDims - 2; i >= 0; --i) {
         m_strides[i] = m_strides[i + 1] * m_dimensions[i + 1];
         if (m_strides[i] != 0) m_fast_strides[i] = IndexDivisor(m_strides[i]);
@@ -129,7 +135,7 @@ struct TensorEvaluator<const TensorGeneratorOp<Generator, ArgType>, Device>
 
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const Dimensions& dimensions() const { return m_dimensions; }
 
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE bool evalSubExprsIfNeeded(Scalar* /*data*/) {
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE bool evalSubExprsIfNeeded(EvaluatorPointerType /*data*/) {
     return true;
   }
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void cleanup() {
@@ -234,11 +240,11 @@ struct TensorEvaluator<const TensorGeneratorOp<Generator, ArgType>, Device>
                                   TensorOpCost::MulCost<Scalar>());
   }
 
-  EIGEN_DEVICE_FUNC typename Eigen::internal::traits<XprType>::PointerType  data() const { return NULL; }
+  EIGEN_DEVICE_FUNC EvaluatorPointerType  data() const { return NULL; }
 
 #ifdef EIGEN_USE_SYCL
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const TensorEvaluator<ArgType, Device>& impl() const { return m_argImpl; }
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const Generator& functor() const { return m_generator; }
+  // binding placeholder accessors to a command group handler for SYCL
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void bind(cl::sycl::handler&) const {}
 #endif
 
  protected:
@@ -261,14 +267,11 @@ struct TensorEvaluator<const TensorGeneratorOp<Generator, ArgType>, Device>
     }
   }
 
-  const Device& m_device;
+  const Device EIGEN_DEVICE_REF m_device;
   Dimensions m_dimensions;
   array<Index, NumDims> m_strides;
   array<IndexDivisor, NumDims> m_fast_strides;
   Generator m_generator;
-#ifdef EIGEN_USE_SYCL
-  TensorEvaluator<ArgType, Device> m_argImpl;
-#endif
 };
 
 } // end namespace Eigen
