@@ -83,8 +83,8 @@ struct default_packet_traits
     HasPolygamma = 0,
     HasErf = 0,
     HasErfc = 0,
-    HasI0e = 0,
-    HasI1e = 0,
+    HasNdtri = 0,
+    HasBessel = 0,
     HasIGamma = 0,
     HasIGammaDerA = 0,
     HasGammaSampleDerAlpha = 0,
@@ -257,10 +257,30 @@ pldexp(const Packet &a, const Packet &exponent) { return std::ldexp(a,exponent);
 template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
 pzero(const Packet& a) { return pxor(a,a); }
 
+template<> EIGEN_DEVICE_FUNC inline float pzero<float>(const float& a) {
+  EIGEN_UNUSED_VARIABLE(a);
+  return 0.;
+}
+
+template<> EIGEN_DEVICE_FUNC inline double pzero<double>(const double& a) {
+  EIGEN_UNUSED_VARIABLE(a);
+  return 0.;
+}
+
 /** \internal \returns bits of \a or \b according to the input bit mask \a mask */
 template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
 pselect(const Packet& mask, const Packet& a, const Packet& b) {
   return por(pand(a,mask),pandnot(b,mask));
+}
+
+template<> EIGEN_DEVICE_FUNC inline float pselect<float>(
+    const float& mask, const float& a, const float&b) {
+  return numext::equal_strict(mask,0.f) ? b : a;
+}
+
+template<> EIGEN_DEVICE_FUNC inline double pselect<double>(
+    const double& mask, const double& a, const double& b) {
+  return numext::equal_strict(mask,0.) ? b : a;
 }
 
 /** \internal \returns a <= b as a bit mask */
@@ -477,43 +497,43 @@ template<typename Packet> EIGEN_DEVICE_FUNC inline Packet pcplxflip(const Packet
 
 /** \internal \returns the sine of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet psin(const Packet& a) { using std::sin; return sin(a); }
+Packet psin(const Packet& a) { EIGEN_USING_STD_MATH(sin); return sin(a); }
 
 /** \internal \returns the cosine of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet pcos(const Packet& a) { using std::cos; return cos(a); }
+Packet pcos(const Packet& a) { EIGEN_USING_STD_MATH(cos); return cos(a); }
 
 /** \internal \returns the tan of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet ptan(const Packet& a) { using std::tan; return tan(a); }
+Packet ptan(const Packet& a) { EIGEN_USING_STD_MATH(tan); return tan(a); }
 
 /** \internal \returns the arc sine of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet pasin(const Packet& a) { using std::asin; return asin(a); }
+Packet pasin(const Packet& a) { EIGEN_USING_STD_MATH(asin); return asin(a); }
 
 /** \internal \returns the arc cosine of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet pacos(const Packet& a) { using std::acos; return acos(a); }
+Packet pacos(const Packet& a) { EIGEN_USING_STD_MATH(acos); return acos(a); }
 
 /** \internal \returns the arc tangent of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet patan(const Packet& a) { using std::atan; return atan(a); }
+Packet patan(const Packet& a) { EIGEN_USING_STD_MATH(atan); return atan(a); }
 
 /** \internal \returns the hyperbolic sine of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet psinh(const Packet& a) { using std::sinh; return sinh(a); }
+Packet psinh(const Packet& a) { EIGEN_USING_STD_MATH(sinh); return sinh(a); }
 
 /** \internal \returns the hyperbolic cosine of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet pcosh(const Packet& a) { using std::cosh; return cosh(a); }
+Packet pcosh(const Packet& a) { EIGEN_USING_STD_MATH(cosh); return cosh(a); }
 
 /** \internal \returns the hyperbolic tan of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet ptanh(const Packet& a) { using std::tanh; return tanh(a); }
+Packet ptanh(const Packet& a) { EIGEN_USING_STD_MATH(tanh); return tanh(a); }
 
 /** \internal \returns the exp of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet pexp(const Packet& a) { using std::exp; return exp(a); }
+Packet pexp(const Packet& a) { EIGEN_USING_STD_MATH(exp); return exp(a); }
 
 /** \internal \returns the expm1 of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
@@ -521,7 +541,7 @@ Packet pexpm1(const Packet& a) { return numext::expm1(a); }
 
 /** \internal \returns the log of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet plog(const Packet& a) { using std::log; return log(a); }
+Packet plog(const Packet& a) { EIGEN_USING_STD_MATH(log); return log(a); }
 
 /** \internal \returns the log1p of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
@@ -529,11 +549,11 @@ Packet plog1p(const Packet& a) { return numext::log1p(a); }
 
 /** \internal \returns the log10 of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet plog10(const Packet& a) { using std::log10; return log10(a); }
+Packet plog10(const Packet& a) { EIGEN_USING_STD_MATH(log10); return log10(a); }
 
 /** \internal \returns the square-root of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet psqrt(const Packet& a) { using std::sqrt; return sqrt(a); }
+Packet psqrt(const Packet& a) { EIGEN_USING_STD_MATH(sqrt); return sqrt(a); }
 
 /** \internal \returns the reciprocal square-root of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS

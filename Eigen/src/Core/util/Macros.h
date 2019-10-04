@@ -108,6 +108,18 @@
   #define EIGEN_COMP_MSVC 0
 #endif
 
+#if defined(__NVCC__)
+#if defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ >= 9)
+  #define EIGEN_COMP_NVCC  ((__CUDACC_VER_MAJOR__ * 10000) + (__CUDACC_VER_MINOR__ * 100))
+#elif defined(__CUDACC_VER__)
+  #define EIGEN_COMP_NVCC __CUDACC_VER__
+#else
+  #error "NVCC did not define compiler version."
+#endif
+#else
+  #define EIGEN_COMP_NVCC 0
+#endif
+
 // For the record, here is a table summarizing the possible values for EIGEN_COMP_MSVC:
 //  name        ver   MSC_VER
 //  2008         9      1500
@@ -168,7 +180,7 @@
   #define EIGEN_COMP_ARM 0
 #endif
 
-/// \internal EIGEN_COMP_ARM set to 1 if the compiler is ARM Compiler
+/// \internal EIGEN_COMP_EMSCRIPTEN set to 1 if the compiler is Emscripten Compiler
 #if defined(__EMSCRIPTEN__)
   #define EIGEN_COMP_EMSCRIPTEN 1
 #else
@@ -408,10 +420,11 @@
   #define EIGEN_CUDA_ARCH __CUDA_ARCH__
 #endif
 
-#if defined(CUDA_VERSION)
-  #define EIGEN_CUDACC_VER (CUDA_VERSION*10)
+#if defined(EIGEN_CUDACC)
+#include <cuda.h>
+  #define EIGEN_CUDA_SDK_VER (CUDA_VERSION * 10)
 #else
-  #define EIGEN_CUDACC_VER 0
+  #define EIGEN_CUDA_SDK_VER 0
 #endif
 
 #if defined(__HIPCC__) && !defined(EIGEN_NO_HIP)
@@ -482,6 +495,12 @@
 // For cases where the tweak is specific to CUDA, the code should be guarded with
 //      #if defined(EIGEN_CUDA_ARCH)
 //
+#endif
+
+#if defined(EIGEN_USE_SYCL) && defined(__SYCL_DEVICE_ONLY__)
+// EIGEN_USE_SYCL is a user-defined macro while __SYCL_DEVICE_ONLY__ is a compiler-defined macro.
+// In most cases we want to check if both macros are defined which can be done using the define below.
+#define SYCL_DEVICE_ONLY
 #endif
 
 //------------------------------------------------------------------------------------------
@@ -570,7 +589,7 @@
     ((defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901))       \
   || (defined(__GNUC__) && defined(_GLIBCXX_USE_C99)) \
   || (defined(_LIBCPP_VERSION) && !defined(_MSC_VER)) \
-  || (EIGEN_COMP_MSVC >= 1900) || defined(__SYCL_DEVICE_ONLY__))
+  || (EIGEN_COMP_MSVC >= 1900) || defined(SYCL_DEVICE_ONLY))
   #define EIGEN_HAS_C99_MATH 1
 #else
   #define EIGEN_HAS_C99_MATH 0
@@ -622,11 +641,11 @@
 // Does the compiler support variadic templates?
 #ifndef EIGEN_HAS_VARIADIC_TEMPLATES
 #if EIGEN_MAX_CPP_VER>=11 && (__cplusplus > 199711L || EIGEN_COMP_MSVC >= 1900) \
-  && (!defined(__NVCC__) || !EIGEN_ARCH_ARM_OR_ARM64 || (EIGEN_CUDACC_VER >= 80000) )
+  && (!defined(__NVCC__) || !EIGEN_ARCH_ARM_OR_ARM64 || (EIGEN_COMP_NVCC >= 80000) )
     // ^^ Disable the use of variadic templates when compiling with versions of nvcc older than 8.0 on ARM devices:
     //    this prevents nvcc from crashing when compiling Eigen on Tegra X1
 #define EIGEN_HAS_VARIADIC_TEMPLATES 1
-#elif  EIGEN_MAX_CPP_VER>=11 && (__cplusplus > 199711L || EIGEN_COMP_MSVC >= 1900) && defined(__SYCL_DEVICE_ONLY__)
+#elif  EIGEN_MAX_CPP_VER>=11 && (__cplusplus > 199711L || EIGEN_COMP_MSVC >= 1900) && defined(SYCL_DEVICE_ONLY)
 #define EIGEN_HAS_VARIADIC_TEMPLATES 1
 #else
 #define EIGEN_HAS_VARIADIC_TEMPLATES 0
@@ -637,7 +656,7 @@
 #ifndef EIGEN_HAS_CONSTEXPR
   #if defined(EIGEN_CUDACC)
   // Const expressions are supported provided that c++11 is enabled and we're using either clang or nvcc 7.5 or above
-    #if EIGEN_MAX_CPP_VER>=14 && (__cplusplus > 199711L && (EIGEN_COMP_CLANG || EIGEN_CUDACC_VER >= 70500))
+    #if EIGEN_MAX_CPP_VER>=14 && (__cplusplus > 199711L && (EIGEN_COMP_CLANG || EIGEN_COMP_NVCC >= 70500))
       #define EIGEN_HAS_CONSTEXPR 1
     #endif
   #elif EIGEN_MAX_CPP_VER>=14 && (__has_feature(cxx_relaxed_constexpr) || (defined(__cplusplus) && __cplusplus >= 201402L) || \
@@ -778,7 +797,7 @@
 //   Eval.h:91: sorry, unimplemented: inlining failed in call to 'const Eigen::Eval<Derived> Eigen::MatrixBase<Scalar, Derived>::eval() const'
 //    : function body not available
 //   See also bug 1367
-#if EIGEN_GNUC_AT_LEAST(4,2)
+#if EIGEN_GNUC_AT_LEAST(4,2) && !defined(SYCL_DEVICE_ONLY)
 #define EIGEN_ALWAYS_INLINE __attribute__((always_inline)) inline
 #else
 #define EIGEN_ALWAYS_INLINE EIGEN_STRONG_INLINE
@@ -801,7 +820,7 @@
 // GPU stuff
 
 // Disable some features when compiling with GPU compilers (NVCC/clang-cuda/SYCL/HIPCC)
-#if defined(EIGEN_CUDACC) || defined(__SYCL_DEVICE_ONLY__) || defined(EIGEN_HIPCC)
+#if defined(EIGEN_CUDACC) || defined(SYCL_DEVICE_ONLY) || defined(EIGEN_HIPCC)
   // Do not try asserts on device code
   #ifndef EIGEN_NO_DEBUG
   #define EIGEN_NO_DEBUG
@@ -816,9 +835,14 @@
   #endif
 #endif
 
+#if defined(SYCL_DEVICE_ONLY)
+  #ifndef EIGEN_DONT_VECTORIZE
+    #define EIGEN_DONT_VECTORIZE
+  #endif
+  #define EIGEN_DEVICE_FUNC __attribute__((always_inline))
 // All functions callable from CUDA/HIP code must be qualified with __device__
-#ifdef EIGEN_GPUCC
-  #define EIGEN_DEVICE_FUNC __host__ __device__
+#elif defined(EIGEN_GPUCC) 
+    #define EIGEN_DEVICE_FUNC __host__ __device__
 #else
   #define EIGEN_DEVICE_FUNC
 #endif
@@ -839,8 +863,12 @@
 
 // eigen_plain_assert is where we implement the workaround for the assert() bug in GCC <= 4.3, see bug 89
 #ifdef EIGEN_NO_DEBUG
-  #define eigen_plain_assert(x)
-#else
+  #ifdef SYCL_DEVICE_ONLY // used to silence the warning on SYCL device
+    #define eigen_plain_assert(x) EIGEN_UNUSED_VARIABLE(x)
+  #else
+    #define eigen_plain_assert(x)
+  #endif
+#else 
   #if EIGEN_SAFE_TO_USE_STANDARD_ASSERT_MACRO
     namespace Eigen {
     namespace internal {
@@ -981,7 +1009,7 @@ namespace Eigen {
 #endif
 
 
-#if EIGEN_COMP_MSVC_STRICT && (EIGEN_COMP_MSVC < 1900 || EIGEN_CUDACC_VER>0)
+#if EIGEN_COMP_MSVC_STRICT && (EIGEN_COMP_MSVC < 1900 || EIGEN_COMP_NVCC)
   // for older MSVC versions, as well as 1900 && CUDA 8, using the base operator is sufficient (cf Bugs 1000, 1324)
   #define EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived) \
     using Base::operator =;
@@ -1198,7 +1226,7 @@ bool all(T t, Ts ... ts){ return t && all(ts...); }
 #endif
 
 // Wrapping #pragma unroll in a macro since it is required for SYCL
-#if defined(__SYCL_DEVICE_ONLY__)
+#if defined(SYCL_DEVICE_ONLY)
   #if defined(_MSC_VER)
     #define EIGEN_UNROLL_LOOP __pragma(unroll)
   #else
