@@ -765,7 +765,7 @@ class KimaResults(object):
     def residuals(self, sample):
         return self.y - self.model(sample)
 
-    def phase_plot(self, sample):
+    def phase_plot(self, sample, highlight=None):
         """ Plot the phase curves given the solution in `sample` """
         # this is probably the most complicated function in the whole file!!
 
@@ -820,14 +820,31 @@ class KimaResults(object):
         v = self.model(sample)
 
         # put all data around zero
+        if self.GPmodel:  # subtract the GP (already removes vsys, trend and instrument offsets)
+            GPvel = self.GP.predict_with_hyperpars(self, sample,
+                                                   add_parts=False)
+            y -= GPvel
+        else:
+            GPvel = np.zeros_like(t)
+
         y -= sample[-1]  # subtract this sample's systemic velocity
+
         if self.multi:
             # subtract each instrument's offset
             for i in range(self.n_instruments - 1):
                 of = sample[self.indices['inst_offsets']][i]
-                y[self.obs == i + 1] -= sample[self.indices['inst_offsets']][i]
+                y[self.obs == i + 1] -= of
+
         if self.trend:  # and subtract the trend
             y -= sample[self.indices['trend']] * (t - self.tmiddle)
+
+        if self.KO:  # subtract the known object
+            KOpars = sample[self.indices['KOpars']]
+            KOpars = kima_pars_to_keplerian_pars(KOpars)
+            KOvel = keplerian(t, *KOpars)
+            y -= KOvel
+        else:
+            KOvel = np.zeros_like(t)
 
         ekwargs = {
             'fmt': 'o',
@@ -838,9 +855,15 @@ class KimaResults(object):
         }
 
         # very complicated logic just to make the figure the right size
-        fs = (max(6.4, 6.4 + 1 * (nplanets - 2)),
-              max(4.8, 4.8 + 1 * (nplanets - 3)))
-        fig = plt.figure('phase plot', constrained_layout=True, figsize=fs)
+        fs = [
+            max(6.4, 6.4 + 1 * (nplanets - 2)),
+            max(4.8, 4.8 + 1 * (nplanets - 3))
+        ]
+        if self.GPmodel:
+            fs[1] += 3
+
+        fig = plt.figure(constrained_layout=True, figsize=fs)
+        fig.canvas.set_window_title('phase plot')
         nrows = {
             1: 2,
             2: 2,
@@ -853,6 +876,10 @@ class KimaResults(object):
             9: 4,
             10: 4
         }[nplanets]
+
+        if self.GPmodel:
+            nrows += 1
+
         ncols = nplanets if nplanets <= 3 else 3
         gs = gridspec.GridSpec(nrows, ncols, figure=fig,
                                height_ratios=[2] * (nrows - 1) + [1])
@@ -895,11 +922,17 @@ class KimaResults(object):
                     color = ax._get_lines.prop_cycler.__next__()['color']
 
                     for j in (-1, 0, 1):
-                        alpha = 0.3 if j in (-1, 1) else 1
-                        label = self.data_file[k - 1] if j == 0 else None
+                        if highlight:
+                            if highlight in self.data_file[k - 1]:
+                                alpha = 1
+                            else:
+                                alpha = 0.2
+                        else:
+                            alpha = 0.3 if j in (-1, 1) else 1
+
                         ax.errorbar(
                             np.sort(phase) + j, yy[np.argsort(phase)],
-                            ee[np.argsort(phase)], color=color, alpha=alpha, 
+                            ee[np.argsort(phase)], color=color, alpha=alpha,
                             **ekwargs)
 
             else:
@@ -916,33 +949,83 @@ class KimaResults(object):
                     alpha = 0.3 if j in (-1, 1) else 1
                     ax.errorbar(
                         np.sort(phase) + j, yy[np.argsort(phase)],
-                        e[np.argsort(phase)], color=color, alpha=alpha, 
+                        e[np.argsort(phase)], color=color, alpha=alpha,
                         **ekwargs)
 
             ax.set_xlim(-0.2, 1.2)
-            ax.set(xlabel="phase", ylabel="radial velocity [m/s]")
+            ax.set(xlabel="phase", ylabel="RV [m/s]")
             ax.set_title('%s' % letter, loc='left')
-            ax.set_title('P=%.2f days' % p, loc='right')
+            if nplanets == 1:
+                k = parsi(i)[1]
+                ax.set_title('P=%.2f days, K=%.2f m/s' % (p, k), loc='right')
+            else:
+                ax.set_title('P=%.2f days' % p, loc='right')
+
+        if self.GPmodel:
+            axGP = fig.add_subplot(gs[1, :])
+            if self.multi:
+                for k in range(1, self.n_instruments + 1):
+                    m = self.obs == k
+                    if k < self.n_instruments:
+                        of = sample[self.indices['inst_offsets']][k - 1]
+                    else:
+                        of = 0.
+
+                    GPy = self.y[m] - sample[-1] - of
+                    axGP.errorbar(t[m], GPy, e[m], **ekwargs)
+            else:
+                axGP.errorbar(t, self.y, e, **ekwargs)
+
+            axGP.set(xlabel="Time [days]", ylabel="GP prediction [m/s]")
+
+            # axGP.plot(t, GPvel, 'o-')
+            # jitters = sample[self.indices['jitter']]
+            tt = np.linspace(t[0], t[-1], 10000)
+            axGP.plot(tt, self.GP.predict_with_hyperpars(self, sample, tt),
+                      'k')
+            # ax.fill_between(t[m], -jitters[k-1], jitters[k-1], alpha=0.2)
+
+            names = ['GP'] + [get_instrument_name(d) for d in self.data_file]
+            leg = axGP.legend(names, loc="upper left", handletextpad=0.4,
+                              bbox_to_anchor=(0, 1.17), ncol=6, fontsize=10)
+            # for label, name in zip(leg.get_texts(), names):
+            #     label.set_text(name)
 
         ax = fig.add_subplot(gs[-1, :])
+        residuals = np.zeros_like(t)
+
         if self.multi:
+            jitters = sample[self.indices['jitter']]
+            print('residual rms per instrument')
             for k in range(1, self.n_instruments + 1):
                 m = self.obs == k
                 # label = self.data_file[k - 1]
-                ax.errorbar(t[m], self.y[m] - v[m], e[m], **ekwargs)
+                ax.errorbar(t[m], self.y[m] - v[m] - KOvel[m] - GPvel[m], e[m],
+                            **ekwargs)
+                ax.fill_between(t[m], -jitters[k - 1], jitters[k - 1],
+                                alpha=0.2)
+                print(get_instrument_name(self.data_file[k-1]), end=': ')
+                print(wrms(self.y[m] - v[m] - KOvel[m] - GPvel[m], 1/e[m]**2))
+                residuals[m] = self.y[m] - v[m] - KOvel[m] - GPvel[m]
+
         else:
-            ax.errorbar(t, self.y - v, e, **ekwargs)
+            ax.errorbar(t, self.y - v - KOvel - GPvel, e, **ekwargs)
+            residuals = self.y - v - KOvel - GPvel
 
         # ax.legend()
         ax.axhline(y=0, ls='--', alpha=0.5, color='k')
         ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
         ax.set(xlabel='Time [days]', ylabel='residuals [m/s]')
-        ax.set_title('rms=%.2f m/s' % wrms(self.y - v, 1 / e**2), loc='right')
+        ax.set_title(
+            'rms=%.2f m/s' % wrms(self.y - v - KOvel - GPvel, 1 / e**2),
+            loc='right')
 
         if self.save_plots:
             filename = 'kima-showresults-fig6.1.png'
             print('saving in', filename)
             fig.savefig(filename)
+
+        return residuals
 
     @property
     def ratios(self):
