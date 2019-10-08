@@ -1186,7 +1186,7 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
-    def make_plot3(self, points=True):
+    def make_plot3(self, points=True, gridsize=50):
         """
         Plot the 2d histograms of the posteriors for semi-amplitude 
         and orbital period and eccentricity and orbital period.
@@ -1221,13 +1221,13 @@ class KimaResults(object):
 
         else:
             if A.ptp() > 30:
-                ax1.hexbin(T, A, gridsize=50, bins='log', xscale='log',
+                ax1.hexbin(T, A, gridsize=gridsize, bins='log', xscale='log',
                            yscale='log', cmap=plt.get_cmap('afmhot_r'))
             else:
-                ax1.hexbin(T, A, gridsize=50, bins='log', xscale='log',
+                ax1.hexbin(T, A, gridsize=gridsize, bins='log', xscale='log',
                            yscale='linear', cmap=plt.get_cmap('afmhot_r'))
 
-            ax2.hexbin(T, E, gridsize=50, bins='log', xscale='log',
+            ax2.hexbin(T, E, gridsize=gridsize, bins='log', xscale='log',
                        cmap=plt.get_cmap('afmhot_r'))
 
         if self.removed_crossing:
@@ -1328,9 +1328,13 @@ class KimaResults(object):
         ]
         units = ['m/s'] * self.n_jitters + ['m/s', 'days', 'days', None]
         xlabels = []
-        for label, unit in zip(labels, units):
-            xlabels.append(label +
-                           ' (%s)' % unit if unit is not None else label)
+        for i in range(self.n_jitters):
+            l = f'{labels[i]}$_{{\\rm{get_instrument_name(self.data_file[i])}}}$'
+            xlabels.append(l)
+        for label, unit in zip(labels[self.n_jitters:],
+                               units[self.n_jitters:]):
+            xlabels.append(label)
+            #    ' (%s)' % unit if unit is not None else label)
 
         ### all Np together
         self.post_samples = np.c_[self.extra_sigma, self.etas]
@@ -1758,8 +1762,15 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
-    def hist_vsys(self, show_offsets=True):
-        """ Plot the histogram of the posterior for the systemic velocity """
+    def hist_vsys(self, show_offsets=True, specific=None):
+        """ 
+        Plot the histogram of the posterior for the systemic velocity and for
+        the between-instrument offsets (if `show_offsets` is True and the model
+        has multiple instruments). If `specific` is not None, it should be a
+        tuple with the name of the datafiles for two instruments (matching
+        `self.data_file`). In that case, this function works out the RV offset
+        between the `specific[0]` and `specific[1]` instruments.
+        """
         vsys = self.posterior_sample[:, -1]
         units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
         estimate = percentile68_ranges_latex(vsys) + units
@@ -1777,19 +1788,20 @@ class KimaResults(object):
         if show_offsets and self.multi:
             n_inst_offsets = self.inst_offsets.shape[1]
             fig, axs = plt.subplots(1, n_inst_offsets, sharey=True,
-                                    figsize=(n_inst_offsets * 3,
-                                             5), squeeze=True)
+                                    figsize=(n_inst_offsets * 3, 5), 
+                                    squeeze=True, constrained_layout=True)
             if n_inst_offsets == 1:
-                axs = [
-                    axs,
-                ]
+                axs = [axs,]
 
             for i in range(n_inst_offsets):
+                wrt = get_instrument_name(self.data_file[-1])
+                this = get_instrument_name(self.data_file[i])
+                label = f'offset\n{this} rel. to {wrt}'
                 a = self.inst_offsets[:, i]
                 estimate = percentile68_ranges_latex(a) + units
                 axs[i].hist(a)
-                axs[i].set(xlabel='offset %d' % (i + 1), title=estimate,
-                           ylabel='posterior samples')
+
+                axs[i].set(xlabel=label, title=estimate, ylabel='posterior samples')
 
             title = 'Posterior distribution(s) for instrument offset(s)'
             fig.suptitle(title)
@@ -1798,19 +1810,52 @@ class KimaResults(object):
                 filename = 'kima-showresults-fig7.2.1.png'
                 print('saving in', filename)
                 fig.savefig(filename)
+            
+            if specific is not None:
+                assert isinstance(specific, tuple), '`specific` should be a tuple'
+                assert len(specific) == 2, '`specific` should have size 2'
+                assert specific[0] in self.data_file, 'first element is not in self.data_file'
+                assert specific[1] in self.data_file, 'second element is not in self.data_file'
 
+                # all RV offsets are with respect to the last data file
+                if self.data_file[-1] in specific:
+                    i = specific.index(self.data_file[-1])
+                    # toggle: if i is 0 it becomes 1, if it's 1 it becomes 0
+                    i ^= 1
+                    wrt = get_instrument_name(self.data_file[-1])
+                    this = get_instrument_name(specific[i])
+                    label = f'offset\n{this} rel. to {wrt}'
+                    offset = self.inst_offsets[:, self.data_file.index(specific[i])]
+                    estimate = percentile68_ranges_latex(offset) + units
+                    fig, ax = plt.subplots(1, 1, constrained_layout=True)
+                    ax.hist(offset)
+                    ax.set(xlabel=label, title=estimate, ylabel='posterior samples')
+                else:
+                    wrt = get_instrument_name(specific[1])
+                    this = get_instrument_name(specific[0])
+                    label = f'offset\n{this} rel. to {wrt}'
+                    of1 = self.inst_offsets[:, self.data_file.index(specific[0])]
+                    of2 = self.inst_offsets[:, self.data_file.index(specific[1])]
+                    estimate  = percentile68_ranges_latex(of1 - of2) + units
+                    fig, ax = plt.subplots(1, 1, constrained_layout=True)
+                    ax.hist(of1 - of2)
+                    ax.set(xlabel=label, title=estimate, ylabel='posterior samples')
+    
+    
     def hist_extra_sigma(self):
         """ Plot the histogram of the posterior for the additional white noise """
         units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
 
         if self.multi:  # there are n_instruments jitters
+            # lambda substrs
             fig, axs = plt.subplots(1, self.n_instruments, sharey=True,
                                     figsize=(self.n_instruments * 3,
                                              5), squeeze=True)
             for i, jit in enumerate(self.extra_sigma.T):
+                inst = get_instrument_name(self.data_file[i])
                 estimate = percentile68_ranges_latex(jit) + units
                 axs[i].hist(jit)
-                axs[i].set(xlabel='jitter %d' % (i + 1), title=estimate,
+                axs[i].set(xlabel='%s' % inst, title=estimate,
                            ylabel='posterior samples')
 
             title = 'Posterior distribution(s) for extra white noise(s)'

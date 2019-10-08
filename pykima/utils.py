@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import re
 import numpy as np
 from scipy import stats
@@ -382,3 +382,35 @@ def hyperprior_samples(size):
     wP = 0.1 + 2.9 * rng.rand(size)
     P = np.where(U < 0.5, muP + wP * log(2. * U), muP - wP * log(2. - 2. * U))
     return np.exp(P)
+
+
+def get_star_name(data_file):
+    """ Find star name (usually works for approx. standard filenames) """
+    bn = os.path.basename(data_file)
+    try:
+        pattern = '|'.join([
+            'HD\d+', 'HIP\d+', 'HR\d+', 'BD-\d+', 'CD-\d+', 'NGC\d+No\d+',
+            'GJ\d+', 'Gl\d+'
+        ])
+        return re.findall(pattern, bn)[0]
+
+    except IndexError:  # didn't find correct name
+        if bn.endswith('_harps.rdb'): return bn[:-10]
+
+    return 'unknown'
+
+
+def get_instrument_name(data_file):
+    """ Find instrument name """
+    bn = os.path.basename(data_file)
+    try:
+        pattern = '|'.join([
+            'ESPRESSO', 'HARPS[^\W_]*[\d+]*', 'HIRES', 'APF', 'CORALIE',
+        ])
+        return re.findall(pattern, bn)[0]
+
+    except IndexError:
+        try:
+            return re.findall(pattern, bn.upper())[0]
+        except IndexError:  # didn't find
+            return 'unknown'
