@@ -20,7 +20,7 @@ from .GP import GP, QPkernel
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
                    percentile68_ranges, percentile68_ranges_latex,\
                    read_datafile, lighten_color, wrms, get_prior, \
-                   hyperprior_samples
+                   hyperprior_samples, get_star_name, get_instrument_name
 
 from .analysis import passes_threshold_np
 
@@ -92,19 +92,18 @@ class KimaResults(object):
         # read the priors
         priors = list(setup['priors.general'].values())
         prior_names = list(setup['priors.general'].keys())
+        for section in ('priors.planets', 'priors.hyperpriors', 'priors.GP'):
+            try:
+                priors += list(setup[section].values())
+                prior_names += list(setup[section].keys())
+            except KeyError:
+                continue
+
         try:
-            priors += list(setup['priors.planets'].values())
-            prior_names += list(setup['priors.planets'].keys())
-        except KeyError:
-            pass
-        try:
-            priors += list(setup['priors.hyperpriors'].values())
-            prior_names += list(setup['priors.hyperpriors'].keys())
-        except KeyError:
-            pass
-        try:
-            priors += list(setup['priors.GP'].values())
-            prior_names += list(setup['priors.GP'].keys())
+            priors += list(setup['priors.known_object'].values())
+            prior_names += [
+                'KO_' + k for k in setup['priors.known_object'].keys()
+            ]
         except KeyError:
             pass
 
@@ -312,6 +311,7 @@ class KimaResults(object):
             start = start_parameters + n_trend + n_offsets + n_inst_offsets + n_hyperparameters + n_MAparameters + 1
             koinds = slice(start, start + n_KOparameters)
             self.KOpars = self.posterior_sample[:, koinds]
+            self.indices['KOpars'] = koinds
         else:
             n_KOparameters = 0
 
@@ -351,7 +351,7 @@ class KimaResults(object):
         self.make_plots(options, self.save_plots)
 
     @classmethod
-    def load(cls, filename):
+    def load(cls, filename, diagnostic=False):
         """Load a KimaResults object from a pickle or .zip file."""
         try:
             if filename.endswith('.zip'):
@@ -390,6 +390,10 @@ class KimaResults(object):
                     datafiles = list(map(os.path.basename, datafiles))
                     for df in datafiles:
                         zf.extract(df)
+
+                    if diagnostic:
+                        from .classic import postprocess
+                        postprocess()
 
                     res = cls('')
                     res.evidence = float(open('evidence').read())
@@ -449,6 +453,7 @@ class KimaResults(object):
             print('Wrote to file "%s"' % zf.filename)
 
     def make_plots(self, options, save_plots=False):
+        self.save_plots = save_plots
         if options == 'all':  # can be 'all' if called from the interpreter
             options = ('1', '2', '3', '4', '5', '6p', '7', '8')
 
@@ -1178,19 +1183,35 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
-    def make_plot4(self):
-        """ Plot histograms for the GP hyperparameters """
+    def make_plot4(self, Np=None, ranges=None):
+        """ 
+        Plot histograms for the GP hyperparameters. If Np is not None, highlight
+        the samples with Np Keplerians. 
+        """
         if not self.GPmodel:
             print('Model does not have GP! make_plot4() doing nothing...')
             return
 
         available_etas = [v for v in dir(self) if v.startswith('eta')][:-1]
         labels = ['eta1', 'eta2', 'eta3', 'eta4']
+        if ranges is None:
+            ranges = 4 * [None]
+        print(ranges)
+
+        if Np is not None:
+            m = self.posterior_sample[:, self.index_component] == Np
 
         fig, axes = plt.subplots(2, int(len(available_etas) / 2))
         for i, eta in enumerate(available_etas):
             ax = np.ravel(axes)[i]
-            ax.hist(getattr(self, eta), bins=40)
+            ax.hist(getattr(self, eta), bins=40, range=ranges[i])
+
+            if Np is not None:
+                ax.hist(
+                    getattr(self, eta)[m], bins=40, histtype='step', alpha=0.5,
+                    label='$N_p$=%d samples' % Np, range=ranges[i])
+                ax.legend()
+
             ax.set(xlabel=labels[i], ylabel='posterior samples')
 
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -1200,7 +1221,7 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
-    def make_plot5(self, show=True):
+    def make_plot5(self, show=True, ranges=None):
         """ Corner plot for the GP hyperparameters """
 
         if not self.GPmodel:
@@ -1241,7 +1262,8 @@ class KimaResults(object):
         # self.post_samples = np.vstack(variables).T
         # ranges = [1.]*(len(available_etas) + self.extra_sigma.shape[1])
 
-        ranges = [1.] * self.post_samples.shape[1]
+        if ranges is None:
+            ranges = [1.] * self.post_samples.shape[1]
         # ranges[3] = (self.pmin, self.pmax)
 
         c = corner.corner
