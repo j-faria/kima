@@ -5,7 +5,10 @@ from .classic import postprocess
 from .display import KimaResults
 from .crossing_orbits import rem_crossing_orbits
 from .utils import show_tips
-import sys, os
+import sys, os, re
+from io import StringIO
+from contextlib import redirect_stdout
+import time
 from collections import namedtuple
 from matplotlib.pyplot import show
 
@@ -107,7 +110,8 @@ def _parse_args(options):
         sys.exit(0)
     if '--version' in args:
         version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
-        print('kima', open(version_file).read().strip())  # same as kima
+        v = open(version_file).read().strip()  # same as kima
+        print('kima (kima-showresults script)', v) 
         sys.exit(0)
 
     if '--help-remove-crossing' in args:
@@ -174,7 +178,7 @@ def _parse_args(options):
                      remove_crossing=remove_crossing)
 
 
-def showresults(options='', force_return=False):
+def showresults(options='', force_return=False, verbose=True):
     """
     Generate and plot results from a kima run. The argument `options` should be 
     a string with the same options as for the kima-showresults script.
@@ -209,15 +213,20 @@ def showresults(options='', force_return=False):
         except ValueError:
             pass
 
+    hidden = StringIO()
+    stdout = sys.stdout if verbose else hidden
+
     try:
-        evidence, H, logx_samples = postprocess(
-            plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
+        with redirect_stdout(stdout):
+            evidence, H, logx_samples = postprocess(
+                plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
     except IOError as e:
         print(e)
         sys.exit(1)
 
     # show kima tips
-    show_tips()
+    if verbose:
+        show_tips()
 
     res = KimaResults('')
 
