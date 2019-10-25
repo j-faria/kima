@@ -44,6 +44,8 @@ class Data
 		bool datamulti; // multiple instruments? not sure if needed
 		int number_instruments;
 
+		double M0_epoch;
+
 		/// @brief Get the number of RV points. @return int
 		int N() const {return t.size();}
 

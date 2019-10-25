@@ -280,7 +280,7 @@ void RVmodel::calculate_mu()
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            f = true_anomaly(ti, P, ecc, t[0]-(P*phi)/(2.*M_PI));
+            f = true_anomaly(ti, P, ecc, data.M0_epoch-(P*phi)/(2.*M_PI));
             v = K*(cos(f+omega) + ecc*cos(omega));
             mu[i] += v;
         }
@@ -314,7 +314,7 @@ void RVmodel::remove_known_object()
     for(size_t i=0; i<t.size(); i++)
     {
         ti = t[i];
-        f = true_anomaly(ti, KO_P, KO_e, t[0]-(KO_P*KO_phi)/(2.*M_PI));
+        f = true_anomaly(ti, KO_P, KO_e, data.M0_epoch-(KO_P*KO_phi)/(2.*M_PI));
         v = KO_K*(cos(f+KO_w) + KO_e*cos(KO_w));
         mu[i] -= v;
     }
@@ -328,7 +328,7 @@ void RVmodel::add_known_object()
     for(size_t i=0; i<t.size(); i++)
     {
         ti = t[i];
-        f = true_anomaly(ti, KO_P, KO_e, t[0]-(KO_P*KO_phi)/(2.*M_PI));
+        f = true_anomaly(ti, KO_P, KO_e, data.M0_epoch-(KO_P*KO_phi)/(2.*M_PI));
         v = KO_K*(cos(f+KO_w) + KO_e*cos(KO_w));
         mu[i] += v;
     }

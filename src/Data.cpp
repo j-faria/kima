@@ -157,6 +157,9 @@ void Data::load(const char* filename, const char* units,
   
     }
   
+  // by default
+  M0_epoch = t[0];
+
 
   // subtract means from activity indicators
   if (indicator_correlations)
