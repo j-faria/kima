@@ -157,7 +157,7 @@ void Data::load(const char* filename, const char* units,
   
     }
   
-  // by default
+  // epoch for the mean anomaly, by default the time of the first observation
   M0_epoch = t[0];
 
 
@@ -274,6 +274,9 @@ void Data::load_multi(const char* filename, const char* units, int skip)
           break;
       }
   }
+
+  // epoch for the mean anomaly, by default the time of the first observation
+  M0_epoch = t[0];
 
   }
 
@@ -410,6 +413,9 @@ void Data::load_multi(vector<char*> filenames, const char* units, int skip,
           break;
       }
   }
+
+  // epoch for the mean anomaly, by default the time of the first observation
+  M0_epoch = t[0];
 
   }
 

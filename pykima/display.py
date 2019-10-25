@@ -1516,7 +1516,7 @@ class KimaResults(object):
                       hist_kwars={'normed': True})
 
 
-    def plot_random_planets(self, ncurves=20, over=0.1, pmin=None, pmax=None,
+    def plot_random_planets(self, ncurves=50, over=0.1, pmin=None, pmax=None,
                             show_vsys=False, show_trend=False):
         """
         Display the RV data together with curves from the posterior predictive.
@@ -1560,10 +1560,20 @@ class KimaResults(object):
         yerr = self.data[:, 2].copy()
 
         ncurves = min(ncurves, samples.shape[0])
+        
+        if samples.shape[0] == 1:
+            ii = np.zeros(1, dtype=int)
+        else:
+            # select random `ncurves` indices
+            # from the (sorted, period-cut) posterior samples
+            # ii = np.random.randint(samples.shape[0], size=ncurves)
 
-        # select random `ncurves` indices
-        # from the (sorted, period-cut) posterior samples
-        ii = np.random.randint(samples.shape[0], size=ncurves)
+            # select `ncurves` indices from the 70% highest likelihood samples
+            lnlike = self.posterior_lnlike[:,1]
+            sorted_lnlike = np.sort(lnlike)[::-1]
+            mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
+            ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
+
 
         fig, ax = plt.subplots(1, 1)
         ax.set_title('Posterior samples in RV data space')
@@ -1730,7 +1740,7 @@ class KimaResults(object):
                     m = self.obs == j + 1
                     ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j],
                                 label=self.data_file[j])
-                ax.legend()
+                ax.legend(loc='upper left')
             else:
                 ax.errorbar(t, y, yerr, fmt='o')
 
