@@ -41,8 +41,7 @@ def test_keplerian():
     # before we were testing getting a NaN result when P=0
     # now it should raise a FloatingPointError
     with pytest.warns(RuntimeWarning):
-        with pytest.raises(FloatingPointError,
-                           message="Expecting FloatingPointError"):
+        with pytest.raises(FloatingPointError):
             keplerian(times1, 0., 0., 0., 0., 0., 0.)
             # assert np.isnan(result)
             keplerian(times2, 0., 0., 0., 0., 0., 0.)
