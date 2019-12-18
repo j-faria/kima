@@ -35,11 +35,6 @@ jobs:
         python setup.py install
 
 
-    # - name: Start the tests
-    #   run: |
-    #     pwd
-    #     cd tests/test_suite
-
     - name: Run 51Peg example
       run: |
         export PATH="$HOME/miniconda/bin:$PATH"
@@ -60,7 +55,6 @@ jobs:
         echo "Comparing output to known output for seed"
         cmp CoRoT7_sample_seed43.txt ../../examples/CoRoT7/sample.txt
 
-
     - name: Run BL2009 example
       run: |
         export PATH="$HOME/miniconda/bin:$PATH"
@@ -71,8 +65,13 @@ jobs:
         echo "Comparing output to known output for seed"
         cmp BL2009_sample_seed43.txt ../../examples/BL2009/sample.txt
 
+    - name: Run multi_instrument example
+      run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
+        cd tests/test_suite
+        cp OPTIONS ../../examples/multi_instrument/OPTIONS
+        kima-run ../../examples/multi_instrument -s 43
+        # test the output
+        echo "Comparing output to known output for seed"
+        cmp multi_instrument_sample_seed43.txt ../../examples/multi_instrument/sample.txt
 
-    # - name: Run a multi-line script
-    #   run: |
-    #     echo Add other actions to build,
-    #     echo test, and deploy your project.
