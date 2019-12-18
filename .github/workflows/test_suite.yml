@@ -47,7 +47,30 @@ jobs:
         cp OPTIONS ../../examples/51Peg/OPTIONS
         kima-run ../../examples/51Peg -s 43
         # test the output
+        echo "Comparing output to known output for seed"
         cmp 51Peg_sample_seed43.txt ../../examples/51Peg/sample.txt
+
+    - name: Run CoRoT7 example
+      run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
+        cd tests/test_suite
+        cp OPTIONS ../../examples/CoRoT7/OPTIONS
+        kima-run ../../examples/CoRoT7 -s 43
+        # test the output
+        echo "Comparing output to known output for seed"
+        cmp CoRoT7_sample_seed43.txt ../../examples/CoRoT7/sample.txt
+
+
+    - name: Run BL2009 example
+      run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
+        cd tests/test_suite
+        cp OPTIONS ../../examples/BL2009/OPTIONS
+        kima-run ../../examples/BL2009 -s 43
+        # test the output
+        echo "Comparing output to known output for seed"
+        cmp BL2009_sample_seed43.txt ../../examples/BL2009/sample.txt
+
 
     # - name: Run a multi-line script
     #   run: |
