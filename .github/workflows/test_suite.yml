@@ -15,6 +15,11 @@ jobs:
         pwd
         cd tests/test_suite
 
+    - name: Run 51Peg example
+      run: |
+        cd tests/test_suite
+        cp OPTIONS ../../examples/51Peg/OPTIONS
+
     - name: Run a multi-line script
       run: |
         echo Add other actions to build,
