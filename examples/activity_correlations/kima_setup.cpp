@@ -10,7 +10,7 @@ const bool known_object = false;
 
 RVmodel::RVmodel():fix(false),npmax(2)
 {
-    auto data = Data::get_data();
+    auto data = get_data();
     auto conditional = planets.get_conditional_prior();
     conditional->Pprior = make_prior<LogUniform>(1, 10*data.get_timespan()); // days
     conditional->Kprior = make_prior<ModifiedLogUniform>(1.0, 100); // m/s

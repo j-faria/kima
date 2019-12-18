@@ -152,6 +152,9 @@ class RVmodel
         template< class T, class... Args >
         std::shared_ptr<T> make_prior( Args&&... args ) { return std::make_shared<T>(args...); }
 
+        // create an alias for Data::get_instance()
+        Data& get_data() { return Data::get_instance(); }
+
         /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);
 

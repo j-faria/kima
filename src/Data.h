@@ -100,7 +100,6 @@ class Data
 		static Data instance;
 	public:
 		static Data& get_instance() { return instance; }
-		static Data& get_data() { return instance; }
 };
 
 
