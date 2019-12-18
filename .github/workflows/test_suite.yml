@@ -31,9 +31,10 @@ jobs:
 
     - name: Install kima and pykima
       run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
         which python
-    #     make -j 4
-    #     python setup.py install
+        make -j 4
+        python setup.py install
 
 
     # - name: Start the tests
