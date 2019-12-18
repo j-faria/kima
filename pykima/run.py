@@ -113,11 +113,15 @@ def run_local():
 
         if not os.path.exists('kima_setup.cpp'):
             if os.path.isfile('kima') and os.access('kima', os.X_OK):
-                print('Found kima executable, assuming it can be re-compiled')
+                if not args.quiet:
+                    print(
+                        'Found kima executable, assuming it can be re-compiled'
+                    )
             else:
                 print(
                     'Could not find "kima_setup.cpp" or a "kima" executable, '
-                    'are you in the right directory?')
+                    'are you in the right directory?'
+                )
                 sys.exit(1)
 
         ## compile
