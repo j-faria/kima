@@ -405,12 +405,13 @@ def get_instrument_name(data_file):
     bn = os.path.basename(data_file)
     try:
         pattern = '|'.join([
-            'ESPRESSO', 'HARPS[^\W_]*[\d+]*', 'HIRES', 'APF', 'CORALIE',
+            'ESPRESSO', 'HARPS[^\W_]*[\d+]*', 'HIRES', 'APF', 'CORALIE', 'HJS',
+            'ELODIE', 'KECK', 'HET', 'LICK',
         ])
-        return re.findall(pattern, bn)[0]
+        return re.findall(pattern, bn, re.IGNORECASE)[0]
 
     except IndexError:
         try:
             return re.findall(pattern, bn.upper())[0]
         except IndexError:  # didn't find
-            return 'unknown'
+            return data_file
