@@ -26,13 +26,11 @@ jobs:
         conda update -q conda
         conda install nomkl numpy scipy matplotlib
         pip install corner
-    
-        which python
 
     - name: Install kima and pykima
       run: |
         export PATH="$HOME/miniconda/bin:$PATH"
-        which python
+
         make -j 4
         python setup.py install
 
@@ -42,10 +40,12 @@ jobs:
     #     pwd
     #     cd tests/test_suite
 
-    # - name: Run 51Peg example
-    #   run: |
-    #     cd tests/test_suite
-    #     cp OPTIONS ../../examples/51Peg/OPTIONS
+    - name: Run 51Peg example
+      run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
+        cd tests/test_suite
+        cp OPTIONS ../../examples/51Peg/OPTIONS
+        kima-run ../../examples/51Peg -s 43
 
     # - name: Run a multi-line script
     #   run: |
