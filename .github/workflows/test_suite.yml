@@ -27,23 +27,27 @@ jobs:
         conda install nomkl numpy scipy matplotlib
         pip install corner
     
-    - name: Install kima and pykima
-      run: |
-        make -j 4
-        python setup.py install
+        which python
+        conda activate base
+        which python
+
+    # - name: Install kima and pykima
+    #   run: |
+    #     make -j 4
+    #     python setup.py install
 
 
-    - name: Start the tests
-      run: |
-        pwd
-        cd tests/test_suite
+    # - name: Start the tests
+    #   run: |
+    #     pwd
+    #     cd tests/test_suite
 
-    - name: Run 51Peg example
-      run: |
-        cd tests/test_suite
-        cp OPTIONS ../../examples/51Peg/OPTIONS
+    # - name: Run 51Peg example
+    #   run: |
+    #     cd tests/test_suite
+    #     cp OPTIONS ../../examples/51Peg/OPTIONS
 
-    - name: Run a multi-line script
-      run: |
-        echo Add other actions to build,
-        echo test, and deploy your project.
+    # - name: Run a multi-line script
+    #   run: |
+    #     echo Add other actions to build,
+    #     echo test, and deploy your project.
