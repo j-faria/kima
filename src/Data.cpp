@@ -47,26 +47,23 @@ istream& operator >> ( istream& ins, record_t& record )
 
 
 istream& operator >> ( istream& ins, data_t& data )
-  // Let's likewise overload the stream input operator to read a list of CSV records.
-  // This time it is a little easier, just because we only need to worry about reading
-  // records, and not fields.
-  //-----------------------------------------------------------------------------
-  {
+// Overload the stream input operator to read a list of CSV records. We only 
+// need to worry about reading records, and not fields.
+{
   // make sure that the returned data only contains the CSV data we read here
   // data.clear();
 
-  // For every record we can read from the file, append it to our resulting data
+  // for every record we can read from the file, append it to our resulting data
   // except if it's in the header
-  int i = 0;
   record_t record;
   while (ins >> record)
     {
       data.push_back(record);
     }
 
-  // Again, return the argument stream
+  // return the argument stream
   return ins;  
-  }
+}
 
 
 /**
@@ -83,8 +80,8 @@ istream& operator >> ( istream& ins, data_t& data )
  * @param skip       number of lines to skip in the beginning of the file (default = 2)
  * @param indicators
 */
-void Data::load(const char* filename, const char* units, 
-                int skip, const vector<char*>& indicators)
+void Data::load(const std::string filename, const std::string units, 
+                int skip, const vector<string>& indicators)
 {
 
   data_t data;
@@ -103,10 +100,11 @@ void Data::load(const char* filename, const char* units,
     std::remove( indicator_names.begin(), indicator_names.end(), "" ), 
     indicator_names.end() );
 
+
   // Empty the indicator vectors as well
   actind.clear();
   actind.resize(number_indicators);
-  for (unsigned n = 0; n < number_indicators; n++)
+  for (int n = 0; n < number_indicators; n++)
     actind[n].clear();
 
   // Read the file into the data container
@@ -116,7 +114,7 @@ void Data::load(const char* filename, const char* units,
   // Complain if something went wrong.
   if (!infile.eof())
   {
-    printf("Could not read data file (%s)!\n", filename);
+    printf("Could not read data file (%s)!\n", filename.c_str());
     exit(1);
   }
 
@@ -133,9 +131,9 @@ void Data::load(const char* filename, const char* units,
   if(units == "kms") factor = 1E3;
   int j;
 
-  for (unsigned n = 0; n < data.size(); n++)
+  for (size_t n = 0; n < data.size(); n++)
     {
-      if (n<skip) continue;
+      if (n < skip) continue;
       t.push_back(data[n][0]);
       y.push_back(data[n][1] * factor);
       sig.push_back(data[n][2] * factor);
@@ -143,7 +141,7 @@ void Data::load(const char* filename, const char* units,
       if (indicator_correlations)
       {
         j = 0;
-        for (unsigned i = 0; i < number_indicators + nempty; i++)
+        for (size_t i = 0; i < number_indicators + nempty; i++)
         {
           if (indicators[i] == "")
             continue; // skip column
@@ -157,6 +155,9 @@ void Data::load(const char* filename, const char* units,
   
     }
   
+  // epoch for the mean anomaly, by default the time of the first observation
+  M0_epoch = t[0];
+
 
   // subtract means from activity indicators
   if (indicator_correlations)
@@ -169,13 +170,14 @@ void Data::load(const char* filename, const char* units,
   }
 
   // How many points did we read?
-  printf("# Loaded %d data points from file %s\n", t.size(), filename);
+  printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
   // Did we read activity indicators? how many?
   if(indicator_correlations){
-    printf("# Loaded %d observations of %d activity indicators: ", actind[0].size(), actind.size());
+    printf("# Loaded %zu observations of %zu activity indicators: ", 
+           actind[0].size(), actind.size());
     for (const auto i: indicators){
       if (i != ""){
-        printf("'%s'", i);
+        printf("'%s'", i.c_str());
         (i != indicators.back()) ? cout << ", " : cout << " ";
       }
     }
@@ -211,7 +213,7 @@ void Data::load(const char* filename, const char* units,
  * @param units      units of the RVs and errors, either "kms" or "ms"
  * @param skip       number of lines to skip in the beginning of the file (default = 2)
 */
-void Data::load_multi(const char* filename, const char* units, int skip)
+void Data::load_multi(const std::string filename, const std::string units, int skip)
   {
 
   data_t data;
@@ -229,7 +231,7 @@ void Data::load_multi(const char* filename, const char* units, int skip)
   // Complain if something went wrong.
   if (!infile.eof())
   {
-    printf("Could not read data file (%s)!\n", filename);
+    printf("Could not read data file (%s)!\n", filename.c_str());
     exit(1);
   }
 
@@ -253,11 +255,11 @@ void Data::load_multi(const char* filename, const char* units, int skip)
     }
 
   // How many points did we read?
-  printf("# Loaded %d data points from file %s\n", t.size(), filename);
+  printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
 
   // Of how many instruments?
   std::set<int> s( obsi.begin(), obsi.end() );
-  printf("# RVs come from %d different instruments.\n", s.size());
+  printf("# RVs come from %zu different instruments.\n", s.size());
   number_instruments = s.size();
   
   if(units == "kms") 
@@ -271,6 +273,9 @@ void Data::load_multi(const char* filename, const char* units, int skip)
           break;
       }
   }
+
+  // epoch for the mean anomaly, by default the time of the first observation
+  M0_epoch = t[0];
 
   }
 
@@ -291,8 +296,8 @@ void Data::load_multi(const char* filename, const char* units, int skip)
  * @param skip       number of lines to skip in the beginning of the file (default = 2)
  * @param indicators
 */
-void Data::load_multi(vector<char*> filenames, const char* units, int skip,
-                      const vector<char*>& indicators)
+void Data::load_multi(vector<std::string> filenames, const std::string units, 
+                      int skip, const vector<std::string>& indicators)
 {
 
   data_t data;
@@ -317,7 +322,7 @@ void Data::load_multi(vector<char*> filenames, const char* units, int skip,
     // Complain if something went wrong.
     if (!infile.eof())
     {
-      printf("Could not read data file (%s)!\n", filename);
+      printf("Could not read data file (%s)!\n", filename.c_str());
       exit(1);
     }
 
@@ -351,17 +356,17 @@ void Data::load_multi(vector<char*> filenames, const char* units, int skip,
     }
 
   // How many points did we read?
-  printf("# Loaded %d data points from files\n", t.size());
+  printf("# Loaded %zu data points from files\n", t.size());
   cout << "# ";
   for (auto f: filenames)
-    cout << f << " ; ";
+    cout << f.c_str() << " ; ";
   cout << endl;
 
   // Of how many instruments?
   std::set<int> s( obsi.begin(), obsi.end() );
   // set<int>::iterator iter;
   // for(iter=s.begin(); iter!=s.end();++iter) {  cout << (*iter) << endl;}
-  printf("# RVs come from %d different instruments.\n", s.size());
+  printf("# RVs come from %zu different instruments.\n", s.size());
   number_instruments = s.size();
 
   if(units == "kms") 
@@ -408,6 +413,9 @@ void Data::load_multi(vector<char*> filenames, const char* units, int skip,
       }
   }
 
+  // epoch for the mean anomaly, by default the time of the first observation
+  M0_epoch = t[0];
+
   }
 
 
@@ -419,6 +427,60 @@ double Data::get_RV_var() const
 
     double accum = 0.0;
     std::for_each (std::begin(y), std::end(y), [&](const double d) {
+        accum += (d - mean) * (d - mean);
+    });
+    return accum / (y.size()-1);
+}
+
+
+double Data::get_adjusted_RV_span() const
+/* Return the span of the RVs, after subtracting the mean for each instrument */
+{
+    int ni;
+    double sum, mean;
+    std::vector<double> rva(t.size());
+
+    for(size_t j=0; j<number_instruments; j++)
+    {
+      ni = 0;
+      sum = 0.;
+      for (size_t i=0; i<t.size(); i++)
+        if(obsi[i] == j+1) {sum += y[i]; ni++;}
+      mean = sum / ni;
+      // cout << "sum: " << sum << endl;
+      // cout << "mean: " << mean << endl;
+      for (size_t i=0; i<t.size(); i++)
+        if(obsi[i] == j+1) rva[i] = y[i] - mean;
+    }
+
+    double min = *std::min_element(rva.begin(), rva.end());
+    double max = *std::max_element(rva.begin(), rva.end());
+    return max - min;
+}
+
+
+double Data::get_adjusted_RV_var() const
+{
+    int ni;
+    double sum, mean;
+    std::vector<double> rva(t.size());
+
+    for(size_t j=0; j<number_instruments; j++)
+    {
+      ni = 0;
+      sum = 0.;
+      for (size_t i=0; i<t.size(); i++)
+        if(obsi[i] == j+1) {sum += y[i]; ni++;}
+      mean = sum / ni;
+      // cout << "sum: " << sum << endl;
+      // cout << "mean: " << mean << endl;
+      for (size_t i=0; i<t.size(); i++)
+        if(obsi[i] == j+1) rva[i] = y[i] - mean;
+    }
+
+    mean = std::accumulate(rva.begin(), rva.end(), 0.0) / rva.size();
+    double accum = 0.0;
+    std::for_each (rva.begin(), rva.end(), [&](const double d) {
         accum += (d - mean) * (d - mean);
     });
     return accum / (y.size()-1);

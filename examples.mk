@@ -14,6 +14,7 @@ endif
 LIBS = -ldnest4 -L/usr/local/lib
 
 KIMA_SRCS =\
+$(wildcard $(SRC_DIR)/distributions/*.cpp) \
 $(SRC_DIR)/RVConditionalPrior.cpp \
 $(SRC_DIR)/Data.cpp \
 $(SRC_DIR)/RVmodel.cpp \
@@ -28,7 +29,7 @@ kima: $(KIMA_OBJS)
 	$(CXX) -o kima $(KIMA_OBJS) -L$(DNEST4_PATH) $(LIBS) $(CXXFLAGS)
 
 clean:
-	rm -f kima_setup.o kima
+	@rm -f kima_setup.o kima
 
 cleanout:
 	@echo "Cleaning kima outputs  "

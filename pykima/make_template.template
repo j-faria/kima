@@ -3,53 +3,108 @@ import sys
 import os
 import argparse
 import glob
+import subprocess
+import pipes
+from collections import namedtuple
 from distutils.dir_util import copy_tree
 
+
 def usage(full=True):
-    u = "usage: kima-template [DIRECTORY]\n"
+    u = "kima-template [DIRECTORY]\n"
     u += "Create a kima template in DIRECTORY (the current directory by default).\n"
     return u
 
-def _parse_args():
-    args = sys.argv[1:]
-    if '-h' in args or '--help' in args:
-        print(usage())
-        sys.exit(0)
-    if '--version' in args:
-        version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
-        print('kima', open(version_file).read().strip()) # same as kima
-        sys.exit(0)
 
-    if len(args) == 1:
-        return args[0]
-    else:
-        return
+def _parse_args():
+    parser = argparse.ArgumentParser(usage=usage())
+    parser.add_argument('DIRECTORY', nargs='?', default=os.getcwd())
+    parser.add_argument('--version', action='store_true',
+                        help='show version and exit')
+    parser.add_argument('--debug', action='store_true',
+                        help='be more verbose, for debugging')
+    return parser.parse_args()
+
+
+def exists_remote(host, path, verbose=False):
+    if verbose:
+        print('[mkdir_remote] checking if "%s" exists in %s' % (path, host))
+    return subprocess.call(['ssh', host, 'test -e ' + pipes.quote(path)]) == 0
+
+
+def mkdir_remote(host, path, verbose=False):
+    if verbose:
+        print('[mkdir_remote] creating directory "%s" in %s' % (path, host))
+    subprocess.check_call(['ssh', host, 'mkdir ' + pipes.quote(path)])
+
 
 def main(args=None):
     if args is None:
         args = _parse_args()
+    if isinstance(args, str):
+        Args = namedtuple('Args', 'version debug DIRECTORY')
+        args = Args(version=False, debug=False, DIRECTORY=args)
+    # print(args)
 
-    kimadir = '{kimadir}' # filled by setup.py
+    if args.version:
+        version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
+        print('kima', open(version_file).read().strip())  # same as kima
+        sys.exit(0)
+
+    dst = args.DIRECTORY
+
+    kimadir = '{kimadir}'  # filled by setup.py
 
     thisdir = os.path.dirname(os.path.realpath(__file__))
     src = os.path.join(thisdir, 'template')
-    
-    if args is None:
-        dst = os.getcwd()
-    else:
-        dst = args
-    
     templatefiles = glob.glob(os.path.join(src, '*'))
-    print('Populating directory %s' % dst)
-    print('with kima template files: ' + \
-          ', '.join([os.path.basename(f) for f in templatefiles]))
-    copy_tree(src, dst)
 
-    with open(os.path.join(dst, 'Makefile')) as f:
-        m = f.read().format(kimadir=kimadir)
-    with open(os.path.join(dst, 'Makefile'), 'w') as f:
-        f.write(m)
+    if ':' in dst and '@' in dst:  # directory is in the server
+        host, directory = dst.split(':')
+        # user, host = server.split('@')
+        dst = directory
+        print('Populating directory %s (on %s)' % (dst, host))
+        print('with kima template files: ' + \
+              ', '.join([os.path.basename(f) for f in templatefiles]))
 
+        answer = input('--> Continue? (y/N) ')
+        if answer.lower() != 'y':
+            print('doing nothing!')
+            return
+        server = True
+    else:
+        print('Populating directory %s' % dst)
+        print('with kima template files: ' + \
+              ', '.join([os.path.basename(f) for f in templatefiles]))
+        server = False
+
+    if server:
+        if not exists_remote(host, dst, verbose=args.debug):
+            mkdir_remote(host, dst, verbose=args.debug)
+        for f in templatefiles:
+            # -q -o LogLevel=QUIET 
+            cmd = 'scp %s %s' % (f, ':'.join([host, dst]))
+            # print(cmd)
+            subprocess.check_call(cmd.split())
+    else:
+        copy_tree(src, dst)
+
+    if server:
+        with open(os.path.join(src, 'Makefile')) as f:
+            m = f.read().format(kimadir='/home/jfaria/disk1/kima')
+        with open('tempMakefile1234', 'w') as f:
+            f.write(m)
+        cmd = 'scp -q -o LogLevel=QUIET %s %s' % (
+            'tempMakefile1234', host + ':' + dst + '/Makefile')
+        # print(cmd)
+        subprocess.check_call(cmd.split())
+        os.remove('tempMakefile1234')
+    else:
+        with open(os.path.join(src, 'Makefile')) as f:
+            m = f.read().format(kimadir=kimadir)
+        with open(os.path.join(dst, 'Makefile'), 'w') as f:
+            f.write(m)
+
+    return
 
 
 if __name__ == '__main__':

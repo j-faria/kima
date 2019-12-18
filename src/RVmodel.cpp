@@ -19,6 +19,7 @@ using namespace DNest4;
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
+
 /* set default priors if the user didn't change them */
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
@@ -54,6 +55,13 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     if (!fiber_offset_prior)
         fiber_offset_prior = make_prior<Uniform>(0, 50);
         // fiber_offset_prior = make_prior<Gaussian>(15., 3.);
+    
+
+    if (known_object) { // KO mode!
+        if (!KO_Pprior || !KO_Kprior || !KO_eprior || !KO_phiprior || !KO_wprior)
+            throw std::logic_error("When known_object=true, please set all priors: KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior");
+    }
+
 }
 
 
@@ -109,6 +117,14 @@ void RVmodel::from_prior(RNG& rng)
     {
         for (unsigned i=0; i<data.number_indicators; i++)
             betas[i] = betaprior->generate(rng);
+    }
+
+    if (known_object) { // KO mode!
+        KO_P = KO_Pprior->generate(rng);
+        KO_K = KO_Kprior->generate(rng);
+        KO_e = KO_eprior->generate(rng);
+        KO_phi = KO_phiprior->generate(rng);
+        KO_w = KO_wprior->generate(rng);
     }
 
     calculate_mu();
@@ -234,15 +250,21 @@ void RVmodel::calculate_mu()
             }   
         }
 
+        if (known_object) { // KO mode!
+            add_known_object();
+        }
     }
     else // just updating (adding) planets
         staleness++;
+
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    double P, K, phi, ecc, omega, f, v, ti;
+
+    double f, v, ti;
+    double P, K, phi, ecc, omega;
     for(size_t j=0; j<components.size(); j++)
     {
         if(hyperpriors)
@@ -258,7 +280,7 @@ void RVmodel::calculate_mu()
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            f = true_anomaly(ti, P, ecc, t[0]-(P*phi)/(2.*M_PI));
+            f = true_anomaly(ti, P, ecc, data.M0_epoch-(P*phi)/(2.*M_PI));
             v = K*(cos(f+omega) + ecc*cos(omega));
             mu[i] += v;
         }
@@ -283,6 +305,35 @@ void RVmodel::calculate_mu()
     #endif
 
 }
+
+void RVmodel::remove_known_object()
+{
+    auto data = Data::get_instance();
+    const vector<double>& t = data.get_t();
+    double f, v, ti;
+    for(size_t i=0; i<t.size(); i++)
+    {
+        ti = t[i];
+        f = true_anomaly(ti, KO_P, KO_e, data.M0_epoch-(KO_P*KO_phi)/(2.*M_PI));
+        v = KO_K*(cos(f+KO_w) + KO_e*cos(KO_w));
+        mu[i] -= v;
+    }
+}
+
+void RVmodel::add_known_object()
+{
+    auto data = Data::get_instance();
+    const vector<double>& t = data.get_t();
+    double f, v, ti;
+    for(size_t i=0; i<t.size(); i++)
+    {
+        ti = t[i];
+        f = true_anomaly(ti, KO_P, KO_e, data.M0_epoch-(KO_P*KO_phi)/(2.*M_PI));
+        v = KO_K*(cos(f+KO_w) + KO_e*cos(KO_w));
+        mu[i] += v;
+    }
+}
+
 
 double RVmodel::perturb(RNG& rng)
 {
@@ -525,6 +576,18 @@ double RVmodel::perturb(RNG& rng)
             {
                 Jprior->perturb(extra_sigma, rng);
             }
+
+            if (known_object)
+            {
+                remove_known_object();
+                KO_Pprior->perturb(KO_P, rng);
+                KO_Kprior->perturb(KO_K, rng);
+                KO_eprior->perturb(KO_e, rng);
+                KO_phiprior->perturb(KO_phi, rng);
+                KO_wprior->perturb(KO_w, rng);
+                add_known_object();
+            }
+        
         }
         else
         {
@@ -569,6 +632,7 @@ double RVmodel::perturb(RNG& rng)
                 slope_prior->perturb(slope, rng);
             }
 
+            // propose new indicator correlations
             if(data.indicator_correlations){
                 for(size_t j = 0; j < data.number_indicators; j++){
                     betaprior->perturb(betas[j], rng);
@@ -740,6 +804,10 @@ void RVmodel::print(std::ostream& out) const
     if(MA)
         out<<sigmaMA<<'\t'<<tauMA<<'\t';
 
+    if(known_object) // KO mode!
+        out << KO_P << "\t" << KO_K << "\t" << KO_phi << "\t" << KO_e << "\t" << KO_w << "\t";
+
+
     planets.print(out);
 
     out<<' '<<staleness<<' ';
@@ -818,6 +886,7 @@ void RVmodel::save_setup() {
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
     fout << "multi_instrument: " << multi_instrument << endl;
+    fout << "known_object: " << known_object << endl;
     fout << "indicator_correlations: " << data.indicator_correlations << endl;
     fout << "indicators: ";
     for (auto f: data.indicator_names){
@@ -877,6 +946,15 @@ void RVmodel::save_setup() {
         fout << "wprior: " << *conditional->wprior << endl;
     }
 
+    if (known_object) {
+        fout << endl << "[priors.known_object]" << endl;
+        fout << "Pprior: " << *KO_Pprior << endl;
+        fout << "Kprior: " << *KO_Kprior << endl;
+        fout << "eprior: " << *KO_eprior << endl;
+        fout << "phiprior: " << *KO_phiprior << endl;
+        fout << "wprior: " << *KO_wprior << endl;
+    }
+
     fout << endl;
 	fout.close();
 }
@@ -903,7 +981,7 @@ double RVmodel::ecc_anomaly(double t, double period, double ecc, double time_per
     double Mnorm = fmod(M, 2.*M_PI);
     double E0 = keplerstart3(ecc, Mnorm);
     double dE = tol + 1;
-    double E;
+    double E = M;
     int count = 0;
     while (dE > tol)
     {

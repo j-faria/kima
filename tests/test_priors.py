@@ -8,8 +8,9 @@ def example_priors_run():
 	""" 
 	Run kima with maxlevels=1 to sample from the default priors
 	"""
-	os.system('make -S' + ' >/dev/null 2>&1') # compile
-	os.system('./run' + ' >/dev/null 2>&1') # run
+	# os.system('make -S' + ' >/dev/null 2>&1') # compile
+	# os.system('./run' + ' >/dev/null 2>&1') # run
+	os.system('kima-run -t 2 -b -q')
 
 	assert os.path.exists('sample.txt')
 	assert os.path.exists('sample_info.txt')
@@ -31,14 +32,16 @@ def test_priors():
 	
 	example_priors_run()
 
+	data = np.loadtxt('dummy_data.rv', usecols=(1,))
+	minRV, maxRV = data.min(), data.max()
 	extra_sigma, vsys, P, ecc = np.loadtxt('sample.txt', unpack=True,
 		                                   usecols=(0, -1, 4, 7))
 
 	npt.assert_allclose(extra_sigma.min(), 0., rtol=0, atol=1e-1)
 	npt.assert_allclose(extra_sigma.max(), 99., rtol=1e-1, atol=0)
 
-	npt.assert_allclose(vsys.min(), -1000., rtol=0, atol=1)
-	npt.assert_allclose(vsys.max(), 1000., rtol=0, atol=1)	
+	npt.assert_allclose(vsys.min(), minRV*1e3, rtol=0, atol=1)
+	npt.assert_allclose(vsys.max(), maxRV*1e3, rtol=0, atol=1)
 
 	npt.assert_allclose(P.min(), 1., rtol=1e-2, atol=0)
 	npt.assert_allclose(P.max(), 1e5, rtol=1e-2, atol=0)

@@ -27,7 +27,7 @@ HEADERS=$(subst .cpp,.h,$(SRCS))
 EXAMPLES = 51Peg BL2009 CoRoT7 many_planets multi_instrument \
            activity_correlations default_priors
 
-all: main examples
+all: main ${EXAMPLES}
 
 %.o: %.cpp
 	@echo "Compiling:" $<
@@ -39,12 +39,16 @@ main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 	@$(CXX) -o kima $(OBJS) $(LIBS) $(CXXFLAGS)
 
 
-.PHONY: examples
-examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
-	@+for example in $(EXAMPLES) ; do \
-		echo "Compiling example $$example"; \
-		$(MAKE) -s -C examples/$$example; \
-	done
+.PHONY: ${EXAMPLES}
+# old way, does not respect make -j flag
+# examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
+# 	@+for example in $(EXAMPLES) ; do \
+# 		echo "Compiling example $$example" & $(MAKE) -s -C examples/$$example; \
+# 	done
+
+${EXAMPLES}: $(DNEST4_PATH)/libdnest4.a $(OBJS)
+	@echo "Compiling example $@"
+	@$(MAKE) -s -C examples/$@;
 
 $(DNEST4_PATH)/libdnest4.a:
 	@echo "Compiling DNest4"
