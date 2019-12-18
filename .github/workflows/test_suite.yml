@@ -28,11 +28,10 @@ jobs:
         pip install corner
     
         which python
-        conda activate base
-        which python
 
-    # - name: Install kima and pykima
-    #   run: |
+    - name: Install kima and pykima
+      run: |
+        which python
     #     make -j 4
     #     python setup.py install
 
