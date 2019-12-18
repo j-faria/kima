@@ -981,7 +981,7 @@ double RVmodel::ecc_anomaly(double t, double period, double ecc, double time_per
     double Mnorm = fmod(M, 2.*M_PI);
     double E0 = keplerstart3(ecc, Mnorm);
     double dE = tol + 1;
-    double E;
+    double E = M;
     int count = 0;
     while (dE > tol)
     {

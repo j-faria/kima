@@ -8,12 +8,12 @@
 
 const double PI = M_PI;
 
-char* datafile;
-std::vector<char*> datafiles;
+std::string datafile;
+std::vector<std::string> datafiles;
 
 
 using ind = std::vector<char*>;
-std::vector<char*> indicators;
+std::vector<std::string> indicators;
 
 
 using namespace DNest4;
