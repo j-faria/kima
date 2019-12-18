@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import argparse
 import time
+import contextlib
 
 kimabold = "\033[1mkima\033[0m"
 
@@ -13,6 +14,9 @@ def _parse_args1():
     desc = """(compile and) Run kima jobs"""
 
     parser = argparse.ArgumentParser(description=desc, prog='kima-run')
+
+    parser.add_argument('DIR', nargs='?', default=os.getcwd(),
+                        help='change to this directory before running')
 
     parser.add_argument('-t', '--threads', type=int, default=4,
                         help='number of threads to use for the job (default 4)')
@@ -47,6 +51,15 @@ def _parse_args1():
     args = parser.parse_args()
     return args
 
+
+
+@contextlib.contextmanager
+def remember_cwd():
+    curdir = os.getcwd()
+    try:
+        yield
+    finally:
+        os.chdir(curdir)
 
 # count lines in a file, fast! https://stackoverflow.com/a/27518377
 def rawgencount(filename):
@@ -91,81 +104,96 @@ def run_local():
     args = _parse_args1()
     # print(args)
 
-    if not os.path.exists('kima_setup.cpp'):
-        print(
-            'Could not find "kima_setup.cpp", are you in the right directory?')
-        sys.exit(1)
+    with remember_cwd():
 
-    ## compile
-    try:
-        if not args.quiet:
-            print('compiling...', end=' ', flush=True)
+        if args.DIR != os.getcwd():
+            print('Changing directory to', args.DIR)
 
-        subprocess.check_call('make clean'.split())
-        make = subprocess.check_output('make')
+        os.chdir(args.DIR)
 
-        if not args.quiet:
-            if args.vc:
-                print()
-                print(make.decode().strip())
-            print('done!')
+        if not os.path.exists('kima_setup.cpp'):
+            if os.path.isfile('kima') and os.access('kima', os.X_OK):
+                print('Found kima executable, assuming it can be re-compiled')
+            else:
+                print(
+                    'Could not find "kima_setup.cpp" or a "kima" executable, '
+                    'are you in the right directory?')
+                sys.exit(1)
 
-    except subprocess.CalledProcessError as e:
-        print("{}: {}".format(type(e).__name__, e))
-        sys.exit(1)
-
-    if args.compile:  # only compile?
-        sys.exit(0)
-
-    ## run 
-    cmd = './kima -t %d' % args.threads
-    if args.seed:
-        cmd += ' -s %d' % args.seed
-
-    if args.quiet:
-        args.background = True
-
-    if args.background:
-        stdout = open(args.output, 'wb')
-    else:
-        stdout = sys.stdout
-
-    TO = args.timeout
-
-    if not args.quiet:
-        print('starting', kimabold)
-
-    start = time.time()
-    try:
-        kima = subprocess.check_call(cmd.split(), stdout=stdout, timeout=TO)
-
-    except KeyboardInterrupt:
-        end = time.time()
-        took = end - start
-        if not args.quiet:
-            print(' finishing the job, took %.2f seconds' % took, end=' ')
-            print('(saved %d samples)' % rawgencount('sample.txt'))
-        if not args.no_notify:
-            notify('kima job finished', 'took %.2f seconds' % took)
-
-    except subprocess.TimeoutExpired:
-        end = time.time()
-        took = end - start
-        if not args.quiet:
-            print(kimabold, 'job timed out after %.1f seconds' % took, end=' ')
-            print('(saved %d samples)' % rawgencount('sample.txt'))
-        if not args.no_notify:
-            notify('kima job finished', 'after timeout of %.2f seconds' % took)
-
-    else:
-        end = time.time()
-        took = end - start
-        if not args.quiet:
-            print(kimabold, 'job finished, took %.2f seconds' % (end - start))
-        if not args.no_notify:
-            notify('kima job finished', 'took %.2f seconds' % took)
-    finally:
-        if args.background:
-            stdout.close()
+        ## compile
+        try:
             if not args.quiet:
-                print('output saved to "%s"' % stdout.name)
+                print('compiling...', end=' ', flush=True)
+
+            subprocess.check_call('make clean'.split())
+            make = subprocess.check_output('make')
+
+            if not args.quiet:
+                if args.vc:
+                    print()
+                    print(make.decode().strip())
+                print('done!')
+
+        except subprocess.CalledProcessError as e:
+            print("{}: {}".format(type(e).__name__, e))
+            sys.exit(1)
+
+        if args.compile:  # only compile?
+            sys.exit(0)
+
+        ## run
+        cmd = './kima -t %d' % args.threads
+        if args.seed:
+            cmd += ' -s %d' % args.seed
+
+        if args.quiet:
+            args.background = True
+
+        if args.background:
+            stdout = open(args.output, 'wb')
+        else:
+            stdout = sys.stdout
+
+        TO = args.timeout
+
+        if not args.quiet:
+            print('starting', kimabold)
+
+        start = time.time()
+        try:
+            kima = subprocess.check_call(cmd.split(), stdout=stdout,
+                                         timeout=TO)
+
+        except KeyboardInterrupt:
+            end = time.time()
+            took = end - start
+            if not args.quiet:
+                print(' finishing the job, took %.2f seconds' % took, end=' ')
+                print('(saved %d samples)' % rawgencount('sample.txt'))
+            if not args.no_notify:
+                notify('kima job finished', 'took %.2f seconds' % took)
+
+        except subprocess.TimeoutExpired:
+            end = time.time()
+            took = end - start
+            if not args.quiet:
+                print(kimabold, 'job timed out after %.1f seconds' % took,
+                      end=' ')
+                print('(saved %d samples)' % rawgencount('sample.txt'))
+            if not args.no_notify:
+                notify('kima job finished',
+                       'after timeout of %.2f seconds' % took)
+
+        else:
+            end = time.time()
+            took = end - start
+            if not args.quiet:
+                print(kimabold,
+                      'job finished, took %.2f seconds' % (end - start))
+            if not args.no_notify:
+                notify('kima job finished', 'took %.2f seconds' % took)
+        finally:
+            if args.background:
+                stdout.close()
+                if not args.quiet:
+                    print('output saved to "%s"' % stdout.name)
