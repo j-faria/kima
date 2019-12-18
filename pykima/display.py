@@ -1329,7 +1329,9 @@ class KimaResults(object):
         units = ['m/s'] * self.n_jitters + ['m/s', 'days', 'days', None]
         xlabels = []
         for i in range(self.n_jitters):
-            l = f'{labels[i]}$_{{\\rm{get_instrument_name(self.data_file[i])}}}$'
+            l = r'%s$_{{\rm %s}}}$' % (labels[i],
+                                       get_instrument_name(self.data_file[i]))
+
             xlabels.append(l)
         for label, unit in zip(labels[self.n_jitters:],
                                units[self.n_jitters:]):
@@ -1560,7 +1562,7 @@ class KimaResults(object):
         yerr = self.data[:, 2].copy()
 
         ncurves = min(ncurves, samples.shape[0])
-        
+
         if samples.shape[0] == 1:
             ii = np.zeros(1, dtype=int)
         else:
@@ -1798,7 +1800,7 @@ class KimaResults(object):
         if show_offsets and self.multi:
             n_inst_offsets = self.inst_offsets.shape[1]
             fig, axs = plt.subplots(1, n_inst_offsets, sharey=True,
-                                    figsize=(n_inst_offsets * 3, 5), 
+                                    figsize=(n_inst_offsets * 3, 5),
                                     squeeze=True, constrained_layout=True)
             if n_inst_offsets == 1:
                 axs = [axs,]
@@ -1806,7 +1808,7 @@ class KimaResults(object):
             for i in range(n_inst_offsets):
                 wrt = get_instrument_name(self.data_file[-1])
                 this = get_instrument_name(self.data_file[i])
-                label = f'offset\n{this} rel. to {wrt}'
+                label = 'offset\n%s rel. to %s' % (this, wrt)
                 a = self.inst_offsets[:, i]
                 estimate = percentile68_ranges_latex(a) + units
                 axs[i].hist(a)
@@ -1820,7 +1822,7 @@ class KimaResults(object):
                 filename = 'kima-showresults-fig7.2.1.png'
                 print('saving in', filename)
                 fig.savefig(filename)
-            
+
             if specific is not None:
                 assert isinstance(specific, tuple), '`specific` should be a tuple'
                 assert len(specific) == 2, '`specific` should have size 2'
@@ -1834,7 +1836,7 @@ class KimaResults(object):
                     i ^= 1
                     wrt = get_instrument_name(self.data_file[-1])
                     this = get_instrument_name(specific[i])
-                    label = f'offset\n{this} rel. to {wrt}'
+                    label = 'offset\n%s rel. to %s' % (this, wrt)
                     offset = self.inst_offsets[:, self.data_file.index(specific[i])]
                     estimate = percentile68_ranges_latex(offset) + units
                     fig, ax = plt.subplots(1, 1, constrained_layout=True)
@@ -1843,15 +1845,15 @@ class KimaResults(object):
                 else:
                     wrt = get_instrument_name(specific[1])
                     this = get_instrument_name(specific[0])
-                    label = f'offset\n{this} rel. to {wrt}'
+                    label = 'offset\n%s rel. to %s' % (this, wrt)
                     of1 = self.inst_offsets[:, self.data_file.index(specific[0])]
                     of2 = self.inst_offsets[:, self.data_file.index(specific[1])]
                     estimate  = percentile68_ranges_latex(of1 - of2) + units
                     fig, ax = plt.subplots(1, 1, constrained_layout=True)
                     ax.hist(of1 - of2)
                     ax.set(xlabel=label, title=estimate, ylabel='posterior samples')
-    
-    
+
+
     def hist_extra_sigma(self):
         """ Plot the histogram of the posterior for the additional white noise """
         units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
