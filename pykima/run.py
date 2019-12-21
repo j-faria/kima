@@ -129,8 +129,11 @@ def run_local():
             if not args.quiet:
                 print('compiling...', end=' ', flush=True)
 
-            subprocess.check_call('make clean'.split())
-            make = subprocess.check_output('make')
+            if args.compile: # "re"-compile
+                subprocess.check_call('make clean'.split())
+
+            makecmd = 'make -j %d' % args.threads
+            make = subprocess.check_output(makecmd.split())
 
             if not args.quiet:
                 if args.vc:
