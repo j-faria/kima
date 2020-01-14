@@ -1,0 +1,291 @@
+from PyQt5 import QtWidgets, uic
+from PyQt5.QtWidgets import QStatusBar
+from PyQt5.QtCore import QProcess
+
+import pyqtgraph as pg
+import sys, os
+import argparse
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import (
+    FigureCanvasQTAgg as FigureCanvas,
+    NavigationToolbar2QT as NavigationToolbar)
+
+from collections import namedtuple
+import contextlib
+
+@contextlib.contextmanager
+def chdir(dir):
+    curdir= os.getcwd()
+    try: 
+        os.chdir(dir)
+        yield
+    finally: 
+        os.chdir(curdir)
+
+def usage():
+    u = "kima-gui [DIRECTORY]\n"
+    u += "Create a kima template in DIRECTORY and run the GUI there.\n"
+    return u
+
+def _parse_args():
+    parser = argparse.ArgumentParser(usage=usage())
+    parser.add_argument('DIRECTORY', help='directory where to run GUI')
+    parser.add_argument('--version', action='store_true',
+                        help='show version and exit')
+    parser.add_argument('--debug', action='store_true',
+                        help='be more verbose, for debugging')
+    return parser.parse_args()
+
+
+class KimaModel:
+    def __init__(self):
+        self.directory = 'some dir'
+        self.kima_setup = 'kima_setup.cpp'
+        self.filename = 'no data file'
+
+        self.obs_after_HARPS_fibers = False
+        self.GP = False
+        self.MA = False
+        self.hyperpriors = False
+        self.trend = False
+        self.multi_instrument = False
+        self.known_object = False
+
+        self.fix_Np = True
+        self.max_Np = 1
+
+        self.priors = {
+            # name: (default, distribution, arg1, arg2)
+            'Cprior': [True, 'Uniform', 0.0, 0.0],
+            'Jprior': [True, 'LogUniform', 0.0, 0.0],
+            'slope_prior': [True, 'Uniform', 0.0, 0.0],
+        }
+
+    def save(self):
+        with open(self.kima_setup, 'w') as f:
+            f.write('#include "kima.h"\n\n')
+            self._write_settings(f)
+            self._write_constructor(f)
+            self._inside_constructor(f)
+            self._start_main(f)
+            self._set_data(f)
+            self._write_sampler(f)
+            self._end_main(f)
+            f.write('\n\n')
+
+    def run(self, threads=1):
+        # with chdir(self.directory):
+        cmd = f'kima-run -t {threads} --timeout 10'
+        os.system(cmd)
+
+
+    def _write_settings(self, file):
+        r = lambda val: 'true' if val else 'false'
+        cb = 'const bool'
+        file.write(f'{cb} obs_after_HARPS_fibers = {r(self.obs_after_HARPS_fibers)};\n')
+        file.write(f'{cb} GP = {r(self.GP)};\n')
+        file.write(f'{cb} MA = {r(self.MA)};\n')
+        file.write(f'{cb} hyperpriors = {r(self.hyperpriors)};\n')
+        file.write(f'{cb} trend = {r(self.trend)};\n')
+        file.write(f'{cb} multi_instrument = {r(self.multi_instrument)};\n')
+        file.write(f'{cb} known_object = {r(self.known_object)};\n')
+        file.write('\n')
+
+    def _write_constructor(self, file):
+        r = lambda val: 'true' if val else 'false'
+        file.write(f'RVmodel::RVmodel():fix({r(self.fix_Np)}),npmax({self.max_Np})\n')
+
+    def _inside_constructor(self, file):
+        file.write('{\n')
+
+        for name, sets in self.priors.items():
+            if not sets[0]: # if not default prior
+                file.write(f'{name} = make_prior<{sets[1]}>({sets[2]}, {sets[3]});\n')
+
+        file.write('\n}\n')
+        file.write('\n')
+
+
+    def _write_sampler(self, file):
+        file.write('\tSampler<RVmodel> sampler = setup<RVmodel>(argc, argv);\n')
+        file.write('\tsampler.run(50);\n')
+
+    def _set_data(self, file):
+        file.write(f'\tdatafile = "{self.filename}";\n')
+        file.write(f'\tload(datafile, "kms", 2);\n')
+
+    def _start_main(self, file):
+        file.write('int main(int argc, char** argv)\n')
+        file.write('{\n')
+ 
+    def _end_main(self, file):
+        file.write('\treturn 0;\n')
+        file.write('}\n')
+
+
+
+
+class MainWindow(QtWidgets.QMainWindow):
+
+    def __init__(self, directory, *args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
+        # load the UI Page
+        uifile = os.path.join(os.path.dirname(__file__), 'kimaGUI.ui')
+        uic.loadUi(uifile, self)
+        self.statusBar = QStatusBar()
+        self.setStatusBar(self.statusBar)
+
+        self.canvases = {}
+        self.model = KimaModel()
+
+        self.model.directory = directory
+        os.chdir(directory)
+
+        self.refreshAll()
+        self.toggleTrend(self.trend_check.isChecked())
+        
+
+    def statusMessage(self, msg):
+        """ Print the message at the bottom of the window """
+        self.statusBar.showMessage(msg)
+
+    def refreshAll(self):
+        """
+        Updates the widgets whenever an interaction happens.
+        Typically some interaction takes place, the UI responds,
+        and informs the model of the change.  Then this method
+        is called, pulling from the model information that is
+        updated in the GUI.
+        """
+        self.lineEdit_2.setText(self.model.directory)
+        self.lineEdit.setText(self.model.filename)
+
+
+    def addmpl(self, tab, fig):
+        self.canvases[tab] = FigureCanvas(fig)
+        getattr(self, tab+'_plot').addWidget(self.canvases[tab])
+        self.canvases[tab].draw()
+	
+    def rmmpl(self, tab):
+        getattr(self, tab+'_plot').removeWidget(self.canvases[tab])
+        self.canvases[tab].close()
+    
+    def setmpl(self, tab, fig):
+        if tab in self.canvases:
+            self.rmmpl(tab)
+        self.addmpl(tab, fig)
+
+    def slot1(self):
+        """ Called when the user presses the Browse button """
+        self.statusMessage( "Browse button pressed" )
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(
+                        None,
+                        "QFileDialog.getOpenFileName()",
+                        "",
+                        "All Files (*);;Python Files (*.py)",
+                        options=options)
+        if fileName:
+            self.statusMessage( "setting file name: " + fileName )
+            self.model.filename = fileName
+            self.refreshAll()
+
+    def makePlot1(self):
+        fig1 = Figure()
+        ax1f1 = fig1.add_subplot(111)
+        ax1f1.plot(np.random.rand(5))
+        self.setmpl('tab_1', fig1)
+
+    def setDefaultPrior(self, *args):
+        # get the name of the button which was pressed and from that which prior
+        # is supposed to be made default
+        button = self.sender()
+        which = button.objectName().replace('makeDefault_', '')
+        self.model.priors[which][0] = True
+        getattr(self, f'lineEdit_{which}_arg1').setText('')
+        getattr(self, f'lineEdit_{which}_arg2').setText('')
+
+    def toggleTrend(self, toggled):
+        self.label_slope_prior.setEnabled(toggled)
+        self.comboBox_slope_prior.setEnabled(toggled)
+        self.lineEdit_slope_prior_arg1.setEnabled(toggled)
+        self.lineEdit_slope_prior_arg2.setEnabled(toggled)
+        self.makeDefault_slope_prior.setEnabled(toggled)
+
+    def saveModel(self):
+        self.model.obs_after_HARPS_fibers = self.obs_after_HARPS_fibers_check.isChecked()
+        self.model.GP = self.GP_check.isChecked()
+        self.model.MA = self.MA_check.isChecked()
+        self.model.hyperpriors = self.hyperpriors_check.isChecked()
+        self.model.trend = self.trend_check.isChecked()
+        self.model.known_object = self.known_object_check.isChecked()
+
+        self.model.fix_Np = self.fix_Np_check.isChecked()
+        self.model.max_Np = self.max_Np.value()
+
+        self.model.save()
+        self.statusMessage('Saved model')
+
+
+    def run(self):
+        self.saveModel()
+        threads = self.threads.value()
+        #self.model.run(threads)
+
+        # QProcess object for external app
+        self.process = QProcess(self)
+        # QProcess emits `readyRead` when there is data to be read
+        self.process.readyRead.connect(self.dataReady)
+
+        # Just to prevent accidentally running multiple times
+        # Disable the button when process starts, and enable it when it finishes
+        self.process.started.connect(lambda: self.runButton.setEnabled(False))
+        self.process.finished.connect(lambda: self.runButton.setEnabled(True))
+
+        self.callProgram()
+
+
+    def dataReady(self):
+        cursor = self.output.textCursor()
+        cursor.movePosition(cursor.End)
+        cursor.insertText(str(self.process.readAll(), 'utf-8'))
+        self.output.ensureCursorVisible()
+
+    def callProgram(self):
+        # run the process
+        # `start` takes the exec and a list of arguments
+        self.process.start('ping',['127.0.0.1', '-w', '5'])
+
+
+def main(args=None, tests=False):
+    if not tests:
+        from .make_template import main as kima_template
+        if args is None:
+            args = _parse_args()
+        if isinstance(args, str):
+            Args = namedtuple('Args', 'version debug DIRECTORY')
+            args = Args(version=False, debug=False, DIRECTORY=args)
+        # print(args)
+
+        if args.version:
+            version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
+            print('kima', open(version_file).read().strip())  # same as kima
+            sys.exit(0)
+
+        dst = args.DIRECTORY
+        kima_template(dst)
+    else:
+        dst = '.'
+
+    app = QtWidgets.QApplication(sys.argv)
+    main = MainWindow(os.path.abspath(dst))
+    main.show()
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main(tests=True)
