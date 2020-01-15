@@ -8,22 +8,25 @@ import argparse
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pykima as pk
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import (
     FigureCanvasQTAgg as FigureCanvas,
     NavigationToolbar2QT as NavigationToolbar)
 
+from hashlib import md5
 from collections import namedtuple
 import contextlib
+
 
 @contextlib.contextmanager
 def chdir(dir):
     curdir= os.getcwd()
-    try: 
+    try:
         os.chdir(dir)
         yield
-    finally: 
+    finally:
         os.chdir(curdir)
 
 def usage():
@@ -47,12 +50,12 @@ class KimaModel:
         self.kima_setup = 'kima_setup.cpp'
         self.filename = 'no data file'
 
+        self._levels_hash = ''
         self.obs_after_HARPS_fibers = False
         self.GP = False
         self.MA = False
         self.hyperpriors = False
         self.trend = False
-        self.multi_instrument = False
         self.known_object = False
 
         self.fix_Np = True
@@ -65,6 +68,27 @@ class KimaModel:
             'slope_prior': [True, 'Uniform', 0.0, 0.0],
         }
 
+    @property
+    def multi_instrument(self):
+        if self.filename == 'no data file':
+            return False
+        if len(self.filename) == 1:
+            return False
+        else:
+            return True
+
+    def results(self):
+        # calculate the hash of the levels.txt file the first time
+        # we create self.res to avoid recalculations
+        h = md5(open('levels.txt', 'rb').read()).hexdigest()
+        if h != self._levels_hash:
+            self._levels_hash = h
+            self.res = pk.showresults(force_return=True)
+
+        self.res.return_figs = True
+        plt.ioff()
+
+
     def save(self):
         with open(self.kima_setup, 'w') as f:
             f.write('#include "kima.h"\n\n')
@@ -76,12 +100,6 @@ class KimaModel:
             self._write_sampler(f)
             self._end_main(f)
             f.write('\n\n')
-
-    def run(self, threads=1):
-        # with chdir(self.directory):
-        cmd = f'kima-run -t {threads} --timeout 10'
-        os.system(cmd)
-
 
     def _write_settings(self, file):
         r = lambda val: 'true' if val else 'false'
@@ -115,13 +133,19 @@ class KimaModel:
         file.write('\tsampler.run(50);\n')
 
     def _set_data(self, file):
-        file.write(f'\tdatafile = "{self.filename}";\n')
-        file.write(f'\tload(datafile, "kms", 2);\n')
+        if self.multi_instrument:
+            files = [f'"{datafile}"' for datafile in self.filename]
+            files = ', '.join(files)
+            file.write(f'\tdatafiles = {{ {files} }};\n')
+            file.write(f'\tload_multi(datafiles, "kms", 2);\n')
+        else:
+            file.write(f'\tdatafile = "{self.filename[0]}";\n')
+            file.write(f'\tload(datafile, "kms", 2);\n')
 
     def _start_main(self, file):
         file.write('int main(int argc, char** argv)\n')
         file.write('{\n')
- 
+
     def _end_main(self, file):
         file.write('\treturn 0;\n')
         file.write('}\n')
@@ -147,7 +171,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.refreshAll()
         self.toggleTrend(self.trend_check.isChecked())
-        
+        self.progressBar.setValue(0)
+
 
     def statusMessage(self, msg):
         """ Print the message at the bottom of the window """
@@ -162,44 +187,62 @@ class MainWindow(QtWidgets.QMainWindow):
         updated in the GUI.
         """
         self.lineEdit_2.setText(self.model.directory)
-        self.lineEdit.setText(self.model.filename)
+        if isinstance(self.model.filename, str):
+            files = self.model.filename
+        else:
+            files = [os.path.basename(f) for f in self.model.filename]
+            files = ', '.join(files)
+        self.lineEdit.setText(files)
 
 
     def addmpl(self, tab, fig):
         self.canvases[tab] = FigureCanvas(fig)
         getattr(self, tab+'_plot').addWidget(self.canvases[tab])
         self.canvases[tab].draw()
-	
+
     def rmmpl(self, tab):
         getattr(self, tab+'_plot').removeWidget(self.canvases[tab])
         self.canvases[tab].close()
-    
+
     def setmpl(self, tab, fig):
         if tab in self.canvases:
             self.rmmpl(tab)
         self.addmpl(tab, fig)
+
 
     def slot1(self):
         """ Called when the user presses the Browse button """
         self.statusMessage( "Browse button pressed" )
         options = QtWidgets.QFileDialog.Options()
         options |= QtWidgets.QFileDialog.DontUseNativeDialog
-        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(
+        files, _ = QtWidgets.QFileDialog.getOpenFileNames(
                         None,
-                        "QFileDialog.getOpenFileName()",
+                        "Select data file(s)",
                         "",
-                        "All Files (*);;Python Files (*.py)",
+                        "All Files (*);;RDB Files (*.rdb);;Text files (*.txt)",
                         options=options)
-        if fileName:
-            self.statusMessage( "setting file name: " + fileName )
-            self.model.filename = fileName
+        if files:
+            n = len(files)
+            if n > 1:
+                self.statusMessage(f"Loading {n} files")
+            else:
+                self.statusMessage(f"Loading file {files[0]}")
+            self.model.filename = files
             self.refreshAll()
 
     def makePlot1(self):
-        fig1 = Figure()
-        ax1f1 = fig1.add_subplot(111)
-        ax1f1.plot(np.random.rand(5))
-        self.setmpl('tab_1', fig1)
+        self.model.results()
+        fig = self.model.res.make_plot1()
+        self.setmpl('tab_1', fig)
+    def makePlot2(self):
+        self.model.results()
+        fig = self.model.res.make_plot2()
+        self.setmpl('tab_2', fig)
+    def makePlot6(self):
+        self.model.results()
+        fig = self.model.res.plot_random_planets(show_vsys=True, show_trend=True)
+        self.setmpl('tab_6', fig)
+
 
     def setDefaultPrior(self, *args):
         # get the name of the button which was pressed and from that which prior
@@ -232,34 +275,48 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusMessage('Saved model')
 
 
+    def stop(self):
+        try:
+            self.process
+        except AttributeError:
+            return
+        if self.process.state() == QProcess.Running:
+            self.process.terminate()
+
+
     def run(self):
         self.saveModel()
         threads = self.threads.value()
-        #self.model.run(threads)
+
+        # Clear the output panel
+        self.output.setText('')
 
         # QProcess object for external app
         self.process = QProcess(self)
         # QProcess emits `readyRead` when there is data to be read
-        self.process.readyRead.connect(self.dataReady)
+        self.process.readyRead.connect(self.printProcessOutput)
 
-        # Just to prevent accidentally running multiple times
-        # Disable the button when process starts, and enable it when it finishes
+        # To prevent accidentally running multiple times
+        # disable the "Run" button when process starts, and enable it when it finishes
         self.process.started.connect(lambda: self.runButton.setEnabled(False))
         self.process.finished.connect(lambda: self.runButton.setEnabled(True))
 
-        self.callProgram()
+        self.callKima(threads)
 
 
-    def dataReady(self):
+    def printProcessOutput(self):
         cursor = self.output.textCursor()
         cursor.movePosition(cursor.End)
         cursor.insertText(str(self.process.readAll(), 'utf-8'))
         self.output.ensureCursorVisible()
+        samples = sum(1 for i in open('sample.txt', 'rb')) - 1
+        self.progressBar.setValue(100 * samples / 50)
 
-    def callProgram(self):
+
+    def callKima(self, threads):
         # run the process
         # `start` takes the exec and a list of arguments
-        self.process.start('ping',['127.0.0.1', '-w', '5'])
+        self.process.start('kima-run', ['-t', str(threads), '--timeout', '10', '--no-colors'])
 
 
 def main(args=None, tests=False):

@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>4</number>
+     <number>2</number>
     </property>
     <widget class="QWidget" name="tab_1">
      <property name="enabled">
@@ -49,11 +49,33 @@
      <attribute name="title">
       <string>2</string>
      </attribute>
+     <widget class="QWidget" name="verticalLayoutWidget_2">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>10</y>
+        <width>521</width>
+        <height>481</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="tab_2_plot"/>
+     </widget>
     </widget>
-    <widget class="QWidget" name="tab_3">
+    <widget class="QWidget" name="tab_6">
      <attribute name="title">
-      <string>3</string>
+      <string>6</string>
      </attribute>
+     <widget class="QWidget" name="verticalLayoutWidget_3">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>10</y>
+        <width>521</width>
+        <height>481</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="tab_6_plot"/>
+     </widget>
     </widget>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -70,7 +92,7 @@
       </property>
      </widget>
     </widget>
-    <widget class="QWidget" name="tab_4">
+    <widget class="QWidget" name="tab_output">
      <attribute name="title">
       <string>output</string>
      </attribute>
@@ -86,6 +108,9 @@
       <property name="readOnly">
        <bool>true</bool>
       </property>
+      <property name="textInteractionFlags">
+       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+      </property>
      </widget>
     </widget>
    </widget>
@@ -93,9 +118,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>80</y>
+      <y>60</y>
       <width>461</width>
-      <height>131</height>
+      <height>141</height>
      </rect>
     </property>
     <property name="title">
@@ -104,8 +129,8 @@
     <widget class="QCheckBox" name="checkBox">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>90</y>
+       <x>290</x>
+       <y>96</y>
        <width>161</width>
        <height>21</height>
       </rect>
@@ -114,34 +139,110 @@
       <string>copy data file(s) locally</string>
      </property>
     </widget>
-    <widget class="QWidget" name="layoutWidget">
+    <widget class="QComboBox" name="units">
+     <property name="geometry">
+      <rect>
+       <x>50</x>
+       <y>93</y>
+       <width>61</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <item>
+      <property name="text">
+       <string>km/s</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>m/s</string>
+      </property>
+     </item>
+    </widget>
+    <widget class="QLabel" name="label_6">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>95</y>
+       <width>41</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>units</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_7">
+     <property name="geometry">
+      <rect>
+       <x>140</x>
+       <y>95</y>
+       <width>71</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>header skip</string>
+     </property>
+    </widget>
+    <widget class="QSpinBox" name="header_skip">
+     <property name="geometry">
+      <rect>
+       <x>220</x>
+       <y>94</y>
+       <width>47</width>
+       <height>24</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_8">
      <property name="geometry">
       <rect>
        <x>10</x>
        <y>30</y>
-       <width>431</width>
-       <height>25</height>
+       <width>441</width>
+       <height>16</height>
       </rect>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>file</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="lineEdit"/>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton">
-        <property name="text">
-         <string>Browse</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <property name="text">
+      <string>Can select more than one file, all must have identical structure</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>67</y>
+       <width>34</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>file(s)</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit">
+     <property name="geometry">
+      <rect>
+       <x>50</x>
+       <y>64</y>
+       <width>311</width>
+       <height>23</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton">
+     <property name="geometry">
+      <rect>
+       <x>370</x>
+       <y>64</y>
+       <width>80</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Browse</string>
+     </property>
     </widget>
    </widget>
    <widget class="QGroupBox" name="groupBox_2">
@@ -188,91 +289,90 @@
     <property name="title">
      <string>Model settings</string>
     </property>
-    <widget class="QCheckBox" name="obs_after_HARPS_fibers_check">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>30</y>
-       <width>161</width>
-       <height>21</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>obs after HARPS fibers</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="GP_check">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>50</y>
-       <width>61</width>
-       <height>21</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>GP</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="MA_check">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>70</y>
-       <width>61</width>
-       <height>21</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>MA</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="hyperpriors_check">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>90</y>
-       <width>101</width>
-       <height>21</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>hyperpriors</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="trend_check">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>110</y>
-       <width>61</width>
-       <height>21</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>trend</string>
-     </property>
-    </widget>
     <widget class="QCheckBox" name="known_object_check">
      <property name="geometry">
       <rect>
        <x>20</x>
-       <y>170</y>
+       <y>140</y>
        <width>111</width>
        <height>20</height>
       </rect>
      </property>
      <property name="text">
-      <string>known_object</string>
+      <string>known object</string>
      </property>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_4">
+     <property name="geometry">
+      <rect>
+       <x>220</x>
+       <y>25</y>
+       <width>231</width>
+       <height>61</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Number of planets Np</string>
+     </property>
+     <widget class="QCheckBox" name="fix_Np_check">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>31</y>
+        <width>55</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Whether the number of planets is fixed (to max Np)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="text">
+       <string>fixed</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QWidget" name="">
+      <property name="geometry">
+       <rect>
+        <x>120</x>
+        <y>28</y>
+        <width>82</width>
+        <height>26</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <item>
+        <widget class="QLabel" name="label_max_Np">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Maximum number of planets&lt;/p&gt;&lt;p&gt;If &amp;quot;fixed&amp;quot; is not set, the prior for Np is uniform between 0 and max.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>max</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="max_Np">
+         <property name="maximum">
+          <number>30</number>
+         </property>
+         <property name="value">
+          <number>1</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
     </widget>
     <widget class="QFrame" name="frame_3">
      <property name="geometry">
       <rect>
-       <x>220</x>
+       <x>10</x>
        <y>30</y>
        <width>171</width>
-       <height>80</height>
+       <height>101</height>
       </rect>
      </property>
      <property name="frameShape">
@@ -281,49 +381,78 @@
      <property name="frameShadow">
       <enum>QFrame::Raised</enum>
      </property>
-     <widget class="QCheckBox" name="fix_Np_check">
+     <widget class="QCheckBox" name="obs_after_HARPS_fibers_check">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>10</y>
-        <width>85</width>
+        <y>0</y>
+        <width>161</width>
         <height>21</height>
        </rect>
       </property>
       <property name="text">
-       <string>fixed Np</string>
-      </property>
-      <property name="checked">
-       <bool>true</bool>
+       <string>obs after HARPS fibers</string>
       </property>
      </widget>
-     <widget class="QLabel" name="label_max_Np">
+     <widget class="QCheckBox" name="hyperpriors_check">
       <property name="geometry">
        <rect>
-        <x>30</x>
-        <y>50</y>
-        <width>59</width>
-        <height>15</height>
+        <x>10</x>
+        <y>60</y>
+        <width>101</width>
+        <height>21</height>
        </rect>
       </property>
       <property name="text">
-       <string>max Np</string>
+       <string>hyperpriors</string>
       </property>
      </widget>
-     <widget class="QSpinBox" name="max_Np">
+     <widget class="QCheckBox" name="MA_check">
       <property name="geometry">
        <rect>
-        <x>90</x>
+        <x>10</x>
         <y>40</y>
-        <width>51</width>
-        <height>31</height>
+        <width>61</width>
+        <height>21</height>
        </rect>
       </property>
-      <property name="maximum">
-       <number>30</number>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use a moving average model&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
-      <property name="value">
-       <number>1</number>
+      <property name="text">
+       <string>MA</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="GP_check">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>61</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use a Gaussian process model&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="text">
+       <string>GP</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="trend_check">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>80</y>
+        <width>61</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Include a linear trend in the model&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="text">
+       <string>trend</string>
       </property>
      </widget>
     </widget>
@@ -334,137 +463,644 @@
       <x>10</x>
       <y>430</y>
       <width>461</width>
-      <height>291</height>
+      <height>301</height>
      </rect>
     </property>
     <property name="title">
      <string>Priors</string>
     </property>
-    <widget class="QWidget" name="gridLayoutWidget">
+    <widget class="QTabWidget" name="tabWidget_2">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>80</y>
+       <width>461</width>
+       <height>221</height>
+      </rect>
+     </property>
+     <property name="currentIndex">
+      <number>1</number>
+     </property>
+     <widget class="QWidget" name="tab_5">
+      <attribute name="title">
+       <string>General</string>
+      </attribute>
+      <widget class="QLineEdit" name="lineEdit_offsets_prior_arg2">
+       <property name="geometry">
+        <rect>
+         <x>292</x>
+         <y>152</y>
+         <width>73</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_offsets_prior">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>152</y>
+         <width>110</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>instrument offsets</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_slope_prior">
+       <property name="geometry">
+        <rect>
+         <x>126</x>
+         <y>110</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLabel" name="label_slope_prior">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>110</y>
+         <width>32</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>slope</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_slope_prior_arg1">
+       <property name="geometry">
+        <rect>
+         <x>214</x>
+         <y>110</y>
+         <width>73</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_Cprior">
+       <property name="geometry">
+        <rect>
+         <x>126</x>
+         <y>26</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_Cprior_arg1">
+       <property name="geometry">
+        <rect>
+         <x>214</x>
+         <y>26</y>
+         <width>73</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_slope_prior">
+       <property name="geometry">
+        <rect>
+         <x>370</x>
+         <y>110</y>
+         <width>80</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_slope_prior_arg2">
+       <property name="geometry">
+        <rect>
+         <x>292</x>
+         <y>110</y>
+         <width>73</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_Cprior_arg2">
+       <property name="geometry">
+        <rect>
+         <x>292</x>
+         <y>26</y>
+         <width>73</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_Cprior">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>26</y>
+         <width>104</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>systemic velocity</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_Cprior">
+       <property name="geometry">
+        <rect>
+         <x>370</x>
+         <y>26</y>
+         <width>80</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_Jprior">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>68</y>
+         <width>29</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
+       <property name="text">
+        <string>jitter</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_Jprior">
+       <property name="geometry">
+        <rect>
+         <x>126</x>
+         <y>68</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_Jprior_arg1">
+       <property name="geometry">
+        <rect>
+         <x>214</x>
+         <y>68</y>
+         <width>73</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_Jprior_arg2">
+       <property name="geometry">
+        <rect>
+         <x>292</x>
+         <y>68</y>
+         <width>73</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_Jprior">
+       <property name="geometry">
+        <rect>
+         <x>370</x>
+         <y>68</y>
+         <width>80</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_offsets_prior">
+       <property name="geometry">
+        <rect>
+         <x>126</x>
+         <y>152</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_offsets_prior">
+       <property name="geometry">
+        <rect>
+         <x>370</x>
+         <y>152</y>
+         <width>80</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_offsets_prior_arg1">
+       <property name="geometry">
+        <rect>
+         <x>214</x>
+         <y>152</y>
+         <width>73</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_priors_planets">
+      <attribute name="title">
+       <string>Planets</string>
+      </attribute>
+      <widget class="QLabel" name="label_3">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>251</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Note: same priors for all the Np planets</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_slope_prior_5">
+       <property name="geometry">
+        <rect>
+         <x>148</x>
+         <y>97</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLabel" name="label_slope_prior_6">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>97</y>
+         <width>71</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Eccentricity</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_Cprior_arg2_3">
+       <property name="geometry">
+        <rect>
+         <x>303</x>
+         <y>41</y>
+         <width>61</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_Cprior_3">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>41</y>
+         <width>80</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Period [days]</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_Cprior_3">
+       <property name="geometry">
+        <rect>
+         <x>370</x>
+         <y>41</y>
+         <width>80</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_Cprior_arg1_3">
+       <property name="geometry">
+        <rect>
+         <x>237</x>
+         <y>41</y>
+         <width>60</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_slope_prior_5">
+       <property name="geometry">
+        <rect>
+         <x>370</x>
+         <y>97</y>
+         <width>80</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_slope_prior_arg2_5">
+       <property name="geometry">
+        <rect>
+         <x>303</x>
+         <y>97</y>
+         <width>61</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_slope_prior_5">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>127</y>
+         <width>125</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Argument periastron</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_slope_prior_arg1_5">
+       <property name="geometry">
+        <rect>
+         <x>237</x>
+         <y>97</y>
+         <width>60</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_Cprior_5">
+       <property name="geometry">
+        <rect>
+         <x>148</x>
+         <y>41</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_Jprior_3">
+       <property name="geometry">
+        <rect>
+         <x>370</x>
+         <y>69</y>
+         <width>80</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_slope_prior_6">
+       <property name="geometry">
+        <rect>
+         <x>148</x>
+         <y>125</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_slope_prior_arg1_6">
+       <property name="geometry">
+        <rect>
+         <x>237</x>
+         <y>125</y>
+         <width>60</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_slope_prior_arg2_6">
+       <property name="geometry">
+        <rect>
+         <x>303</x>
+         <y>125</y>
+         <width>61</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_slope_prior_6">
+       <property name="geometry">
+        <rect>
+         <x>370</x>
+         <y>125</y>
+         <width>80</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_Jprior_4">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>69</y>
+         <width>131</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
+       <property name="text">
+        <string>Semi-amplitude [m/s]</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_Cprior_6">
+       <property name="geometry">
+        <rect>
+         <x>148</x>
+         <y>69</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_Jprior_arg2_3">
+       <property name="geometry">
+        <rect>
+         <x>303</x>
+         <y>69</y>
+         <width>61</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_Jprior_arg1_3">
+       <property name="geometry">
+        <rect>
+         <x>237</x>
+         <y>69</y>
+         <width>60</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_slope_prior_7">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>155</y>
+         <width>125</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>M0</string>
+       </property>
+      </widget>
+     </widget>
+    </widget>
+    <widget class="QLabel" name="label_4">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>30</y>
+       <y>28</y>
        <width>441</width>
-       <height>83</height>
+       <height>16</height>
       </rect>
      </property>
-     <layout class="QGridLayout" name="gridLayout">
-      <item row="2" column="1">
-       <widget class="QComboBox" name="comboBox_slope_prior">
-        <item>
-         <property name="text">
-          <string>Uniform</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Gaussian</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_slope_prior">
-        <property name="text">
-         <string>trend slope</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
-       <widget class="QLineEdit" name="lineEdit_slope_prior_arg1"/>
-      </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="comboBox_Cprior">
-        <item>
-         <property name="text">
-          <string>Uniform</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Gaussian</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item row="0" column="2">
-       <widget class="QLineEdit" name="lineEdit_Cprior_arg1"/>
-      </item>
-      <item row="2" column="4">
-       <widget class="QPushButton" name="makeDefault_slope_prior">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>D</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="3">
-       <widget class="QLineEdit" name="lineEdit_slope_prior_arg2"/>
-      </item>
-      <item row="0" column="3">
-       <widget class="QLineEdit" name="lineEdit_Cprior_arg2"/>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_Cprior">
-        <property name="text">
-         <string>systemic velocity</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="4">
-       <widget class="QPushButton" name="makeDefault_Cprior">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>D</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_Jprior_2">
-        <property name="layoutDirection">
-         <enum>Qt::LeftToRight</enum>
-        </property>
-        <property name="text">
-         <string>jitter</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QComboBox" name="comboBox_Cprior_2">
-        <item>
-         <property name="text">
-          <string>Uniform</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Gaussian</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item row="1" column="2">
-       <widget class="QLineEdit" name="lineEdit_Jprior_arg1"/>
-      </item>
-      <item row="1" column="3">
-       <widget class="QLineEdit" name="lineEdit_Jprior_arg2"/>
-      </item>
-      <item row="1" column="4">
-       <widget class="QPushButton" name="makeDefault_Jprior">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>D</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <property name="text">
+      <string>Each prior has a distribution and two arguments which have different</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_5">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>46</y>
+       <width>441</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>meanings depending on the distribution</string>
+     </property>
     </widget>
    </widget>
    <widget class="QGroupBox" name="groupBox_5">
@@ -473,7 +1109,7 @@
       <x>480</x>
       <y>620</y>
       <width>561</width>
-      <height>111</height>
+      <height>121</height>
      </rect>
     </property>
     <property name="title">
@@ -482,10 +1118,10 @@
     <widget class="QWidget" name="layoutWidget">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>80</y>
-       <width>101</width>
-       <height>26</height>
+       <x>270</x>
+       <y>75</y>
+       <width>121</width>
+       <height>31</height>
       </rect>
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -503,6 +1139,41 @@
         </property>
         <property name="maximum">
          <number>8</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QWidget" name="">
+     <property name="geometry">
+      <rect>
+       <x>11</x>
+       <y>75</y>
+       <width>171</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <widget class="QLabel" name="label_max_saves">
+        <property name="text">
+         <string>max saves</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="max_saves">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>500000</number>
+        </property>
+        <property name="singleStep">
+         <number>10</number>
+        </property>
+        <property name="value">
+         <number>1000</number>
         </property>
        </widget>
       </item>
@@ -559,8 +1230,37 @@
        <height>23</height>
       </rect>
      </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Update the plot with the posterior for Np&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="text">
       <string>1</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_5">
+     <property name="geometry">
+      <rect>
+       <x>190</x>
+       <y>10</y>
+       <width>21</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>2</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_6">
+     <property name="geometry">
+      <rect>
+       <x>220</x>
+       <y>10</y>
+       <width>21</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>6</string>
      </property>
     </widget>
    </widget>
@@ -584,9 +1284,12 @@
       <rect>
        <x>10</x>
        <y>10</y>
-       <width>51</width>
-       <height>23</height>
+       <width>61</width>
+       <height>31</height>
       </rect>
+     </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Run the model&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Run</string>
@@ -599,10 +1302,10 @@
     <widget class="QPushButton" name="stopButton">
      <property name="geometry">
       <rect>
-       <x>80</x>
+       <x>100</x>
        <y>10</y>
-       <width>51</width>
-       <height>23</height>
+       <width>61</width>
+       <height>31</height>
       </rect>
      </property>
      <property name="autoFillBackground">
@@ -629,17 +1332,20 @@
       </rect>
      </property>
      <property name="value">
-      <number>24</number>
+      <number>25</number>
+     </property>
+     <property name="invertedAppearance">
+      <bool>false</bool>
      </property>
     </widget>
    </widget>
    <widget class="QPushButton" name="pushButton_4">
     <property name="geometry">
      <rect>
-      <x>120</x>
+      <x>379</x>
       <y>740</y>
-      <width>80</width>
-      <height>23</height>
+      <width>91</width>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -738,44 +1444,12 @@
    <slot>saveModel()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>188</x>
+     <x>447</x>
      <y>772</y>
     </hint>
     <hint type="destinationlabel">
      <x>177</x>
      <y>700</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>makeDefault_Cprior</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>setDefaultPrior()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>425</x>
-     <y>495</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>434</x>
-     <y>692</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>makeDefault_slope_prior</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>setDefaultPrior()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>395</x>
-     <y>551</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>414</x>
-     <y>674</y>
     </hint>
    </hints>
   </connection>
@@ -796,22 +1470,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>makeDefault_Jprior</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>setDefaultPrior()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>411</x>
-     <y>518</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>457</x>
-     <y>701</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>runButton</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
@@ -827,6 +1485,102 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>stopButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>stop()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>979</x>
+     <y>576</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>970</x>
+     <y>764</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_5</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>makePlot2()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>679</x>
+     <y>578</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>762</x>
+     <y>618</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>makeDefault_Cprior</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>setDefaultPrior()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>427</x>
+     <y>597</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>434</x>
+     <y>692</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>makeDefault_slope_prior</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>setDefaultPrior()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>397</x>
+     <y>679</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>414</x>
+     <y>674</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>makeDefault_Jprior</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>setDefaultPrior()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>413</x>
+     <y>633</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>457</x>
+     <y>701</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_6</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>makePlot6()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>714</x>
+     <y>577</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>699</x>
+     <y>636</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>slot1()</slot>
@@ -835,5 +1589,8 @@
   <slot>setDefaultPrior()</slot>
   <slot>toggleTrend()</slot>
   <slot>run()</slot>
+  <slot>stop()</slot>
+  <slot>makePlot2()</slot>
+  <slot>makePlot6()</slot>
  </slots>
 </ui>
