@@ -56,12 +56,13 @@ class GP():
         self.yerr = yerr
         self.white_noise = white_noise
 
-    def _cov(self, x1, x2=None):
+    def _cov(self, x1, x2=None, add2diag=True):
         """ Calculate the kernel matrix evaluated at inputs x1 (and x2) """
         K = self.kernel(x1, x2)
-        if self.yerr is not None:
-            K[np.diag_indices_from(K)] += self.yerr
-        K[np.diag_indices_from(K)] += self.white_noise
+        if add2diag:
+            if self.yerr is not None:
+                K[np.diag_indices_from(K)] += self.yerr
+            K[np.diag_indices_from(K)] += self.white_noise
         return K
 
     def log_likelihood(self, y):
@@ -73,7 +74,7 @@ class GP():
         Output shape: (t.size, size) 
         """
         if t is None: K = self._cov(self.t)
-        else: K = self._cov(t)
+        else: K = self._cov(t, add2diag=False)
         return multivariate_gaussian_samples(K, size).T
 
     def predict(self, y, t=None, return_std=False, return_cov=False):
@@ -114,8 +115,139 @@ class GP():
         else:
             return mean
 
+    def predict_with_hyperpars(self, results, sample, t=None, add_parts=True):
+        """ 
+        Given the parameters in `sample`, return the GP predictive mean. If `t`
+        is None, the prediction is done at the observed times and will contain
+        other model components (systemic velocity, trend, instrument offsets) if
+        `add_parts` is True. Otherwise, when `t` is given, the prediction is
+        made at times `t` and *does not* contain these extra model components.
+        """
+        ind = results.indices['GPpars']
+        GP_pars_sample = sample[ind]
+        s = sample[0]
+
+        self.kernel.setpars(*GP_pars_sample)
+        self.white_noise = s
+
+        y = results.y.copy()
+        # put all data around 0
+        y -= sample[-1]
+        if results.multi:
+            for i in range(1, results.n_instruments):
+                y[results.obs == i] -= sample[results.indices['inst_offsets']][i-1]
+        # and subtract the trend
+        if results.trend:
+            y -= sample[results.indices['trend']] * (results.t - results.tmiddle)
+
+        if t is not None:
+            mu = self.predict(y, t, return_cov=False)
+            return mu
+        
+        mu = self.predict(y, results.t, return_cov=False)
+
+        if add_parts:
+            # add the trend back
+            mu += sample[results.indices['trend']] * (results.t - results.tmiddle)
+            # add vsys and instrument offsets back
+            mu += sample[-1]
+            if results.multi:
+                for i in range(1, results.n_instruments):
+                    mu[results.obs == i] += sample[results.indices['inst_offsets']][i-1]
+
+        return mu
+
 
     def sample_conditional(self, y, t, size=1):
+        """ 
+        Sample from the conditional predictive distribution of the GP model 
+        given observations y, at coordinates t.
+        """
+        mu, cov = self.predict(y, t, return_cov=True)
+        return multivariate_gaussian_samples(cov, size, mean=mu).T
+
+
+    def sample_from_posterior(self, results, size=1):
+        """ 
+        Given the posterior sample in `results`, take one sample of the GP
+        hyperparameters and the white noise, and return a sample from the GP
+        prior given those parameters.
+        """
+        # choose a random sample
+        i = np.random.choice(range(results.posterior_sample.shape[0]))
+        sample = results.posterior_sample[i, :]
+        ind = results.indices['GPpars']
+        GPpars = sample[ind]
+        s = sample[0]
+
+        self.kernel.setpars(*GPpars)
+        self.white_noise = s
+        return self.sample(size=size)
+
+    def sample_with_hyperpars(self, results, sample, size=1):
+        """ 
+        Given the value of the hyperparameters and the white noise in `sample`, return a 
+        sample from the GP prior.
+        """
+        ind = results.indices['GPpars']
+        GP_pars_sample = sample[ind]
+        s = sample[0]
+
+        self.kernel.setpars(*GP_pars_sample)
+        self.white_noise = s
+        return self.sample(size=size)
+
+
+    def sample_conditional_from_posterior(self, results, t, size=1):
+        """ 
+        Given the posterior sample in `results`, take one sample of the GP
+        hyperparameters and the white noise, and return a sample from the GP
+        predictive given those parameters.
+        """
+        i = np.random.choice(range(results.posterior_sample.shape[0]))
+        ind = results.indices['GPpars']
+        sample = results.posterior_sample[i,:]
+        GPpars = sample[ind]
+        s = sample[0]
+
+        self.kernel.setpars(*GPpars)
+        self.white_noise = s
+
+        # put all data around 0
+        y = results.y.copy()
+        y -= sample[-1]
+        if results.multi:
+            for i in range(1, results.n_instruments):
+                y[results.obs == i] -= sample[results.indices['inst_offsets']]
+        # and subtract the trend
+        if results.trend:
+            y -= sample[results.indices['trend']] * (t - results.tmiddle)
+
+        mu, cov = self.predict(y, t, return_cov=True)
+        return multivariate_gaussian_samples(cov, size, mean=mu).T
+
+    def sample_conditional_with_hyperpars(self, results, sample, t, size=1):
+        """ 
+        Given the value of the hyperparameters and the white noise in `sample`,
+        return a sample from the GP predictive.
+        """
+        ind = results.indices['GPpars']
+        GP_pars_sample = sample[ind]
+        s = sample[0]
+
+        self.kernel.setpars(*GP_pars_sample)
+        self.white_noise = s
+
+        # put all data around 0
+        y = results.y.copy()
+        y -= sample[-1]
+        if results.multi:
+            for i in range(1, results.n_instruments):
+                y[results.obs == i] -= sample[results.indices['inst_offsets']]
+        # and subtract the trend
+        if results.trend:
+            y -= sample[results.indices['trend']] * (t - results.tmiddle)
+
         mu, cov = self.predict(y, t, return_cov=True)
         return multivariate_gaussian_samples(cov, size, mean=mu).T
 
