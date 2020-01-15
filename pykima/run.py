@@ -160,11 +160,15 @@ def run_local():
 
         if not os.path.exists('kima_setup.cpp'):
             if os.path.isfile('kima') and os.access('kima', os.X_OK):
-                print('Found kima executable, assuming it can be re-compiled')
+                if not args.quiet:
+                    print(
+                        'Found kima executable, assuming it can be re-compiled'
+                    )
             else:
                 print(
                     'Could not find "kima_setup.cpp" or a "kima" executable, '
-                    'are you in the right directory?')
+                    'are you in the right directory?'
+                )
                 sys.exit(1)
 
         ## compile
@@ -172,8 +176,11 @@ def run_local():
             if not args.quiet:
                 print('compiling...', end=' ', flush=True)
 
-            subprocess.check_call('make clean'.split())
-            make = subprocess.check_output('make')
+            if args.compile: # "re"-compile
+                subprocess.check_call('make clean'.split())
+
+            makecmd = 'make -j %d' % args.threads
+            make = subprocess.check_output(makecmd.split())
 
             if not args.quiet:
                 if args.vc:
