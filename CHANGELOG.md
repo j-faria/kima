@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### [Unreleased]
 
+#### Added
+
+- inside the RVmodel constructor can now write `auto data = get_data()` instead 
+  of `auto data = Data::get_instance()`, for readability
+
+
+#### Changed
+#### Fixed
+
 
 ### [3.0]  - 2019-05-24
 

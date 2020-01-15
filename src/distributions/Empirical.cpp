@@ -57,6 +57,7 @@ double Empirical::cdf_inverse(double p) const
 double Empirical::log_pdf(double x) const
 {
     // not implemented
+    throw std::runtime_error("log_pdf not implemented for `Empirical`");
 }
 
 
