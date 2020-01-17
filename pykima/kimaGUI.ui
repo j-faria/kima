@@ -6,114 +6,20 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1045</width>
-    <height>816</height>
+    <width>1050</width>
+    <height>820</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QTabWidget" name="tabWidget">
-    <property name="geometry">
-     <rect>
-      <x>480</x>
-      <y>0</y>
-      <width>541</width>
-      <height>531</height>
-     </rect>
-    </property>
-    <property name="currentIndex">
-     <number>2</number>
-    </property>
-    <widget class="QWidget" name="tab_1">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
-     <attribute name="title">
-      <string>1</string>
-     </attribute>
-     <widget class="QWidget" name="verticalLayoutWidget">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>521</width>
-        <height>481</height>
-       </rect>
-      </property>
-      <layout class="QVBoxLayout" name="tab_1_plot"/>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="tab_2">
-     <attribute name="title">
-      <string>2</string>
-     </attribute>
-     <widget class="QWidget" name="verticalLayoutWidget_2">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>521</width>
-        <height>481</height>
-       </rect>
-      </property>
-      <layout class="QVBoxLayout" name="tab_2_plot"/>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="tab_6">
-     <attribute name="title">
-      <string>6</string>
-     </attribute>
-     <widget class="QWidget" name="verticalLayoutWidget_3">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>521</width>
-        <height>481</height>
-       </rect>
-      </property>
-      <layout class="QVBoxLayout" name="tab_6_plot"/>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="tab">
-     <attribute name="title">
-      <string>terminal</string>
-     </attribute>
-     <widget class="ConsoleWidget" name="terminal_widget" native="true">
-      <property name="geometry">
-       <rect>
-        <x>9</x>
-        <y>9</y>
-        <width>521</width>
-        <height>481</height>
-       </rect>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="tab_output">
-     <attribute name="title">
-      <string>output</string>
-     </attribute>
-     <widget class="QTextEdit" name="output">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>521</width>
-        <height>481</height>
-       </rect>
-      </property>
-      <property name="readOnly">
-       <bool>true</bool>
-      </property>
-      <property name="textInteractionFlags">
-       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-      </property>
-     </widget>
-    </widget>
-   </widget>
    <widget class="QGroupBox" name="groupBox">
     <property name="geometry">
      <rect>
@@ -333,7 +239,7 @@
        <bool>true</bool>
       </property>
      </widget>
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <property name="geometry">
        <rect>
         <x>120</x>
@@ -478,12 +384,18 @@
        <height>221</height>
       </rect>
      </property>
+     <property name="toolTip">
+      <string/>
+     </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab_5">
       <attribute name="title">
        <string>General</string>
+      </attribute>
+      <attribute name="toolTip">
+       <string>Priors for general parameters of the model</string>
       </attribute>
       <widget class="QLineEdit" name="lineEdit_offsets_prior_arg2">
        <property name="geometry">
@@ -768,6 +680,9 @@
      <widget class="QWidget" name="tab_priors_planets">
       <attribute name="title">
        <string>Planets</string>
+      </attribute>
+      <attribute name="toolTip">
+       <string>Priors for the parameters of the planet(s)</string>
       </attribute>
       <widget class="QLabel" name="label_3">
        <property name="geometry">
@@ -1109,7 +1024,7 @@
       <x>480</x>
       <y>620</y>
       <width>561</width>
-      <height>121</height>
+      <height>151</height>
      </rect>
     </property>
     <property name="title">
@@ -1118,8 +1033,8 @@
     <widget class="QWidget" name="layoutWidget">
      <property name="geometry">
       <rect>
-       <x>270</x>
-       <y>75</y>
+       <x>240</x>
+       <y>30</y>
        <width>121</width>
        <height>31</height>
       </rect>
@@ -1127,6 +1042,9 @@
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
        <widget class="QLabel" name="label_threads">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of threads to use for parallel runs&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
          <string>threads</string>
         </property>
@@ -1144,11 +1062,11 @@
       </item>
      </layout>
     </widget>
-    <widget class="QWidget" name="">
+    <widget class="QWidget" name="layoutWidget">
      <property name="geometry">
       <rect>
-       <x>11</x>
-       <y>75</y>
+       <x>10</x>
+       <y>107</y>
        <width>171</width>
        <height>31</height>
       </rect>
@@ -1156,6 +1074,9 @@
      <layout class="QHBoxLayout" name="horizontalLayout_3">
       <item>
        <widget class="QLabel" name="label_max_saves">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Maximum number of sample saves&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
          <string>max saves</string>
         </property>
@@ -1170,10 +1091,86 @@
          <number>500000</number>
         </property>
         <property name="singleStep">
-         <number>10</number>
+         <number>100</number>
         </property>
         <property name="value">
          <number>1000</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QWidget" name="layoutWidget_2">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>193</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
+      <item>
+       <widget class="QLabel" name="label_new_level_interval">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;After how many samples should a new level be created&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>new level interval</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="new_level_interval">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>50000</number>
+        </property>
+        <property name="singleStep">
+         <number>100</number>
+        </property>
+        <property name="value">
+         <number>5000</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QWidget" name="layoutWidget">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>70</y>
+       <width>164</width>
+       <height>26</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QLabel" name="label_save_interval">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How often to save sample to file&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>save interval</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="save_interval">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>50000</number>
+        </property>
+        <property name="singleStep">
+         <number>10</number>
+        </property>
+        <property name="value">
+         <number>2000</number>
         </property>
        </widget>
       </item>
@@ -1224,7 +1221,7 @@
     <widget class="QPushButton" name="pushButton_2">
      <property name="geometry">
       <rect>
-       <x>160</x>
+       <x>170</x>
        <y>10</y>
        <width>21</width>
        <height>23</height>
@@ -1240,7 +1237,7 @@
     <widget class="QPushButton" name="pushButton_5">
      <property name="geometry">
       <rect>
-       <x>190</x>
+       <x>200</x>
        <y>10</y>
        <width>21</width>
        <height>23</height>
@@ -1253,7 +1250,7 @@
     <widget class="QPushButton" name="pushButton_6">
      <property name="geometry">
       <rect>
-       <x>220</x>
+       <x>320</x>
        <y>10</y>
        <width>21</width>
        <height>23</height>
@@ -1263,11 +1260,50 @@
       <string>6</string>
      </property>
     </widget>
+    <widget class="QPushButton" name="pushButton_7">
+     <property name="geometry">
+      <rect>
+       <x>230</x>
+       <y>10</y>
+       <width>21</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>3</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_8">
+     <property name="geometry">
+      <rect>
+       <x>260</x>
+       <y>10</y>
+       <width>21</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>4</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_9">
+     <property name="geometry">
+      <rect>
+       <x>290</x>
+       <y>10</y>
+       <width>21</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>5</string>
+     </property>
+    </widget>
    </widget>
    <widget class="QFrame" name="frame_2">
     <property name="geometry">
      <rect>
-      <x>860</x>
+      <x>870</x>
       <y>540</y>
       <width>171</width>
       <height>80</height>
@@ -1352,23 +1388,194 @@
      <string>Save model</string>
     </property>
    </widget>
+   <widget class="QGroupBox" name="groupBox_6">
+    <property name="geometry">
+     <rect>
+      <x>490</x>
+      <y>10</y>
+      <width>551</width>
+      <height>521</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>Results / Plots</string>
+    </property>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>531</width>
+       <height>481</height>
+      </rect>
+     </property>
+     <property name="currentIndex">
+      <number>7</number>
+     </property>
+     <widget class="QWidget" name="tab_1">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <attribute name="title">
+       <string>1</string>
+      </attribute>
+      <widget class="QWidget" name="verticalLayoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>511</width>
+         <height>431</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="tab_1_plot"/>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_2">
+      <attribute name="title">
+       <string>2</string>
+      </attribute>
+      <widget class="QWidget" name="verticalLayoutWidget_2">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>511</width>
+         <height>431</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="tab_2_plot"/>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>3</string>
+      </attribute>
+      <widget class="QWidget" name="verticalLayoutWidget_4">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>511</width>
+         <height>431</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="tab_3_plot"/>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_4">
+      <attribute name="title">
+       <string>4</string>
+      </attribute>
+      <widget class="QWidget" name="verticalLayoutWidget_5">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>511</width>
+         <height>431</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="tab_4_plot"/>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_8">
+      <attribute name="title">
+       <string>5</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="tab_6">
+      <attribute name="title">
+       <string>6</string>
+      </attribute>
+      <widget class="QWidget" name="verticalLayoutWidget_3">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>511</width>
+         <height>431</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="tab_6_plot"/>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_7">
+      <attribute name="title">
+       <string>7</string>
+      </attribute>
+      <widget class="QTabWidget" name="tab_7_">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>521</width>
+         <height>451</height>
+        </rect>
+       </property>
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="tab_7_1">
+        <attribute name="title">
+         <string>7.1</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tab_7_2">
+        <attribute name="title">
+         <string>7.2</string>
+        </attribute>
+       </widget>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_terminal">
+      <attribute name="title">
+       <string>terminal</string>
+      </attribute>
+      <widget class="IPythonWidget" name="terminal_widget" native="true">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>531</width>
+         <height>451</height>
+        </rect>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_output">
+      <attribute name="title">
+       <string>output</string>
+      </attribute>
+      <widget class="QTextEdit" name="output">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>511</width>
+         <height>431</height>
+        </rect>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="textInteractionFlags">
+        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+       </property>
+      </widget>
+     </widget>
+    </widget>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1045</width>
+     <width>1050</width>
      <height>20</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuData">
-    <property name="title">
-     <string>Data</string>
-    </property>
-    <addaction name="actionLoad_file"/>
-    <addaction name="actionLoad_multiple_files"/>
-   </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>FIle</string>
@@ -1376,7 +1583,6 @@
     <addaction name="actionQuit"/>
    </widget>
    <addaction name="menuFile"/>
-   <addaction name="menuData"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoad_file">
@@ -1397,9 +1603,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>ConsoleWidget</class>
+   <class>IPythonWidget</class>
    <extends>QWidget</extends>
-   <header>pyqtgraph.console</header>
+   <header>pykima.IPythonConsole</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
@@ -1508,7 +1714,7 @@
    <slot>makePlot2()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>679</x>
+     <x>689</x>
      <y>578</y>
     </hint>
     <hint type="destinationlabel">
@@ -1572,12 +1778,60 @@
    <slot>makePlot6()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>714</x>
+     <x>814</x>
      <y>577</y>
     </hint>
     <hint type="destinationlabel">
      <x>699</x>
      <y>636</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>max_saves</sender>
+   <signal>editingFinished()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>setOPTIONS()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>628</x>
+     <y>761</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>659</x>
+     <y>779</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_3</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>makePlotsAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>594</x>
+     <y>579</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>496</x>
+     <y>609</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>GP_check</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>refreshAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>57</x>
+     <y>299</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>5</x>
+     <y>310</y>
     </hint>
    </hints>
   </connection>
@@ -1592,5 +1846,8 @@
   <slot>stop()</slot>
   <slot>makePlot2()</slot>
   <slot>makePlot6()</slot>
+  <slot>makePlotsAll()</slot>
+  <slot>refreshAll()</slot>
+  <slot>setOPTIONS()</slot>
  </slots>
 </ui>

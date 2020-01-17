@@ -49,6 +49,8 @@ class KimaModel:
         self.directory = 'some dir'
         self.kima_setup = 'kima_setup.cpp'
         self.filename = 'no data file'
+        self.skip = 0
+        self.units = 'kms'
 
         self._levels_hash = ''
         self.obs_after_HARPS_fibers = False
@@ -66,6 +68,20 @@ class KimaModel:
             'Cprior': [True, 'Uniform', 0.0, 0.0],
             'Jprior': [True, 'LogUniform', 0.0, 0.0],
             'slope_prior': [True, 'Uniform', 0.0, 0.0],
+        }
+
+        self.OPTIONS = {
+            'particles': 2,
+            'new_level_interval': 5000,
+            'save_interval': 2000,
+            'thread_steps': 100,
+            'max_number_levels': 0,
+            'lambda': 10,
+            'beta': 100,
+            'max_saves': 100,
+            'samples_file': '',
+            'sample_info_file': '',
+            'levels_file': '',
         }
 
     @property
@@ -90,6 +106,8 @@ class KimaModel:
 
 
     def save(self):
+        self._save_OPTIONS()
+
         with open(self.kima_setup, 'w') as f:
             f.write('#include "kima.h"\n\n')
             self._write_settings(f)
@@ -137,10 +155,10 @@ class KimaModel:
             files = [f'"{datafile}"' for datafile in self.filename]
             files = ', '.join(files)
             file.write(f'\tdatafiles = {{ {files} }};\n')
-            file.write(f'\tload_multi(datafiles, "kms", 2);\n')
+            file.write(f'\tload_multi(datafiles, "{self.units}", {self.skip});\n')
         else:
             file.write(f'\tdatafile = "{self.filename[0]}";\n')
-            file.write(f'\tload(datafile, "kms", 2);\n')
+            file.write(f'\tload(datafile, "{self.units}", {self.skip});\n')
 
     def _start_main(self, file):
         file.write('int main(int argc, char** argv)\n')
@@ -149,6 +167,23 @@ class KimaModel:
     def _end_main(self, file):
         file.write('\treturn 0;\n')
         file.write('}\n')
+
+    def _save_OPTIONS(self):
+        opt = list(self.OPTIONS.values())
+        with open('OPTIONS', 'w') as file:
+            file.write('# File containing parameters for DNest4\n')
+            file.write('# Put comments at the top, or at the end of the line.\n')
+            file.write(f'{opt[0]}\t# Number of particles\n')
+            file.write(f'{opt[1]}\t# new level interval\n')
+            file.write(f'{opt[2]}\t# save interval\n')
+            file.write(f'{opt[3]}\t# threadSteps: number of steps each thread does independently before communication\n')
+            file.write(f'{opt[4]}\t# maximum number of levels\n')
+            file.write(f'{opt[5]}\t# Backtracking scale length (lambda)\n')
+            file.write(f'{opt[6]}\t# Strength of effect to force histogram to equal push (beta)\n')
+            file.write(f'{opt[7]}\t# Maximum number of saves (0 = infinite)\n')
+            file.write('    # (optional) samples file\n')
+            file.write('    # (optional) sample_info file\n')
+            file.write('    # (optional) levels file\n')
 
 
 
@@ -168,6 +203,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.model.directory = directory
         os.chdir(directory)
+
+        terminal_msg = "This is a Python terminal.\n" \
+                       "numpy and pykima have been loaded as 'np' and 'pk'\n"
+
+        self.terminal_widget.push({"np": np, "pk": pk})
+
 
         self.refreshAll()
         self.toggleTrend(self.trend_check.isChecked())
@@ -193,6 +234,15 @@ class MainWindow(QtWidgets.QMainWindow):
             files = [os.path.basename(f) for f in self.model.filename]
             files = ', '.join(files)
         self.lineEdit.setText(files)
+
+        # grey-out plot tabs
+        self.tabWidget.setTabEnabled(3, self.model.GP)
+        self.tabWidget.setTabEnabled(4, self.model.GP)
+
+    def shutdown_kernel(self):
+        """ Shutdown the embeded IPython kernel, but quietly """
+        self.terminal_widget.kernel_client.stop_channels()
+        self.terminal_widget.kernel_manager.shutdown_kernel()
 
 
     def addmpl(self, tab, fig):
@@ -243,6 +293,13 @@ class MainWindow(QtWidgets.QMainWindow):
         fig = self.model.res.plot_random_planets(show_vsys=True, show_trend=True)
         self.setmpl('tab_6', fig)
 
+    def makePlotsAll(self):
+        self.model.results()
+        for p in range(1, 3):
+            method_name = 'make_plot%d' % p
+            method = getattr(self.model.res, method_name)
+            fig = method()
+            self.setmpl('tab_%d' % p, fig)
 
     def setDefaultPrior(self, *args):
         # get the name of the button which was pressed and from that which prior
@@ -271,9 +328,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model.fix_Np = self.fix_Np_check.isChecked()
         self.model.max_Np = self.max_Np.value()
 
+        self.model.skip = self.header_skip.value()
+        self.model.units = {'km/s':'kms', 'm/s':'ms'}[self.units.currentText()]
+
+        self.setOPTIONS()
+
         self.model.save()
         self.statusMessage('Saved model')
 
+
+    def setOPTIONS(self):
+        self.model.OPTIONS['new_level_interval'] = int(self.new_level_interval.value())
+        self.model.OPTIONS['save_interval'] = int(self.save_interval.value())
+        self.model.OPTIONS['max_saves'] = int(self.max_saves.value())
 
     def stop(self):
         try:
@@ -335,13 +402,14 @@ def main(args=None, tests=False):
             sys.exit(0)
 
         dst = args.DIRECTORY
-        kima_template(dst)
+        kima_template(dst, stopIfNoReplace=True)
     else:
         dst = '.'
 
     app = QtWidgets.QApplication(sys.argv)
     main = MainWindow(os.path.abspath(dst))
     main.show()
+    app.aboutToQuit.connect(main.shutdown_kernel)
     sys.exit(app.exec_())
 
 if __name__ == '__main__':
