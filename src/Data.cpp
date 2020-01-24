@@ -469,31 +469,50 @@ double Data::topslope() const
   }
 }
 
-double Data::get_adjusted_RV_span() const
-/* Return the span of the RVs, after subtracting the mean for each instrument */
+
+/**
+ * @brief Calculate the total span (peak to peak) of the radial velocities
+*/
+double Data::get_RV_span() const
 {
-    int ni;
-    double sum, mean;
-    std::vector<double> rva(t.size());
-
-    for(size_t j=0; j<number_instruments; j++)
-    {
-      ni = 0;
-      sum = 0.;
-      for (size_t i=0; i<t.size(); i++)
-        if(obsi[i] == j+1) {sum += y[i]; ni++;}
-      mean = sum / ni;
-      // cout << "sum: " << sum << endl;
-      // cout << "mean: " << mean << endl;
-      for (size_t i=0; i<t.size(); i++)
-        if(obsi[i] == j+1) rva[i] = y[i] - mean;
-    }
-
-    double min = *std::min_element(rva.begin(), rva.end());
-    double max = *std::max_element(rva.begin(), rva.end());
-    return max - min;
+  const auto [min, max] = std::minmax_element(y.begin(), y.end());
+  return *max - *min;
 }
 
+/**
+ * @brief Calculate the maximum span (peak to peak) of the radial velocities
+ * 
+ * This is different from get_RV_span only in the case of multiple instruments: 
+ * it returns the maximum of the spans of each instrument's RVs.
+*/
+double Data::get_max_RV_span() const
+{
+  // for multiple instruments, calculate individual RV spans and return largest
+  if (datamulti) {
+    double span = 0.0;
+    for(size_t j=0; j<number_instruments; j++)
+    {
+      vector<double> obsy;
+      for (size_t i=0; i<y.size(); ++i) 
+      {
+        if (obsi[i] == j + 1) 
+        {
+          obsy.push_back(y[i]);
+        }
+      }
+      const auto [min, max] = std::minmax_element(obsy.begin(), obsy.end());
+      double this_obs_span = *max - *min;
+      if (this_obs_span > span)
+        span = this_obs_span;
+    }
+    return span;
+  }
+
+  // for one instrument only, this is easy
+  else {
+    return get_RV_span();
+  }
+}
 
 double Data::get_adjusted_RV_var() const
 {

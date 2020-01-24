@@ -66,17 +66,19 @@ class Data
 		double get_t_min() const { return *std::min_element(t.begin(), t.end()); }
 		/// @brief Get the maximum (ending) time @return double
 		double get_t_max() const { return *std::max_element(t.begin(), t.end()); }
-		/// @brief Get the middle (average) time @return double
-		double get_t_middle() const { return get_t_min() + 0.5*(get_t_max() - get_t_min()); }
 		/// @brief Get the timespan @return double
 		double get_timespan() const { return get_t_max() - get_t_min(); }
+		/// @brief Get the middle time @return double
+		double get_t_middle() const { return get_t_min() + 0.5*get_timespan(); }
 
 		/// @brief Get the mininum RV @return double
-		double get_y_min() const { return *std::min_element(y.begin(), y.end()); }
+		double get_RV_min() const { return *std::min_element(y.begin(), y.end()); }
 		/// @brief Get the maximum RV @return double
-		double get_y_max() const { return *std::max_element(y.begin(), y.end()); }
+		double get_RV_max() const { return *std::max_element(y.begin(), y.end()); }
 		/// @brief Get the RV span @return double
-		double get_RV_span() const { return get_y_max() - get_y_min(); }
+		double get_RV_span() const;
+		/// @brief Get the maximum RV span @return double
+		double get_max_RV_span() const;
 		/// @brief Get the variance of the RVs @return double
 		double get_RV_var() const;
 		/// @brief Get the standard deviation of the RVs @return double

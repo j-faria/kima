@@ -30,10 +30,10 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     tauMA_prior = make_prior<LogUniform>(1, 10);
     
     if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_y_min(), data.get_y_max());
+        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
 
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(1.0, 100.);
+        Jprior = make_prior<ModifiedLogUniform>(1.0, data.get_max_RV_span());
 
     if (!slope_prior)
         slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
