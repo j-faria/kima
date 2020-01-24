@@ -433,6 +433,42 @@ double Data::get_RV_var() const
 }
 
 
+
+/**
+ * @brief Calculate the maximum slope "allowed" by the data
+ * 
+ * This calculates peak-to-peak(RV) / peak-to-peak(time), which is a good upper
+ * bound for the linear slope of a given dataset. When there are multiple 
+ * instruments, the function returns the maximum of this peak-to-peak ratio of 
+ * all individual instruments.
+*/
+double Data::topslope() const
+{
+  if (datamulti) {
+    double slope = 0.0;
+    for(size_t j=0; j<number_instruments; j++)
+    {
+      vector<double> obsy, obst;
+      for (size_t i=0; i<y.size(); ++i) {
+        if (obsi[i] == j + 1) {
+          obsy.push_back(y[i]);
+          obst.push_back(t[i]);
+        }
+      }
+      const auto [miny, maxy] = std::minmax_element(obsy.begin(), obsy.end());
+      const auto [mint, maxt] = std::minmax_element(obst.begin(), obst.end());
+      double this_obs_topslope = (*maxy - *miny) / (*maxt - *mint);
+      if (this_obs_topslope > slope)
+        slope = this_obs_topslope;
+    }
+    return slope;
+  }
+
+  else {
+    return get_RV_span() / get_timespan();
+  }
+}
+
 double Data::get_adjusted_RV_span() const
 /* Return the span of the RVs, after subtracting the mean for each instrument */
 {

@@ -90,7 +90,7 @@ class Data
 		double get_adjusted_RV_std() const { return std::sqrt(get_adjusted_RV_var()); }
 		
 		/// @brief Get the maximum slope allowed by the data. @return double
-		double topslope() const {return std::abs(get_y_max() - get_y_min()) / (t.back() - t.front());}
+		double topslope() const;
 
 		/// @brief Get the array of activity indictators @return std::vector<std::vector<double>>&
 		const std::vector<std::vector<double>>& get_actind() const { return actind; }
