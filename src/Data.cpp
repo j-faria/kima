@@ -1,3 +1,6 @@
+// (c) 2019 João Faria
+// This file is part of kima, which is licensed under the MIT license (see LICENSE for details)
+
 #include "Data.h"
 #include <fstream>
 #include <iostream>
@@ -308,6 +311,22 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
   sig.clear();
   obsi.clear();
 
+  // check for indicator correlations and store stuff
+  int nempty = count(indicators.begin(), indicators.end(), "");
+  number_indicators = indicators.size() - nempty;
+  indicator_correlations = number_indicators > 0;
+  indicator_names = indicators;
+  indicator_names.erase(
+    std::remove( indicator_names.begin(), indicator_names.end(), "" ), 
+    indicator_names.end() );
+
+  // Empty the indicator vectors as well
+  actind.clear();
+  actind.resize(number_indicators);
+  for (unsigned n = 0; n < number_indicators; n++)
+    actind[n].clear();
+
+
   std::string dump; // to dump the first skip lines of each file
   int filecount = 1;
   int last_file_size = 0;
@@ -353,14 +372,44 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
       t.push_back(data[n][0]);
       y.push_back(data[n][1] * factor);
       sig.push_back(data[n][2] * factor);
+
+      if (indicator_correlations)
+      {
+        int j = 0;
+        for (unsigned i = 0; i < number_indicators + nempty; i++)
+        {
+          if (indicators[i] == "")
+            continue; // skip column
+          else
+          {
+            actind[j].push_back(data[n][3+i] * factor);
+            j++;
+          }
+        }
+      }
+
     }
 
   // How many points did we read?
   printf("# Loaded %zu data points from files\n", t.size());
-  cout << "# ";
-  for (auto f: filenames)
-    cout << f.c_str() << " ; ";
+  cout << "#   ";
+  for (auto f: filenames){
+    cout << f.c_str();
+    (f != filenames.back()) ? cout << " | " : cout << " ";
+  }
   cout << endl;
+
+  // Did we read activity indicators? how many?
+  if(indicator_correlations){
+    printf("# Loaded %d observations of %d activity indicators: ", actind[0].size(), actind.size());
+    for (const auto i: indicators){
+      if (i != ""){
+        printf("'%s'", i);
+        (i != indicators.back()) ? cout << ", " : cout << " ";
+      }
+    }
+    cout << endl;
+  }
 
   // Of how many instruments?
   std::set<int> s( obsi.begin(), obsi.end() );
@@ -379,6 +428,7 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
     std::vector<double> tt(N), yy(N);
     std::vector<double> sigsig(N), obsiobsi(N);
     std::vector<int> order(N);
+    std::vector<std::vector<double>> actindactind(number_indicators, std::vector<double>(N));
 
     // order = argsort(t)
     int x=0;
@@ -390,6 +440,8 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
       yy[i] = y[order[i]];
       sigsig[i] = sig[order[i]];
       obsiobsi[i] = obsi[order[i]];
+      for(unsigned j=0; j<number_indicators; j++)
+        actindactind[j][i] = actind[j][order[i]];
     }
 
     for(unsigned i=0; i<N; i++){
@@ -397,6 +449,8 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
       y[i] = yy[i];
       sig[i] = sigsig[i];
       obsi[i] = obsiobsi[i];
+      for(unsigned j=0; j<number_indicators; j++)
+        actind[j][i] = actindactind[j][i];
     }
 
     // debug
