@@ -394,7 +394,7 @@
       <string/>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab_5">
       <attribute name="title">
@@ -835,6 +835,11 @@
        <item>
         <property name="text">
          <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Kumaraswamy</string>
         </property>
        </item>
        <item>
@@ -1829,7 +1834,7 @@
       </rect>
      </property>
      <property name="currentIndex">
-      <number>2</number>
+      <number>8</number>
      </property>
      <widget class="QWidget" name="tab_1">
       <property name="enabled">
@@ -2016,14 +2021,14 @@
    <widget class="QLabel" name="label_9">
     <property name="geometry">
      <rect>
-      <x>920</x>
-      <y>690</y>
+      <x>930</x>
+      <y>680</y>
       <width>91</width>
       <height>81</height>
      </rect>
     </property>
     <property name="text">
-     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;img src=&quot;/home/jfaria/Work/kima/logo/logo_small.png&quot; width=&quot;80&quot;/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;img src=&quot;/home/jfaria/Work/kima/logo/logo-transparent.png&quot; width=&quot;90&quot;/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="scaledContents">
      <bool>true</bool>

@@ -55,6 +55,7 @@ class KimaModel:
     def __init__(self):
         self.directory = 'some dir'
         self.kima_setup = 'kima_setup.cpp'
+        self.OPTIONS_file = 'OPTIONS'
         self.filename = None
         self.skip = 0
         self.units = 'kms'
@@ -278,6 +279,22 @@ class KimaModel:
         # store that the model has been loaded
         self._loaded = True
 
+    def load_OPTIONS(self):
+        if not os.path.exists(self.OPTIONS_file):
+            raise FileNotFoundError(f'Cannot find "{self.OPTIONS_file}"')
+
+        options = open(self.OPTIONS_file).readlines()
+
+        keys = list(self.OPTIONS.keys())
+        i = 0
+        for line in options:
+            if line.strip().startswith('#'):
+                continue
+            val, _ = line.split('#')
+            val = int(val)
+            self.OPTIONS[keys[i]] = val
+            i += 1
+
 
     def save(self):
         """ Save this model to the OPTIONS file and the kima_setup file """
@@ -389,10 +406,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model.directory = directory
         os.chdir(directory)
 
+        msg = ''
         if os.path.exists(self.model.kima_setup):
-            self.statusMessage(f'Loaded setup from {self.model.kima_setup}')
+            msg += f'Loaded setup from {self.model.kima_setup}'
             self.model.load()
             self.updateUI()
+        if os.path.exists(self.model.OPTIONS_file):
+            msg += '; Loaded OPTIONS'
+            self.model.load_OPTIONS()
+            self.updateUI()
+        self.statusMessage(msg)
 
         terminal_msg = "This is a Python terminal.\n" \
                        "numpy and pykima have been loaded as 'np' and 'pk'\n"
@@ -444,7 +467,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # grey-out plot tabs
         self.tabWidget.setTabEnabled(3, self.model.GP)
         self.tabWidget.setTabEnabled(4, self.model.GP)
-        self.tabWidget.setCurrentIndex(8)
+        # self.tabWidget.setCurrentIndex(8)
         self.tabWidget_2.setTabEnabled(2, self.model.GP)
 
         # priors!
@@ -474,6 +497,12 @@ class MainWindow(QtWidgets.QMainWindow):
             # check the "is default" radio button
             radio = getattr(self, 'is_default_' + prior_name)
             radio.setChecked(prior[0])
+
+
+        # sampler options
+        self.new_level_interval.setValue(self.model.OPTIONS['new_level_interval'])
+        self.save_interval.setValue(self.model.OPTIONS['save_interval'])
+        self.max_saves.setValue(self.model.OPTIONS['max_saves'])
 
 
     def shutdown_kernel(self):
