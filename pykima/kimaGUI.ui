@@ -32,7 +32,7 @@
     <property name="title">
      <string>Data </string>
     </property>
-    <widget class="QCheckBox" name="checkBox">
+    <widget class="QCheckBox" name="copy_locally_check">
      <property name="geometry">
       <rect>
        <x>290</x>
@@ -40,6 +40,9 @@
        <width>161</width>
        <height>21</height>
       </rect>
+     </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Copy the selected data file(s) to the current directory before running the model&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>copy data file(s) locally</string>
@@ -288,6 +291,9 @@
       <enum>QFrame::Raised</enum>
      </property>
      <widget class="QCheckBox" name="obs_after_HARPS_fibers_check">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -445,12 +451,12 @@
         <rect>
          <x>11</x>
          <y>110</y>
-         <width>32</width>
+         <width>81</width>
          <height>16</height>
         </rect>
        </property>
        <property name="text">
-        <string>slope</string>
+        <string>slope [m/s/d]</string>
        </property>
       </widget>
       <widget class="QLineEdit" name="lineEdit_slope_prior_arg1">
@@ -479,6 +485,16 @@
        </item>
        <item>
         <property name="text">
+         <string>LogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ModifiedLogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>Gaussian</string>
         </property>
        </item>
@@ -486,9 +502,9 @@
       <widget class="QLineEdit" name="lineEdit_Cprior_arg1">
        <property name="geometry">
         <rect>
-         <x>214</x>
+         <x>216</x>
          <y>26</y>
-         <width>73</width>
+         <width>71</width>
          <height>23</height>
         </rect>
        </property>
@@ -498,7 +514,7 @@
         <rect>
          <x>370</x>
          <y>110</y>
-         <width>80</width>
+         <width>51</width>
          <height>23</height>
         </rect>
        </property>
@@ -533,7 +549,7 @@
        <property name="geometry">
         <rect>
          <x>11</x>
-         <y>26</y>
+         <y>23</y>
          <width>104</width>
          <height>16</height>
         </rect>
@@ -547,7 +563,7 @@
         <rect>
          <x>370</x>
          <y>26</y>
-         <width>80</width>
+         <width>51</width>
          <height>23</height>
         </rect>
        </property>
@@ -562,8 +578,8 @@
        <property name="geometry">
         <rect>
          <x>11</x>
-         <y>68</y>
-         <width>29</width>
+         <y>72</y>
+         <width>71</width>
          <height>16</height>
         </rect>
        </property>
@@ -571,28 +587,8 @@
         <enum>Qt::LeftToRight</enum>
        </property>
        <property name="text">
-        <string>jitter</string>
+        <string>jitter [m/s]</string>
        </property>
-      </widget>
-      <widget class="QComboBox" name="comboBox_Jprior">
-       <property name="geometry">
-        <rect>
-         <x>126</x>
-         <y>68</y>
-         <width>83</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <item>
-        <property name="text">
-         <string>Uniform</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Gaussian</string>
-        </property>
-       </item>
       </widget>
       <widget class="QLineEdit" name="lineEdit_Jprior_arg1">
        <property name="geometry">
@@ -619,7 +615,7 @@
         <rect>
          <x>370</x>
          <y>68</y>
-         <width>80</width>
+         <width>51</width>
          <height>23</height>
         </rect>
        </property>
@@ -646,6 +642,16 @@
        </item>
        <item>
         <property name="text">
+         <string>LogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ModifiedLogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>Gaussian</string>
         </property>
        </item>
@@ -655,7 +661,7 @@
         <rect>
          <x>370</x>
          <y>152</y>
-         <width>80</width>
+         <width>51</width>
          <height>23</height>
         </rect>
        </property>
@@ -674,6 +680,126 @@
          <width>73</width>
          <height>23</height>
         </rect>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_Jprior">
+       <property name="geometry">
+        <rect>
+         <x>126</x>
+         <y>68</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>LogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ModifiedLogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QRadioButton" name="is_default_Cprior">
+       <property name="geometry">
+        <rect>
+         <x>430</x>
+         <y>27</y>
+         <width>21</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="autoExclusive">
+        <bool>false</bool>
+       </property>
+      </widget>
+      <widget class="QRadioButton" name="is_default_Jprior">
+       <property name="geometry">
+        <rect>
+         <x>430</x>
+         <y>70</y>
+         <width>21</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="autoExclusive">
+        <bool>false</bool>
+       </property>
+      </widget>
+      <widget class="QRadioButton" name="is_default_slope_prior">
+       <property name="geometry">
+        <rect>
+         <x>429</x>
+         <y>110</y>
+         <width>21</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="autoExclusive">
+        <bool>false</bool>
+       </property>
+      </widget>
+      <widget class="QRadioButton" name="is_default_offsets_prior">
+       <property name="geometry">
+        <rect>
+         <x>428</x>
+         <y>153</y>
+         <width>21</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_Cprior_2">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>39</y>
+         <width>41</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>[m/s]</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_offsets_prior_2">
+       <property name="geometry">
+        <rect>
+         <x>11</x>
+         <y>168</y>
+         <width>41</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>[m/s]</string>
        </property>
       </widget>
      </widget>
@@ -990,6 +1116,299 @@
        </property>
       </widget>
      </widget>
+     <widget class="QWidget" name="tab_priors_GP">
+      <attribute name="title">
+       <string>GP</string>
+      </attribute>
+      <widget class="QLineEdit" name="lineEdit_log_eta1_prior_arg2">
+       <property name="geometry">
+        <rect>
+         <x>300</x>
+         <y>30</y>
+         <width>71</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_log_eta1_prior">
+       <property name="geometry">
+        <rect>
+         <x>9</x>
+         <y>30</y>
+         <width>101</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>(log) eta1 [m/s]</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_log_eta1_prior_arg1">
+       <property name="geometry">
+        <rect>
+         <x>220</x>
+         <y>30</y>
+         <width>71</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_log_eta1_prior">
+       <property name="geometry">
+        <rect>
+         <x>380</x>
+         <y>30</y>
+         <width>41</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_log_eta1_prior">
+       <property name="geometry">
+        <rect>
+         <x>127</x>
+         <y>30</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>LogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ModifiedLogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_eta2_prior_arg1">
+       <property name="geometry">
+        <rect>
+         <x>220</x>
+         <y>70</y>
+         <width>71</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_eta2_prior">
+       <property name="geometry">
+        <rect>
+         <x>35</x>
+         <y>70</y>
+         <width>80</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>eta2 [days]</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_eta2_prior_arg2">
+       <property name="geometry">
+        <rect>
+         <x>300</x>
+         <y>70</y>
+         <width>71</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_eta2_prior">
+       <property name="geometry">
+        <rect>
+         <x>380</x>
+         <y>70</y>
+         <width>41</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_eta2_prior">
+       <property name="geometry">
+        <rect>
+         <x>127</x>
+         <y>70</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>LogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ModifiedLogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QPushButton" name="makeDefault_eta3_prior">
+       <property name="geometry">
+        <rect>
+         <x>380</x>
+         <y>110</y>
+         <width>41</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;change to default prior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>D</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_eta3_prior">
+       <property name="geometry">
+        <rect>
+         <x>127</x>
+         <y>110</y>
+         <width>83</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Uniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>LogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ModifiedLogUniform</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_eta3_prior_arg2">
+       <property name="geometry">
+        <rect>
+         <x>300</x>
+         <y>110</y>
+         <width>71</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_eta3_prior">
+       <property name="geometry">
+        <rect>
+         <x>35</x>
+         <y>110</y>
+         <width>80</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>eta3 [days]</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit_eta3_prior_arg1">
+       <property name="geometry">
+        <rect>
+         <x>220</x>
+         <y>110</y>
+         <width>71</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QRadioButton" name="is_default_log_eta1_prior">
+       <property name="geometry">
+        <rect>
+         <x>430</x>
+         <y>30</y>
+         <width>21</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="autoExclusive">
+        <bool>false</bool>
+       </property>
+      </widget>
+      <widget class="QRadioButton" name="is_default_eta2_prior">
+       <property name="geometry">
+        <rect>
+         <x>429</x>
+         <y>70</y>
+         <width>21</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="autoExclusive">
+        <bool>false</bool>
+       </property>
+      </widget>
+      <widget class="QRadioButton" name="is_default_eta3_prior">
+       <property name="geometry">
+        <rect>
+         <x>428</x>
+         <y>110</y>
+         <width>21</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="autoExclusive">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </widget>
     </widget>
     <widget class="QLabel" name="label_4">
      <property name="geometry">
@@ -1001,7 +1420,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Each prior has a distribution and two arguments which have different</string>
+      <string>Each prior has a distribution and two arguments, which have different</string>
      </property>
     </widget>
     <widget class="QLabel" name="label_5">
@@ -1022,9 +1441,9 @@
     <property name="geometry">
      <rect>
       <x>480</x>
-      <y>620</y>
-      <width>561</width>
-      <height>151</height>
+      <y>660</y>
+      <width>401</width>
+      <height>111</height>
      </rect>
     </property>
     <property name="title">
@@ -1033,7 +1452,7 @@
     <widget class="QWidget" name="layoutWidget">
      <property name="geometry">
       <rect>
-       <x>240</x>
+       <x>190</x>
        <y>30</y>
        <width>121</width>
        <height>31</height>
@@ -1066,7 +1485,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>107</y>
+       <y>67</y>
        <width>171</width>
        <height>31</height>
       </rect>
@@ -1103,8 +1522,8 @@
     <widget class="QWidget" name="layoutWidget_2">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>30</y>
+       <x>190</x>
+       <y>68</y>
        <width>193</width>
        <height>31</height>
       </rect>
@@ -1142,7 +1561,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>70</y>
+       <y>30</y>
        <width>164</width>
        <height>26</height>
       </rect>
@@ -1180,8 +1599,8 @@
    <widget class="QFrame" name="frame">
     <property name="geometry">
      <rect>
-      <x>480</x>
-      <y>540</y>
+      <x>490</x>
+      <y>610</y>
       <width>361</width>
       <height>41</height>
      </rect>
@@ -1195,30 +1614,30 @@
     <widget class="QLabel" name="label_2">
      <property name="geometry">
       <rect>
-       <x>10</x>
+       <x>130</x>
        <y>10</y>
-       <width>71</width>
+       <width>41</width>
        <height>21</height>
       </rect>
      </property>
      <property name="text">
-      <string>make plots</string>
+      <string>plots:</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="pushButton_3">
+    <widget class="QPushButton" name="reload_res">
      <property name="geometry">
       <rect>
-       <x>110</x>
+       <x>10</x>
        <y>10</y>
-       <width>31</width>
+       <width>91</width>
        <height>23</height>
       </rect>
      </property>
      <property name="text">
-      <string>all</string>
+      <string>reload results</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="pushButton_2">
+    <widget class="QPushButton" name="pushButton_1">
      <property name="geometry">
       <rect>
        <x>170</x>
@@ -1234,7 +1653,7 @@
       <string>1</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="pushButton_5">
+    <widget class="QPushButton" name="pushButton_2">
      <property name="geometry">
       <rect>
        <x>200</x>
@@ -1260,7 +1679,7 @@
       <string>6</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="pushButton_7">
+    <widget class="QPushButton" name="pushButton_3">
      <property name="geometry">
       <rect>
        <x>230</x>
@@ -1273,7 +1692,7 @@
       <string>3</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="pushButton_8">
+    <widget class="QPushButton" name="pushButton_4">
      <property name="geometry">
       <rect>
        <x>260</x>
@@ -1286,7 +1705,7 @@
       <string>4</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="pushButton_9">
+    <widget class="QPushButton" name="pushButton_5">
      <property name="geometry">
       <rect>
        <x>290</x>
@@ -1304,7 +1723,7 @@
     <property name="geometry">
      <rect>
       <x>870</x>
-      <y>540</y>
+      <y>590</y>
       <width>171</width>
       <height>80</height>
      </rect>
@@ -1332,7 +1751,7 @@
      </property>
      <property name="icon">
       <iconset theme="start">
-       <normaloff>.</normaloff>.</iconset>
+       <normaloff>../../../.designer/backup</normaloff>../../../.designer/backup</iconset>
      </property>
     </widget>
     <widget class="QPushButton" name="stopButton">
@@ -1352,7 +1771,7 @@
      </property>
      <property name="icon">
       <iconset theme="start">
-       <normaloff>.</normaloff>.</iconset>
+       <normaloff>../../../.designer/backup</normaloff>../../../.designer/backup</iconset>
      </property>
      <property name="flat">
       <bool>false</bool>
@@ -1375,7 +1794,7 @@
      </property>
     </widget>
    </widget>
-   <widget class="QPushButton" name="pushButton_4">
+   <widget class="QPushButton" name="pushButton_save_model">
     <property name="geometry">
      <rect>
       <x>379</x>
@@ -1394,7 +1813,7 @@
       <x>490</x>
       <y>10</y>
       <width>551</width>
-      <height>521</height>
+      <height>571</height>
      </rect>
     </property>
     <property name="title">
@@ -1406,11 +1825,11 @@
        <x>10</x>
        <y>30</y>
        <width>531</width>
-       <height>481</height>
+       <height>471</height>
       </rect>
      </property>
      <property name="currentIndex">
-      <number>7</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab_1">
       <property name="enabled">
@@ -1425,7 +1844,7 @@
          <x>10</x>
          <y>10</y>
          <width>511</width>
-         <height>431</height>
+         <height>421</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="tab_1_plot"/>
@@ -1441,7 +1860,7 @@
          <x>10</x>
          <y>10</y>
          <width>511</width>
-         <height>431</height>
+         <height>421</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="tab_2_plot"/>
@@ -1457,7 +1876,7 @@
          <x>10</x>
          <y>10</y>
          <width>511</width>
-         <height>431</height>
+         <height>421</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="tab_3_plot"/>
@@ -1473,7 +1892,7 @@
          <x>10</x>
          <y>10</y>
          <width>511</width>
-         <height>431</height>
+         <height>421</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="tab_4_plot"/>
@@ -1485,6 +1904,9 @@
       </attribute>
      </widget>
      <widget class="QWidget" name="tab_6">
+      <property name="focusPolicy">
+       <enum>Qt::TabFocus</enum>
+      </property>
       <attribute name="title">
        <string>6</string>
       </attribute>
@@ -1494,7 +1916,7 @@
          <x>10</x>
          <y>10</y>
          <width>511</width>
-         <height>431</height>
+         <height>421</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="tab_6_plot"/>
@@ -1510,7 +1932,7 @@
          <x>0</x>
          <y>0</y>
          <width>521</width>
-         <height>451</height>
+         <height>441</height>
         </rect>
        </property>
        <property name="currentIndex">
@@ -1538,7 +1960,7 @@
          <x>0</x>
          <y>0</y>
          <width>531</width>
-         <height>451</height>
+         <height>431</height>
         </rect>
        </property>
       </widget>
@@ -1553,7 +1975,7 @@
          <x>10</x>
          <y>10</y>
          <width>511</width>
-         <height>431</height>
+         <height>421</height>
         </rect>
        </property>
        <property name="readOnly">
@@ -1565,6 +1987,47 @@
       </widget>
      </widget>
     </widget>
+    <widget class="QTextEdit" name="results_output">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>510</y>
+       <width>531</width>
+       <height>51</height>
+      </rect>
+     </property>
+     <property name="verticalScrollBarPolicy">
+      <enum>Qt::ScrollBarAlwaysOff</enum>
+     </property>
+     <property name="horizontalScrollBarPolicy">
+      <enum>Qt::ScrollBarAlwaysOff</enum>
+     </property>
+     <property name="sizeAdjustPolicy">
+      <enum>QAbstractScrollArea::AdjustToContents</enum>
+     </property>
+     <property name="undoRedoEnabled">
+      <bool>false</bool>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QLabel" name="label_9">
+    <property name="geometry">
+     <rect>
+      <x>920</x>
+      <y>690</y>
+      <width>91</width>
+      <height>81</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;img src=&quot;/home/jfaria/Work/kima/logo/logo_small.png&quot; width=&quot;80&quot;/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -1609,42 +2072,44 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="kimaGUI.qrc"/>
+ </resources>
  <connections>
   <connection>
-   <sender>pushButton</sender>
+   <sender>pushButton_3</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
-   <slot>slot1()</slot>
+   <slot>makePlotsAll()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>409</x>
-     <y>145</y>
+     <x>720</x>
+     <y>640</y>
     </hint>
     <hint type="destinationlabel">
-     <x>441</x>
-     <y>21</y>
+     <x>137</x>
+     <y>773</y>
     </hint>
    </hints>
   </connection>
   <connection>
-   <sender>pushButton_2</sender>
+   <sender>pushButton_1</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
-   <slot>makePlot1()</slot>
+   <slot>makePlotsAll()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>660</x>
-     <y>583</y>
+     <y>640</y>
     </hint>
     <hint type="destinationlabel">
-     <x>677</x>
-     <y>620</y>
+     <x>97</x>
+     <y>760</y>
     </hint>
    </hints>
   </connection>
   <connection>
-   <sender>pushButton_4</sender>
+   <sender>pushButton_save_model</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
    <slot>saveModel()</slot>
@@ -1683,7 +2148,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>898</x>
-     <y>587</y>
+     <y>620</y>
     </hint>
     <hint type="destinationlabel">
      <x>883</x>
@@ -1699,27 +2164,11 @@
    <hints>
     <hint type="sourcelabel">
      <x>979</x>
-     <y>576</y>
+     <y>620</y>
     </hint>
     <hint type="destinationlabel">
      <x>970</x>
      <y>764</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>pushButton_5</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>makePlot2()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>689</x>
-     <y>578</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>762</x>
-     <y>618</y>
     </hint>
    </hints>
   </connection>
@@ -1775,15 +2224,15 @@
    <sender>pushButton_6</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
-   <slot>makePlot6()</slot>
+   <slot>makePlotsAll()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>814</x>
-     <y>577</y>
+     <y>640</y>
     </hint>
     <hint type="destinationlabel">
-     <x>699</x>
-     <y>636</y>
+     <x>180</x>
+     <y>787</y>
     </hint>
    </hints>
   </connection>
@@ -1804,14 +2253,14 @@
    </hints>
   </connection>
   <connection>
-   <sender>pushButton_3</sender>
+   <sender>reload_res</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
-   <slot>makePlotsAll()</slot>
+   <slot>reloadResults()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>594</x>
-     <y>579</y>
+     <x>500</x>
+     <y>640</y>
     </hint>
     <hint type="destinationlabel">
      <x>496</x>
@@ -1820,18 +2269,130 @@
    </hints>
   </connection>
   <connection>
+   <sender>pushButton_4</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>makePlotsAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>750</x>
+     <y>640</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>156</x>
+     <y>781</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_2</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>makePlotsAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>693</x>
+     <y>640</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>116</x>
+     <y>766</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>slot1()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>439</x>
+     <y>151</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>474</x>
+     <y>229</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_5</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>makePlotsAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>788</x>
+     <y>652</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>203</x>
+     <y>793</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>makeDefault_log_eta1_prior</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>setDefaultPrior()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>398</x>
+     <y>595</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>480</x>
+     <y>344</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>makeDefault_eta2_prior</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>setDefaultPrior()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>411</x>
+     <y>636</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>480</x>
+     <y>381</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>makeDefault_eta3_prior</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>setDefaultPrior()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>423</x>
+     <y>673</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>481</x>
+     <y>417</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
    <sender>GP_check</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
-   <slot>refreshAll()</slot>
+   <slot>toggleGP()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>57</x>
-     <y>299</y>
+     <x>51</x>
+     <y>298</y>
     </hint>
     <hint type="destinationlabel">
-     <x>5</x>
-     <y>310</y>
+     <x>114</x>
+     <y>229</y>
     </hint>
    </hints>
   </connection>
@@ -1849,5 +2410,7 @@
   <slot>makePlotsAll()</slot>
   <slot>refreshAll()</slot>
   <slot>setOPTIONS()</slot>
+  <slot>reloadResults()</slot>
+  <slot>toggleGP()</slot>
  </slots>
 </ui>
