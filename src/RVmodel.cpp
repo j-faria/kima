@@ -26,14 +26,16 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     auto data = Data::get_instance();
 
     betaprior = make_prior<Gaussian>(0, 1);
-    sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 10.);
-    tauMA_prior = make_prior<LogUniform>(1, 10);
+    // sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 10.);
+    // sigmaMA_prior = make_prior<TruncatedGaussian>(0.0, 1.0, -1.0, 1.0);
+    sigmaMA_prior = make_prior<Uniform>(-1, 1);
+    tauMA_prior = make_prior<LogUniform>(1, 100);
     
     if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_y_min(), data.get_y_max());
+        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
 
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(1.0, 100.);
+        Jprior = make_prior<ModifiedLogUniform>(1.0, data.get_max_RV_span());
 
     if (!slope_prior)
         slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
@@ -850,6 +852,9 @@ string RVmodel::description() const
     
     if(MA)
         desc += "sigmaMA   tauMA   ";
+
+    if(known_object) // KO mode!
+        desc += "KO_P   KO_K   KO_phi   KO_e   KO_w   ";
 
     desc += "ndim   maxNp   ";
     if(hyperpriors)
