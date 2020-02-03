@@ -1,6 +1,11 @@
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtWidgets import QStatusBar
+from PyQt5.QtWidgets import QStatusBar, QInputDialog
 from PyQt5.QtCore import QProcess, Qt
+
+try:
+    from .gui_helpers import *
+except (ModuleNotFoundError, ImportError):
+    from gui_helpers import *
 
 # import pyqtgraph as pg
 import sys, os
@@ -74,7 +79,9 @@ class KimaModel:
         self.max_Np = 1
 
         self.set_priors('default')
+        self._planet_priors = ('Pprior', 'Kprior', 'eprior')
 
+        self.threads = 1
         self.OPTIONS = {
             'particles': 2,
             'new_level_interval': 5000,
@@ -110,6 +117,11 @@ class KimaModel:
             'log_eta1_prior': (True, 'Uniform', -5.0, 5.0),
             'eta2_prior': (True, 'LogUniform', 1.0, 100.0),
             'eta3_prior': (True, 'Uniform', 10.0, 40.0),
+            'log_eta4_prior': (True, 'Uniform', -1.0, 1.0),
+            #
+            'Pprior': (True, 'LogUniform', 1.0, 100000.0),
+            'Kprior': (True, 'ModifiedLogUniform', 1.0, 1000.0),
+            'eprior': (True, 'Uniform', 0.0, 1.0),
         }
         return dp
 
@@ -179,7 +191,7 @@ class KimaModel:
     def load(self):
         """ 
         Try to read and load a kima_setup file with the help of RegExp.
-        Note that C++ is notoriously hard to parse so, for anything other than
+        Note that C++ is notoriously hard to parse, so for anything other than
         fairly standard kima_setup files, don't expect this function to work!
         """
         if not os.path.exists(self.kima_setup):
@@ -224,6 +236,17 @@ class KimaModel:
         else:
             msg = f'Cannot find option for npmax in {self.kima_setup}'
             raise ValueError(msg)
+
+        # find priors (here be dragons!)
+        number = '([-+]?[0-9]*.?[0-9]*[E0-9]*)'
+        for prior in self._default_priors.keys():
+            pat = re.compile(rf'{prior}\s?=\s?make_prior<(\w+)>\({number}\s?,\s?{number}\)')
+            match = pat.findall(setup)
+            if len(match) == 1:
+                m = match[0]
+                dist, arg1, arg2 = m[0], float(m[1]), float(m[2])
+                self.set_priors(prior, False, dist, arg1, arg2)
+
 
         # find datafile(s)
         pat = re.compile(f'const bool multi_instrument = (\w+)')
@@ -275,7 +298,6 @@ class KimaModel:
                 msg = f'Cannot find units and skip in {self.kima_setup}'
                 raise ValueError(msg)
 
-        self.set_priors('default')
         # store that the model has been loaded
         self._loaded = True
 
@@ -294,6 +316,12 @@ class KimaModel:
             val = int(val)
             self.OPTIONS[keys[i]] = val
             i += 1
+
+        try:
+            with open('.KIMATHREADS') as f:
+                self.threads = int(f.read().strip())
+        except FileNotFoundError:
+            pass
 
 
     def save(self):
@@ -331,10 +359,17 @@ class KimaModel:
     def _inside_constructor(self, file):
         file.write('{\n')
 
+        got_conditional = False
         for name, sets in self.priors.items():
             # print(name, sets)
             if not sets[0]: # if not default prior
-                file.write(f'{name} = make_prior<{sets[1]}>({sets[2]}, {sets[3]});\n')
+                if name in self._planet_priors:
+                    if not got_conditional:
+                        file.write(f'auto c = planets.get_conditional_prior();\n')
+                        got_conditional = True
+                    file.write(f'c->{name} = make_prior<{sets[1]}>({sets[2]}, {sets[3]});\n')    
+                else:
+                    file.write(f'{name} = make_prior<{sets[1]}>({sets[2]}, {sets[3]});\n')
 
         file.write('\n}\n')
         file.write('\n')
@@ -410,15 +445,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if os.path.exists(self.model.kima_setup):
             msg += f'Loaded setup from {self.model.kima_setup}'
             self.model.load()
-            self.updateUI()
         if os.path.exists(self.model.OPTIONS_file):
             msg += '; Loaded OPTIONS'
             self.model.load_OPTIONS()
-            self.updateUI()
         self.statusMessage(msg)
 
-        terminal_msg = "This is a Python terminal.\n" \
-                       "numpy and pykima have been loaded as 'np' and 'pk'\n"
         self.terminal_widget.push({"np": np, "plt": plt, "pk": pk})
         self.terminal_widget.execute_command('%matplotlib inline')
 
@@ -427,10 +458,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toggleTrend(self.trend_check.isChecked())
         self.progressBar.setValue(0)
 
+    def showKimaHelp(self):
+        show_kima_help_window()
+    def showGUIHelp(self):
+        show_gui_help_window()
+    def showAbout(self):
+        show_about_window()
 
-    def statusMessage(self, msg):
-        """ Print the message at the bottom of the window """
-        self.statusBar.showMessage(msg)
+
+    def statusMessage(self, message):
+        """ Print a message at the bottom of the window """
+        self.statusBar.showMessage(message)
+
+    def _error(self, message, title=''):
+        """ Show an error message """
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Critical)
+        msg.setText(f"Error\n{message}")
+        msg.setWindowTitle(title)
+        msg.exec_()
 
     def updateUI(self):
         """
@@ -503,6 +549,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.new_level_interval.setValue(self.model.OPTIONS['new_level_interval'])
         self.save_interval.setValue(self.model.OPTIONS['save_interval'])
         self.max_saves.setValue(self.model.OPTIONS['max_saves'])
+        self.threads.setValue(self.model.threads)
 
 
     def shutdown_kernel(self):
@@ -566,40 +613,31 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.updateUI()
 
-    def makePlot1(self):
-        out = self.model.results()
-        fig = self.model.res.make_plot1()
-        self.setmpl('tab_1', fig)
+    # def makePlot1(self):
+    #     out = self.model.results()
+    #     fig = self.model.res.make_plot1()
+    #     self.setmpl('tab_1', fig)
 
-    def makePlot2(self):
-        out = self.model.results()
-        fig = self.model.res.make_plot2()
-        self.setmpl('tab_2', fig)
+    # def makePlot2(self):
+    #     out = self.model.results()
+    #     fig = self.model.res.make_plot2()
+    #     self.setmpl('tab_2', fig)
 
-    def makePlot6(self):
-        out = self.model.results()
-        fig = self.model.res.plot_random_planets(show_vsys=True, show_trend=True)
-        self.setmpl('tab_6', fig)
-        self.tabWidget.setCurrentIndex(5)
-
+    # def makePlot6(self):
+    #     out = self.model.results()
+    #     fig = self.model.res.plot_random_planets(show_vsys=True, show_trend=True)
+    #     self.setmpl('tab_6', fig)
+    #     self.tabWidget.setCurrentIndex(5)
 
     def makePlotsAll(self):
         out = self.model.results()
         if out: self.results_output.setText(out)
+        self.terminal_widget.push({'res': self.model.res})
+        plt.close('all')
 
         button = self.sender().objectName()
 
-        if 'all' in button:
-            pass
-            # # 1
-            # fig1 = self.model.res.make_plot1()
-            # self.setmpl('tab_1', fig1)
-
-            # 2
-            # fig2 = self.model.res.make_plot2()
-            # self.setmpl('tab_2', fig2)
-
-        elif '6' in button:
+        if '6' in button:
             try:
                 fig = self.model.res.plot_random_planets(show_vsys=True,
                                                         show_trend=True)
@@ -611,6 +649,29 @@ class MainWindow(QtWidgets.QMainWindow):
             self.setmpl('tab_6', fig)
             self.tabWidget.setCurrentIndex(5)
             plt.close()
+
+        elif '7' in button:
+            fig71, fig72 = self.model.res.hist_vsys(show_offsets=True)
+            self.setmpl('tab_7_1', fig71)
+            if fig72:
+                self.setmpl('tab_7_2', fig72)
+            plt.close()
+
+            fig73 = self.model.res.hist_extra_sigma()
+            self.setmpl('tab_7_3', fig73)
+            plt.close()
+            
+            self.tabWidget.setCurrentIndex(6)
+
+        elif '8' in button:
+            plt.ion()
+            pk.classic.postprocess(plot=True)
+            # for i in plt.get_fignums()[:1]:
+            #     fig = plt.figure(i)
+                # self.addmpl('tab_diagnostic', fig)
+            # self.tabWidget.setCurrentIndex(0)
+            plt.ioff()
+
         else:
             p = button[-1]
             method_name = 'make_plot' + p
@@ -625,6 +686,27 @@ class MainWindow(QtWidgets.QMainWindow):
     def reloadResults(self):
         out = self.model.results(force=True)
         if out: self.results_output.setText(out)
+        self.terminal_widget.push({'res': self.model.res})
+
+    def savePickle(self):
+        try:
+            self.model.res
+        except AttributeError:
+            self._error('No results to save.', 'Error')
+            return
+
+        filename, ok = QInputDialog.getText(self, 'Save results', 
+                                            'Enter the file name:')		
+        if ok:
+            if not filename.endswith('.pickle'):
+                filename += '.pickle'
+
+            if os.path.exists(filename):
+                self.statusMessage(f'{filename} already exists!')            
+                return
+
+            self.model.res.save_pickle(filename)
+            self.statusMessage(f'Saved {filename}')
 
 
     def setDefaultPrior(self, *args):
@@ -658,6 +740,14 @@ class MainWindow(QtWidgets.QMainWindow):
         h1 = hash(self.model._default_priors[prior_name])
         h2 = hash((True, dist, float(arg1), float(arg2)))
         if h1 != h2:
+            if prior_name == 'eprior' and dist == 'Uniform':
+                a1, a2 = float(arg1), float(arg2)
+                if a1 < 0 or a1 > 1 or a2 < 0 or a2 > 1 or a1 > a2:
+                    self._error(
+                        'Eccentricity prior must have 0 < arg1 < arg2 < 1',
+                        'Prior limits')
+                    return
+
             self.model.set_priors(prior_name, False, dist, float(arg1), float(arg2))
 
 
@@ -673,21 +763,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model.GP = toggled
         self.tabWidget_2.setTabEnabled(2, self.model.GP)
 
+    def togglePlanets(self, val):
+        self.tabWidget_2.setTabEnabled(1, val != 0)
+
     def toggleMultiInstrument(self, toggled):
         self.label_offsets_prior.setEnabled(toggled)
         self.comboBox_offsets_prior.setEnabled(toggled)
         self.lineEdit_offsets_prior_arg1.setEnabled(toggled)
         self.lineEdit_offsets_prior_arg2.setEnabled(toggled)
         self.makeDefault_offsets_prior.setEnabled(toggled)
-
-
-    def _error(self, message, title=''):
-        msg = QtWidgets.QMessageBox()
-        msg.setIcon(QtWidgets.QMessageBox.Critical)
-        msg.setText(f"Error\n{message}")
-        msg.setWindowTitle(title)
-        msg.exec_()
-
 
     def saveModel(self):
         # if model has been loaded from an existing kima_setup file, warn the
@@ -751,23 +835,32 @@ class MainWindow(QtWidgets.QMainWindow):
             self._error('Please set the data file(s)', 'No data file')
             return
 
-        self.saveModel()
         threads = self.threads.value()
+        self.model.threads = threads
+        with open('.KIMATHREADS', 'w') as f:
+            f.write(str(threads) + '\n')
+        
+        self.saveModel()
 
         # Clear the output panel
         self.output.setText('')
 
         # QProcess object for external app
         self.process = QProcess(self)
-        # QProcess emits `readyRead` when there is data to be read
-        self.process.readyRead.connect(self.printProcessOutput)
 
-        # To prevent accidentally running multiple times
-        # disable the "Run" button when process starts, and enable it when it finishes
-        self.process.started.connect(lambda: self.runButton.setEnabled(False))
-        self.process.finished.connect(lambda: self.runButton.setEnabled(True))
+        # Should it run in the background?
+        bg = self.run_in_bg.isChecked()
 
-        self.callKima(threads)
+        if not bg:
+            # QProcess emits `readyRead` when there is data to be read
+            self.process.readyRead.connect(self.printProcessOutput)
+
+            # To prevent accidentally running multiple times disable the "Run" 
+            # button when process starts, and enable it when it finishes
+            self.process.started.connect(lambda: self.runButton.setEnabled(False))
+            self.process.finished.connect(lambda: self.runButton.setEnabled(True))
+
+        self.callKima(threads, bg)
 
 
     def printProcessOutput(self):
@@ -785,10 +878,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progressBar.setValue(100 * samples / total)
 
 
-    def callKima(self, threads):
-        # run the process
-        # `start` takes the exec and a list of arguments
-        self.process.start('kima-run', ['-t', str(threads), '--no-colors'])
+    def callKima(self, threads, bg=False):
+        # run the process (in the background and close window if bg=True)
+        # arguments are the executable and a list of arguments
+        executable, args = 'kima-run', ['-t', str(threads), '--no-colors']
+        if bg:
+            args.append('--background')
+            args.append('--quiet')
+            self.process.startDetached(executable, args)
+            self.close()
+        else:
+            self.process.start(executable, args)
 
 
 def main(args=None, tests=False):
