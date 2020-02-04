@@ -178,7 +178,7 @@ def _parse_args(options):
                      remove_crossing=remove_crossing)
 
 
-def showresults(options='', force_return=False, verbose=True):
+def showresults(options='', force_return=False, verbose=True, show_plots=True):
     """
     Generate and plot results from a kima run. The argument `options` should be 
     a string with the same options as for the kima-showresults script.
@@ -223,6 +223,17 @@ def showresults(options='', force_return=False, verbose=True):
     except IOError as e:
         print(e)
         sys.exit(1)
+    
+    # sometimes an IndexError is raised when the levels.txt file is being 
+    # updated too quickly, and the read operation is not atomic... we try one
+    # more time and then give up
+    except IndexError: 
+        try:
+            with redirect_stdout(stdout):
+                evidence, H, logx_samples = postprocess(
+                    plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
+        except IndexError:
+            sys.exit(1)
 
     # show kima tips
     if verbose:
@@ -249,7 +260,7 @@ def showresults(options='', force_return=False, verbose=True):
     if args.zip:
         res.save_zip(input('Filename to save model (must end with .zip): '))
 
-    if not args.save_plots:
+    if not args.save_plots and show_plots:
         show()  # render the plots
 
     # __main__.__file__ doesn't exist in the interactive interpreter

@@ -385,7 +385,7 @@ double RVmodel::perturb(RNG& rng)
 
             calculate_C();
         }
-        else if(rng.rand() <= 0.5) // perturb jitter(s)
+        else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
         {
             if(multi_instrument)
             {
@@ -396,7 +396,20 @@ double RVmodel::perturb(RNG& rng)
             {
                 Jprior->perturb(extra_sigma, rng);
             }
-            calculate_C();
+
+            calculate_C(); // recalculate covariance matrix
+
+            if (known_object)
+            {
+                remove_known_object();
+                KO_Pprior->perturb(KO_P, rng);
+                KO_Kprior->perturb(KO_K, rng);
+                KO_eprior->perturb(KO_e, rng);
+                KO_phiprior->perturb(KO_phi, rng);
+                KO_wprior->perturb(KO_w, rng);
+                add_known_object();
+            }
+
         }
         else // perturb other parameters: vsys, slope, offsets
         {
@@ -561,13 +574,13 @@ double RVmodel::perturb(RNG& rng)
 
     else
     {
-        if(rng.rand() <= 0.75)
+        if(rng.rand() <= 0.75) // perturb planet parameters
         {
             logH += planets.perturb(rng);
             planets.consolidate_diff();
             calculate_mu();
         }
-        else if(rng.rand() <= 0.5)
+        else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
         {
             if(multi_instrument)
             {
@@ -615,6 +628,7 @@ double RVmodel::perturb(RNG& rng)
                 }
             }
 
+            // propose new vsys
             Cprior->perturb(background, rng);
 
             // propose new instrument offsets

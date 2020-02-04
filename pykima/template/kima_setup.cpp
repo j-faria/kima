@@ -30,7 +30,7 @@ RVmodel::RVmodel():fix(true),npmax(1)
 int main(int argc, char** argv)
 {
     /* only one instrument */
-        datafile = "your data file here"; // set the RV data file
+        datafile = ""; // set the RV data file
 
         /// load the file. the second argument sets the units of the RVs (can be
         /// either "ms" or "kms") and the third (optional) argument, is the number
