@@ -37,7 +37,7 @@ def mkdir_remote(host, path, verbose=False):
     subprocess.check_call(['ssh', host, 'mkdir ' + pipes.quote(path)])
 
 
-def main(args=None):
+def main(args=None, stopIfNoReplace=True):
     if args is None:
         args = _parse_args()
     if isinstance(args, str):
@@ -58,7 +58,11 @@ def main(args=None):
     src = os.path.join(thisdir, 'template')
     templatefiles = glob.glob(os.path.join(src, '*'))
 
+    # by default, replace directory
+    replace = True
+
     if ':' in dst and '@' in dst:  # directory is in the server
+        server = True
         host, directory = dst.split(':')
         # user, host = server.split('@')
         dst = directory
@@ -70,12 +74,35 @@ def main(args=None):
         if answer.lower() != 'y':
             print('doing nothing!')
             return
-        server = True
     else:
-        print('Populating directory %s' % dst)
-        print('with kima template files: ' + \
-              ', '.join([os.path.basename(f) for f in templatefiles]))
         server = False
+
+        if os.path.exists(dst):
+            if os.path.exists(os.path.join(dst, 'kima_setup.cpp')):
+                msg = 'Directory "%s" exists and contains a kima_setup file. ' % dst
+                msg += 'Replace? (Y/n) '
+                print(msg, end='')
+                answer = input().lower()
+                if answer == 'n':
+                    replace = False
+                    if stopIfNoReplace:
+                        print('Doing nothing')
+                        sys.exit(0)
+                else:
+                    replace = True
+
+            else:
+                print('Directory "%s" exists. Continue? (Y/n) ' % dst, end='')
+                answer = input().lower()
+                if answer == 'n':
+                    print('Doing nothing')
+                    sys.exit(0)
+                replace = True
+
+        if replace:
+            print('Populating directory %s' % dst)
+            print('with kima template files: ' + \
+                ', '.join([os.path.basename(f) for f in templatefiles]))
 
     if server:
         if not exists_remote(host, dst, verbose=args.debug):
@@ -86,7 +113,8 @@ def main(args=None):
             # print(cmd)
             subprocess.check_call(cmd.split())
     else:
-        copy_tree(src, dst)
+        if replace:
+            copy_tree(src, dst)
 
     if server:
         with open(os.path.join(src, 'Makefile')) as f:
