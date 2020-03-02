@@ -128,7 +128,7 @@ RVmodel::RVmodel():
 
 
     // systemic velocity, always in m/s
-    Cprior = make_prior<Uniform>(data.get_y_min(), data.get_y_max()); // default
+    Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max()); // default
 
     // additional white noise, always in m/s
     // note: if multi_instrument=true, all jitters share this prior
