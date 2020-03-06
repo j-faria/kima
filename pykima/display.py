@@ -263,7 +263,7 @@ class KimaResults(object):
 
         if self.GPmodel:
             n_hyperparameters = 4
-            start_hyperpars = start_parameters + n_trend + n_offsets + n_inst_offsets + 1
+            start_hyperpars = start_parameters + n_trend + n_offsets + n_inst_offsets + n_act_ind + 1
             self.etas = self.posterior_sample[:, start_hyperpars:
                                               start_hyperpars +
                                               n_hyperparameters]
