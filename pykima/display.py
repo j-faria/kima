@@ -1815,11 +1815,11 @@ class KimaResults(object):
                 for j in range(self.inst_offsets.shape[1] + 1):
                     m = self.obs == j + 1
                     ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j],
-                                label=self.data_file[j])
+                                label=os.path.basename(self.data_file[j]))
                     if self.KO:
                         ax1.errorbar(t[m], y[m] - v_KO_at_t.mean(axis=0)[m],
                                      yerr[m], fmt='o', color=colors[j],
-                                     label=self.data_file[j])
+                                     label=os.path.basename(self.data_file[j]))
                 ax.legend(loc='upper left')
             else:
                 ax.errorbar(t, y, yerr, fmt='o')
