@@ -28,11 +28,11 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import numpy as np
 from scipy.stats import gaussian_kde
-try: # only available in scipy 1.1.0
+try:  # only available in scipy 1.1.0
     from scipy.signal import find_peaks
 except ImportError:
     find_peaks = None
-from scipy.stats._continuous_distns import reciprocal_gen
+from scipy.stats._continuous_distns import uniform_gen, reciprocal_gen
 import corner
 
 try:
@@ -91,22 +91,23 @@ class KimaResults(object):
         self.setup = setup
 
         # read the priors
-        priors = list(setup['priors.general'].values())
-        prior_names = list(setup['priors.general'].keys())
-        for section in ('priors.planets', 'priors.hyperpriors', 'priors.GP'):
-            try:
-                priors += list(setup[section].values())
-                prior_names += list(setup[section].keys())
-            except KeyError:
-                continue
-
         try:
+            priors = list(setup['priors.general'].values())
+            prior_names = list(setup['priors.general'].keys())
+            for section in ('priors.planets', 'priors.hyperpriors', 'priors.GP'):
+                try:
+                    priors += list(setup[section].values())
+                    prior_names += list(setup[section].keys())
+                except KeyError:
+                    continue
+
             priors += list(setup['priors.known_object'].values())
             prior_names += [
                 'KO_' + k for k in setup['priors.known_object'].keys()
             ]
         except KeyError:
-            pass
+            priors = []
+            prior_names = []
 
         self.priors = {
             n: v
@@ -114,7 +115,11 @@ class KimaResults(object):
         }
 
         if data_file is None:
-            self.multi = setup['kima']['multi'] == 'true'
+            try:
+                self.multi = setup['kima']['multi'] == 'true'
+            except KeyError:
+                self.multi = False
+
             if self.multi:
                 if setup['kima']['files'] == '':
                     # multi is true but in only one file
@@ -241,7 +246,11 @@ class KimaResults(object):
             n_inst_offsets = 0
 
         # activity indicator correlations?
-        self.indcorrel = setup['kima']['indicator_correlations'] == 'true'
+        try:
+            self.indcorrel = setup['kima']['indicator_correlations'] == 'true'
+        except KeyError:
+            self.indcorrel = False
+
         if self.indcorrel:
             self.activity_indicators = setup['kima']['indicators'].split(',')
             n_act_ind = len(self.activity_indicators)
@@ -257,7 +266,10 @@ class KimaResults(object):
 
         # find GP in the compiled model
         if GPmodel is None:
-            self.GPmodel = setup['kima']['GP'] == 'true'
+            try:
+                self.GPmodel = setup['kima']['GP'] == 'true'
+            except KeyError:
+                self.GPmodel = False
         else:
             self.GPmodel = GPmodel
 
@@ -288,7 +300,10 @@ class KimaResults(object):
             n_hyperparameters = 0
 
         # find MA in the compiled model
-        self.MAmodel = setup['kima']['MA'] == 'true'
+        try:
+            self.MAmodel = setup['kima']['MA'] == 'true'
+        except KeyError:
+            self.MAmodel = False
 
         if debug:
             print('MA model:', self.MAmodel)
@@ -1033,7 +1048,13 @@ class KimaResults(object):
         bins = np.arange(self.max_components + 2)
         nplanets = self.posterior_sample[:, self.index_component]
         n, _ = np.histogram(nplanets, bins=bins)
-        return n.flat[1:] / n.flat[:-1]
+        oldset = np.geterr()
+        np.seterr(divide='raise')
+        try:
+            return n.flat[1:] / n.flat[:-1]
+        except FloatingPointError:
+            np.seterr(**oldset)
+            return n[n != 0]
 
     def make_plot1(self):
         """ Plot the histogram of the posterior for Np """
@@ -1076,7 +1097,8 @@ class KimaResults(object):
             return fig
 
     def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
-                   kde=False, kde_bw=None, show_peaks=False, show_prior=False):
+                   density=False, kde=False, kde_bw=None, show_peaks=False,
+                   show_prior=False):
         """ 
         Plot the histogram (or the kde) of the posterior for orbital period P.
         Optionally provide the number of histogram bins, the bins themselves,
@@ -1151,14 +1173,22 @@ class KimaResults(object):
         else:
             if bins is None:
                 if plims is None:
-                    # by default, 100 bins in log between 0.1 and 1e7
+                    # prior = self.priors['Pprior']
+                    # if isinstance(prior.dist, uniform_gen):
+                    #     a, b = prior.interval(1)
+                    #     if logx:
+                    #         bins = 10**np.linspace(np.log10(a), np.log10(b), nbins)
+                    #     else:
+                    #         bins = np.linspace(a, b, nbins)
+                    # else:
+                    # default, 100 bins in log between 0.1 and 1e7
                     bins = 10**np.linspace(
                         np.log10(1e-1), np.log10(1e7), nbins)
                 else:
                     bins = 10**np.linspace(
                         np.log10(plims[0]), np.log10(plims[1]), nbins)
 
-            ax.hist(T, bins=bins, alpha=0.8)
+            ax.hist(T, bins=bins, alpha=0.8, density=density)
 
             if show_prior and T.size > 100:
                 kwargs = {
@@ -1166,15 +1196,19 @@ class KimaResults(object):
                     'alpha': 0.15,
                     'color': 'k',
                     'zorder': -1,
-                    'label': 'prior'
+                    'label': 'prior',
+                    'density': density,
                 }
 
                 if self.hyperpriors:
                     P = hyperprior_samples(T.size)
                     ax.hist(P, **kwargs)
                 else:
-                    prior = get_prior(self.setup['priors.planets']['Pprior'])
-                    ax.hist(prior.rvs(T.size), **kwargs)
+                    try:
+                        prior = get_prior(self.setup['priors.planets']['Pprior'])
+                        ax.hist(prior.rvs(T.size), **kwargs)
+                    except KeyError:
+                        pass
 
         ax.legend()
         ax.set(xscale='log' if logx else 'linear', xlabel=r'(Period/days)',
@@ -1374,10 +1408,14 @@ class KimaResults(object):
                 labels=xlabels,
                 show_titles=True,
                 plot_contours=False,
-                plot_datapoints=True,
-                plot_density=False,
-                # fill_contours=True, smooth=True,
-                # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
+                plot_datapoints=False,
+                plot_density=True,
+                # fill_contours=True,
+                smooth=True,
+                contourf_kwargs={
+                    'cmap': plt.get_cmap('afmhot'),
+                    'colors': None
+                },
                 hexbin_kwargs={
                     'cmap': plt.get_cmap('afmhot_r'),
                     'bins': 'log'
@@ -1452,7 +1490,7 @@ class KimaResults(object):
         else:
             return samples
 
-    def corner_planet_parameters(self, pmin=None, pmax=None):
+    def corner_planet_parameters(self, fig=None, pmin=None, pmax=None):
         """ Corner plot of the posterior samples for the planet parameters """
 
         labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'va']
@@ -1491,7 +1529,6 @@ class KimaResults(object):
 
         #
         c = corner.corner
-        fig = None
         colors = plt.rcParams["axes.prop_cycle"]
 
         for i, (datum, colorcycle) in enumerate(zip(data, colors)):
@@ -1534,7 +1571,7 @@ class KimaResults(object):
 
 
     def plot_random_planets(self, ncurves=50, over=0.1, pmin=None, pmax=None,
-                            show_vsys=False, show_trend=False):
+                            show_vsys=False, show_trend=False, Np=None):
         """
         Display the RV data together with curves from the posterior predictive.
         A total of `ncurves` random samples are chosen, and the Keplerian 
@@ -1556,7 +1593,7 @@ class KimaResults(object):
             t -= 24e5
 
         tt = np.linspace(t.min() - over * t.ptp(),
-                         t.max() + over * t.ptp(), 5000 + int(100 * over))
+                         t.max() + over * t.ptp(), 10000 + int(100 * over))
 
         if self.GPmodel:
             # let's be more reasonable for the number of GP prediction points
@@ -1592,13 +1629,24 @@ class KimaResults(object):
             ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
 
 
-        fig, ax = plt.subplots(1, 1)
+        if self.KO:
+            fig, (ax, ax1) = plt.subplots(1, 2, figsize=[2 * 6.4, 4.8],
+                                          constrained_layout=True)
+            ax1.set_title('Keplerian curve from known object removed')
+        else:
+            fig, ax = plt.subplots(1, 1)
+
         ax.set_title('Posterior samples in RV data space')
+        # ax.autoscale(False)
+        # ax.use_sticky_edges = False
 
         ## plot the Keplerian curves
-        for i in ii:
+        v_KO = np.zeros((ncurves, tt.size))
+        v_KO_at_t = np.zeros((ncurves, t.size))
+        for icurve, i in enumerate(ii):
             v = np.zeros_like(tt)
             v_at_t = np.zeros_like(t)
+
             if self.GPmodel:
                 v_at_ttGP = np.zeros_like(ttGP)
 
@@ -1611,13 +1659,21 @@ class KimaResults(object):
                 t0 = t[0] - (P * phi) / (2. * np.pi)
                 ecc = pars[3]
                 w = pars[4]
+
                 v += keplerian(tt, P, K, ecc, w, t0, 0.)
+                v_KO[icurve] = v
+
                 v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
+                v_KO_at_t[icurve] = v_at_t
+                ax.plot(tt, v_KO[icurve], alpha=0.4, color='g', ls='-')
+                # ax.add_line(plt.Line2D(tt, v_KO[icurve]))
 
             # get the planet parameters for the current (ith) sample
             pars = samples[i, :].copy()
             # how many planets in this sample?
             nplanets = pars.size / self.n_dimensions
+            if Np is not None and nplanets != Np:
+                continue
             # add the Keplerians for each of the planets
             for j in range(int(nplanets)):
                 P = pars[j + 0 * self.max_components]
@@ -1648,6 +1704,10 @@ class KimaResults(object):
                     v_at_ttGP += self.trendpars[i] * (ttGP - self.tmiddle)
                 if show_trend:
                     ax.plot(tt, vsys + self.trendpars[i] * (tt - self.tmiddle),
+                            alpha=0.2, color='m', ls=':')
+                    if self.KO:
+                        ax1.plot(
+                            tt, vsys + self.trendpars[i] * (tt - self.tmiddle),
                             alpha=0.2, color='m', ls=':')
 
             # plot the MA "prediction"
@@ -1685,13 +1745,23 @@ class KimaResults(object):
                     ax.plot(tt[time_mask], v_i[time_mask], alpha=0.1,
                             color=lighten_color(colors[j], 1.5))
 
+                    if self.KO:
+                        v_KO_i = v_KO[icurve].copy()
+                        v_KO_i[time_mask] += of
+                        ax1.plot(tt[time_mask],
+                                 v_i[time_mask] - v_KO_i[time_mask], alpha=0.1,
+                                 color=lighten_color(colors[j], 1.5))
+
                     time_mask = (t >= start) & (t <= end)
                     v_at_t[time_mask] += of
                     if self.GPmodel:
                         time_mask = (ttGP >= start) & (ttGP <= end)
                         v_at_ttGP[time_mask] += of
             else:
+                # if not self.GPmodel:
                 ax.plot(tt, v, alpha=0.1, color='k')
+                if self.KO:
+                    ax1.plot(tt, v - v_KO[icurve], alpha=0.1, color='k')
 
             # plot the GP prediction
             if self.GPmodel:
@@ -1701,8 +1771,12 @@ class KimaResults(object):
                 ax.plot(ttGP, mu + v_at_ttGP, alpha=0.2, color='plum')
 
             if show_vsys:
-                ax.plot(t, vsys * np.ones_like(t), alpha=0.2, color='r',
+                ax.plot(t, vsys * np.ones_like(t), alpha=0.1, color='r',
                         ls='--')
+                if self.KO:
+                    ax1.plot(t, vsys * np.ones_like(t), alpha=0.1, color='r',
+                             ls='--')
+
                 if self.multi:
                     for j in range(self.inst_offsets.shape[1]):
                         instrument_mask = self.obs == j + 1
@@ -1756,13 +1830,315 @@ class KimaResults(object):
                 for j in range(self.inst_offsets.shape[1] + 1):
                     m = self.obs == j + 1
                     ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j],
-                                label=self.data_file[j])
+                                label=os.path.basename(self.data_file[j]))
+                    if self.KO:
+                        ax1.errorbar(t[m], y[m] - v_KO_at_t.mean(axis=0)[m],
+                                     yerr[m], fmt='o', color=colors[j],
+                                     label=os.path.basename(self.data_file[j]))
                 ax.legend(loc='upper left')
             else:
                 ax.errorbar(t, y, yerr, fmt='o')
+                if self.KO:
+                    ax1.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
 
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
-        plt.tight_layout()
+        if self.KO:
+            ax1.set(xlabel='Time [days]', ylabel='RV [m/s]')
+        # plt.tight_layout()
+
+        if self.save_plots:
+            filename = 'kima-showresults-fig6.png'
+            print('saving in', filename)
+            fig.savefig(filename)
+
+        if self.return_figs:
+            return fig
+
+    def plot_random_planets_pyqt(self, ncurves=50, over=0.2, pmin=None,
+                                 pmax=None, show_vsys=False, show_trend=False,
+                                 Np=None):
+        """
+        Same as plot_random_planets but using pyqtgraph.
+        """
+        import pyqtgraph as pg
+        pg.setConfigOption('background', 'w')
+        pg.setConfigOption('foreground', 'k')
+
+        def color(s, alpha):
+            brush = list(pg.colorTuple(pg.mkColor(s)))
+            brush[-1] = alpha * 255
+            return brush
+
+        # colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
+
+        samples = self.get_sorted_planet_samples()
+        if self.max_components > 0:
+            samples, mask = \
+                self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
+        else:
+            mask = np.ones(samples.shape[0], dtype=bool)
+
+        t = self.data[:, 0].copy()
+        if t[0] > 24e5:
+            t -= 24e5
+
+        tt = np.linspace(t.min() - over * t.ptp(),
+                         t.max() + over * t.ptp(), 10000 + int(100 * over))
+
+        if self.GPmodel:
+            # let's be more reasonable for the number of GP prediction points
+            ## OLD: linearly spaced points (lots of useless points within gaps)
+            # ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
+            ## NEW: have more points near where there is data
+            kde = gaussian_kde(t)
+            ttGP = kde.resample(25000 + t.size * 3).reshape(-1)
+            # constrain ttGP within observed times, to not waste (this could go...)
+            ttGP = (ttGP + t[0]) % t.ptp() + t[0]
+            ttGP = np.r_[ttGP, t]
+            ttGP.sort()  # in-place
+
+            if t.size > 100:
+                ncurves = 10
+
+        y = self.data[:, 1].copy()
+        yerr = self.data[:, 2].copy()
+
+        ncurves = min(ncurves, samples.shape[0])
+
+        # select random `ncurves` indices
+        # from the (sorted, period-cut) posterior samples
+        ii = np.random.randint(samples.shape[0], size=ncurves)
+
+        if self.KO:
+            # title = 'Keplerian curve from known object removed'
+            title = 'Posterior samples in RV data space'
+            plt = pg.plot(title=title)
+            # fig, (ax, ax1) = plt.subplots(1, 2, figsize=[2 * 6.4, 4.8],
+            #                               constrained_layout=True)
+        else:
+            plt = pg.plot()
+            # fig, ax = plt.subplots(1, 1)
+
+        # ax.set_title('Posterior samples in RV data space')
+        # ax.autoscale(False)
+        # ax.use_sticky_edges = False
+
+        ## plot the Keplerian curves
+        v_KO = np.zeros((ncurves, tt.size))
+        v_KO_at_t = np.zeros((ncurves, t.size))
+        for icurve, i in enumerate(ii):
+            v = np.zeros_like(tt)
+            v_at_t = np.zeros_like(t)
+
+            if self.GPmodel:
+                v_at_ttGP = np.zeros_like(ttGP)
+
+            # known object, if set
+            if self.KO:
+                pars = self.KOpars[i]
+                P = pars[0]
+                K = pars[1]
+                phi = pars[2]
+                t0 = t[0] - (P * phi) / (2. * np.pi)
+                ecc = pars[3]
+                w = pars[4]
+
+                v += keplerian(tt, P, K, ecc, w, t0, 0.)
+                v_KO[icurve] = v
+
+                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
+                v_KO_at_t[icurve] = v_at_t
+                # ax.plot(tt, v_KO[icurve], alpha=0.4, color='g', ls='-')
+                # ax.add_line(plt.Line2D(tt, v_KO[icurve]))
+
+                plt.plot(tt, v_KO[icurve], pen=color('g', 0.2), symbol=None)
+
+            # get the planet parameters for the current (ith) sample
+            pars = samples[i, :].copy()
+            # how many planets in this sample?
+            nplanets = pars.size / self.n_dimensions
+            if Np is not None and nplanets != Np:
+                continue
+            # add the Keplerians for each of the planets
+            for j in range(int(nplanets)):
+                P = pars[j + 0 * self.max_components]
+                if P == 0.0 or np.isnan(P):
+                    continue
+                K = pars[j + 1 * self.max_components]
+                phi = pars[j + 2 * self.max_components]
+                t0 = t[0] - (P * phi) / (2. * np.pi)
+                ecc = pars[j + 3 * self.max_components]
+                w = pars[j + 4 * self.max_components]
+                v += keplerian(tt, P, K, ecc, w, t0, 0.)
+                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
+                if self.GPmodel:
+                    v_at_ttGP += keplerian(ttGP, P, K, ecc, w, t0, 0.)
+
+            # systemic velocity for the current (ith) sample
+            vsys = self.posterior_sample[mask][i, -1]
+            v += vsys
+            v_at_t += vsys
+            if self.GPmodel:
+                v_at_ttGP += vsys
+
+            # add the trend, if present
+            if self.trend:
+                v += self.trendpars[i] * (tt - self.tmiddle)
+                v_at_t += self.trendpars[i] * (t - self.tmiddle)
+                if self.GPmodel:
+                    v_at_ttGP += self.trendpars[i] * (ttGP - self.tmiddle)
+                if show_trend:
+                    plt.plot(tt,
+                             vsys + self.trendpars[i] * (tt - self.tmiddle),
+                             pen=color('m', 0.2), symbol=None)
+                    # ax.plot(tt, vsys + self.trendpars[i] * (tt - self.tmiddle),
+                    #         alpha=0.2, color='m', ls=':')
+                    # if self.KO:
+                    #     ax1.plot(
+                    #         tt, vsys + self.trendpars[i] * (tt - self.tmiddle),
+                    #         alpha=0.2, color='m', ls=':')
+
+            # plot the MA "prediction"
+            # if self.MAmodel:
+            #     vMA = v_at_t.copy()
+            #     dt = np.ediff1d(self.t)
+            #     sigmaMA, tauMA = self.MA.mean(axis=0)
+            #     vMA[1:] += sigmaMA * np.exp(np.abs(dt) / tauMA) * (self.y[:-1] - v_at_t[:-1])
+            #     vMA[np.abs(vMA) > 1e6] = np.nan
+            #     ax.plot(t, vMA, 'o-', alpha=1, color='m')
+
+            # v only has the Keplerian components, not the GP predictions
+            plt.plot(tt, v, pen=color('k', 0.2), symbol=None)
+            # ax.plot(tt, v, alpha=0.2, color='k')
+
+            # add the instrument offsets, if present
+            if self.multi and len(self.data_file) > 1:
+                number_offsets = self.inst_offsets.shape[1]
+                for j in range(number_offsets + 1):
+                    if j == number_offsets:
+                        # the last dataset defines the systemic velocity,
+                        # so the offset is zero
+                        of = 0.
+                    else:
+                        of = self.inst_offsets[i, j]
+
+                    instrument_mask = self.obs == j + 1
+                    start = t[instrument_mask].min()
+                    end = t[instrument_mask].max()
+                    ptp = t[instrument_mask].ptp()
+                    time_mask = (tt > start - over * ptp) & (tt <
+                                                             end + over * ptp)
+
+                    v_i = v.copy()
+                    v_i[time_mask] += of
+                    # ax.plot(tt[time_mask], v_i[time_mask], alpha=0.1,
+                    #         color=lighten_color(colors[j], 1.5))
+
+                    time_mask = (t >= start) & (t <= end)
+                    v_at_t[time_mask] += of
+                    if self.GPmodel:
+                        time_mask = (ttGP >= start) & (ttGP <= end)
+                        v_at_ttGP[time_mask] += of
+            else:
+                pass
+                # if not self.GPmodel:
+                # ax.plot(tt, v, alpha=0.1, color='k')
+                # if self.KO:
+                #     ax1.plot(tt, v - v_KO[icurve], alpha=0.1, color='k')
+
+            # plot the GP prediction
+            if self.GPmodel:
+                self.GP.kernel.setpars(self.eta1[i], self.eta2[i],
+                                       self.eta3[i], self.eta4[i])
+                mu = self.GP.predict(y - v_at_t, ttGP, return_std=False)
+                # ax.plot(ttGP, mu + v_at_ttGP, alpha=0.2, color='plum')
+
+            if show_vsys:
+                pass
+                # ax.plot(t, vsys * np.ones_like(t), alpha=0.1, color='r',
+                #         ls='--')
+                # if self.KO:
+                #     ax1.plot(t, vsys * np.ones_like(t), alpha=0.1, color='r',
+                #              ls='--')
+
+                if self.multi:
+                    for j in range(self.inst_offsets.shape[1]):
+                        instrument_mask = self.obs == j + 1
+                        start = t[instrument_mask].min()
+                        end = t[instrument_mask].max()
+
+                        of = self.inst_offsets[i, j]
+
+                        # ax.hlines(vsys + of, xmin=start, xmax=end, alpha=0.2,
+                        #           color=colors[j])
+
+        ## we could also choose to plot the GP prediction using the median of
+        ## the hyperparameters posterior distributions
+        # if self.GPmodel:
+        #     # set the GP parameters to the median (or mean?) of their posteriors
+        #     eta1, eta2, eta3, eta4 = np.median(self.etas, axis=0)
+        #     # eta1, eta2, eta3, eta4 = np.mean(self.etas, axis=0)
+        #     self.GP.kernel.setpars(eta1, eta2, eta3, eta4)
+        #
+        #     # set the orbital parameters to the median of their posteriors
+        #     P,K,phi,ecc,w = np.median(samples, axis=0)
+        #     t0 = t[0] - (P*phi)/(2.*np.pi)
+        #     mu_orbital = keplerian(t, P, K, ecc, w, t0, 0.)
+        #
+        #     # calculate the mean and std prediction from the GP model
+        #     mu, std = self.GP.predict(y - mu_orbital, ttGP, return_std=True)
+        #     mu_orbital = keplerian(ttGP, P, K, ecc, w, t0, 0.)
+        #
+        #     # 2-sigma region around the predictive mean
+        #     ax.fill_between(ttGP, y1=mu+mu_orbital-2*std, y2=mu+mu_orbital+2*std,
+        #                     alpha=0.3, color='m')
+
+        # ax.use_sticky_edges = True
+        # ax.autoscale(True)
+
+        ## plot the data
+        if self.fiber_offset:
+            mask = t < 57170
+            if self.multi:
+                for j in range(self.inst_offsets.shape[1] + 1):
+                    m = self.obs == j + 1
+                    # ax.errorbar(t[m & mask], y[m & mask], yerr[m & mask],
+                    #             fmt='o', color=colors[j])
+            else:
+                pass
+                # ax.errorbar(t[mask], y[mask], yerr[mask], fmt='o')
+
+            yshift = np.vstack([y[~mask], y[~mask] - self.offset.mean()])
+            # for i, ti in enumerate(t[~mask]):
+            #     ax.errorbar(ti, yshift[0, i], fmt='o', color='m', alpha=0.2)
+            #     ax.errorbar(ti, yshift[1, i], yerr[~mask][i], fmt='o',
+            #                 color='r')
+        else:
+            if self.multi:
+                for j in range(self.inst_offsets.shape[1] + 1):
+                    m = self.obs == j + 1
+                    err = pg.ErrorBarItem(x=t[m], y=y[m], height=yerr[m],
+                                          beam=0, pen={'color':
+                                                       'r'})  #, 'width':0})
+                    plt.addItem(err)
+                    plt.plot(t[m], y[m], pen=None, symbol='o')
+                    # ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j],
+                    #             label=self.data_file[j])
+                    # if self.KO:
+                    #     ax1.errorbar(t[m], y[m] - v_KO_at_t.mean(axis=0)[m],
+                    #                  yerr[m], fmt='o', color=colors[j],
+                    #                  label=self.data_file[j])
+                # ax.legend()
+            else:
+                ax.errorbar(t, y, yerr, fmt='o')
+                if self.KO:
+                    ax1.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
+
+        return
+        ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
+        if self.KO:
+            ax1.set(xlabel='Time [days]', ylabel='RV [m/s]')
+        # plt.tight_layout()
 
         if self.save_plots:
             filename = 'kima-showresults-fig6.png'
