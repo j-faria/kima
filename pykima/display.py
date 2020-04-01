@@ -1230,6 +1230,9 @@ class KimaResults(object):
         if self.max_components == 0:
             print('Model has no planets! make_plot3() doing nothing...')
             return
+        if self.T.size == 0:
+            print('None of the posterior samples have planets! make_plot3() doing nothing...')
+            return
 
         if self.log_period:
             T = np.exp(self.T)
@@ -1238,7 +1241,7 @@ class KimaResults(object):
             T = self.T
 
         A, E = self.A, self.E
-
+        
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
         # the y scale in loglog looks bad if the semi-amplitude doesn't have
@@ -1246,7 +1249,7 @@ class KimaResults(object):
         Khdr_threshold = 30
 
         if points:
-            if A.ptp() > Khdr_threshold:
+            if A.size > 1 and A.ptp() > Khdr_threshold:
                 ax1.loglog(T, A, '.', markersize=2, zorder=2)
             else:
                 ax1.semilogx(T, A, '.', markersize=2, zorder=2)
@@ -1254,7 +1257,7 @@ class KimaResults(object):
             ax2.semilogx(T, E, '.', markersize=2, zorder=2)
 
         else:
-            if A.ptp() > 30:
+            if A.size > 1 and A.ptp() > 30:
                 ax1.hexbin(T, A, gridsize=gridsize, bins='log', xscale='log',
                            yscale='log', cmap=plt.get_cmap('afmhot_r'))
             else:
@@ -1835,9 +1838,6 @@ class KimaResults(object):
             filename = 'kima-showresults-fig6.png'
             print('saving in', filename)
             fig.savefig(filename)
-
-        if self.return_figs:
-            return fig
 
     def plot_random_planets_pyqt(self, ncurves=50, over=0.2, pmin=None,
                                  pmax=None, show_vsys=False, show_trend=False,
