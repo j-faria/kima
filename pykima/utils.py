@@ -164,7 +164,8 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
     """
     if verbose: print('Using star mass = %s solar mass' % star_mass)
 
-    if type(P) in (int, float):
+    try:
+        P = float(P)
         # calculate for one value of the orbital period
         # then K, e, and star_mass should also be floats
         assert isinstance(K, float) and isinstance(e, float)
@@ -180,7 +181,8 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
             return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
         else:
             return m_mj, m_me
-    else:
+
+    except TypeError:
         # calculate for an array of periods
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             # include (Gaussian) uncertainty on the stellar mass
@@ -324,7 +326,11 @@ def find_prior_limits(prior):
     if name == 'ModifiedLogUniform':
         return (0.0, float(inparens.split(';')[1]))
 
-    if name in ('Uniform', 'LogUniform'):
+    if name == 'Uniform':
+        v1, v2 = inparens.split(';')
+        return (float(v1), float(v2) - float(v1))
+
+    if name == 'LogUniform':
         return tuple(float(v) for v in inparens.split(';'))
 
     if name == 'Gaussian':
@@ -344,11 +350,14 @@ def find_prior_parameters(prior):
         name = name.replace('Truncated', '')
         truncated = True
 
-    twopars = ('Uniform', 'LogUniform', 'ModifiedLogUniform', 'Gaussian',
-               'Kumaraswamy', 'Cauchy')
+    twopars = ('LogUniform', 'ModifiedLogUniform', 'Gaussian', 'Kumaraswamy',
+               'Cauchy')
 
     if name in twopars:
         r = [float(v) for v in inparens.split(';')]
+    elif name == 'Uniform':
+        v1, v2 = inparens.split(';')
+        r = [float(v1), float(v2) - float(v1)]
     elif name == 'Exponential':
         r = [
             float(inparens),
