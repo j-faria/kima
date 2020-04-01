@@ -1,3 +1,11 @@
+import sys
+
+try:
+    import PyQt5
+except ImportError:
+    print('Sorry, the GUI requires the PyQT5 package...')
+    sys.exit(1)
+
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtWidgets import QStatusBar, QInputDialog
 from PyQt5.QtCore import QProcess, Qt
@@ -7,43 +15,41 @@ try:
 except (ModuleNotFoundError, ImportError):
     from gui_helpers import *
 
-# import pyqtgraph as pg
-import sys, os
+import os
+import re
+import io
 import shutil
 import argparse
-import re
-from hashlib import md5
-import io
-from contextlib import redirect_stdout
-
-from hashlib import md5
-from collections import namedtuple
 import contextlib
+from contextlib import redirect_stdout
+from collections import namedtuple
+from hashlib import md5
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pykima as pk
 
-from matplotlib.figure import Figure
+# from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import (
     FigureCanvasQTAgg as FigureCanvas,
     NavigationToolbar2QT as NavigationToolbar)
 
 
-
 @contextlib.contextmanager
 def chdir(dir):
-    curdir= os.getcwd()
+    curdir = os.getcwd()
     try:
         os.chdir(dir)
         yield
     finally:
         os.chdir(curdir)
 
+
 def usage():
     u = "kima-gui [DIRECTORY]\n"
     u += "Create a kima template in DIRECTORY and run the GUI there.\n"
     return u
+
 
 def _parse_args():
     parser = argparse.ArgumentParser(usage=usage())
@@ -158,13 +164,19 @@ class KimaModel:
 
     @property
     def ymin(self):
-        if self.data: return self.data['y'].min().round(3)
+        if self.data:
+            return self.data['y'].min().round(3)
+
     @property
     def ymax(self):
-        if self.data: return self.data['y'].max().round(3)
+        if self.data:
+            return self.data['y'].max().round(3)
+
     @property
     def yspan(self):
-        if self.data: return self.data['y'].ptp().round(3)
+        if self.data:
+            return self.data['y'].ptp().round(3)
+
     @property
     def topslope(self):
         if self.data:
@@ -179,7 +191,7 @@ class KimaModel:
         output = None
         if h != self._levels_hash or force:
             self._levels_hash = h
-            with io.StringIO() as buf, redirect_stdout(buf): # redirect stdout
+            with io.StringIO() as buf, redirect_stdout(buf):  # redirect stdout
                 self.res = pk.showresults(force_return=True, show_plots=False)
                 output = buf.getvalue()
 
@@ -189,7 +201,7 @@ class KimaModel:
         return output
 
     def load(self):
-        """ 
+        """
         Try to read and load a kima_setup file with the help of RegExp.
         Note that C++ is notoriously hard to parse, so for anything other than
         fairly standard kima_setup files, don't expect this function to work!
@@ -240,13 +252,13 @@ class KimaModel:
         # find priors (here be dragons!)
         number = '([-+]?[0-9]*.?[0-9]*[E0-9]*)'
         for prior in self._default_priors.keys():
-            pat = re.compile(rf'{prior}\s?=\s?make_prior<(\w+)>\({number}\s?,\s?{number}\)')
+            pat = re.compile(
+                rf'{prior}\s?=\s?make_prior<(\w+)>\({number}\s?,\s?{number}\)')
             match = pat.findall(setup)
             if len(match) == 1:
                 m = match[0]
                 dist, arg1, arg2 = m[0], float(m[1]), float(m[2])
                 self.set_priors(prior, False, dist, arg1, arg2)
-
 
         # find datafile(s)
         pat = re.compile(f'const bool multi_instrument = (\w+)')
@@ -255,7 +267,7 @@ class KimaModel:
 
         if multi_instrument:
             pat = re.compile(r'datafiles\s?\=\s?\{(.*?)\}',
-                             flags=re.MULTILINE|re.DOTALL)
+                             flags=re.MULTILINE | re.DOTALL)
             match_inside_braces = pat.findall(setup)
             inside_braces = match_inside_braces[0]
 
@@ -323,7 +335,6 @@ class KimaModel:
         except FileNotFoundError:
             pass
 
-
     def save(self):
         """ Save this model to the OPTIONS file and the kima_setup file """
         self._save_OPTIONS()
@@ -339,11 +350,12 @@ class KimaModel:
             self._end_main(f)
             f.write('\n\n')
 
-    ## the following are helper methods to fill parts of the kima_setup file
+    # the following are helper methods to fill parts of the kima_setup file
     def _write_settings(self, file):
-        r = lambda val: 'true' if val else 'false'
+        def r(val): return 'true' if val else 'false'
         cb = 'const bool'
-        file.write(f'{cb} obs_after_HARPS_fibers = {r(self.obs_after_HARPS_fibers)};\n')
+        file.write(
+            f'{cb} obs_after_HARPS_fibers = {r(self.obs_after_HARPS_fibers)};\n')
         file.write(f'{cb} GP = {r(self.GP)};\n')
         file.write(f'{cb} MA = {r(self.MA)};\n')
         file.write(f'{cb} hyperpriors = {r(self.hyperpriors)};\n')
@@ -353,8 +365,9 @@ class KimaModel:
         file.write('\n')
 
     def _write_constructor(self, file):
-        r = lambda val: 'true' if val else 'false'
-        file.write(f'RVmodel::RVmodel():fix({r(self.fix_Np)}),npmax({self.max_Np})\n')
+        def r(val): return 'true' if val else 'false'
+        file.write(
+            f'RVmodel::RVmodel():fix({r(self.fix_Np)}),npmax({self.max_Np})\n')
 
     def _inside_constructor(self, file):
         file.write('{\n')
@@ -362,14 +375,17 @@ class KimaModel:
         got_conditional = False
         for name, sets in self.priors.items():
             # print(name, sets)
-            if not sets[0]: # if not default prior
+            if not sets[0]:  # if not default prior
                 if name in self._planet_priors:
                     if not got_conditional:
-                        file.write(f'auto c = planets.get_conditional_prior();\n')
+                        file.write(
+                            f'auto c = planets.get_conditional_prior();\n')
                         got_conditional = True
-                    file.write(f'c->{name} = make_prior<{sets[1]}>({sets[2]}, {sets[3]});\n')    
+                    file.write(
+                        f'c->{name} = make_prior<{sets[1]}>({sets[2]}, {sets[3]});\n')
                 else:
-                    file.write(f'{name} = make_prior<{sets[1]}>({sets[2]}, {sets[3]});\n')
+                    file.write(
+                        f'{name} = make_prior<{sets[1]}>({sets[2]}, {sets[3]});\n')
 
         file.write('\n}\n')
         file.write('\n')
@@ -388,11 +404,11 @@ class KimaModel:
             files = [f'"{datafile}"' for datafile in self.filename]
             files = ', '.join(files)
             file.write(f'\tdatafiles = {{ {files} }};\n')
-            file.write(f'\tload_multi(datafiles, "{self.units}", {self.skip});\n')
+            file.write(
+                f'\tload_multi(datafiles, "{self.units}", {self.skip});\n')
         else:
             file.write(f'\tdatafile = "{self.filename[0]}";\n')
             file.write(f'\tload(datafile, "{self.units}", {self.skip});\n')
-
 
     def _start_main(self, file):
         file.write('int main(int argc, char** argv)\n')
@@ -408,19 +424,21 @@ class KimaModel:
         opt = list(self.OPTIONS.values())
         with open('OPTIONS', 'w') as file:
             file.write('# File containing parameters for DNest4\n')
-            file.write('# Put comments at the top, or at the end of the line.\n')
+            file.write(
+                '# Put comments at the top, or at the end of the line.\n')
             file.write(f'{opt[0]}\t# Number of particles\n')
             file.write(f'{opt[1]}\t# new level interval\n')
             file.write(f'{opt[2]}\t# save interval\n')
-            file.write(f'{opt[3]}\t# threadSteps: number of steps each thread does independently before communication\n')
+            file.write(
+                f'{opt[3]}\t# threadSteps: number of steps each thread does independently before communication\n')
             file.write(f'{opt[4]}\t# maximum number of levels\n')
             file.write(f'{opt[5]}\t# Backtracking scale length (lambda)\n')
-            file.write(f'{opt[6]}\t# Strength of effect to force histogram to equal push (beta)\n')
+            file.write(
+                f'{opt[6]}\t# Strength of effect to force histogram to equal push (beta)\n')
             file.write(f'{opt[7]}\t# Maximum number of saves (0 = infinite)\n')
             file.write('    # (optional) samples file\n')
             file.write('    # (optional) sample_info file\n')
             file.write('    # (optional) levels file\n')
-
 
 
 # PyQT class for the GUI
@@ -460,11 +478,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def showKimaHelp(self):
         show_kima_help_window()
+
     def showGUIHelp(self):
         show_gui_help_window()
+
     def showAbout(self):
         show_about_window()
-
 
     def statusMessage(self, message):
         """ Print a message at the bottom of the window """
@@ -480,9 +499,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def updateUI(self):
         """
-        Updates the widgets whenever an interaction happens. Typically some 
-        interaction takes place, the UI responds, and informs the model of the 
-        change.  Then this method is called, pulling from the model information 
+        Updates the widgets whenever an interaction happens. Typically some
+        interaction takes place, the UI responds, and informs the model of the
+        change. Then this method is called, pulling from the model information
         that is updated in the GUI.
         """
         self.lineEdit_2.setText(self.model.directory)
@@ -493,14 +512,15 @@ class MainWindow(QtWidgets.QMainWindow):
             files = ', '.join(files)
         self.lineEdit.setText(files)
 
-        unit = {'kms':'km/s', 'ms':'m/s'}[self.model.units]
+        unit = {'kms': 'km/s', 'ms': 'm/s'}[self.model.units]
         index = self.units.findText(unit, Qt.MatchFixedString)
         if index >= 0:
             self.units.setCurrentIndex(index)
         self.header_skip.setValue(self.model.skip)
 
         # general model settings
-        self.obs_after_HARPS_fibers_check.setChecked(self.model.obs_after_HARPS_fibers)
+        self.obs_after_HARPS_fibers_check.setChecked(
+            self.model.obs_after_HARPS_fibers)
         self.GP_check.setChecked(self.model.GP)
         self.MA_check.setChecked(self.model.MA)
         self.hyperpriors_check.setChecked(self.model.hyperpriors)
@@ -544,19 +564,17 @@ class MainWindow(QtWidgets.QMainWindow):
             radio = getattr(self, 'is_default_' + prior_name)
             radio.setChecked(prior[0])
 
-
         # sampler options
-        self.new_level_interval.setValue(self.model.OPTIONS['new_level_interval'])
+        self.new_level_interval.setValue(
+            self.model.OPTIONS['new_level_interval'])
         self.save_interval.setValue(self.model.OPTIONS['save_interval'])
         self.max_saves.setValue(self.model.OPTIONS['max_saves'])
         self.threads.setValue(self.model.threads)
-
 
     def shutdown_kernel(self):
         """ Shutdown the embeded IPython kernel, but quietly """
         self.terminal_widget.kernel_client.stop_channels()
         self.terminal_widget.kernel_manager.shutdown_kernel()
-
 
     def addmpl(self, tab, fig):
         self.canvases[tab] = FigureCanvas(fig)
@@ -578,18 +596,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.rmmpl(tab)
         self.addmpl(tab, fig)
 
-
     def slot1(self):
         """ Called when the user presses the Browse button """
-        self.statusMessage( "Browse button pressed" )
+        self.statusMessage("Browse button pressed")
         options = QtWidgets.QFileDialog.Options()
         options |= QtWidgets.QFileDialog.DontUseNativeDialog
         files, _ = QtWidgets.QFileDialog.getOpenFileNames(
-                        None,
-                        "Select data file(s)",
-                        "",
-                        "All Files (*);;RDB Files (*.rdb);;Text files (*.txt)",
-                        options=options)
+            None,
+            "Select data file(s)",
+            "",
+            "All Files (*);;RDB Files (*.rdb);;Text files (*.txt)",
+            options=options)
         if files:
             n = len(files)
             if n > 1:
@@ -631,7 +648,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def makePlotsAll(self):
         out = self.model.results()
-        if out: self.results_output.setText(out)
+        if out:
+            self.results_output.setText(out)
         self.terminal_widget.push({'res': self.model.res})
         plt.close('all')
 
@@ -640,7 +658,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if '6' in button:
             try:
                 fig = self.model.res.plot_random_planets(show_vsys=True,
-                                                        show_trend=True)
+                                                         show_trend=True)
             except ValueError as e:
                 self._error('Something went wrong creating this plot.',
                             'This is awkward...')
@@ -660,7 +678,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fig73 = self.model.res.hist_extra_sigma()
             self.setmpl('tab_7_3', fig73)
             plt.close()
-            
+
             self.tabWidget.setCurrentIndex(6)
 
         elif '8' in button:
@@ -668,7 +686,7 @@ class MainWindow(QtWidgets.QMainWindow):
             pk.classic.postprocess(plot=True)
             # for i in plt.get_fignums()[:1]:
             #     fig = plt.figure(i)
-                # self.addmpl('tab_diagnostic', fig)
+            # self.addmpl('tab_diagnostic', fig)
             # self.tabWidget.setCurrentIndex(0)
             plt.ioff()
 
@@ -685,7 +703,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def reloadResults(self):
         out = self.model.results(force=True)
-        if out: self.results_output.setText(out)
+        if out:
+            self.results_output.setText(out)
         self.terminal_widget.push({'res': self.model.res})
 
     def savePickle(self):
@@ -695,19 +714,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self._error('No results to save.', 'Error')
             return
 
-        filename, ok = QInputDialog.getText(self, 'Save results', 
-                                            'Enter the file name:')		
+        filename, ok = QInputDialog.getText(self, 'Save results',
+                                            'Enter the file name:')
         if ok:
             if not filename.endswith('.pickle'):
                 filename += '.pickle'
 
             if os.path.exists(filename):
-                self.statusMessage(f'{filename} already exists!')            
+                self.statusMessage(f'{filename} already exists!')
                 return
 
             self.model.res.save_pickle(filename)
             self.statusMessage(f'Saved {filename}')
-
 
     def setDefaultPrior(self, *args):
         # get the name of the button which was pressed and from that which prior
@@ -716,7 +734,6 @@ class MainWindow(QtWidgets.QMainWindow):
         which = button.objectName().replace('makeDefault_', '')
         self.model.set_prior_to_default(which)
         self.updateUI()
-
 
     def setPrior(self, prior_name):
         names = {
@@ -748,8 +765,8 @@ class MainWindow(QtWidgets.QMainWindow):
                         'Prior limits')
                     return
 
-            self.model.set_priors(prior_name, False, dist, float(arg1), float(arg2))
-
+            self.model.set_priors(prior_name, False, dist,
+                                  float(arg1), float(arg2))
 
     def toggleTrend(self, toggled):
         self.model.trend = toggled
@@ -804,8 +821,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model.max_Np = self.max_Np.value()
 
         self.model.skip = self.header_skip.value()
-        self.model.units = {'km/s':'kms', 'm/s':'ms'}[self.units.currentText()]
-        self.model.data # try loading the data
+        self.model.units = {'km/s': 'kms',
+                            'm/s': 'ms'}[self.units.currentText()]
+        self.model.data  # try loading the data
 
         self.setOPTIONS()
         for prior in self.model.priors.keys():
@@ -815,9 +833,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model.save()
         self.statusMessage('Saved model')
 
-
     def setOPTIONS(self):
-        self.model.OPTIONS['new_level_interval'] = int(self.new_level_interval.value())
+        self.model.OPTIONS['new_level_interval'] = int(
+            self.new_level_interval.value())
         self.model.OPTIONS['save_interval'] = int(self.save_interval.value())
         self.model.OPTIONS['max_saves'] = int(self.max_saves.value())
 
@@ -829,7 +847,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.process.state() == QProcess.Running:
             self.process.terminate()
 
-
     def run(self):
         if self.model.filename is None:
             self._error('Please set the data file(s)', 'No data file')
@@ -839,7 +856,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model.threads = threads
         with open('.KIMATHREADS', 'w') as f:
             f.write(str(threads) + '\n')
-        
+
         self.saveModel()
 
         # Clear the output panel
@@ -855,13 +872,14 @@ class MainWindow(QtWidgets.QMainWindow):
             # QProcess emits `readyRead` when there is data to be read
             self.process.readyRead.connect(self.printProcessOutput)
 
-            # To prevent accidentally running multiple times disable the "Run" 
+            # To prevent accidentally running multiple times disable the "Run"
             # button when process starts, and enable it when it finishes
-            self.process.started.connect(lambda: self.runButton.setEnabled(False))
-            self.process.finished.connect(lambda: self.runButton.setEnabled(True))
+            self.process.started.connect(
+                lambda: self.runButton.setEnabled(False))
+            self.process.finished.connect(
+                lambda: self.runButton.setEnabled(True))
 
         self.callKima(threads, bg)
-
 
     def printProcessOutput(self):
         cursor = self.output.textCursor()
@@ -876,7 +894,6 @@ class MainWindow(QtWidgets.QMainWindow):
             samples = 0
             total = 1
         self.progressBar.setValue(100 * samples / total)
-
 
     def callKima(self, threads, bg=False):
         # run the process (in the background and close window if bg=True)
@@ -902,7 +919,8 @@ def main(args=None, tests=False):
         # print(args)
 
         if args.version:
-            version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
+            version_file = os.path.join(
+                os.path.dirname(__file__), '../VERSION')
             print('kima', open(version_file).read().strip())  # same as kima
             sys.exit(0)
 
