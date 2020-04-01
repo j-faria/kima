@@ -48,13 +48,14 @@ class KimaResults(object):
     """ A class to hold, analyse, and display the results from kima """
 
     def __init__(self, options, data_file=None, save_plots=False,
-                 verbose=False, fiber_offset=None, hyperpriors=None,
-                 trend=None, GPmodel=None,
+                 return_figs=True, verbose=False, fiber_offset=None,
+                 hyperpriors=None, trend=None, GPmodel=None,
                  posterior_samples_file='posterior_sample.txt'):
 
         self.options = options
         debug = False  # 'debug' in options
         self.save_plots = save_plots
+        self.return_figs = return_figs
         self.verbose = verbose
 
         self.removed_crossing = False
@@ -1092,6 +1093,9 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
+        if self.return_figs:
+            return fig
+
     def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
                    density=False, kde=False, kde_bw=None, show_peaks=False,
                    show_prior=False):
@@ -1220,6 +1224,9 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
+        if self.return_figs:
+            return fig
+
     def make_plot3(self, points=True, gridsize=50):
         """
         Plot the 2d histograms of the posteriors for semi-amplitude 
@@ -1303,6 +1310,9 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
+        if self.return_figs:
+            return fig
+
     def make_plot4(self, Np=None, ranges=None):
         """ 
         Plot histograms for the GP hyperparameters. If Np is not None, highlight
@@ -1316,7 +1326,6 @@ class KimaResults(object):
         labels = ['eta1', 'eta2', 'eta3', 'eta4']
         if ranges is None:
             ranges = 4 * [None]
-        print(ranges)
 
         if Np is not None:
             m = self.posterior_sample[:, self.index_component] == Np
@@ -1340,6 +1349,9 @@ class KimaResults(object):
             filename = 'kima-showresults-fig4.png'
             print('saving in', filename)
             fig.savefig(filename)
+
+        if self.return_figs:
+            return fig
 
     def make_plot5(self, show=True, ranges=None):
         """ Corner plot for the GP hyperparameters """
@@ -1431,6 +1443,9 @@ class KimaResults(object):
             filename = 'kima-showresults-fig5.png'
             print('saving in', filename)
             self.corner1.savefig(filename)
+
+        if self.return_figs:
+            return self.corner1
 
     def get_sorted_planet_samples(self):
         # all posterior samples for the planet parameters
@@ -2149,6 +2164,9 @@ class KimaResults(object):
             filename = 'kima-showresults-fig7.1.png'
             print('saving in', filename)
             fig.savefig(filename)
+        
+        if self.return_figs:
+            return fig
 
     def hist_vsys(self, show_offsets=True, specific=None):
         """ 
@@ -2159,11 +2177,15 @@ class KimaResults(object):
         `self.data_file`). In that case, this function works out the RV offset
         between the `specific[0]` and `specific[1]` instruments.
         """
+        figures = []
+
         vsys = self.posterior_sample[:, -1]
         units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
         estimate = percentile68_ranges_latex(vsys) + units
 
         fig, ax = plt.subplots(1, 1)
+        figures.append(fig)
+
         ax.hist(vsys)
         title = 'Posterior distribution for $v_{\\rm sys}$ \n %s' % estimate
         ax.set(xlabel='vsys' + units, ylabel='posterior samples', title=title)
@@ -2176,8 +2198,9 @@ class KimaResults(object):
         if show_offsets and self.multi:
             n_inst_offsets = self.inst_offsets.shape[1]
             fig, axs = plt.subplots(1, n_inst_offsets, sharey=True,
-                                    figsize=(n_inst_offsets * 3, 5),
-                                    squeeze=True, constrained_layout=True)
+                                     figsize=(n_inst_offsets * 3, 5),
+                                     squeeze=True, constrained_layout=True)
+            figures.append(fig)
             if n_inst_offsets == 1:
                 axs = [axs,]
 
@@ -2229,6 +2252,12 @@ class KimaResults(object):
                     ax.hist(of1 - of2)
                     ax.set(xlabel=label, title=estimate, ylabel='posterior samples')
 
+        else:
+            figures.append(None)
+
+        if self.return_figs:
+            return figures
+
 
     def hist_extra_sigma(self):
         """ Plot the histogram of the posterior for the additional white noise """
@@ -2261,6 +2290,9 @@ class KimaResults(object):
             filename = 'kima-showresults-fig7.3.png'
             print('saving in', filename)
             fig.savefig(filename)
+
+        if self.return_figs:
+            return fig
 
     def hist_correlations(self):
         """ Plot the histogram of the posterior for the activity correlations """
@@ -2321,6 +2353,10 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
+        if self.return_figs:
+            return fig
+
+
     def hist_MA(self):
         """ Plot the histogram of the posterior for the MA parameters """
         if not self.MAmodel:
@@ -2342,3 +2378,6 @@ class KimaResults(object):
             filename = 'kima-showresults-fig7.6.png'
             print('saving in', filename)
             fig.savefig(filename)
+
+        if self.return_figs:
+            return fig
