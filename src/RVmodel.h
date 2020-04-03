@@ -59,6 +59,8 @@ class RVmodel
         double extra_sigma;
 
         // Parameters for the quasi-periodic extra noise
+        enum Kernel {standard, celerite};
+        Kernel kernel = standard;
         double eta1, eta2, eta3, eta4, eta5;
         double log_eta1, log_eta2, log_eta3, log_eta4, log_eta5;
         double a,b,c,P;
