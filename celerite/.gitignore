@@ -1,0 +1,12 @@
+*.o
+*.so
+.cache
+scratch
+__pycache__
+*.egg-info
+dist
+build
+*.ipynb
+.clang
+paper/referee.pdf
+.DS_Store

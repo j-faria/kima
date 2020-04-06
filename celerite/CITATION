@@ -1,0 +1,9 @@
+@article{celerite,
+    author = {{Foreman-Mackey}, D. and {Agol}, E. and {Angus}, R. and
+              {Ambikasaran}, S.},
+     title = {Fast and scalable Gaussian process modeling
+              with applications to astronomical time series},
+      year = {2017},
+   journal = {ArXiv},
+       url = {https://arxiv.org/abs/1703.09710}
+}
