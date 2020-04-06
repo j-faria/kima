@@ -1,5 +1,6 @@
 DNEST4_PATH = DNest4/code
 EIGEN_PATH = eigen
+CELERITE_PATH = celerite/cpp/include
 
 export CXX = g++
 
@@ -11,7 +12,7 @@ ifneq ($(default_pie),)
 endif
 
 LIBS = -L$(DNEST4_PATH) -ldnest4 -L/usr/local/lib
-includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) 
+includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH)
 
 SRCDIR = ./src
 SRCS =\
@@ -24,7 +25,7 @@ $(SRCDIR)/main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
 
-EXAMPLES = 51Peg BL2009 CoRoT7 many_planets multi_instrument \
+EXAMPLES = CoRoT7cel # 51Peg BL2009 CoRoT7 many_planets multi_instrument \
            activity_correlations default_priors
 
 all: main ${EXAMPLES}
