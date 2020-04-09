@@ -31,6 +31,7 @@ extern const bool multi_instrument;
 
 /// include a (better) known extra Keplerian curve? (KO mode!)
 extern const bool known_object;
+extern const int n_known_object;
 
 
 class RVmodel
@@ -68,7 +69,12 @@ class RVmodel
         celerite::solver::CholeskySolver<double> solver;
 
         // Parameters for the known object, if set
-        double KO_P, KO_K, KO_e, KO_phi, KO_w;
+        // double KO_P, KO_K, KO_e, KO_phi, KO_w;
+        std::vector<double> KO_P;
+        std::vector<double> KO_K;
+        std::vector<double> KO_e;
+        std::vector<double> KO_phi;
+        std::vector<double> KO_w;
 
         // The signal
         std::vector<long double> mu = // the RV model
@@ -129,11 +135,13 @@ class RVmodel
 
 
         // priors for KO mode!
-        std::shared_ptr<DNest4::ContinuousDistribution> KO_Pprior;
-        std::shared_ptr<DNest4::ContinuousDistribution> KO_Kprior;
-        std::shared_ptr<DNest4::ContinuousDistribution> KO_eprior;
-        std::shared_ptr<DNest4::ContinuousDistribution> KO_phiprior;
-        std::shared_ptr<DNest4::ContinuousDistribution> KO_wprior;
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Kprior {n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {n_known_object};
+
+
 
         // change the name of std::make_shared :)
         /**

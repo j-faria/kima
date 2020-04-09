@@ -9,6 +9,7 @@ const bool hyperpriors = false;
 const bool trend = false;
 const bool multi_instrument = false;
 const bool known_object = false;
+const int n_known_object = 0;
 
 RVmodel::RVmodel() : fix(true), npmax(1)
 {
