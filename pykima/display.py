@@ -1632,6 +1632,8 @@ class KimaResults(object):
 
         if samples.shape[0] == 1:
             ii = np.zeros(1, dtype=int)
+        elif ncurves == samples.shape[0]:
+            ii = np.arange(ncurves)
         else:
             # select random `ncurves` indices
             # from the (sorted, period-cut) posterior samples
