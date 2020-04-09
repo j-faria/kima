@@ -331,11 +331,13 @@ class KimaResults(object):
         # find KO in the compiled model
         try:
             self.KO = setup['kima']['known_object'] == 'true'
+            self.nKO = int(setup['kima']['n_known_object'])
         except KeyError:
             self.KO = False
+            self.nKO = 0
 
         if self.KO:
-            n_KOparameters = 5
+            n_KOparameters = 5 * self.nKO
             start = start_parameters + n_trend + n_offsets + n_inst_offsets + n_hyperparameters + n_MAparameters + 1
             koinds = slice(start, start + n_KOparameters)
             self.KOpars = self.posterior_sample[:, koinds]
@@ -1572,7 +1574,7 @@ class KimaResults(object):
 
         plt.show()
 
-    def corner_known_object(self, fig=None):
+    def corner_known_object(self, fig=None): # ,together=False):
         """ Corner plot of the posterior samples for the known object parameters """
         if not self.KO:
             print(
@@ -1581,8 +1583,15 @@ class KimaResults(object):
             return
 
         labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w']
-        corner.corner(self.KOpars, fig=fig, labels=labels,
-                      hist_kwars={'normed': True})
+        for i in range(self.KOpars.shape[1] // 5):
+            # if together and i>0:
+            #     fig = cfig
+            kw = dict(show_titles=True, scale_hist=True, quantiles=[0.5], plot_density=False,
+                      plot_contours=False, plot_datapoints=True)
+            cfig = corner.corner(self.KOpars[:, i * 5:i * 5 + 5], fig=fig,
+                                 labels=labels, hist_kwars={'normed': True}, **kw)
+            cfig.set_figwidth(8)
+            cfig.set_figheight(6)
 
 
     def plot_random_planets(self, ncurves=50, over=0.1, pmin=None, pmax=None,
@@ -1670,19 +1679,20 @@ class KimaResults(object):
             # known object, if set
             if self.KO:
                 pars = self.KOpars[i]
-                P = pars[0]
-                K = pars[1]
-                phi = pars[2]
-                t0 = t[0] - (P * phi) / (2. * np.pi)
-                ecc = pars[3]
-                w = pars[4]
+                for iKO in range(self.nKO):
+                    P = pars[5*iKO + 0]
+                    K = pars[5*iKO + 1]
+                    phi = pars[5*iKO + 2]
+                    t0 = t[0] - (P * phi) / (2. * np.pi)
+                    ecc = pars[5*iKO + 3]
+                    w = pars[5*iKO + 4]
 
-                v += keplerian(tt, P, K, ecc, w, t0, 0.)
+                    v += keplerian(tt, P, K, ecc, w, t0, 0.)
+                    v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
+
                 v_KO[icurve] = v
-
-                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
                 v_KO_at_t[icurve] = v_at_t
-                ax.plot(tt, v_KO[icurve], alpha=0.4, color='g', ls='-')
+                ax.plot(tt, v_KO[icurve], alpha=0.2, color='g', ls='-')
                 # ax.add_line(plt.Line2D(tt, v_KO[icurve]))
 
             # get the planet parameters for the current (ith) sample
@@ -1865,7 +1875,19 @@ class KimaResults(object):
         ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
         if self.KO:
             ax1.set(xlabel='Time [days]', ylabel='RV [m/s]')
-        # plt.tight_layout()
+
+            from matplotlib.patches import Patch
+            from matplotlib.lines import Line2D
+
+            legend_elements = [
+                Line2D([0], [0], marker='o', color='w', label='Data', markerfacecolor='C0', markersize=6),
+                Line2D([0], [0], color='g', lw=1, label='Known object(s) samples'),
+                Line2D([0], [0], color='k', lw=1, label='Full model samples'),
+                # Patch(facecolor='orange', edgecolor='r', label='Color Patch')
+            ]
+
+            ax.legend(handles=legend_elements, loc='best')
+
 
         if self.save_plots:
             filename = 'kima-showresults-fig6.png'
