@@ -424,28 +424,60 @@ double RVmodel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5) // perturb GP parameters
         {
-            if(rng.rand() <= 0.25)
+            switch (kernel)
             {
-                log_eta1 = log(eta1);
-                log_eta1_prior->perturb(log_eta1, rng);
-                eta1 = exp(log_eta1);
-            }
-            else if(rng.rand() <= 0.33330)
-            {
-                // log_eta2 = log(eta2);
-                // log_eta2_prior->perturb(log_eta2, rng);
-                // eta2 = exp(log_eta2);
-                eta2_prior->perturb(eta2, rng);
-            }
-            else if(rng.rand() <= 0.5)
-            {
-                eta3_prior->perturb(eta3, rng);
-            }
-            else if(kernel == standard)
-            {
-                log_eta4 = log(eta4);
-                log_eta4_prior->perturb(log_eta4, rng);
-                eta4 = exp(log_eta4);
+                case standard:
+                {
+                    if(rng.rand() <= 0.25)
+                    {
+                        log_eta1 = log(eta1);
+                        log_eta1_prior->perturb(log_eta1, rng);
+                        eta1 = exp(log_eta1);
+                    }
+                    else if(rng.rand() <= 0.33330)
+                    {
+                        // log_eta2 = log(eta2);
+                        // log_eta2_prior->perturb(log_eta2, rng);
+                        // eta2 = exp(log_eta2);
+                        eta2_prior->perturb(eta2, rng);
+                    }
+                    else if(rng.rand() <= 0.5)
+                    {
+                        eta3_prior->perturb(eta3, rng);
+                    }
+                    else
+                    {
+                        log_eta4 = log(eta4);
+                        log_eta4_prior->perturb(log_eta4, rng);
+                        eta4 = exp(log_eta4);
+                    }
+
+                    break;
+                }
+
+                case celerite:
+                {
+                    if(rng.rand() <= 0.33330)
+                    {
+                        log_eta1 = log(eta1);
+                        log_eta1_prior->perturb(log_eta1, rng);
+                        eta1 = exp(log_eta1);
+                    }
+                    else if(rng.rand() <= 0.5)
+                    {
+                        // log_eta2 = log(eta2);
+                        // log_eta2_prior->perturb(log_eta2, rng);
+                        // eta2 = exp(log_eta2);
+                        eta2_prior->perturb(eta2, rng);
+                    }
+                    else
+                    {
+                        eta3_prior->perturb(eta3, rng);
+                    }
+                    break;
+                }
+                default:
+                    break;
             }
 
             calculate_C();
