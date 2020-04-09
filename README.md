@@ -6,7 +6,7 @@
 [![cite](https://img.shields.io/badge/cite-kima-red.svg)](https://github.com/j-faria/kima/wiki/Citing-kima)
 [![Coverage Status](https://coveralls.io/repos/github/j-faria/kima/badge.svg?branch=master)](https://coveralls.io/github/j-faria/kima?branch=master)
 [![say kima](https://img.shields.io/badge/say-kima-orange.svg)](https://raw.githubusercontent.com/j-faria/kima/master/sounds/all.mp3)
-
+[![docs](https://img.shields.io/badge/read%20the-docs-green.svg)](https://github.com/j-faria/kima/wiki/)
 
 <img src="logo/logo.png" width="200"
      alt="Logo created by Solène Ulmer-Moll">
