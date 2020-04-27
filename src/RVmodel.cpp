@@ -50,7 +50,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             eta2_prior = make_prior<LogUniform>(1, 100);
         if (!eta3_prior)
             eta3_prior = make_prior<Uniform>(10, 40);
-        if (!log_eta4_prior)
+        if (!log_eta4_prior & kernel==standard)
             log_eta4_prior = make_prior<Uniform>(-1, 1);
     }
 
@@ -105,7 +105,8 @@ void RVmodel::from_prior(RNG& rng)
 
         eta3 = eta3_prior->generate(rng); // days
 
-        eta4 = exp(log_eta4_prior->generate(rng));
+        if (kernel == standard)
+            eta4 = exp(log_eta4_prior->generate(rng));
     }
 
     if(MA)
@@ -153,30 +154,94 @@ void RVmodel::calculate_C()
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    for(size_t i=0; i<N; i++)
+    switch (kernel)
     {
-        for(size_t j=i; j<N; j++)
+    case standard:
         {
-            C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2)
-                        -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
+            /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
+            for(size_t i=0; i<N; i++)
+            {
+                for(size_t j=i; j<N; j++)
+                {
+                    C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2)
+                                -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
 
-            if(i==j)
-            {
-                if (multi_instrument)
-                {
-                    jit = jitters[obsi[i]-1];
-                    C(i, j) += sig[i]*sig[i] + jit*jit;
-                }
-                else
-                {
-                    C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                    if(i==j)
+                    {
+                        if (multi_instrument)
+                        {
+                            jit = jitters[obsi[i]-1];
+                            C(i, j) += sig[i]*sig[i] + jit*jit;
+                        }
+                        else
+                        {
+                            C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                        }
+                    }
+                    else
+                    {
+                        C(j, i) = C(i, j);
+                    }
                 }
             }
-            else
-            {
-                C(j, i) = C(i, j);
-            }
+
+            break;
         }
+
+    case celerite:
+        {
+            /*
+            This implements a celerite quasi-periodic kernel devised by Andrew Collier Cameron,
+            which satisfies k(tau=0)=amp and k'(tau=0)=0
+            The kernel defined in the celerite paper (Eq 56 in Foreman-Mackey et al. 2017)
+            does not satisfy k'(tau=0)=0
+            This new kernel has only 3 parameters, eta1, eta2, eta3
+            corresponding to an amplitude, decay timescale and period.
+            It approximates the standard kernel with eta4=0.5
+            */
+
+            double wbeat, wrot, amp, c, d, x, a, b, e, f, g;
+            wbeat = 1 / eta2;
+            wrot = 2*M_PI/ eta3;
+            amp = eta1*eta1;
+            c = wbeat; d = wrot; x = c/d;
+            a = amp/2; b = amp*x/2;
+            e = amp/8; f = amp*x/4;
+            g = amp*(3./8. + 0.001);
+
+            VectorXd a_real, c_real, 
+                    a_comp(3),
+                    b_comp(3),
+                    c_comp(3),
+                    d_comp(3);
+        
+            // a_real is empty
+            // c_real is empty
+            a_comp << a, e, g;
+            b_comp << b, f, 0.0;
+            c_comp << c, c, c;
+            d_comp << d, 2*d, 0.0;
+
+            VectorXd yvar(t.size()), tt(t.size());
+            for (int i = 0; i < t.size(); ++i){
+                yvar(i) = sig[i] * sig[i];
+                tt(i) = t[i];
+            }
+
+            solver.compute(
+                extra_sigma*extra_sigma,
+                a_real, c_real,
+                a_comp, b_comp, c_comp, d_comp,
+                tt, yvar  // Note: this is the measurement _variance_
+            );
+
+            break;
+        }
+
+    default:
+        cout << "error: `kernel` should be 'standard' or 'celerite'" << endl;
+        std::abort();
+        break;
     }
 
     #if TIMING
@@ -359,28 +424,60 @@ double RVmodel::perturb(RNG& rng)
         }
         else if(rng.rand() <= 0.5) // perturb GP parameters
         {
-            if(rng.rand() <= 0.25)
+            switch (kernel)
             {
-                log_eta1 = log(eta1);
-                log_eta1_prior->perturb(log_eta1, rng);
-                eta1 = exp(log_eta1);
-            }
-            else if(rng.rand() <= 0.33330)
-            {
-                // log_eta2 = log(eta2);
-                // log_eta2_prior->perturb(log_eta2, rng);
-                // eta2 = exp(log_eta2);
-                eta2_prior->perturb(eta2, rng);
-            }
-            else if(rng.rand() <= 0.5)
-            {
-                eta3_prior->perturb(eta3, rng);
-            }
-            else
-            {
-                log_eta4 = log(eta4);
-                log_eta4_prior->perturb(log_eta4, rng);
-                eta4 = exp(log_eta4);
+                case standard:
+                {
+                    if(rng.rand() <= 0.25)
+                    {
+                        log_eta1 = log(eta1);
+                        log_eta1_prior->perturb(log_eta1, rng);
+                        eta1 = exp(log_eta1);
+                    }
+                    else if(rng.rand() <= 0.33330)
+                    {
+                        // log_eta2 = log(eta2);
+                        // log_eta2_prior->perturb(log_eta2, rng);
+                        // eta2 = exp(log_eta2);
+                        eta2_prior->perturb(eta2, rng);
+                    }
+                    else if(rng.rand() <= 0.5)
+                    {
+                        eta3_prior->perturb(eta3, rng);
+                    }
+                    else
+                    {
+                        log_eta4 = log(eta4);
+                        log_eta4_prior->perturb(log_eta4, rng);
+                        eta4 = exp(log_eta4);
+                    }
+
+                    break;
+                }
+
+                case celerite:
+                {
+                    if(rng.rand() <= 0.33330)
+                    {
+                        log_eta1 = log(eta1);
+                        log_eta1_prior->perturb(log_eta1, rng);
+                        eta1 = exp(log_eta1);
+                    }
+                    else if(rng.rand() <= 0.5)
+                    {
+                        // log_eta2 = log(eta2);
+                        // log_eta2_prior->perturb(log_eta2, rng);
+                        // eta2 = exp(log_eta2);
+                        eta2_prior->perturb(eta2, rng);
+                    }
+                    else
+                    {
+                        eta3_prior->perturb(eta3, rng);
+                    }
+                    break;
+                }
+                default:
+                    break;
             }
 
             calculate_C();
@@ -717,24 +814,44 @@ double RVmodel::log_likelihood() const
         for(size_t i=0; i<y.size(); i++)
             residual(i) = y[i] - mu[i];
 
-        // perform the cholesky decomposition of C
-        Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
-        // get the lower triangular matrix L
-        MatrixXd L = cholesky.matrixL();
+        switch (kernel)
+        {
+            case standard:
+            {
+                // perform the cholesky decomposition of C
+                Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
+                // get the lower triangular matrix L
+                MatrixXd L = cholesky.matrixL();
 
-        double logDeterminant = 0.;
-        for(size_t i=0; i<y.size(); i++)
-            logDeterminant += 2.*log(L(i,i));
+                double logDeterminant = 0.;
+                for(size_t i=0; i<y.size(); i++)
+                    logDeterminant += 2.*log(L(i,i));
 
-        VectorXd solution = cholesky.solve(residual);
+                VectorXd solution = cholesky.solve(residual);
 
-        // y*solution
-        double exponent = 0.;
-        for(size_t i=0; i<y.size(); i++)
-            exponent += residual(i)*solution(i);
+                // y*solution
+                double exponent = 0.;
+                for(size_t i=0; i<y.size(); i++)
+                    exponent += residual(i)*solution(i);
 
-        logL = -0.5*y.size()*log(2*M_PI)
-                - 0.5*logDeterminant - 0.5*exponent;
+                logL = -0.5*y.size()*log(2*M_PI)
+                        - 0.5*logDeterminant - 0.5*exponent;
+
+                break;
+            }
+
+            case celerite:
+            {
+                logL = -0.5 * (solver.dot_solve(residual) +
+                    solver.log_determinant() +
+                    y.size()*log(2*M_PI)); 
+    
+                break;
+            }
+        
+            default:
+                break;
+        }
 
     }
     else
@@ -815,7 +932,12 @@ void RVmodel::print(std::ostream& out) const
     }
 
     if(GP)
-        out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+    {
+        if (kernel == standard)
+            out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+        else
+            out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t';
+    }
     
     if(MA)
         out<<sigmaMA<<'\t'<<tauMA<<'\t';
@@ -862,7 +984,12 @@ string RVmodel::description() const
 
 
     if(GP)
-        desc += "eta1   eta2   eta3   eta4   ";
+    {
+        if(kernel == standard)
+            desc += "eta1   eta2   eta3   eta4   ";
+        else
+            desc += "eta1   eta2   eta3   ";
+    }
     
     if(MA)
         desc += "sigmaMA   tauMA   ";
@@ -901,6 +1028,7 @@ void RVmodel::save_setup() {
 
 	fout << "obs_after_HARPS_fibers: " << obs_after_HARPS_fibers << endl;
     fout << "GP: " << GP << endl;
+    fout << "GP_kernel: " << kernel << endl;
     fout << "MA: " << MA << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
@@ -943,7 +1071,8 @@ void RVmodel::save_setup() {
         // fout << "log_eta2_prior: " << *log_eta2_prior << endl;
         fout << "eta2_prior: " << *eta2_prior << endl;
         fout << "eta3_prior: " << *eta3_prior << endl;
-        fout << "log_eta4_prior: " << *log_eta4_prior << endl;
+        if (kernel == standard)
+            fout << "log_eta4_prior: " << *log_eta4_prior << endl;
     }
 
 

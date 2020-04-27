@@ -16,7 +16,7 @@ except ImportError:
     import ConfigParser as configparser
 
 from .keplerian import keplerian
-from .GP import GP, QPkernel
+from .GP import GP, QPkernel, GP_celerite, QPkernel_celerite
 from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,\
                    percentile68_ranges, percentile68_ranges_latex,\
                    read_datafile, lighten_color, wrms, get_prior, \
@@ -268,6 +268,7 @@ class KimaResults(object):
         if GPmodel is None:
             try:
                 self.GPmodel = setup['kima']['GP'] == 'true'
+                self.GPkernel = int(setup['kima']['GP_kernel'])
             except KeyError:
                 self.GPmodel = False
         else:
@@ -277,7 +278,11 @@ class KimaResults(object):
             print('GP model:', self.GPmodel)
 
         if self.GPmodel:
-            n_hyperparameters = 4
+            if self.GPkernel == 0:
+                n_hyperparameters = 4
+            elif self.GPkernel == 1:
+                n_hyperparameters = 3
+
             start_hyperpars = start_parameters + n_trend + n_offsets + n_inst_offsets + 1
             self.etas = self.posterior_sample[:, start_hyperpars:
                                               start_hyperpars +
@@ -288,9 +293,16 @@ class KimaResults(object):
                 ind = start_hyperpars + i
                 setattr(self, name, self.posterior_sample[:, ind])
 
-            self.GP = GP(
-                QPkernel(1, 1, 1, 1), self.data[:, 0], self.data[:, 2],
-                white_noise=0.)
+            if self.GPkernel == 0:
+                self.GP = GP(
+                    QPkernel(1, 1, 1, 1), self.data[:, 0], self.data[:, 2],
+                    white_noise=0.)
+            elif self.GPkernel == 1:
+                self.GP = GP_celerite(
+                    QPkernel_celerite(η1=1, η2=1, η3=1), self.data[:, 0], self.data[:, 2],
+                    white_noise=0.)
+                print('ahhhh')
+
 
             self.indices['GPpars_start'] = start_hyperpars
             self.indices['GPpars_end'] = start_hyperpars + n_hyperparameters
@@ -1323,14 +1335,14 @@ class KimaResults(object):
             return
 
         available_etas = [v for v in dir(self) if v.startswith('eta')][:-1]
-        labels = ['eta1', 'eta2', 'eta3', 'eta4']
+        labels = available_etas
         if ranges is None:
-            ranges = 4 * [None]
+            ranges = len(labels) * [None]
 
         if Np is not None:
             m = self.posterior_sample[:, self.index_component] == Np
 
-        fig, axes = plt.subplots(2, int(len(available_etas) / 2))
+        fig, axes = plt.subplots(2, int(np.ceil(len(available_etas) / 2)))
         for i, eta in enumerate(available_etas):
             ax = np.ravel(axes)[i]
             ax.hist(getattr(self, eta), bins=40, range=ranges[i])
@@ -1620,6 +1632,8 @@ class KimaResults(object):
 
         if samples.shape[0] == 1:
             ii = np.zeros(1, dtype=int)
+        elif ncurves == samples.shape[0]:
+            ii = np.arange(ncurves)
         else:
             # select random `ncurves` indices
             # from the (sorted, period-cut) posterior samples
@@ -1706,12 +1720,12 @@ class KimaResults(object):
                 if self.GPmodel:
                     v_at_ttGP += self.trendpars[i] * (ttGP - self.tmiddle)
                 if show_trend:
-                    ax.plot(tt, vsys + self.trendpars[i] * (tt - self.tmiddle),
-                            alpha=0.2, color='m', ls=':')
+                    kw = dict(alpha=0.2, color='m', ls=':')
+                    ax.plot(
+                        tt, vsys + self.trendpars[i] * (tt - self.tmiddle), **kw)
                     if self.KO:
                         ax1.plot(
-                            tt, vsys + self.trendpars[i] * (tt - self.tmiddle),
-                            alpha=0.2, color='m', ls=':')
+                            tt, vsys + self.trendpars[i] * (tt - self.tmiddle))
 
             # plot the MA "prediction"
             # if self.MAmodel:
@@ -1768,8 +1782,12 @@ class KimaResults(object):
 
             # plot the GP prediction
             if self.GPmodel:
-                self.GP.kernel.setpars(self.eta1[i], self.eta2[i],
-                                       self.eta3[i], self.eta4[i])
+                if self.GPkernel == 0:
+                    self.GP.kernel.setpars(self.eta1[i], self.eta2[i],
+                                           self.eta3[i], self.eta4[i])
+                elif self.GPkernel == 1:
+                    self.GP.kernel.setpars(self.eta1[i], self.eta2[i],
+                                           self.eta3[i])
                 mu = self.GP.predict(y - v_at_t, ttGP, return_std=False)
                 ax.plot(ttGP, mu + v_at_ttGP, alpha=0.2, color='plum')
 

@@ -2,6 +2,14 @@ import numpy as np
 from scipy.spatial.distance import squareform, pdist, cdist
 from scipy.linalg import cholesky, cho_solve, solve_triangular
 
+try:
+    import celerite
+    from celerite import GP as GPcel, terms
+except ImportError:
+    print('Please install celerite: https://celerite.readthedocs.io/en/stable/python/install')
+    sys.exit(1)
+
+
 class QPkernel():
     """ The quasi-periodic kernel """
     def __init__(self, eta1, eta2, eta3, eta4):
@@ -250,6 +258,142 @@ class GP():
 
         mu, cov = self.predict(y, t, return_cov=True)
         return multivariate_gaussian_samples(cov, size, mean=mu).T
+
+
+class QPkernel_celerite(terms.Term):
+    # This implements a quasi-periodic kernel (QPK) devised by Andrew Collier
+    # Cameron, which mimics a standard QP kernel with a roughness parameter 0.5, 
+    # and has zero derivative at the origin: k(tau=0)=amp and k'(tau=0)=0 
+    # The kernel defined in the celerite paper (Eq 56 in Foreman-Mackey et al. 2017)
+    # does not satisfy k'(tau=0)=0
+    #
+    # This new QPK has only 3 parameters, here called eta1, eta2, eta3
+    # corresponding to an amplitude, decay timescale and period.
+    """
+    docs
+    """
+    parameter_names = ("η1", "η2", "η3")
+
+    def get_real_coefficients(self, params):
+        # η1, η2, η3 = params
+        return np.zeros(0, dtype=np.float), np.zeros(0, dtype=np.float)
+
+    def get_complex_coefficients(self, params):
+        η1, η2, η3 = params
+        wbeat = 1.0 / η2
+        wrot = 2*np.pi/η3
+        amp = η1**2
+        c = wbeat
+        d = wrot
+        x = c/d
+        a = amp/2.
+        b = amp*x/2.
+        e = amp/8.
+        f = amp*x/4.
+        g = amp*(3./8. + 0.001)
+        return (
+            np.reshape([a, e, g], (3,)),
+            np.reshape([b, f, 0], (3,)),
+            np.reshape([c, c, c], (3,)),
+            np.reshape([d, 2*d, 0], (3,)),
+        )
+
+    @property
+    def J(self):
+        return 6
+
+    def setpars(self, eta1=None, eta2=None, eta3=None, eta4=None):
+        p = [eta1, eta2, eta3]
+        # if eta1: p.append(eta1)
+        # if eta2: p.append(eta2)
+        # if eta3: p.append(eta3)
+        self.set_parameter_vector(p)
+
+
+class GP_celerite():
+    """ A simple Gaussian process class for regression problems, based on celerite """
+    def __init__(self, kernel, t, yerr=None, white_noise=1e-10):
+        """ 
+        t : the independent variable where the GP is "trained"
+        (opt) yerr : array of observational uncertainties
+        (opt) white_noise : value/array added to the diagonal of the kernel matrix
+        """
+        self.kernel = kernel
+        self.t = t
+        self.yerr = yerr
+        self.white_noise = white_noise
+        self._GP = GPcel(self.kernel)
+        self._GP.compute(self.t, self.yerr)
+
+    def _cov(self, x1, x2=None, add2diag=True):
+        raise NotImplementedError
+
+    def log_likelihood(self, y):
+        """ The log marginal likelihood of observations y under the GP model """
+        raise NotImplementedError
+
+    def sample(self, t=None, size=1):
+        """ Draw samples from the GP prior distribution; 
+        Output shape: (t.size, size) 
+        """
+        raise NotImplementedError
+
+    def predict(self, y, t=None, return_std=False, return_cov=False):
+        """ 
+        Conditional predictive distribution of the GP model 
+        given observations y, evaluated at coordinates t.
+        """
+        return self._GP.predict(y, t, return_cov=return_cov, return_var=return_std)
+
+
+    def predict_with_hyperpars(self, results, sample, t=None, add_parts=True):
+        """ 
+        Given the parameters in `sample`, return the GP predictive mean. If `t`
+        is None, the prediction is done at the observed times and will contain
+        other model components (systemic velocity, trend, instrument offsets) if
+        `add_parts` is True. Otherwise, when `t` is given, the prediction is
+        made at times `t` and *does not* contain these extra model components.
+        """
+        raise NotImplementedError
+
+    def sample_conditional(self, y, t, size=1):
+        """ 
+        Sample from the conditional predictive distribution of the GP model 
+        given observations y, at coordinates t.
+        """
+        raise NotImplementedError
+
+
+    def sample_from_posterior(self, results, size=1):
+        """ 
+        Given the posterior sample in `results`, take one sample of the GP
+        hyperparameters and the white noise, and return a sample from the GP
+        prior given those parameters.
+        """
+        raise NotImplementedError
+
+    def sample_with_hyperpars(self, results, sample, size=1):
+        """ 
+        Given the value of the hyperparameters and the white noise in `sample`, return a 
+        sample from the GP prior.
+        """
+        raise NotImplementedError
+
+
+    def sample_conditional_from_posterior(self, results, t, size=1):
+        """ 
+        Given the posterior sample in `results`, take one sample of the GP
+        hyperparameters and the white noise, and return a sample from the GP
+        predictive given those parameters.
+        """
+        raise NotImplementedError
+
+    def sample_conditional_with_hyperpars(self, results, sample, t, size=1):
+        """ 
+        Given the value of the hyperparameters and the white noise in `sample`,
+        return a sample from the GP predictive.
+        """
+        raise NotImplementedError
 
 
 def multivariate_gaussian_samples(matrix, N, mean=None):

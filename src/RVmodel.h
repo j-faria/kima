@@ -11,6 +11,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
+#include "celerite/celerite.h"
 
 /// whether the model includes a GP component
 extern const bool GP;
@@ -59,9 +60,12 @@ class RVmodel
         double extra_sigma;
 
         // Parameters for the quasi-periodic extra noise
+        enum Kernel {standard, celerite};
+        Kernel kernel = standard;
         double eta1, eta2, eta3, eta4, eta5;
         double log_eta1, log_eta2, log_eta3, log_eta4, log_eta5;
         double a,b,c,P;
+        celerite::solver::CholeskySolver<double> solver;
 
         // Parameters for the known object, if set
         double KO_P, KO_K, KO_e, KO_phi, KO_w;
