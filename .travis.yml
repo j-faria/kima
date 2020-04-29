@@ -8,24 +8,24 @@ compiler:
 
 matrix:
   include:
+    # # - os: linux
+    # #   env: PYTHON_VERSION=2.7
+    # # - os: linux
+    # #   env: PYTHON_VERSION=3.4
     # - os: linux
-    #   env: PYTHON_VERSION=2.7
+    #   env: PYTHON_VERSION=3.5
     # - os: linux
-    #   env: PYTHON_VERSION=3.4
-    - os: linux
-      env: PYTHON_VERSION=3.5
-    - os: linux
-      env: PYTHON_VERSION=3.6
-    - os: linux
-      env: PYTHON_VERSION=3.7
-    - os: linux
-      env: PYTHON_VERSION=3.8
+    #   env: PYTHON_VERSION=3.6
+    # - os: linux
+    #   env: PYTHON_VERSION=3.7
+    # - os: linux
+    #   env: PYTHON_VERSION=3.8
+    # # - os: osx
+    # #   env: PYTHON_VERSION=2.7
     # - os: osx
-    #   env: PYTHON_VERSION=2.7
-    - os: osx
-      env: PYTHON_VERSION=3.6
-    - os: osx
-      env: PYTHON_VERSION=3.7
+    #   env: PYTHON_VERSION=3.6
+    # - os: osx
+    #   env: PYTHON_VERSION=3.7
 
     - os: linux
       addons:
@@ -37,8 +37,8 @@ matrix:
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
-  allow_failures:
-    - os: osx
+  # allow_failures:
+  #   - os: osx
 
 before_install:
   - eval "${MATRIX_EVAL}"
