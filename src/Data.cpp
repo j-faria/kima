@@ -529,7 +529,8 @@ double Data::topslope() const
 */
 double Data::get_RV_span() const
 {
-  const auto [min, max] = std::minmax_element(y.begin(), y.end());
+  const auto min = std::min_element(y.begin(), y.end());
+  const auto max = std::max_element(y.begin(), y.end());
   return *max - *min;
 }
 
@@ -554,7 +555,8 @@ double Data::get_max_RV_span() const
           obsy.push_back(y[i]);
         }
       }
-      const auto [min, max] = std::minmax_element(obsy.begin(), obsy.end());
+      const auto min = std::min_element(obsy.begin(), obsy.end());
+      const auto max = std::max_element(obsy.begin(), obsy.end());
       double this_obs_span = *max - *min;
       if (this_obs_span > span)
         span = this_obs_span;

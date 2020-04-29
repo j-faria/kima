@@ -2,46 +2,46 @@ sudo: false
 language: generic
 dist: trusty
 
-compiler:
-  - clang
-  - gcc
+# compiler:
+#   - clang
+#   - gcc
 
 matrix:
   include:
-    # # - os: linux
-    # #   env: PYTHON_VERSION=2.7
-    # # - os: linux
-    # #   env: PYTHON_VERSION=3.4
     # - os: linux
-    #   env: PYTHON_VERSION=3.5
+    #   env: PYTHON_VERSION=2.7
     # - os: linux
-    #   env: PYTHON_VERSION=3.6
-    # - os: linux
-    #   env: PYTHON_VERSION=3.7
-    # - os: linux
-    #   env: PYTHON_VERSION=3.8
-    # # - os: osx
-    # #   env: PYTHON_VERSION=2.7
-    # - os: osx
-    #   env: PYTHON_VERSION=3.6
-    # - os: osx
-    #   env: PYTHON_VERSION=3.7
-
+    #   env: PYTHON_VERSION=3.4
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-7
-      env:
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+      env: PYTHON_VERSION=3.5
+    - os: linux
+      env: PYTHON_VERSION=3.6
+    - os: linux
+      env: PYTHON_VERSION=3.7
+    - os: linux
+      env: PYTHON_VERSION=3.8
+    # - os: osx
+    #   env: PYTHON_VERSION=2.7
+    - os: osx
+      env: PYTHON_VERSION=3.6
+    - os: osx
+      env: PYTHON_VERSION=3.7
 
-  # allow_failures:
-  #   - os: osx
+    # - os: linux
+    #   addons:
+    #     apt:
+    #       sources:
+    #         - ubuntu-toolchain-r-test
+    #       packages:
+    #         - g++-7
+    #   env:
+    #     - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
-before_install:
-  - eval "${MATRIX_EVAL}"
+  allow_failures:
+    - os: osx
+
+# before_install:
+#   - eval "${MATRIX_EVAL}"
 
 
 install:
