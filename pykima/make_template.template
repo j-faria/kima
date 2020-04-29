@@ -78,6 +78,7 @@ def main(args=None, stopIfNoReplace=True):
         server = False
 
         if os.path.exists(dst):
+            # is there a kima_setup.cpp inside the directory?
             if os.path.exists(os.path.join(dst, 'kima_setup.cpp')):
                 msg = 'Directory "%s" exists and contains a kima_setup file. ' % dst
                 msg += 'Replace? (Y/n) '
@@ -91,7 +92,8 @@ def main(args=None, stopIfNoReplace=True):
                 else:
                     replace = True
 
-            else:
+            # cwd obviously exists, but make sure not to overwrite other directories
+            elif dst != os.getcwd():
                 print('Directory "%s" exists. Continue? (Y/n) ' % dst, end='')
                 answer = input().lower()
                 if answer == 'n':
