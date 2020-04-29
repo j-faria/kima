@@ -2,6 +2,10 @@ sudo: false
 language: generic
 dist: trusty
 
+compiler:
+  - clang
+  - gcc
+
 matrix:
   include:
     # - os: linux
@@ -14,15 +18,33 @@ matrix:
       env: PYTHON_VERSION=3.6
     - os: linux
       env: PYTHON_VERSION=3.7
+    - os: linux
+      env: PYTHON_VERSION=3.8
     # - os: osx
     #   env: PYTHON_VERSION=2.7
     - os: osx
       env: PYTHON_VERSION=3.6
+    - os: osx
+      env: PYTHON_VERSION=3.7
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+
   allow_failures:
     - os: osx
 
+before_install:
+  - eval "${MATRIX_EVAL}"
+
+
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   # setup miniconda
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       wget http://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
@@ -40,6 +62,7 @@ install:
   - conda create -q -n test python=$PYTHON_VERSION
   - source activate test
   - conda install nomkl numpy scipy matplotlib pytest pytest-cov
+  - conda install -c conda-forge pybind11 autograd celerite
   - pip install corner coveralls
 
   # compile the C++
