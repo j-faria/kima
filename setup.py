@@ -32,6 +32,7 @@ setup(name='pykima',
           'corner',
           'loguniform',
           'kumaraswamy',
+          'celerite',
       ],
       entry_points={
           'console_scripts': [
