@@ -32,6 +32,7 @@ setup(name='pykima',
           'corner',
           'loguniform',
           'kumaraswamy',
+          'pybind11',
           'celerite',
       ],
       entry_points={
