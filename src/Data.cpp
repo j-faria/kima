@@ -404,7 +404,7 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
     printf("# Loaded %d observations of %d activity indicators: ", actind[0].size(), actind.size());
     for (const auto i: indicators){
       if (i != ""){
-        printf("'%s'", i);
+        cout << "'" << i << "'";
         (i != indicators.back()) ? cout << ", " : cout << " ";
       }
     }
