@@ -509,8 +509,10 @@ double Data::topslope() const
           obst.push_back(t[i]);
         }
       }
-      const auto [miny, maxy] = std::minmax_element(obsy.begin(), obsy.end());
-      const auto [mint, maxt] = std::minmax_element(obst.begin(), obst.end());
+      const auto miny = std::min_element(obsy.begin(), obsy.end());
+      const auto maxy = std::max_element(obsy.begin(), obsy.end());
+      const auto mint = std::min_element(obst.begin(), obst.end());
+      const auto maxt = std::max_element(obst.begin(), obst.end());
       double this_obs_topslope = (*maxy - *miny) / (*maxt - *mint);
       if (this_obs_topslope > slope)
         slope = this_obs_topslope;
