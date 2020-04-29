@@ -221,8 +221,10 @@ def showresults(options='', force_return=False, verbose=True, show_plots=True):
             evidence, H, logx_samples = postprocess(
                 plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
     except IOError as e:
-        print(e)
-        sys.exit(1)
+        sys.tracebacklimit = 0
+        raise e from None
+        # print(e)
+        # sys.exit(1)
     
     # sometimes an IndexError is raised when the levels.txt file is being 
     # updated too quickly, and the read operation is not atomic... we try one
@@ -233,7 +235,9 @@ def showresults(options='', force_return=False, verbose=True, show_plots=True):
                 evidence, H, logx_samples = postprocess(
                     plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
         except IndexError:
-            sys.exit(1)
+            sys.tracebacklimit = 0
+            raise IOError('something went wrong reading levels.txt') from None
+
 
     # show kima tips
     if verbose:
