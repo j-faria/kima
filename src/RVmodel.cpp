@@ -19,7 +19,6 @@ using namespace DNest4;
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-
 /* set default priors if the user didn't change them */
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
@@ -35,7 +34,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
 
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(1.0, data.get_max_RV_span());
+        Jprior = make_prior<ModifiedLogUniform>(min(1.0, 0.1*data.get_max_RV_span()), data.get_max_RV_span());
 
     // if (!slope_prior)
     //     slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
