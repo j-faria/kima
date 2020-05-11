@@ -1,5 +1,4 @@
-#ifndef DNest4_Fixed
-#define DNest4_Fixed
+#pragma once
 
 // DNest4/code
 #include "Distributions/ContinuousDistribution.h"
@@ -33,6 +32,4 @@ class Fixed:public ContinuousDistribution
 };
 
 } // namespace DNest4
-
-#endif
 

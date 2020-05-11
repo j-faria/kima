@@ -1,5 +1,4 @@
-#ifndef DNest4_Empirical
-#define DNest4_Empirical
+#pragma once
 
 // DNest4/code
 #include "Distributions/ContinuousDistribution.h"
@@ -33,6 +32,4 @@ class Empirical:public ContinuousDistribution
 
 
 } // namespace DNest4
-
-#endif
 

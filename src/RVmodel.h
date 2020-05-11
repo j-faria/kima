@@ -1,5 +1,4 @@
-#ifndef DNest4_RVmodel
-#define DNest4_RVmodel
+#pragma once
 
 #include <vector>
 #include <memory>
@@ -175,6 +174,4 @@ class RVmodel
         std::string description() const;
 
 };
-
-#endif
 
