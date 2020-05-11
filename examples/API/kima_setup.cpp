@@ -22,6 +22,7 @@ const bool obs_after_HARPS_fibers = false;
 
 /// whether the model includes a linear trend
 const bool trend = false;
+const int degree = 0;
 
 /// whether the data comes from different instruments
 /// (and offsets + individual jitters should be included in the model)

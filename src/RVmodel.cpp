@@ -19,7 +19,6 @@ using namespace DNest4;
 const double halflog2pi = 0.5*log(2.*M_PI);
 
 
-
 /* set default priors if the user didn't change them */
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
@@ -35,10 +34,23 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
 
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(1.0, data.get_max_RV_span());
+        Jprior = make_prior<ModifiedLogUniform>(min(1.0, 0.1*data.get_max_RV_span()), data.get_max_RV_span());
 
-    if (!slope_prior)
-        slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
+    // if (!slope_prior)
+    //     slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
+
+    if (trend){
+        if (degree == 0)
+            throw std::logic_error("trend=true but degree=0, what gives?");
+        if (degree > 3)
+            throw std::range_error("can't go higher than 3rd degree trends");
+        if (degree >= 1 & !slope_prior)
+            slope_prior = make_prior<Gaussian>(0.0, 1.0);
+        if (degree >= 2 & !quadr_prior)
+            quadr_prior = make_prior<Gaussian>(0.0, 1.0);
+        if (degree == 3 & !cubic_prior)
+            cubic_prior = make_prior<Gaussian>(0.0, 1.0);
+    }
 
     if (!offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
@@ -95,7 +107,11 @@ void RVmodel::from_prior(RNG& rng)
         fiber_offset = fiber_offset_prior->generate(rng);
 
     if(trend)
-        slope = slope_prior->generate(rng);
+    {
+        if (degree >= 1) slope = slope_prior->generate(rng);
+        if (degree >= 2) quadr = quadr_prior->generate(rng);
+        if (degree == 3) cubic = cubic_prior->generate(rng);
+    }
 
     if(GP)
     {
@@ -283,9 +299,10 @@ void RVmodel::calculate_mu()
         staleness = 0;
         if(trend)
         {
+            double tmid = data.get_t_middle();
             for(size_t i=0; i<t.size(); i++)
             {
-                mu[i] += slope*(t[i] - data.get_t_middle());
+                mu[i] += slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
             }
         }
 
@@ -413,6 +430,7 @@ double RVmodel::perturb(RNG& rng)
     const vector<int>& obsi = data.get_obsi();
     auto actind = data.get_actind();
     double logH = 0.;
+    double tmid = data.get_t_middle();
 
     if(GP)
     {
@@ -707,7 +725,7 @@ double RVmodel::perturb(RNG& rng)
             {
                 mu[i] -= background;
                 if(trend) {
-                    mu[i] -= slope*(t[i]-data.get_t_middle());
+                    mu[i] -= slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
                 }
                 if(multi_instrument) {
                     for(size_t j=0; j<offsets.size(); j++){
@@ -742,7 +760,9 @@ double RVmodel::perturb(RNG& rng)
 
             // propose new slope
             if(trend) {
-                slope_prior->perturb(slope, rng);
+                if (degree >= 1) slope_prior->perturb(slope, rng);
+                if (degree >= 2) quadr_prior->perturb(quadr, rng);
+                if (degree == 3) cubic_prior->perturb(cubic, rng);
             }
 
             // propose new indicator correlations
@@ -756,7 +776,7 @@ double RVmodel::perturb(RNG& rng)
             {
                 mu[i] += background;
                 if(trend) {
-                    mu[i] += slope*(t[i]-data.get_t_middle());
+                    mu[i] += slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
                 }
                 if(multi_instrument) {
                     for(size_t j=0; j<offsets.size(); j++){
@@ -913,7 +933,12 @@ void RVmodel::print(std::ostream& out) const
         out<<extra_sigma<<'\t';
 
     if(trend)
-        out<<slope<<'\t';
+    {
+        if (degree >= 1) out << slope << '\t';
+        if (degree >= 2) out << quadr << '\t';
+        if (degree == 3) out << cubic << '\t';
+    }
+        
 
     if (obs_after_HARPS_fibers)
         out<<fiber_offset<<'\t';
@@ -965,7 +990,12 @@ string RVmodel::description() const
         desc += "extra_sigma   ";
 
     if(trend)
-        desc += "slope   ";
+    {
+        if (degree >= 1) desc += "slope   ";
+        if (degree >= 2) desc += "quadr   ";
+        if (degree == 3) desc += "cubic   ";
+    }
+
 
     if (obs_after_HARPS_fibers)
         desc += "fiber_offset   ";
@@ -1032,6 +1062,7 @@ void RVmodel::save_setup() {
     fout << "MA: " << MA << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
+    fout << "degree: " << degree << endl;
     fout << "multi_instrument: " << multi_instrument << endl;
     fout << "known_object: " << known_object << endl;
     fout << "indicator_correlations: " << data.indicator_correlations << endl;
@@ -1058,8 +1089,11 @@ void RVmodel::save_setup() {
     fout << "[priors.general]" << endl;
     fout << "Cprior: " << *Cprior << endl;
     fout << "Jprior: " << *Jprior << endl;
-    if (trend)
-        fout << "slope_prior: " << *slope_prior << endl;
+    if (trend){
+        if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
+        if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
+        if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
+    }
     if (obs_after_HARPS_fibers)
         fout << "fiber_offset_prior: " << *fiber_offset_prior << endl;
     if (multi_instrument)
