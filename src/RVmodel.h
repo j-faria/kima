@@ -23,6 +23,7 @@ extern const bool obs_after_HARPS_fibers;
 
 /// whether the model includes a linear trend
 extern const bool trend;
+extern const int degree;
 
 /// whether the data comes from different instruments
 /// (and offsets should be included in the model)
@@ -53,7 +54,7 @@ class RVmodel
         std::vector<double> betas = // "slopes" for each indicator
               std::vector<double>(Data::get_instance().number_indicators);
 
-        double slope, quad;
+        double slope, quadr=0.0, cubic=0.0;
         double fiber_offset;
         double sigmaMA, tauMA;
         double extra_sigma;
@@ -104,6 +105,8 @@ class RVmodel
         std::shared_ptr<DNest4::ContinuousDistribution> Jprior;
         /// Prior for the slope (used if `trend = true`).
         std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
+        std::shared_ptr<DNest4::ContinuousDistribution> quadr_prior;
+        std::shared_ptr<DNest4::ContinuousDistribution> cubic_prior;
         /// Prior for the HARPS fiber RV offset.
         std::shared_ptr<DNest4::ContinuousDistribution> fiber_offset_prior;
         /// (Common) prior for the between-instruments offsets.

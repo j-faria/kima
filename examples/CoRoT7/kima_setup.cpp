@@ -5,6 +5,7 @@ const bool GP = true;
 const bool MA = false;
 const bool hyperpriors = true;
 const bool trend = false;
+const int degree = 0;
 const bool multi_instrument = false;
 const bool known_object = false;
 
