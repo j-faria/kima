@@ -240,6 +240,10 @@ def run_local():
                 notify('kima job finished',
                        'after timeout of %.2f seconds' % took)
 
+        except subprocess.CalledProcessError as e:
+            print(kimastr, 'terminated with error code', -e.returncode)
+            sys.exit(e.returncode)
+
         else:
             end = time.time()
             took = end - start
