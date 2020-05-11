@@ -91,9 +91,9 @@ class KimaResults(object):
         self.setup = setup
 
         # read the priors
+        priors = list(setup['priors.general'].values())
+        prior_names = list(setup['priors.general'].keys())
         try:
-            priors = list(setup['priors.general'].values())
-            prior_names = list(setup['priors.general'].keys())
             for section in ('priors.planets', 'priors.hyperpriors', 'priors.GP'):
                 try:
                     priors += list(setup[section].values())
@@ -106,8 +106,7 @@ class KimaResults(object):
                 'KO_' + k for k in setup['priors.known_object'].keys()
             ]
         except KeyError:
-            priors = []
-            prior_names = []
+            pass
 
         self.priors = {
             n: v
