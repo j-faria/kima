@@ -1,8 +1,6 @@
 // (c) 2019 João Faria
 // This file is part of kima, which is licensed under the MIT license (see LICENSE for details)
-
-#ifndef DNest4_RVConditionalPrior
-#define DNest4_RVConditionalPrior
+#pragma once
 
 #include <memory>
 #include "RNG.h"
@@ -63,5 +61,4 @@ class RVConditionalPrior:public DNest4::ConditionalPrior
 
 };
 
-#endif
 

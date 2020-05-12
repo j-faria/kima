@@ -404,7 +404,7 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
     printf("# Loaded %d observations of %d activity indicators: ", actind[0].size(), actind.size());
     for (const auto i: indicators){
       if (i != ""){
-        printf("'%s'", i);
+        cout << "'" << i << "'";
         (i != indicators.back()) ? cout << ", " : cout << " ";
       }
     }
@@ -509,8 +509,10 @@ double Data::topslope() const
           obst.push_back(t[i]);
         }
       }
-      const auto [miny, maxy] = std::minmax_element(obsy.begin(), obsy.end());
-      const auto [mint, maxt] = std::minmax_element(obst.begin(), obst.end());
+      const auto miny = std::min_element(obsy.begin(), obsy.end());
+      const auto maxy = std::max_element(obsy.begin(), obsy.end());
+      const auto mint = std::min_element(obst.begin(), obst.end());
+      const auto maxt = std::max_element(obst.begin(), obst.end());
       double this_obs_topslope = (*maxy - *miny) / (*maxt - *mint);
       if (this_obs_topslope > slope)
         slope = this_obs_topslope;
@@ -529,7 +531,8 @@ double Data::topslope() const
 */
 double Data::get_RV_span() const
 {
-  const auto [min, max] = std::minmax_element(y.begin(), y.end());
+  const auto min = std::min_element(y.begin(), y.end());
+  const auto max = std::max_element(y.begin(), y.end());
   return *max - *min;
 }
 
@@ -554,7 +557,8 @@ double Data::get_max_RV_span() const
           obsy.push_back(y[i]);
         }
       }
-      const auto [min, max] = std::minmax_element(obsy.begin(), obsy.end());
+      const auto min = std::min_element(obsy.begin(), obsy.end());
+      const auto max = std::max_element(obsy.begin(), obsy.end());
       double this_obs_span = *max - *min;
       if (this_obs_span > span)
         span = this_obs_span;

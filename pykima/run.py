@@ -253,7 +253,8 @@ def run_local():
                        'after timeout of %.2f seconds' % took)
 
         except subprocess.CalledProcessError as e:
-            print(kimastr, 'job finished abruptly, something went wrong')
+            print(kimastr, 'terminated with error code', -e.returncode)
+            sys.exit(e.returncode)
 
         else:
             end = time.time()

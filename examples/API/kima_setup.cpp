@@ -22,6 +22,7 @@ const bool obs_after_HARPS_fibers = false;
 
 /// whether the model includes a linear trend
 const bool trend = false;
+const int degree = 0;
 
 /// whether the data comes from different instruments
 /// (and offsets + individual jitters should be included in the model)
@@ -29,6 +30,9 @@ const bool multi_instrument = false;
 
 /// include a (better) known extra Keplerian curve? (KO mode!)
 const bool known_object = false;
+
+/// use a Student-t distribution for the likelihood (instead of Gaussian)
+const bool studentt = false;
 
 /// whether the model includes hyper-priors for the orbital period and semi-amplitude
 const bool hyperpriors = false;

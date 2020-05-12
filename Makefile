@@ -2,7 +2,7 @@ DNEST4_PATH = DNest4/code
 EIGEN_PATH = eigen
 CELERITE_PATH = celerite/cpp/include
 
-export CXX = g++
+#export CXX = g++
 
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
 
@@ -26,7 +26,7 @@ OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
 
 EXAMPLES = 51Peg BL2009 CoRoT7 many_planets multi_instrument \
-           activity_correlations default_priors
+           activity_correlations default_priors studentT
 
 all: main ${EXAMPLES}
 

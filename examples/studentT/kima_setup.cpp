@@ -8,20 +8,24 @@ const bool trend = false;
 const int degree = 0;
 const bool multi_instrument = false;
 const bool known_object = false;
-const bool studentt = false;
+const bool studentt = true;  // use a Student's t-distribution for the likelihood
 
 RVmodel::RVmodel():fix(true),npmax(1)
-{}
+{
+    // all default priors
+    // the default prior for the degrees of freedom (nu) of the t-distribution:
+    // nu_prior = make_prior<LogUniform>(2, 1000);
+}
 
 
 int main(int argc, char** argv)
 {
-    datafile = "dummy_data.rv";
+    datafile = "d1.txt";
 
-    load(datafile, "kms", 0);
+    load(datafile, "ms", 2);
 
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
-    sampler.run(1000);
+    sampler.run(50);
 
     return 0;
 }
