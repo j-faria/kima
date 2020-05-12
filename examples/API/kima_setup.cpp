@@ -31,6 +31,9 @@ const bool multi_instrument = false;
 /// include a (better) known extra Keplerian curve? (KO mode!)
 const bool known_object = false;
 
+/// use a Student-t distribution for the likelihood (instead of Gaussian)
+const bool studentt = false;
+
 /// whether the model includes hyper-priors for the orbital period and semi-amplitude
 const bool hyperpriors = false;
 

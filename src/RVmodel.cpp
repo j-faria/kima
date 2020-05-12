@@ -8,6 +8,7 @@
 #include <limits>
 #include <fstream>
 #include <chrono>
+#include <cmath>
 #include <time.h>
 
 using namespace std;
@@ -75,6 +76,9 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         if (!KO_Pprior || !KO_Kprior || !KO_eprior || !KO_phiprior || !KO_wprior)
             throw std::logic_error("When known_object=true, please set all priors: KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior");
     }
+
+    if (studentt)
+        nu_prior = make_prior<LogUniform>(2, 1000);
 
 }
 
@@ -145,6 +149,10 @@ void RVmodel::from_prior(RNG& rng)
         KO_phi = KO_phiprior->generate(rng);
         KO_w = KO_wprior->generate(rng);
     }
+
+    if (studentt)
+        nu = nu_prior->generate(rng);
+
 
     calculate_mu();
 
@@ -707,6 +715,10 @@ double RVmodel::perturb(RNG& rng)
                 Jprior->perturb(extra_sigma, rng);
             }
 
+            if (studentt)
+                nu_prior->perturb(nu, rng);
+
+
             if (known_object)
             {
                 remove_known_object();
@@ -876,31 +888,44 @@ double RVmodel::log_likelihood() const
     }
     else
     {
-        // The following code calculates the log likelihood
-        // in the case of a t-Student model
-        //  for(size_t i=0; i<y.size(); i++)
-        //  {
-        //      var = sig[i]*sig[i] + extra_sigma*extra_sigma;
-        //      logL += gsl_sf_lngamma(0.5*(nu + 1.)) - gsl_sf_lngamma(0.5*nu)
-        //          - 0.5*log(M_PI*nu) - 0.5*log(var)
-        //          - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
-        //  }
-
-        // The following code calculates the log likelihood
-        // in the case of a Gaussian likelihood
-        double var, jit;
-        for(size_t i=0; i<N; i++)
-        {
-            if(multi_instrument)
+        if (studentt){
+            // The following code calculates the log likelihood 
+            // in the case of a t-Student model
+            double var, jit;
+            for(size_t i=0; i<N; i++)
             {
-                jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit;
-            }
-            else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                if(multi_instrument)
+                {
+                    jit = jitters[obsi[i]-1];
+                    var = sig[i]*sig[i] + jit*jit;
+                }
+                else
+                    var = sig[i]*sig[i] + extra_sigma*extra_sigma;
 
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(y[i] - mu[i], 2)/var);
+                logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
+                        - 0.5*log(M_PI*nu) - 0.5*log(var)
+                        - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
+            }
+
+        }
+
+        else{
+            // The following code calculates the log likelihood
+            // in the case of a Gaussian likelihood
+            double var, jit;
+            for(size_t i=0; i<N; i++)
+            {
+                if(multi_instrument)
+                {
+                    jit = jitters[obsi[i]-1];
+                    var = sig[i]*sig[i] + jit*jit;
+                }
+                else
+                    var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+
+                logL += - halflog2pi - 0.5*log(var)
+                        - 0.5*(pow(y[i] - mu[i], 2)/var);
+            }
         }
 
     }
@@ -959,22 +984,25 @@ void RVmodel::print(std::ostream& out) const
     if(GP)
     {
         if (kernel == standard)
-            out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t'<<eta4<<'\t';
+            out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t' << eta4 << '\t';
         else
-            out<<eta1<<'\t'<<eta2<<'\t'<<eta3<<'\t';
+            out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t';
     }
     
     if(MA)
-        out<<sigmaMA<<'\t'<<tauMA<<'\t';
+        out << sigmaMA << '\t' << tauMA << '\t';
 
     if(known_object) // KO mode!
         out << KO_P << "\t" << KO_K << "\t" << KO_phi << "\t" << KO_e << "\t" << KO_w << "\t";
 
-
     planets.print(out);
 
-    out<<' '<<staleness<<' ';
-    out<<background;
+    out << ' ' << staleness << ' ';
+
+    if (studentt)
+        out << '\t' << nu << '\t';
+
+    out << background;
 }
 
 string RVmodel::description() const
@@ -1036,7 +1064,11 @@ string RVmodel::description() const
     if (planets.get_max_num_components()>0)
         desc += "P   K   phi   ecc   w   ";
 
-    desc += "staleness   vsys";
+    desc += "staleness   ";
+    if (studentt)
+        desc += "nu   ";
+    
+    desc += "vsys";
 
     return desc;
 }
@@ -1065,6 +1097,7 @@ void RVmodel::save_setup() {
     fout << "degree: " << degree << endl;
     fout << "multi_instrument: " << multi_instrument << endl;
     fout << "known_object: " << known_object << endl;
+    fout << "studentt: " << studentt << endl;
     fout << "indicator_correlations: " << data.indicator_correlations << endl;
     fout << "indicators: ";
     for (auto f: data.indicator_names){
@@ -1098,6 +1131,8 @@ void RVmodel::save_setup() {
         fout << "fiber_offset_prior: " << *fiber_offset_prior << endl;
     if (multi_instrument)
         fout << "offsets_prior: " << *offsets_prior << endl;
+    if (studentt)
+        fout << "nu_prior: " << *nu_prior << endl;
 
     if (GP){
         fout << endl << "[priors.GP]" << endl;

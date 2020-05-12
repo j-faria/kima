@@ -32,6 +32,8 @@ extern const bool multi_instrument;
 /// include a (better) known extra Keplerian curve? (KO mode!)
 extern const bool known_object;
 
+/// use a Student-t distribution for the likelihood (instead of Gaussian)
+extern const bool studentt;
 
 class RVmodel
 {
@@ -58,6 +60,7 @@ class RVmodel
         double fiber_offset;
         double sigmaMA, tauMA;
         double extra_sigma;
+        double nu;
 
         // Parameters for the quasi-periodic extra noise
         enum Kernel {standard, celerite};
@@ -136,6 +139,8 @@ class RVmodel
         std::shared_ptr<DNest4::ContinuousDistribution> KO_eprior;
         std::shared_ptr<DNest4::ContinuousDistribution> KO_phiprior;
         std::shared_ptr<DNest4::ContinuousDistribution> KO_wprior;
+
+        std::shared_ptr<DNest4::ContinuousDistribution> nu_prior;
 
         // change the name of std::make_shared :)
         /**
