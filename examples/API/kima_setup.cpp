@@ -30,6 +30,7 @@ const bool multi_instrument = false;
 
 /// include a (better) known extra Keplerian curve? (KO mode!)
 const bool known_object = false;
+const int n_known_object = 0;
 
 /// use a Student-t distribution for the likelihood (instead of Gaussian)
 const bool studentt = false;
