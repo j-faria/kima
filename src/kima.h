@@ -3,6 +3,7 @@
 #include "DNest4.h"
 #include "distributions/Fixed.h"
 #include "distributions/Empirical.h"
+#include "distributions/mixGaussianLogUniform.h"
 
 #include "Data.h"
 #include "RVmodel.h"
