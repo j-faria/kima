@@ -91,9 +91,9 @@ class KimaResults(object):
         self.setup = setup
 
         # read the priors
+        priors = list(setup['priors.general'].values())
+        prior_names = list(setup['priors.general'].keys())
         try:
-            priors = list(setup['priors.general'].values())
-            prior_names = list(setup['priors.general'].keys())
             for section in ('priors.planets', 'priors.hyperpriors', 'priors.GP'):
                 try:
                     priors += list(setup[section].values())
@@ -106,8 +106,7 @@ class KimaResults(object):
                 'KO_' + k for k in setup['priors.known_object'].keys()
             ]
         except KeyError:
-            priors = []
-            prior_names = []
+            pass
 
         self.priors = {
             n: v
@@ -200,13 +199,15 @@ class KimaResults(object):
         # find trend in the compiled model
         if trend is None:
             self.trend = setup['kima']['trend'] == 'true'
+            self.trend_degree = int(setup['kima']['degree'])
         else:
             self.trend = trend
+            self.trend_degree = 1
 
         if debug: print('trend:', self.trend)
 
         if self.trend:
-            n_trend = 1
+            n_trend = self.trend_degree
             i1 = start_parameters + 1
             i2 = start_parameters + n_trend + 1
             self.trendpars = self.posterior_sample[:, i1:i2]
@@ -647,6 +648,7 @@ class KimaResults(object):
                       self.eta3[ind], self.eta4[ind])
             if self.trend:
                 print('slope: ', self.trendpars[ind][0])
+                print('maybe missing others')
             if self.multi:
                 ni = self.n_instruments - 1
                 print('instrument offsets: ', end=' ')
@@ -1715,14 +1717,13 @@ class KimaResults(object):
 
             # add the trend, if present
             if self.trend:
-                v += self.trendpars[i] * (tt - self.tmiddle)
-                v_at_t += self.trendpars[i] * (t - self.tmiddle)
-                if self.GPmodel:
-                    v_at_ttGP += self.trendpars[i] * (ttGP - self.tmiddle)
+                v += np.polyval(np.r_[self.trendpars[i][::-1], 0.0], tt - self.tmiddle)
+                # v_at_t += self.trendpars[i] * (t - self.tmiddle)
+                # if self.GPmodel:
+                #     v_at_ttGP += self.trendpars[i] * (ttGP - self.tmiddle)
                 if show_trend:
                     kw = dict(alpha=0.2, color='m', ls=':')
-                    ax.plot(
-                        tt, vsys + self.trendpars[i] * (tt - self.tmiddle), **kw)
+                    ax.plot(tt, np.polyval(np.r_[self.trendpars[i][::-1], vsys], tt - self.tmiddle), **kw)
                     if self.KO:
                         ax1.plot(
                             tt, vsys + self.trendpars[i] * (tt - self.tmiddle))
@@ -2348,27 +2349,39 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
-    def hist_trend(self, per_year=True):
+    def hist_trend(self, per_year=True, show_prior=False):
         """ 
-        Plot the histogram of the posterior for the slope of a linear trend
+        Plot the histogram of the posterior for the coefficients of the trend
         """
         if not self.trend:
             print('Model has no trend! hist_trend() doing nothing...')
             return
 
-        units = ' (m/s/yr)'  # if self.units=='ms' else ' (km/s)'
+        deg = self.trend_degree
+        names = ['slope', 'quadr', 'cubic']
+        units = [' (m/s/yr)', ' (m/s/yr²)']
 
         trend = self.trendpars.copy()
 
-        if per_year:  # transfrom from m/s/day to m/s/yr
-            trend *= 365.25
+        if per_year:  # transfrom from /day to /yr
+            trend *= 365.25 ** np.arange(1, self.trend_degree+1)
 
-        estimate = percentile68_ranges_latex(trend) + units
+        fig, ax = plt.subplots(deg, 1, constrained_layout=True, squeeze=False)
+        fig.suptitle('Posterior distribution for trend coefficients')
+        for i in range(deg):
+            estimate = percentile68_ranges_latex(trend[:, i]) + units[i]
 
-        fig, ax = plt.subplots(1, 1)
-        ax.hist(trend.ravel())
-        title = 'Posterior distribution for slope \n %s' % estimate
-        ax.set(xlabel='slope' + units, ylabel='posterior samples', title=title)
+            ax[i, 0].hist(trend[:, i].ravel(), label='posterior')
+            if show_prior:
+                prior = self.priors[names[i] + '_prior']
+                f = 365.25**(i+1) if per_year else 1.0
+                ax[i, 0].hist(prior.rvs(self.ESS) * f, alpha=0.15, color='k', 
+                              zorder=-1, label='prior')
+
+            ax[i, 0].set(xlabel=f'{names[i]}{units[i]}',
+                      ylabel='posterior samples', title=estimate)
+            if show_prior:
+                ax[i, 0].legend()
 
         if self.save_plots:
             filename = 'kima-showresults-fig7.5.png'

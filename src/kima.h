@@ -1,3 +1,5 @@
+#pragma once
+
 #include "DNest4.h"
 #include "distributions/Fixed.h"
 #include "distributions/Empirical.h"

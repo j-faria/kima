@@ -160,12 +160,12 @@ def test_showresults_fails(tmpdir, simple_results_dir, capfd):
 
     # in an empty directory, no levels.txt, should fail
     os.chdir(str(tmpdir))
-    with pytest.raises(SystemExit):
+    with pytest.raises(FileNotFoundError):
         showresults()
 
     # now directory only has levels.txt, but it's empty
     tmpdir.join("levels.txt").write('# header\n')
-    with pytest.raises(IndexError):
+    with pytest.raises(OSError):
         showresults()
 
     # go to the dummy results directory, which has the 3 files,

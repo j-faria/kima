@@ -1,8 +1,6 @@
 // (c) 2019 João Faria
 // This file is part of kima, which is licensed under the MIT license (see LICENSE for details)
-
-#ifndef DNest4_Data
-#define DNest4_Data
+#pragma once
 
 #include <string>
 #include <vector>
@@ -116,7 +114,4 @@ void load( Args&&... args ) { Data::get_instance().load(args...); }
 
 template< class... Args >
 void load_multi( Args&&... args ) { Data::get_instance().load_multi(args...); }
-
-
-#endif
 
