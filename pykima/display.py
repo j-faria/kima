@@ -1319,6 +1319,11 @@ class KimaResults(object):
                 title='Joint posterior eccentricity $-$ orbital period',
                 ylim=[0, 1], xlim=[0.1, 1e7])
 
+        try:
+            ax2.set(xlim=self.priors['Pprior'].support())
+        except (AttributeError, KeyError):
+            pass
+
         if self.save_plots:
             filename = 'kima-showresults-fig3.png'
             print('saving in', filename)
