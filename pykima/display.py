@@ -370,8 +370,16 @@ class KimaResults(object):
         self.index_component = start_objects_print + 1 + n_dist_print + 1
         self.indices['np'] = self.index_component
 
+        # student-t likelihood?
+        self.studentT = self.setup['kima']['studentt'] == 'true'
+        if self.studentT:
+            self.nu = self.posterior_sample[:, -2]
+
+        self.vsys = self.posterior_sample[:, -1]
+
         # indices of the planet parameters
-        self.indices['planets'] = slice(self.index_component + 1, -2)
+        self.indices['planets'] = slice(self.index_component + 1,
+                                        -3 if self.studentT else -2)
 
         # build the marginal posteriors for planet parameters
         self.get_marginals()
