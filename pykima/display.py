@@ -638,6 +638,11 @@ class KimaResults(object):
                 ind = np.argmax(self.sample_info[:, 1])
                 maxlike = self.sample_info[ind, 1]
                 pars = self.sample[ind]
+            else:
+                mask = self.sample[:, self.index_component] == Np
+                ind = np.argmax(self.sample_info[mask, 1])
+                maxlike = self.sample_info[mask][ind, 1]
+                pars = self.sample[mask][ind]
 
         if printit:
             if from_posterior:
