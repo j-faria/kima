@@ -123,8 +123,10 @@ class KimaResults(object):
                 if setup['kima']['files'] == '':
                     # multi is true but in only one file
                     data_file = setup['kima']['file']
+                    self.multi_onefile = True
                 else:
                     data_file = setup['kima']['files'].split(',')[:-1]
+                    self.multi_onefile = False
                     # raise NotImplementedError('TO DO')
             else:
                 data_file = setup['kima']['file']
@@ -179,8 +181,10 @@ class KimaResults(object):
 
         try:
             self.sample = np.loadtxt('sample.txt')
+            self.sample_info = np.loadtxt('sample_info.txt')
         except IOError:
             self.sample = None
+            self.sample_info = None
 
         self.indices = {}
 
@@ -370,8 +374,16 @@ class KimaResults(object):
         self.index_component = start_objects_print + 1 + n_dist_print + 1
         self.indices['np'] = self.index_component
 
+        # student-t likelihood?
+        self.studentT = self.setup['kima']['studentt'] == 'true'
+        if self.studentT:
+            self.nu = self.posterior_sample[:, -2]
+
+        self.vsys = self.posterior_sample[:, -1]
+
         # indices of the planet parameters
-        self.indices['planets'] = slice(self.index_component + 1, -2)
+        self.indices['planets'] = slice(self.index_component + 1,
+                                        -3 if self.studentT else -2)
 
         # build the marginal posteriors for planet parameters
         self.get_marginals()
@@ -596,29 +608,51 @@ class KimaResults(object):
         self.means = np.mean(self.posterior_sample, axis=0)
         return self.medians, self.means
 
-    def maximum_likelihood_sample(self, Np=None, printit=True):
+    def maximum_likelihood_sample(self, from_posterior=False, Np=None, 
+                                  printit=True):
         """ 
-        Get the posterior sample with the highest log likelihood. If `Np` is 
-        given, select only from posterior samples with that number of planets.
+        Get the maximum likelihood sample. By default, this is the highest
+        likelihood sample found by DNest4. If `from_posterior` is True, this
+        returns instead the highest likelihood sample *from those that represent
+        the posterior*. The latter may change, due to random choices, between
+        different calls to "showresults". If `Np` is given, select only samples
+        with that number of planets.
         """
-        if not self.lnlike_available:
+        if self.sample_info is None and not self.lnlike_available:
             print('log-likelihoods are not available! '\
                   'maximum_likelihood_sample() doing nothing...')
             return
 
-        if Np is None:
-            ind = np.argmax(self.posterior_lnlike[:, 1])
-            maxlike = self.posterior_lnlike[ind, 1]
-            pars = self.posterior_sample[ind]
+        if from_posterior:
+            if Np is None:
+                ind = np.argmax(self.posterior_lnlike[:, 1])
+                maxlike = self.posterior_lnlike[ind, 1]
+                pars = self.posterior_sample[ind]
+            else:
+                mask = self.posterior_sample[:, self.index_component] == Np
+                ind = np.argmax(self.posterior_lnlike[mask, 1])
+                maxlike = self.posterior_lnlike[mask][ind, 1]
+                pars = self.posterior_sample[mask][ind]
         else:
-            mask = self.posterior_sample[:, self.index_component] == Np
-            ind = np.argmax(self.posterior_lnlike[mask, 1])
-            maxlike = self.posterior_lnlike[mask][ind, 1]
-            pars = self.posterior_sample[mask][ind]
+            if Np is None:
+                ind = np.argmax(self.sample_info[:, 1])
+                maxlike = self.sample_info[ind, 1]
+                pars = self.sample[ind]
+            else:
+                mask = self.sample[:, self.index_component] == Np
+                ind = np.argmax(self.sample_info[mask, 1])
+                maxlike = self.sample_info[mask][ind, 1]
+                pars = self.sample[mask][ind]
 
         if printit:
-            print('Posterior sample with the highest likelihood value '\
-                  '({:.2f})'.format(maxlike))
+            if from_posterior:
+                print('Posterior sample with the highest likelihood value',
+                      end=' ')
+            else:
+                print('Sample with the highest likelihood value', end=' ')
+
+            print('(logL = {:.2f})'.format(maxlike))
+
             if Np is not None:
                 print('from samples with %d Keplerians only' % Np)
             print(
@@ -644,23 +678,27 @@ class KimaResults(object):
                     print(s)
 
             if self.GPmodel:
-                print('GP parameters: ', self.eta1[ind], self.eta2[ind],
-                      self.eta3[ind], self.eta4[ind])
+                eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
+                print('GP parameters: ', eta1, eta2, eta3, eta4)
+
             if self.trend:
-                print('slope: ', self.trendpars[ind][0])
-                print('maybe missing others')
+                print('slope: ', pars[self.indices['trend']])
+                print('(WARNING maybe missing others)')
+
             if self.multi:
+                instruments = self.instruments
                 ni = self.n_instruments - 1
                 print('instrument offsets: ', end=' ')
-                print('(relative to %s) ' % self.data_file[-1])
+                # print('(relative to %s) ' % self.data_file[-1])
+                print('(relative to %s) ' % instruments[-1])
                 s = 20 * ' '
-                s += (ni * ' {:20s} ').format(*self.data_file)
+                s += (ni * ' {:20s} ').format(*instruments)
                 print(s)
 
                 i = self.indices['inst_offsets']
                 s = 20 * ' '
                 s += (
-                    ni * ' {:<20.3f} ').format(*self.posterior_sample[ind][i])
+                    ni * ' {:<20.3f} ').format(*pars[i])
                 print(s)
 
             print('vsys: ', pars[-1])
@@ -1058,6 +1096,17 @@ class KimaResults(object):
         return residuals
 
     @property
+    def instruments(self):
+        if self.multi:
+            if self.multi_onefile:
+                return ['inst %d' % i for i in np.unique(self.obs)]
+            else:
+                return list(map(os.path.basename, self.data_file))
+        else:
+            return []
+
+
+    @property
     def ratios(self):
         bins = np.arange(self.max_components + 2)
         nplanets = self.posterior_sample[:, self.index_component]
@@ -1318,6 +1367,11 @@ class KimaResults(object):
         ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
                 title='Joint posterior eccentricity $-$ orbital period',
                 ylim=[0, 1], xlim=[0.1, 1e7])
+
+        try:
+            ax2.set(xlim=self.priors['Pprior'].support())
+        except (AttributeError, KeyError):
+            pass
 
         if self.save_plots:
             filename = 'kima-showresults-fig3.png'
