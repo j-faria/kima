@@ -54,6 +54,14 @@ def read_datafile(datafile, skip):
     else:
         data = np.loadtxt(datafile, usecols=(0, 1, 2), skiprows=skip)
         obs = np.loadtxt(datafile, usecols=(3, ), skiprows=skip, dtype=int)
+        uobs = np.unique(obs)
+
+        id0 = 0
+        for i, o in enumerate(obs):
+            if o != uobs[id0]:
+                id0 += 1
+            obs[i] = id0 + 1
+
         return data, obs
 
 

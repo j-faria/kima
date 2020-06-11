@@ -248,14 +248,31 @@ void Data::load_multi(const std::string filename, const std::string units, int s
   double factor = 1.;
   if(units == "kms") factor = 1E3;
 
-  for (unsigned n = 0; n < data.size(); n++)
-    {
-      if (n<skip) continue;
-      t.push_back(data[n][0]);
-      y.push_back(data[n][1] * factor);
-      sig.push_back(data[n][2] * factor);
-      obsi.push_back(data[n][3]);
-    }
+  // the 4th column of the file identifies the instrument; can have "0"s
+  // this is to make sure the obsi vector always starts at 1, to avoid
+  // segmentation faults later
+  vector<int> inst_id;
+  int id = 0;
+
+  inst_id.push_back(data[skip][3]);
+
+  for (size_t n = skip+1; n < data.size(); n++)
+  {
+    if (data[n][3] != inst_id.back())
+      inst_id.push_back(data[n][3]);
+  }
+
+  for (unsigned n = skip; n < data.size(); n++)
+  {
+    // if (n < skip) continue;
+    t.push_back(data[n][0]);
+    y.push_back(data[n][1] * factor);
+    sig.push_back(data[n][2] * factor);
+
+    if (data[n][3] != inst_id[id])
+      id++;
+    obsi.push_back(id+1);
+  }
 
   // How many points did we read?
   printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
