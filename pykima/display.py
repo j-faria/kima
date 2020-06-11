@@ -283,12 +283,17 @@ class KimaResults(object):
             print('GP model:', self.GPmodel)
 
         if self.GPmodel:
+<<<<<<< HEAD
             if self.GPkernel == 0:
                 n_hyperparameters = 4
             elif self.GPkernel == 1:
                 n_hyperparameters = 3
 
             start_hyperpars = start_parameters + n_trend + n_offsets + n_inst_offsets + 1
+=======
+            n_hyperparameters = 4
+            start_hyperpars = start_parameters + n_trend + n_offsets + n_inst_offsets + n_act_ind + 1
+>>>>>>> master
             self.etas = self.posterior_sample[:, start_hyperpars:
                                               start_hyperpars +
                                               n_hyperparameters]
