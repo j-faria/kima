@@ -1072,7 +1072,7 @@ class KimaResults(object):
                             **ekwargs)
                 ax.fill_between(t[m], -jitters[k - 1], jitters[k - 1],
                                 alpha=0.2)
-                print(get_instrument_name(self.data_file[k-1]), end=': ')
+                print(self.instruments[k-1], end=': ')
                 print(wrms(self.y[m] - v[m] - KOvel[m] - GPvel[m], 1/e[m]**2))
                 residuals[m] = self.y[m] - v[m] - KOvel[m] - GPvel[m]
 
@@ -1446,8 +1446,7 @@ class KimaResults(object):
         units = ['m/s'] * self.n_jitters + ['m/s', 'days', 'days', None]
         xlabels = []
         for i in range(self.n_jitters):
-            l = r'%s$_{{\rm %s}}}$' % (labels[i],
-                                       get_instrument_name(self.data_file[i]))
+            l = r'%s$_{{\rm %s}}}$' % (labels[i], self.instruments[i])
 
             xlabels.append(l)
         for label, unit in zip(labels[self.n_jitters:],
@@ -1904,13 +1903,14 @@ class KimaResults(object):
         else:
             if self.multi:
                 for j in range(self.inst_offsets.shape[1] + 1):
+                    inst = self.instruments[j]
                     m = self.obs == j + 1
                     ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j],
-                                label=os.path.basename(self.data_file[j]))
+                                label=inst)
                     if self.KO:
                         ax1.errorbar(t[m], y[m] - v_KO_at_t.mean(axis=0)[m],
                                      yerr[m], fmt='o', color=colors[j],
-                                     label=os.path.basename(self.data_file[j]))
+                                     label=inst)
                 ax.legend(loc='upper left')
             else:
                 ax.errorbar(t, y, yerr, fmt='o')
@@ -2282,8 +2282,10 @@ class KimaResults(object):
                 axs = [axs,]
 
             for i in range(n_inst_offsets):
-                wrt = get_instrument_name(self.data_file[-1])
-                this = get_instrument_name(self.data_file[i])
+                # wrt = get_instrument_name(self.data_file[-1])
+                # this = get_instrument_name(self.data_file[i])
+                wrt = self.instruments[-1]
+                this = self.instruments[i]
                 label = 'offset\n%s rel. to %s' % (this, wrt)
                 a = self.inst_offsets[:, i]
                 estimate = percentile68_ranges_latex(a) + units
@@ -2310,8 +2312,10 @@ class KimaResults(object):
                     i = specific.index(self.data_file[-1])
                     # toggle: if i is 0 it becomes 1, if it's 1 it becomes 0
                     i ^= 1
-                    wrt = get_instrument_name(self.data_file[-1])
-                    this = get_instrument_name(specific[i])
+                    # wrt = get_instrument_name(self.data_file[-1])
+                    # this = get_instrument_name(specific[i])
+                    wrt = self.instruments[-1]
+                    this = self.instruments[i]
                     label = 'offset\n%s rel. to %s' % (this, wrt)
                     offset = self.inst_offsets[:, self.data_file.index(specific[i])]
                     estimate = percentile68_ranges_latex(offset) + units
@@ -2319,8 +2323,10 @@ class KimaResults(object):
                     ax.hist(offset)
                     ax.set(xlabel=label, title=estimate, ylabel='posterior samples')
                 else:
-                    wrt = get_instrument_name(specific[1])
-                    this = get_instrument_name(specific[0])
+                    # wrt = get_instrument_name(specific[1])
+                    # this = get_instrument_name(specific[0])
+                    wrt = self.instruments[specific[1]]
+                    this = self.instruments[specific[0]]
                     label = 'offset\n%s rel. to %s' % (this, wrt)
                     of1 = self.inst_offsets[:, self.data_file.index(specific[0])]
                     of2 = self.inst_offsets[:, self.data_file.index(specific[1])]
@@ -2343,10 +2349,11 @@ class KimaResults(object):
         if self.multi:  # there are n_instruments jitters
             # lambda substrs
             fig, axs = plt.subplots(1, self.n_instruments, sharey=True,
-                                    figsize=(self.n_instruments * 3,
-                                             5), squeeze=True)
+                                    figsize=(self.n_instruments * 3, 5), 
+                                    squeeze=True)
             for i, jit in enumerate(self.extra_sigma.T):
-                inst = get_instrument_name(self.data_file[i])
+                # inst = get_instrument_name(self.data_file[i])
+                inst = self.instruments[i]
                 estimate = percentile68_ranges_latex(jit) + units
                 axs[i].hist(jit)
                 axs[i].set(xlabel='%s' % inst, title=estimate,
