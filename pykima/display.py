@@ -131,9 +131,6 @@ class KimaResults(object):
             else:
                 data_file = setup['kima']['file']
 
-        self.data_skip = int(setup['kima']['skip'])
-        self.units = setup['kima']['units']
-
         if verbose:
             print('Loading data file %s' % data_file)
         self.data_file = data_file
@@ -161,6 +158,12 @@ class KimaResults(object):
         if self.units == 'kms':
             self.data[:, 1] *= 1e3
             self.data[:, 2] *= 1e3
+
+        # arbitrary units?
+        if 'arb' in self.units:
+            self.arbitrary_units = True
+        else:
+            self.arbitrary_units = False
 
         self.t = self.data[:, 0].copy()
         self.y = self.data[:, 1].copy()
@@ -1708,7 +1711,10 @@ class KimaResults(object):
         else:
             fig, ax = plt.subplots(1, 1)
 
-        ax.set_title('Posterior samples in RV data space')
+        if self.arbitrary_units:
+            ax.set_title('Posterior samples in data space')
+        else:
+            ax.set_title('Posterior samples in RV data space')
         # ax.autoscale(False)
         # ax.use_sticky_edges = False
 
@@ -1917,10 +1923,14 @@ class KimaResults(object):
                 if self.KO:
                     ax1.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
 
-        ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
+        if self.arbitrary_units:
+            lab = dict(xlabel='Time [days]', ylabel='Q [arbitrary]')
+        else:
+            lab = dict(xlabel='Time [days]', ylabel='RV [m/s]')
+        
+        ax.set(**lab)
         if self.KO:
-            ax1.set(xlabel='Time [days]', ylabel='RV [m/s]')
-        # plt.tight_layout()
+            ax1.set(**lab)
 
         if self.save_plots:
             filename = 'kima-showresults-fig6.png'
@@ -2253,7 +2263,12 @@ class KimaResults(object):
         figures = []
 
         vsys = self.posterior_sample[:, -1]
-        units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
+
+        if self.arbitrary_units:
+            units = ' (arbitrary)'
+        else:
+            units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
+
         estimate = percentile68_ranges_latex(vsys) + units
 
         fig, ax = plt.subplots(1, 1)
@@ -2339,8 +2354,13 @@ class KimaResults(object):
 
 
     def hist_extra_sigma(self):
-        """ Plot the histogram of the posterior for the additional white noise """
-        units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
+        """ 
+        Plot the histogram of the posterior for the additional white noise 
+        """
+        if self.arbitrary_units:
+            units = ' (arbitrary)'
+        else:
+            units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
 
         if self.multi:  # there are n_instruments jitters
             # lambda substrs
@@ -2350,7 +2370,8 @@ class KimaResults(object):
             for i, jit in enumerate(self.extra_sigma.T):
                 # inst = get_instrument_name(self.data_file[i])
                 inst = self.instruments[i]
-                estimate = percentile68_ranges_latex(jit) + units
+                dec = abs(int(np.floor(np.log10(jit.mean()))))
+                estimate = percentile68_ranges_latex(jit, decimal=dec) + units
                 axs[i].hist(jit)
                 axs[i].set(xlabel='%s' % inst, title=estimate,
                            ylabel='posterior samples')
@@ -2359,11 +2380,15 @@ class KimaResults(object):
             fig.suptitle(title)
 
         else:
-            estimate = percentile68_ranges_latex(self.extra_sigma) + units
+            dec = abs(int(np.floor(np.log10(self.extra_sigma.mean()))))
+            estimate = percentile68_ranges_latex(self.extra_sigma, 
+                                                 decimal=dec+1)
+            estimate += units
+
             fig, ax = plt.subplots(1, 1)
             ax.hist(self.extra_sigma)
             title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
-            ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
+            ax.set(xlabel='extra sigma' + units, ylabel='posterior samples',
                    title=title)
 
         if self.save_plots:
@@ -2416,7 +2441,10 @@ class KimaResults(object):
 
         deg = self.trend_degree
         names = ['slope', 'quadr', 'cubic']
-        units = [' (m/s/yr)', ' (m/s/yr²)']
+        if self.arbitrary_units:
+            units = [' (/yr)', ' (/yr²)', '']
+        else:
+            units = [' (m/s/yr)', ' (m/s/yr²)', '']
 
         trend = self.trendpars.copy()
 
