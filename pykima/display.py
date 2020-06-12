@@ -1937,6 +1937,10 @@ class KimaResults(object):
             print('saving in', filename)
             fig.savefig(filename)
 
+        if self.return_figs:
+            return fig
+
+
     def plot_random_planets_pyqt(self, ncurves=50, over=0.2, pmin=None,
                                  pmax=None, show_vsys=False, show_trend=False,
                                  Np=None):
