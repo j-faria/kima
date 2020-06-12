@@ -1019,8 +1019,11 @@ void RVmodel::print(std::ostream& out) const
         out << sigmaMA << '\t' << tauMA << '\t';
 
     if(known_object){ // KO mode!
-        for(int i=0; i<n_known_object; i++)
-            out << KO_P[i] << "\t" << KO_K[i] << "\t" << KO_phi[i] << "\t" << KO_e[i] << "\t" << KO_w[i] << "\t";
+        for (auto P: KO_P) out << P << "\t";
+        for (auto K: KO_K) out << K << "\t";
+        for (auto phi: KO_phi) out << phi << "\t";
+        for (auto e: KO_e) out << e << "\t";
+        for (auto w: KO_w) out << w << "\t";
     }
 
     planets.print(out);
