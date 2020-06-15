@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import norm, t
 
 from .utils import get_planet_mass, get_planet_semimajor_axis
 
@@ -80,6 +81,41 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
             print(s)
     return np.array(masses)
 
+
+def find_outliers(results, sample, threshold=10, verbose=False):
+    """ 
+    Estimate which observations are outliers, for a model with a Student t
+    likelihood. This function first calculates the residuals given the
+    parameters in `sample`. Then it computes the relative probability of each
+    residual point given a Student-t (Td) and a Gaussian (Gd) likelihoods. If
+    the probability Td is larger than Gd (by a factor of `threshold`), the point
+    is flagged as an outlier. The function returns an "outlier mask".
+    """
+    res = results
+    # the model must have studentt = true
+    if not res.studentT:
+        raise ValueError('studentt option is off, cannot estimate outliers')
+    
+    # calculate residuals for this sample
+    resid = res.y - res.model(sample)
+    
+    # this sample's jitter and degrees of freedom
+    J = sample[res.indices['jitter']]
+    nu = sample[res.indices['nu']]
+    
+    # probabilities within the Gaussian and Student-t likelihoods
+    Gd = norm(loc=0, scale=np.hypot(res.e, J)).pdf(resid)
+    Td = norm(df=nu, loc=0, scale=np.hypot(res.e, J)).pdf(resid)
+    
+    # if Td/Gd > threshold, the point is an outlier, in the sense that it is
+    # more likely within the Student-t likelihood than it would have been within
+    # the Gaussian likelihood
+    ratio = Td / Gd
+    outlier = ratio > threshold
+    if verbose:
+        print(f'Found {outlier.sum()} outliers')
+
+    return outlier
 
 
 def column_dynamic_ranges(results):
