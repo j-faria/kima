@@ -381,8 +381,10 @@ class KimaResults(object):
         self.studentT = self.setup['kima']['studentt'] == 'true'
         if self.studentT:
             self.nu = self.posterior_sample[:, -2]
+            self.indices['nu'] = -2
 
         self.vsys = self.posterior_sample[:, -1]
+        self.indices['vsys'] = -1
 
         # indices of the planet parameters
         self.indices['planets'] = slice(self.index_component + 1,
