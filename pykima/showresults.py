@@ -178,7 +178,8 @@ def _parse_args(options):
                      remove_crossing=remove_crossing)
 
 
-def showresults(options='', force_return=False, verbose=True, show_plots=True):
+def showresults(options='', force_return=False, verbose=True, show_plots=True, 
+                kima_tips=True):
     """
     Generate and plot results from a kima run. The argument `options` should be 
     a string with the same options as for the kima-showresults script.
@@ -240,7 +241,7 @@ def showresults(options='', force_return=False, verbose=True, show_plots=True):
 
 
     # show kima tips
-    if verbose:
+    if verbose and kima_tips:
         show_tips()
 
     res = KimaResults('')

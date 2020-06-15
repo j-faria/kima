@@ -54,6 +54,14 @@ def read_datafile(datafile, skip):
     else:
         data = np.loadtxt(datafile, usecols=(0, 1, 2), skiprows=skip)
         obs = np.loadtxt(datafile, usecols=(3, ), skiprows=skip, dtype=int)
+        uobs = np.unique(obs)
+
+        id0 = 0
+        for i, o in enumerate(obs):
+            if o != uobs[id0]:
+                id0 += 1
+            obs[i] = id0 + 1
+
         return data, obs
 
 
@@ -104,9 +112,10 @@ def percentile68_ranges(a, min=None, max=None):
     return (median, up - median, median - lp)
 
 
-def percentile68_ranges_latex(a, min=None, max=None):
+def percentile68_ranges_latex(a, min=None, max=None, decimal=2):
     median, plus, minus = percentile68_ranges(a, min, max)
-    return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, plus, minus)
+    d = decimal
+    return f'${median:.{d}f} ^{{+{plus:.{d}f}}} _{{-{minus:.{d}f}}}$'
 
 
 def percentile_ranges(a, percentile=68, min=None, max=None):

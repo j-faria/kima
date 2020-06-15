@@ -123,14 +123,13 @@ class KimaResults(object):
                 if setup['kima']['files'] == '':
                     # multi is true but in only one file
                     data_file = setup['kima']['file']
+                    self.multi_onefile = True
                 else:
                     data_file = setup['kima']['files'].split(',')[:-1]
+                    self.multi_onefile = False
                     # raise NotImplementedError('TO DO')
             else:
                 data_file = setup['kima']['file']
-
-        self.data_skip = int(setup['kima']['skip'])
-        self.units = setup['kima']['units']
 
         if verbose:
             print('Loading data file %s' % data_file)
@@ -160,6 +159,12 @@ class KimaResults(object):
             self.data[:, 1] *= 1e3
             self.data[:, 2] *= 1e3
 
+        # arbitrary units?
+        if 'arb' in self.units:
+            self.arbitrary_units = True
+        else:
+            self.arbitrary_units = False
+
         self.t = self.data[:, 0].copy()
         self.y = self.data[:, 1].copy()
         self.e = self.data[:, 2].copy()
@@ -179,8 +184,10 @@ class KimaResults(object):
 
         try:
             self.sample = np.loadtxt('sample.txt')
+            self.sample_info = np.loadtxt('sample_info.txt')
         except IOError:
             self.sample = None
+            self.sample_info = None
 
         self.indices = {}
 
@@ -372,8 +379,16 @@ class KimaResults(object):
         self.index_component = start_objects_print + 1 + n_dist_print + 1
         self.indices['np'] = self.index_component
 
+        # student-t likelihood?
+        self.studentT = self.setup['kima']['studentt'] == 'true'
+        if self.studentT:
+            self.nu = self.posterior_sample[:, -2]
+
+        self.vsys = self.posterior_sample[:, -1]
+
         # indices of the planet parameters
-        self.indices['planets'] = slice(self.index_component + 1, -2)
+        self.indices['planets'] = slice(self.index_component + 1,
+                                        -3 if self.studentT else -2)
 
         # build the marginal posteriors for planet parameters
         self.get_marginals()
@@ -598,29 +613,51 @@ class KimaResults(object):
         self.means = np.mean(self.posterior_sample, axis=0)
         return self.medians, self.means
 
-    def maximum_likelihood_sample(self, Np=None, printit=True):
+    def maximum_likelihood_sample(self, from_posterior=False, Np=None, 
+                                  printit=True):
         """ 
-        Get the posterior sample with the highest log likelihood. If `Np` is 
-        given, select only from posterior samples with that number of planets.
+        Get the maximum likelihood sample. By default, this is the highest
+        likelihood sample found by DNest4. If `from_posterior` is True, this
+        returns instead the highest likelihood sample *from those that represent
+        the posterior*. The latter may change, due to random choices, between
+        different calls to "showresults". If `Np` is given, select only samples
+        with that number of planets.
         """
-        if not self.lnlike_available:
+        if self.sample_info is None and not self.lnlike_available:
             print('log-likelihoods are not available! '\
                   'maximum_likelihood_sample() doing nothing...')
             return
 
-        if Np is None:
-            ind = np.argmax(self.posterior_lnlike[:, 1])
-            maxlike = self.posterior_lnlike[ind, 1]
-            pars = self.posterior_sample[ind]
+        if from_posterior:
+            if Np is None:
+                ind = np.argmax(self.posterior_lnlike[:, 1])
+                maxlike = self.posterior_lnlike[ind, 1]
+                pars = self.posterior_sample[ind]
+            else:
+                mask = self.posterior_sample[:, self.index_component] == Np
+                ind = np.argmax(self.posterior_lnlike[mask, 1])
+                maxlike = self.posterior_lnlike[mask][ind, 1]
+                pars = self.posterior_sample[mask][ind]
         else:
-            mask = self.posterior_sample[:, self.index_component] == Np
-            ind = np.argmax(self.posterior_lnlike[mask, 1])
-            maxlike = self.posterior_lnlike[mask][ind, 1]
-            pars = self.posterior_sample[mask][ind]
+            if Np is None:
+                ind = np.argmax(self.sample_info[:, 1])
+                maxlike = self.sample_info[ind, 1]
+                pars = self.sample[ind]
+            else:
+                mask = self.sample[:, self.index_component] == Np
+                ind = np.argmax(self.sample_info[mask, 1])
+                maxlike = self.sample_info[mask][ind, 1]
+                pars = self.sample[mask][ind]
 
         if printit:
-            print('Posterior sample with the highest likelihood value '\
-                  '({:.2f})'.format(maxlike))
+            if from_posterior:
+                print('Posterior sample with the highest likelihood value',
+                      end=' ')
+            else:
+                print('Sample with the highest likelihood value', end=' ')
+
+            print('(logL = {:.2f})'.format(maxlike))
+
             if Np is not None:
                 print('from samples with %d Keplerians only' % Np)
             print(
@@ -646,23 +683,27 @@ class KimaResults(object):
                     print(s)
 
             if self.GPmodel:
-                print('GP parameters: ', self.eta1[ind], self.eta2[ind],
-                      self.eta3[ind], self.eta4[ind])
+                eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
+                print('GP parameters: ', eta1, eta2, eta3, eta4)
+
             if self.trend:
-                print('slope: ', self.trendpars[ind][0])
-                print('maybe missing others')
+                print('slope: ', pars[self.indices['trend']])
+                print('(WARNING maybe missing others)')
+
             if self.multi:
+                instruments = self.instruments
                 ni = self.n_instruments - 1
                 print('instrument offsets: ', end=' ')
-                print('(relative to %s) ' % self.data_file[-1])
+                # print('(relative to %s) ' % self.data_file[-1])
+                print('(relative to %s) ' % instruments[-1])
                 s = 20 * ' '
-                s += (ni * ' {:20s} ').format(*self.data_file)
+                s += (ni * ' {:20s} ').format(*instruments)
                 print(s)
 
                 i = self.indices['inst_offsets']
                 s = 20 * ' '
                 s += (
-                    ni * ' {:<20.3f} ').format(*self.posterior_sample[ind][i])
+                    ni * ' {:<20.3f} ').format(*pars[i])
                 print(s)
 
             print('vsys: ', pars[-1])
@@ -1045,7 +1086,7 @@ class KimaResults(object):
                             **ekwargs)
                 ax.fill_between(t[m], -jitters[k - 1], jitters[k - 1],
                                 alpha=0.2)
-                print(get_instrument_name(self.data_file[k-1]), end=': ')
+                print(self.instruments[k-1], end=': ')
                 print(wrms(self.y[m] - v[m] - KOvel[m] - GPvel[m], 1/e[m]**2))
                 residuals[m] = self.y[m] - v[m] - KOvel[m] - GPvel[m]
 
@@ -1067,6 +1108,17 @@ class KimaResults(object):
             fig.savefig(filename)
 
         return residuals
+
+    @property
+    def instruments(self):
+        if self.multi:
+            if self.multi_onefile:
+                return ['inst %d' % i for i in np.unique(self.obs)]
+            else:
+                return list(map(os.path.basename, self.data_file))
+        else:
+            return []
+
 
     @property
     def ratios(self):
@@ -1330,6 +1382,11 @@ class KimaResults(object):
                 title='Joint posterior eccentricity $-$ orbital period',
                 ylim=[0, 1], xlim=[0.1, 1e7])
 
+        try:
+            ax2.set(xlim=self.priors['Pprior'].support())
+        except (AttributeError, KeyError):
+            pass
+
         if self.save_plots:
             filename = 'kima-showresults-fig3.png'
             print('saving in', filename)
@@ -1403,8 +1460,7 @@ class KimaResults(object):
         units = ['m/s'] * self.n_jitters + ['m/s', 'days', 'days', None]
         xlabels = []
         for i in range(self.n_jitters):
-            l = r'%s$_{{\rm %s}}}$' % (labels[i],
-                                       get_instrument_name(self.data_file[i]))
+            l = r'%s$_{{\rm %s}}}$' % (labels[i], self.instruments[i])
 
             xlabels.append(l)
         for label, unit in zip(labels[self.n_jitters:],
@@ -1673,7 +1729,10 @@ class KimaResults(object):
         else:
             fig, ax = plt.subplots(1, 1)
 
-        ax.set_title('Posterior samples in RV data space')
+        if self.arbitrary_units:
+            ax.set_title('Posterior samples in data space')
+        else:
+            ax.set_title('Posterior samples in RV data space')
         # ax.autoscale(False)
         # ax.use_sticky_edges = False
 
@@ -1877,22 +1936,28 @@ class KimaResults(object):
         else:
             if self.multi:
                 for j in range(self.inst_offsets.shape[1] + 1):
+                    inst = self.instruments[j]
                     m = self.obs == j + 1
                     ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j],
-                                label=os.path.basename(self.data_file[j]))
+                                label=inst)
                     if self.KO:
                         ax1.errorbar(t[m], y[m] - v_KO_at_t.mean(axis=0)[m],
                                      yerr[m], fmt='o', color=colors[j],
-                                     label=os.path.basename(self.data_file[j]))
+                                     label=inst)
                 ax.legend(loc='upper left')
             else:
                 ax.errorbar(t, y, yerr, fmt='o')
                 if self.KO:
                     ax1.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
 
-        ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
+        if self.arbitrary_units:
+            lab = dict(xlabel='Time [days]', ylabel='Q [arbitrary]')
+        else:
+            lab = dict(xlabel='Time [days]', ylabel='RV [m/s]')
+        
+        ax.set(**lab)
         if self.KO:
-            ax1.set(xlabel='Time [days]', ylabel='RV [m/s]')
+            ax1.set(**lab)
 
             from matplotlib.patches import Patch
             from matplotlib.lines import Line2D
@@ -1911,6 +1976,10 @@ class KimaResults(object):
             filename = 'kima-showresults-fig6.png'
             print('saving in', filename)
             fig.savefig(filename)
+
+        if self.return_figs:
+            return fig
+
 
     def plot_random_planets_pyqt(self, ncurves=50, over=0.2, pmin=None,
                                  pmax=None, show_vsys=False, show_trend=False,
@@ -2238,7 +2307,12 @@ class KimaResults(object):
         figures = []
 
         vsys = self.posterior_sample[:, -1]
-        units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
+
+        if self.arbitrary_units:
+            units = ' (arbitrary)'
+        else:
+            units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
+
         estimate = percentile68_ranges_latex(vsys) + units
 
         fig, ax = plt.subplots(1, 1)
@@ -2263,8 +2337,10 @@ class KimaResults(object):
                 axs = [axs,]
 
             for i in range(n_inst_offsets):
-                wrt = get_instrument_name(self.data_file[-1])
-                this = get_instrument_name(self.data_file[i])
+                # wrt = get_instrument_name(self.data_file[-1])
+                # this = get_instrument_name(self.data_file[i])
+                wrt = self.instruments[-1]
+                this = self.instruments[i]
                 label = 'offset\n%s rel. to %s' % (this, wrt)
                 a = self.inst_offsets[:, i]
                 estimate = percentile68_ranges_latex(a) + units
@@ -2291,8 +2367,10 @@ class KimaResults(object):
                     i = specific.index(self.data_file[-1])
                     # toggle: if i is 0 it becomes 1, if it's 1 it becomes 0
                     i ^= 1
-                    wrt = get_instrument_name(self.data_file[-1])
-                    this = get_instrument_name(specific[i])
+                    # wrt = get_instrument_name(self.data_file[-1])
+                    # this = get_instrument_name(specific[i])
+                    wrt = self.instruments[-1]
+                    this = self.instruments[i]
                     label = 'offset\n%s rel. to %s' % (this, wrt)
                     offset = self.inst_offsets[:, self.data_file.index(specific[i])]
                     estimate = percentile68_ranges_latex(offset) + units
@@ -2300,8 +2378,10 @@ class KimaResults(object):
                     ax.hist(offset)
                     ax.set(xlabel=label, title=estimate, ylabel='posterior samples')
                 else:
-                    wrt = get_instrument_name(specific[1])
-                    this = get_instrument_name(specific[0])
+                    # wrt = get_instrument_name(specific[1])
+                    # this = get_instrument_name(specific[0])
+                    wrt = self.instruments[specific[1]]
+                    this = self.instruments[specific[0]]
                     label = 'offset\n%s rel. to %s' % (this, wrt)
                     of1 = self.inst_offsets[:, self.data_file.index(specific[0])]
                     of2 = self.inst_offsets[:, self.data_file.index(specific[1])]
@@ -2318,17 +2398,24 @@ class KimaResults(object):
 
 
     def hist_extra_sigma(self):
-        """ Plot the histogram of the posterior for the additional white noise """
-        units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
+        """ 
+        Plot the histogram of the posterior for the additional white noise 
+        """
+        if self.arbitrary_units:
+            units = ' (arbitrary)'
+        else:
+            units = ' (m/s)'  # if self.units == 'ms' else ' (km/s)'
 
         if self.multi:  # there are n_instruments jitters
             # lambda substrs
             fig, axs = plt.subplots(1, self.n_instruments, sharey=True,
-                                    figsize=(self.n_instruments * 3,
-                                             5), squeeze=True)
+                                    figsize=(self.n_instruments * 3, 5), 
+                                    squeeze=True)
             for i, jit in enumerate(self.extra_sigma.T):
-                inst = get_instrument_name(self.data_file[i])
-                estimate = percentile68_ranges_latex(jit) + units
+                # inst = get_instrument_name(self.data_file[i])
+                inst = self.instruments[i]
+                dec = abs(int(np.floor(np.log10(jit.mean()))))
+                estimate = percentile68_ranges_latex(jit, decimal=dec) + units
                 axs[i].hist(jit)
                 axs[i].set(xlabel='%s' % inst, title=estimate,
                            ylabel='posterior samples')
@@ -2337,11 +2424,15 @@ class KimaResults(object):
             fig.suptitle(title)
 
         else:
-            estimate = percentile68_ranges_latex(self.extra_sigma) + units
+            dec = abs(int(np.floor(np.log10(self.extra_sigma.mean()))))
+            estimate = percentile68_ranges_latex(self.extra_sigma, 
+                                                 decimal=dec+1)
+            estimate += units
+
             fig, ax = plt.subplots(1, 1)
             ax.hist(self.extra_sigma)
             title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
-            ax.set(xlabel='extra sigma (m/s)', ylabel='posterior samples',
+            ax.set(xlabel='extra sigma' + units, ylabel='posterior samples',
                    title=title)
 
         if self.save_plots:
@@ -2394,7 +2485,10 @@ class KimaResults(object):
 
         deg = self.trend_degree
         names = ['slope', 'quadr', 'cubic']
-        units = [' (m/s/yr)', ' (m/s/yr²)']
+        if self.arbitrary_units:
+            units = [' (/yr)', ' (/yr²)', '']
+        else:
+            units = [' (m/s/yr)', ' (m/s/yr²)', '']
 
         trend = self.trendpars.copy()
 

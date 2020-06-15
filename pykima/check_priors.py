@@ -18,7 +18,7 @@ def _parse_args():
                                      prog='kima-checkpriors',
                                      # usage='%(prog)s [no,1,2,...,7]'
                                      )
-    parser.add_argument('column', nargs=1, type=int,
+    parser.add_argument('column', nargs='*', type=int,
                         help='which column to use for histogram')
     parser.add_argument('--log', action='store_true',
                         help='plot the logarithm of the samples')
@@ -36,7 +36,8 @@ def _parse_args():
 
 def main():
     args = _parse_args()
-    column = args.column[0]
+    #print(args)
+    columns = args.column
     log = args.log
 
     with open('sample.txt') as f:
@@ -44,43 +45,60 @@ def main():
     firstline = firstline.strip().replace('#', '')
     names = firstline.split()
 
-    try:
-        name = names[column - 1]
-        print ('Histogram of column %d: %s' % (column, name))
-    except IndexError:
-        name = 'column %d' % column
-        print ('Histogram of column %d' % column)
-
-    data = np.loadtxt('sample.txt', usecols=(column - 1,))
-    data = data[np.nonzero(data)[0]]
-    nsamples = data.size
-    print ('  number of samples: %d' % nsamples)
-    print ('  max value: %f' % data.max())
-    print ('  min value: %f' % data.min())
-
-    xlabel = name
-    if log:
-        data = np.log(data)
-        xlabel = 'log ' + name
-
     fig, ax = plt.subplots(1, 1)
-    ax.set_xlabel(xlabel)
 
-    ax.hist(data, bins=100, color='k', histtype='step', align='mid',
-            range=[data.min() - 0.2 * data.ptp(),
-                   data.max() + 0.2 * data.ptp()],
+    for column in columns:
+        try:
+            name = names[column - 1]
+            print ('Histogram of column %d: %s' % (column, name))
+        except IndexError:
+            name = 'column %d' % column
+            print ('Histogram of column %d' % column)
+
+        data = np.loadtxt('sample.txt', usecols=(column - 1,))
+        data = data[np.nonzero(data)[0]]
+        nsamples = data.size
+        print ('  number of samples: %d' % nsamples)
+        print ('  max value: %f' % data.max())
+        print ('  min value: %f' % data.min())
+
+        xlabel = name
+        if log:
+            data = np.log(data)
+            xlabel = 'log ' + name
+
+        # ax.set_xlabel(xlabel)
+
+        ax.hist(
+            data,
+            bins=100,
+            # color='k',
+            histtype='step',
+            align='mid',
+            range=[
+                data.min() - 0.2 * data.ptp(),
+                data.max() + 0.2 * data.ptp()
+            ],
+            label=xlabel,
+        )
+
+        if args.code:
+            namespace = locals()
+            exec(args.code[0], globals(), namespace)
+            samples = namespace['samples']
+
+            ax.hist(
+                samples,
+                alpha=0.3,
+                bins=100,
+                align='mid',
+                range=[
+                    data.min() - 0.2 * data.ptp(),
+                    data.max() + 0.2 * data.ptp()
+                ],
             )
 
-    if args.code:
-        namespace = locals()
-        exec (args.code[0], globals(), namespace)
-        samples = namespace['samples']
-        
-        ax.hist(samples, alpha=0.3, bins=100, align='mid',
-                range=[data.min() - 0.2 * data.ptp(),
-                       data.max() + 0.2 * data.ptp()],
-                )
-
+    ax.legend()
     plt.show()
 
 
