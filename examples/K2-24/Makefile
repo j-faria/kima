@@ -1,2 +1,2 @@
-KIMA_DIR = /home/jfaria/Work/kima
+KIMA_DIR = ../..
 include $(KIMA_DIR)/examples.mk
