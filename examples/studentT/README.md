@@ -17,6 +17,10 @@ distribution between 2 and 1000. Note that the variance of the t-distribution is
 infinite for 1 < `nu` <= 2. Larger values for `nu` make the t-distribution
 approach a Gaussian distribution.
 
+![phase](phase.png)
+
+--- 
+
 To compile and run, type
 
 ```
