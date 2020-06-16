@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.stats import norm, t
+from scipy.stats import norm, t as T
 
 from .utils import get_planet_mass, get_planet_semimajor_axis
 
@@ -105,7 +105,7 @@ def find_outliers(results, sample, threshold=10, verbose=False):
     
     # probabilities within the Gaussian and Student-t likelihoods
     Gd = norm(loc=0, scale=np.hypot(res.e, J)).pdf(resid)
-    Td = norm(df=nu, loc=0, scale=np.hypot(res.e, J)).pdf(resid)
+    Td = T(df=nu, loc=0, scale=np.hypot(res.e, J)).pdf(resid)
     
     # if Td/Gd > threshold, the point is an outlier, in the sense that it is
     # more likely within the Student-t likelihood than it would have been within

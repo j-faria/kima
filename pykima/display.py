@@ -22,7 +22,7 @@ from .utils import need_model_setup, get_planet_mass, get_planet_semimajor_axis,
                    read_datafile, lighten_color, wrms, get_prior, \
                    hyperprior_samples, get_star_name, get_instrument_name
 
-from .analysis import passes_threshold_np
+from .analysis import passes_threshold_np, find_outliers
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -1061,18 +1061,28 @@ class KimaResults(object):
                 print(self.instruments[k-1], end=': ')
                 print(wrms(self.y[m] - v[m] - KOvel[m] - GPvel[m], 1/e[m]**2))
                 residuals[m] = self.y[m] - v[m] - KOvel[m] - GPvel[m]
+            
 
         else:
             ax.errorbar(t, self.y - v - KOvel - GPvel, e, **ekwargs)
             residuals = self.y - v - KOvel - GPvel
+        
+        if self.studentT:
+            outliers = find_outliers(self, sample)
+            ax.errorbar(t[outliers], residuals[outliers], e[outliers], 
+                        fmt='or', ms=5)
 
         # ax.legend()
         ax.axhline(y=0, ls='--', alpha=0.5, color='k')
         ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
         ax.set(xlabel='Time [days]', ylabel='residuals [m/s]')
-        ax.set_title(
-            'rms=%.2f m/s' % wrms(self.y - v - KOvel - GPvel, 1 / e**2),
-            loc='right')
+        if self.studentT:
+            rms1 = wrms(residuals, 1 / e**2)
+            rms2 = wrms(residuals[~outliers], 1 / e[~outliers]**2)
+            ax.set_title(f'rms={rms2:.2f} ({rms1:.2f}) m/s', loc='right')
+        else:
+            rms = wrms(residuals, 1 / e**2)
+            ax.set_title(f'rms={rms:.2f} m/s', loc='right')
 
         if self.save_plots:
             filename = 'kima-showresults-fig6.1.png'
