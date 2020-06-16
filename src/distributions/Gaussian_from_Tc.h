@@ -42,7 +42,7 @@ namespace DNest4
             // ostream representation of Gaussian_from_Tc class
             virtual std::ostream& print(std::ostream& out) const override
             {
-                out << "Gaussian(" << m << ", " << s << ")";
+                out << "Gaussian(" << m << "; " << s << ")";
                 return out;
             }
             // this special class reimplements perturb
