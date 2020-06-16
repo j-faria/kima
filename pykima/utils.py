@@ -11,7 +11,6 @@ mjup2mearth = 317.8284065946748  # 1 Mjup in Mearth
 template_setup = """
 
 [kima]
-obs_after_HARPS_fibers: true / false
 GP: true / false
 hyperpriors: true / false
 trend: true / false

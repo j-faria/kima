@@ -80,7 +80,7 @@ def usage(full=True):
          "posterior for number of planets",
          "posteriors for some of the orbital parameters",
          "posteriors for GP hyperparameters",
-         "posteriors for fiber offset, systemic velocity, extra white noise, etc",
+         "posteriors for systemic velocity, extra white noise, etc",
          "show all plots",
          "save the model into a pickle file (filename will be prompted)",
          "save the model and files into a zip file (filename will be prompted)",

@@ -138,7 +138,6 @@ def simple_results_dir(tmpdir_factory):
 
 def write_dummy_model_setup(directory):
     template_setup = ("[kima] \n"
-                      "obs_after_HARPS_fibers: false \n"
                       "GP: false \n"
                       "hyperpriors: false \n"
                       "trend: false \n"

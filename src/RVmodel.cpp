@@ -67,11 +67,6 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             log_eta4_prior = make_prior<Uniform>(-1, 1);
     }
 
-    if (!fiber_offset_prior)
-        fiber_offset_prior = make_prior<Uniform>(0, 50);
-        // fiber_offset_prior = make_prior<Gaussian>(15., 3.);
-    
-
     if (known_object) { // KO mode!
         if (!KO_Pprior || !KO_Kprior || !KO_eprior || !KO_phiprior || !KO_wprior)
             throw std::logic_error("When known_object=true, please set all priors: KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior");
@@ -106,9 +101,6 @@ void RVmodel::from_prior(RNG& rng)
         extra_sigma = Jprior->generate(rng);
     }
 
-
-    if(obs_after_HARPS_fibers)
-        fiber_offset = fiber_offset_prior->generate(rng);
 
     if(trend)
     {
@@ -322,14 +314,6 @@ void RVmodel::calculate_mu()
                 {
                     if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
-            }
-        }
-
-        if(obs_after_HARPS_fibers)
-        {
-            for(size_t i=data.index_fibers; i<t.size(); i++)
-            {
-                mu[i] += fiber_offset;
             }
         }
 
@@ -547,9 +531,6 @@ double RVmodel::perturb(RNG& rng)
                         if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
                     }
                 }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
-                }
             }
 
             Cprior->perturb(background, rng);
@@ -558,11 +539,6 @@ double RVmodel::perturb(RNG& rng)
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++)
                     offsets_prior->perturb(offsets[j], rng);
-            }
-
-            // propose new fiber offset
-            if (obs_after_HARPS_fibers) {
-                fiber_offset_prior->perturb(fiber_offset, rng);
             }
 
             // propose new slope
@@ -580,9 +556,6 @@ double RVmodel::perturb(RNG& rng)
                     for(size_t j=0; j<offsets.size(); j++){
                         if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                     }
-                }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
             }
         }
@@ -633,9 +606,6 @@ double RVmodel::perturb(RNG& rng)
                         if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
                     }
                 }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
-                }
 
                 if(data.indicator_correlations) {
                     for(size_t j = 0; j < data.number_indicators; j++){
@@ -651,11 +621,6 @@ double RVmodel::perturb(RNG& rng)
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++)
                     offsets_prior->perturb(offsets[j], rng);
-            }
-
-            // propose new fiber offset
-            if (obs_after_HARPS_fibers) {
-                fiber_offset_prior->perturb(fiber_offset, rng);
             }
 
             // propose new slope
@@ -679,9 +644,6 @@ double RVmodel::perturb(RNG& rng)
                     for(size_t j=0; j<offsets.size(); j++){
                         if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                     }
-                }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
 
                 if(data.indicator_correlations) {
@@ -744,9 +706,6 @@ double RVmodel::perturb(RNG& rng)
                         if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
                     }
                 }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
-                }
 
                 if(data.indicator_correlations) {
                     for(size_t j = 0; j < data.number_indicators; j++){
@@ -763,11 +722,6 @@ double RVmodel::perturb(RNG& rng)
                 for(unsigned j=0; j<offsets.size(); j++){
                     offsets_prior->perturb(offsets[j], rng);
                 }
-            }
-
-            // propose new fiber offset
-            if (obs_after_HARPS_fibers) {
-                fiber_offset_prior->perturb(fiber_offset, rng);
             }
 
             // propose new slope
@@ -794,9 +748,6 @@ double RVmodel::perturb(RNG& rng)
                     for(size_t j=0; j<offsets.size(); j++){
                         if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                     }
-                }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
 
                 if(data.indicator_correlations) {
@@ -964,10 +915,6 @@ void RVmodel::print(std::ostream& out) const
         if (degree == 3) out << cubic << '\t';
     }
         
-
-    if (obs_after_HARPS_fibers)
-        out<<fiber_offset<<'\t';
-
     if (multi_instrument){
         for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
@@ -1024,9 +971,6 @@ string RVmodel::description() const
         if (degree == 3) desc += "cubic   ";
     }
 
-
-    if (obs_after_HARPS_fibers)
-        desc += "fiber_offset   ";
 
     if (multi_instrument){
         for(unsigned j=0; j<offsets.size(); j++)
@@ -1088,7 +1032,6 @@ void RVmodel::save_setup() {
 
     fout << "[kima]" << endl;
 
-	fout << "obs_after_HARPS_fibers: " << obs_after_HARPS_fibers << endl;
     fout << "GP: " << GP << endl;
     fout << "GP_kernel: " << kernel << endl;
     fout << "MA: " << MA << endl;
@@ -1127,8 +1070,6 @@ void RVmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (obs_after_HARPS_fibers)
-        fout << "fiber_offset_prior: " << *fiber_offset_prior << endl;
     if (multi_instrument)
         fout << "offsets_prior: " << *offsets_prior << endl;
     if (studentt)

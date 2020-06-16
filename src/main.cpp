@@ -2,7 +2,6 @@
 
 using namespace std;
 
-const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
 const bool MA = false;
 const bool hyperpriors = false;

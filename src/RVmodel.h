@@ -18,9 +18,6 @@ extern const bool GP;
 /// whether the model includes a MA component
 extern const bool MA;
 
-/// whether there are observations after the change in HARPS fibers
-extern const bool obs_after_HARPS_fibers;
-
 /// whether the model includes a linear trend
 extern const bool trend;
 extern const int degree;
@@ -57,7 +54,6 @@ class RVmodel
               std::vector<double>(Data::get_instance().number_indicators);
 
         double slope, quadr=0.0, cubic=0.0;
-        double fiber_offset;
         double sigmaMA, tauMA;
         double extra_sigma;
         double nu;
@@ -110,8 +106,6 @@ class RVmodel
         std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> quadr_prior;
         std::shared_ptr<DNest4::ContinuousDistribution> cubic_prior;
-        /// Prior for the HARPS fiber RV offset.
-        std::shared_ptr<DNest4::ContinuousDistribution> fiber_offset_prior;
         /// (Common) prior for the between-instruments offsets.
         std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
         /// no doc.
