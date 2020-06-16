@@ -30,8 +30,6 @@ class Data
 		void load_multi(std::vector<std::string> filenames, const std::string units, int skip=2,
 		                const std::vector<std::string>& indicators = std::vector< std::string >());
 
-		int index_fibers;
-
 
 		bool indicator_correlations;
 		int number_indicators;

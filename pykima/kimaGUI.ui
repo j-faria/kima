@@ -300,29 +300,13 @@
      <property name="frameShadow">
       <enum>QFrame::Raised</enum>
      </property>
-     <widget class="QCheckBox" name="obs_after_HARPS_fibers_check">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>0</y>
-        <width>161</width>
-        <height>21</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>obs after HARPS fibers</string>
-      </property>
-     </widget>
      <widget class="QCheckBox" name="hyperpriors_check">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>60</y>
+        <y>40</y>
         <width>101</width>
-        <height>21</height>
+        <height>30</height>
        </rect>
       </property>
       <property name="text">
@@ -333,9 +317,9 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>40</y>
+        <y>20</y>
         <width>61</width>
-        <height>21</height>
+        <height>30</height>
        </rect>
       </property>
       <property name="toolTip">
@@ -349,9 +333,9 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>20</y>
+        <y>0</y>
         <width>61</width>
-        <height>21</height>
+        <height>30</height>
        </rect>
       </property>
       <property name="toolTip">
@@ -365,9 +349,9 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>80</y>
+        <y>60</y>
         <width>61</width>
-        <height>21</height>
+        <height>30</height>
        </rect>
       </property>
       <property name="toolTip">

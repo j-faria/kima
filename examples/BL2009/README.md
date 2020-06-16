@@ -4,8 +4,7 @@ The folder contains two datasets with 1 and 2 simulated planets,
 which were used to test the [ExoFit package](http://zuserver2.star.ucl.ac.uk/~lahav/exofit.html).
 
 The `kima_setup.cpp` file sets the main options for the model: 
-we use a standard sum-of-Keplerians model (no GP) 
-without an offset due to the HARPS change of optical fibers, and no linear trend.  
+we use a standard sum-of-Keplerians model (no GP) and no linear trend.  
 The number of planets in the model is fixed to 1 and, by default, we read the dataset contaning only one planet.
 
 Inside the `RVmodel()` constructor, we define the priors for the model parameters

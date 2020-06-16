@@ -31,12 +31,13 @@ class KimaModel:
         self._levels_hash = ''
         self._loaded = False
 
-        self.obs_after_HARPS_fibers = False
         self.GP = False
         self.MA = False
         self.hyperpriors = False
         self.trend = False
+        self.degree = 0
         self.known_object = False
+        self.studentt = False
 
         self.fix_Np = True
         self.max_Np = 1
@@ -192,12 +193,12 @@ class KimaModel:
 
         # find general model settings
         bools = (
-            'obs_after_HARPS_fibers',
             'GP',
             'MA',
             'hyperpriors',
             'trend',
             'known_object',
+            'studentt'
         )
         for b in bools:
             pat = re.compile(f'const bool {b} = (\w+)')
@@ -206,6 +207,18 @@ class KimaModel:
                 setattr(self, b, True if match[0] == 'true' else False)
             else:
                 msg = f'Cannot find setting {b} in {self.kima_setup}'
+                raise ValueError(msg)
+
+        ints = (
+            'degree',
+        )
+        for i in ints:
+            pat = re.compile(f'const int {i} = (\d+)')
+            match = pat.findall(setup)
+            if len(match) == 1:
+                setattr(self, i, int(match[0]))
+            else:
+                msg = f'Cannot find setting {i} in {self.kima_setup}'
                 raise ValueError(msg)
 
         # find fix Np
@@ -334,14 +347,15 @@ class KimaModel:
     def _write_settings(self, file):
         def r(val): return 'true' if val else 'false'
         cb = 'const bool'
-        file.write(
-            f'{cb} obs_after_HARPS_fibers = {r(self.obs_after_HARPS_fibers)};\n')
+        ci = 'const int'
         file.write(f'{cb} GP = {r(self.GP)};\n')
         file.write(f'{cb} MA = {r(self.MA)};\n')
         file.write(f'{cb} hyperpriors = {r(self.hyperpriors)};\n')
         file.write(f'{cb} trend = {r(self.trend)};\n')
+        file.write(f'{ci} degree = {self.degree};\n')
         file.write(f'{cb} multi_instrument = {r(self.multi_instrument)};\n')
         file.write(f'{cb} known_object = {r(self.known_object)};\n')
+        file.write(f'{cb} studentt = {r(self.studentt)};\n')
         file.write('\n')
 
     def _write_constructor(self, file):

@@ -154,8 +154,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.header_skip.setValue(self.model.skip)
 
         # general model settings
-        self.obs_after_HARPS_fibers_check.setChecked(
-            self.model.obs_after_HARPS_fibers)
         self.GP_check.setChecked(self.model.GP)
         self.MA_check.setChecked(self.model.MA)
         self.hyperpriors_check.setChecked(self.model.hyperpriors)
@@ -446,7 +444,6 @@ class MainWindow(QtWidgets.QMainWindow):
             # not anymore
             self.model._loaded = False
 
-        self.model.obs_after_HARPS_fibers = self.obs_after_HARPS_fibers_check.isChecked()
         self.model.GP = self.GP_check.isChecked()
         self.model.MA = self.MA_check.isChecked()
         self.model.hyperpriors = self.hyperpriors_check.isChecked()

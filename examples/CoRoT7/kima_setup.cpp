@@ -1,6 +1,5 @@
 #include "kima.h"
 
-const bool obs_after_HARPS_fibers = false;
 const bool GP = true;
 const bool MA = false;
 const bool hyperpriors = true;
