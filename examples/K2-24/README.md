@@ -48,14 +48,11 @@ For K2-24 c, the code is very similar:
 
 ```c++
 // // priors for first known_object
-KO_Pprior[1] = make_prior<Gaussian>(42.3633, 0.0006);
-KO_Kprior[1] = make_prior<LogUniform>(1, 20);
-// KO_eprior[1] = make_prior<Kumaraswamy>(0.867, 3.03);
-KO_eprior[1] = make_prior<Uniform>(0, 1);
-// KO_wprior[1] = make_prior<Uniform>(0, 2*PI);
-KO_wprior[1] = make_prior<Uniform>(-PI, PI);
-// KO_phiprior[1] = make_prior<Uniform>(0, 2*PI);
-KO_phiprior[1] = make_prior<Gaussian_from_Tc>(2082.6251, 0.0004, 42.3633, 0.0006);
+KO_Pprior[1] = make_prior<Gaussian>(42.3633, 0.0006);  // orbital period
+KO_Kprior[1] = make_prior<LogUniform>(1, 20);          // semi-amplitude (m/s)
+KO_eprior[1] = make_prior<Uniform>(0, 1);              // eccentricity
+KO_wprior[1] = make_prior<Uniform>(-PI, PI);           // argument of periastron
+KO_phiprior[1] = make_prior<Gaussian_from_Tc>(2082.6251, 0.0004, 42.3633, 0.0006); // mean anomaly at the epoch
 ```
 
 ---
