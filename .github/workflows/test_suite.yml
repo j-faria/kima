@@ -76,3 +76,13 @@ jobs:
         echo "Comparing output to known output for seed"
         cmp multi_instrument_sample_seed43.txt ../../examples/multi_instrument/sample.txt
 
+    - name: Run studentT example
+      run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
+        cd tests/test_suite
+        cp OPTIONS ../../examples/studentT/OPTIONS
+        kima-run ../../examples/studentT -s 43
+        # test the output
+        echo "Comparing output to known output for seed"
+        cmp studentT_sample_seed43.txt ../../examples/studentT/sample.txt
+
