@@ -17,9 +17,6 @@ const bool GP = false;
 /// whether the model includes a Moving Average component
 const bool MA = false;
 
-/// whether there are observations after the change in HARPS fibers
-const bool obs_after_HARPS_fibers = false;
-
 /// whether the model includes a linear trend
 const bool trend = false;
 const int degree = 0;
@@ -167,9 +164,6 @@ RVmodel::RVmodel():
     sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 10.);
     tauMA_prior = make_prior<LogUniform>(1, 10);
 
-
-    // HARPS fiber offset prior (if obs_after_HARPS_fibers=true)
-    fiber_offset_prior = make_prior<Uniform>(0, 50);
 
     // correlation coefficients with activity indicators
     betaprior = make_prior<Gaussian>(0, 1);

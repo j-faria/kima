@@ -2,11 +2,14 @@ import os, sys
 import re
 import io
 import subprocess
-from pprint import pformat
+from pprint import pformat, pprint
 from hashlib import md5
 import contextlib
 import numpy as np
-from . import showresults
+from . import showresults as pkshowresults
+
+thisdir = os.path.dirname(os.path.realpath(__file__))
+kimadir = os.path.dirname(thisdir)
 
 @contextlib.contextmanager
 def chdir(dir):
@@ -24,21 +27,22 @@ class KimaModel:
         self.directory = os.getcwd()
         self.kima_setup = 'kima_setup.cpp'
         self.OPTIONS_file = 'OPTIONS'
-        self.filename = None
+        self._filename = None
         self.skip = 0
         self.units = 'kms'
 
         self._levels_hash = ''
         self._loaded = False
 
-        self.obs_after_HARPS_fibers = False
         self.GP = False
         self.MA = False
         self.hyperpriors = False
         self.trend = False
+        self.degree = 0
         self.known_object = False
+        self.studentt = False
 
-        self.fix_Np = True
+        self.fix = True
         self.max_Np = 1
 
         self.set_priors('default')
@@ -59,19 +63,9 @@ class KimaModel:
             'levels_file': '',
         }
 
-    # def __repr__(self):
-    #     r = f'kima model\n'
-    #     r += f'  directory: {self.directory}\n'
-    #     r += '\n'
-    #     opt_names = ('GP', 'MA', 'hyperpriors', 'trend', 'known_object')
-    #     for opt in opt_names:
-    #         r += f'  {opt} {getattr(self, opt)}\n'
-    #     # opt = {k:v for k,v in self.__dict__.items() if k in opt_names}
-    #     # r +=  pformat(opt, compact=True)
-    #     r += '\n'
-    #     r += f'  fix = {self.fix_Np} \t npmax = {self.max_Np}\n'
-    #     r += f'  datafile = {self.filename}\n'
-    #     return r
+    def __repr__(self):
+        r = f'kima model on directory: {self.directory}\n'
+        return r
 
     def __str__(self):
         return f'kima model in {self.directory}'
@@ -107,19 +101,48 @@ class KimaModel:
         }
         return dp
 
+    @property
+    def priors(self):
+        """ 
+        This dictionary holds the model priors in the form
+            prior_name: (default?, distribution, parameter1, parameter2)
+        when parameter1 or parameter2 are None, they depend on the data.
+
+        To set a prior use
+            set_priors(prior_name, distribution, paramemter1, <parameter2>)
+        To set one specific prior to its default use
+            set_prior_to_default(prior_name)
+        or to set all priors to the defaults just use
+            set_priors()
+
+        """
+
+        return self._priors
+
     def set_priors(self, which='default', *args):
+        args = [False, *args]
         if which == 'default':
-            self.priors = self._default_priors
+            self._priors = self._default_priors
         else:
             if len(args) == 3:
                 assert args[1] == 'Fixed'
             else:
                 assert len(args) == 4
-            self.priors.update({which: args})
+            self._priors.update({which: args})
 
     def set_prior_to_default(self, which):
         default_prior = self._default_priors[which]
-        self.priors.update({which: default_prior})
+        self._priors.update({which: default_prior})
+
+    @property
+    def filename(self):
+        return self._filename
+    
+    @filename.setter
+    def filename(self, f):
+        self._filename = [f, ]
+        self.data
+
 
     @property
     def data(self):
@@ -131,6 +154,7 @@ class KimaModel:
             try:
                 t, y, e = np.loadtxt(f, skiprows=self.skip, usecols=range(3)).T
             except:
+                print(f'cannot read from {f} (is skip correct?)')
                 return None
             d['t'].append(t)
             d['y'].append(y)
@@ -162,18 +186,24 @@ class KimaModel:
             val = np.abs(self.data['y'].ptp() / self.data['t'].ptp()).round(3)
             return val
 
-    def results(self, force=False):
+    @property
+    def results(self):
+        self.showresults()
+        return self.res
+
+    def showresults(self, force=False):
         # calculate the hash of the levels.txt file the first time
         # we create self.res to avoid calling showresults repeatedly
         levels_f = os.path.join(self.directory, 'levels.txt')
         h = md5(open(levels_f, 'rb').read()).hexdigest()
+
 
         output = None
         if h != self._levels_hash or force:
             self._levels_hash = h
             # with io.StringIO() as buf, contextlib.redirect_stdout(buf):  # redirect stdout
             with chdir(self.directory):
-                self.res = showresults(force_return=True, show_plots=False, verbose=False)
+                self.res = pkshowresults(force_return=True, show_plots=False, verbose=False)
                # output = buf.getvalue()
         # self.res.return_figs = True
 
@@ -192,12 +222,12 @@ class KimaModel:
 
         # find general model settings
         bools = (
-            'obs_after_HARPS_fibers',
             'GP',
             'MA',
             'hyperpriors',
             'trend',
             'known_object',
+            'studentt'
         )
         for b in bools:
             pat = re.compile(f'const bool {b} = (\w+)')
@@ -208,11 +238,23 @@ class KimaModel:
                 msg = f'Cannot find setting {b} in {self.kima_setup}'
                 raise ValueError(msg)
 
+        ints = (
+            'degree',
+        )
+        for i in ints:
+            pat = re.compile(f'const int {i} = (\d+)')
+            match = pat.findall(setup)
+            if len(match) == 1:
+                setattr(self, i, int(match[0]))
+            else:
+                msg = f'Cannot find setting {i} in {self.kima_setup}'
+                raise ValueError(msg)
+
         # find fix Np
         pat = re.compile(r'fix\((\w+)\)')
         match = pat.findall(setup)
         if len(match) == 1:
-            self.fix_Np = True if match[0] == 'true' else False
+            self.fix = True if match[0] == 'true' else False
         else:
             msg = f'Cannot find option for fix in {self.kima_setup}'
             raise ValueError(msg)
@@ -317,8 +359,15 @@ class KimaModel:
     def save(self):
         """ Save this model to the OPTIONS file and the kima_setup file """
         self._save_OPTIONS()
+        self._check_makefile()
 
         kima_setup_f = os.path.join(self.directory, self.kima_setup)
+        # if os.path.exists(kima_setup_f):
+        #     print(f'File {kima_setup_f} exists in {self.directory}. ', end='')
+        #     answer = input('Replace? (Y/n)')
+        #     if answer.lower() != 'y':
+        #         return
+
         with open(kima_setup_f, 'w') as f:
             f.write('#include "kima.h"\n\n')
             self._write_settings(f)
@@ -334,20 +383,21 @@ class KimaModel:
     def _write_settings(self, file):
         def r(val): return 'true' if val else 'false'
         cb = 'const bool'
-        file.write(
-            f'{cb} obs_after_HARPS_fibers = {r(self.obs_after_HARPS_fibers)};\n')
+        ci = 'const int'
         file.write(f'{cb} GP = {r(self.GP)};\n')
         file.write(f'{cb} MA = {r(self.MA)};\n')
         file.write(f'{cb} hyperpriors = {r(self.hyperpriors)};\n')
         file.write(f'{cb} trend = {r(self.trend)};\n')
+        file.write(f'{ci} degree = {self.degree};\n')
         file.write(f'{cb} multi_instrument = {r(self.multi_instrument)};\n')
         file.write(f'{cb} known_object = {r(self.known_object)};\n')
+        file.write(f'{cb} studentt = {r(self.studentt)};\n')
         file.write('\n')
 
     def _write_constructor(self, file):
         def r(val): return 'true' if val else 'false'
         file.write(
-            f'RVmodel::RVmodel():fix({r(self.fix_Np)}),npmax({self.max_Np})\n')
+            f'RVmodel::RVmodel():fix({r(self.fix)}),npmax({self.max_Np})\n')
 
     def _inside_constructor(self, file):
         file.write('{\n')
@@ -360,7 +410,7 @@ class KimaModel:
             return s + f'{name} = make_prior<{sets[1]}>({sets[2]});\n'
 
         got_conditional = False
-        for name, sets in self.priors.items():
+        for name, sets in self._priors.items():
             # print(name, sets)
             if not sets[0]:  # if not default prior
                 if name in self._planet_priors:
@@ -432,6 +482,19 @@ class KimaModel:
             file.write('    # (optional) sample_info file\n')
             file.write('    # (optional) levels file\n')
 
+    def _check_makefile(self):
+        make_f = os.path.join(self.directory, 'Makefile')
+        if not os.path.exists(make_f):
+            with open(make_f, 'w') as f:
+                print(f'KIMA_DIR = {kimadir}', file=f)
+                print('include $(KIMA_DIR)/examples.mk', file=f)
+
+
     def run(self):
+        if self.data is None:
+            raise ValueError('Must set .filename before running')
+
+        self.save()
         cmd = f'kima-run {self.directory}'
         out = subprocess.check_call(cmd.split())
+

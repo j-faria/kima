@@ -190,15 +190,6 @@ void Data::load(const std::string filename, const std::string units,
   if(units == "kms")
     printf("# Multiplied all RVs by 1000; units are now m/s.\n");
 
-  for(unsigned i=0; i<data.size(); i++)
-  {
-      if (t[i] > 57170.)
-      {
-          index_fibers = i;
-          break;
-      }
-  }
-
 }
 
 
@@ -284,15 +275,6 @@ void Data::load_multi(const std::string filename, const std::string units, int s
   
   if(units == "kms") 
     cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
-
-  for(unsigned i=0; i<data.size(); i++)
-  {
-      if (t[i] > 57170.)
-      {
-          index_fibers = i;
-          break;
-      }
-  }
 
   // epoch for the mean anomaly, by default the time of the first observation
   M0_epoch = t[0];
@@ -473,15 +455,6 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
     // debug
     // for(std::vector<int>::size_type i = 0; i != t.size(); i++)
     //     cout << t[i] << "\t" << y[i] << "\t" << sig[i] << "\t" << obsi[i] <<  endl;
-  }
-
-  for(unsigned i=0; i<data.size(); i++)
-  {
-      if (t[i] > 57170.)
-      {
-          index_fibers = i;
-          break;
-      }
   }
 
   // epoch for the mean anomaly, by default the time of the first observation
