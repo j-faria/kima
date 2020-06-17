@@ -46,11 +46,11 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         if (degree > 3)
             throw std::range_error("can't go higher than 3rd degree trends");
         if (degree >= 1 & !slope_prior)
-            slope_prior = make_prior<Gaussian>(0.0, 1.0);
+            slope_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(1)) );
         if (degree >= 2 & !quadr_prior)
-            quadr_prior = make_prior<Gaussian>(0.0, 1.0);
+            quadr_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2)) );
         if (degree == 3 & !cubic_prior)
-            cubic_prior = make_prior<Gaussian>(0.0, 1.0);
+            cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
     }
 
     if (!offsets_prior)
@@ -910,9 +910,11 @@ void RVmodel::print(std::ostream& out) const
 
     if(trend)
     {
+        out.precision(15);
         if (degree >= 1) out << slope << '\t';
         if (degree >= 2) out << quadr << '\t';
         if (degree == 3) out << cubic << '\t';
+        out.precision(8);
     }
         
     if (multi_instrument){

@@ -89,6 +89,8 @@ class Data
 		
 		/// @brief Get the maximum slope allowed by the data. @return double
 		double topslope() const;
+		/// @brief Order of magnitude of trend coefficient (of degree) given the data
+		int get_trend_magnitude(int degree) const;
 
 		/// @brief Get the array of activity indictators @return std::vector<std::vector<double>>&
 		const std::vector<std::vector<double>>& get_actind() const { return actind; }

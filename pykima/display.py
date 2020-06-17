@@ -216,7 +216,7 @@ class KimaResults(object):
             i1 = start_parameters + 1
             i2 = start_parameters + n_trend + 1
             self.trendpars = self.posterior_sample[:, i1:i2]
-            self.indices['trend'] = i1
+            self.indices['trend'] = slice(i1, i2)
         else:
             n_trend = 0
 
@@ -668,8 +668,9 @@ class KimaResults(object):
                 print('GP parameters: ', eta1, eta2, eta3, eta4)
 
             if self.trend:
-                print('slope: ', pars[self.indices['trend']])
-                print('(WARNING maybe missing others)')
+                names = ('slope', 'quad', 'cubic')
+                for name, trend_par in zip(names, pars[self.indices['trend']]):
+                    print(name + ':', trend_par)
 
             if self.multi:
                 instruments = self.instruments
@@ -804,9 +805,14 @@ class KimaResults(object):
 
         # add the trend, if present
         if self.trend:
-            v += sample[self.indices['trend']] * (t - self.tmiddle)
+            trend_par = sample[self.indices['trend']]
+            # polyval wants coefficients in reverse order, and vsys was already
+            # added so the last coefficient is 0
+            trend_par = np.r_[trend_par[::-1], 0.0]
+            v += np.polyval(trend_par, t - self.tmiddle)
+
             if self.GPmodel:
-                v_at_t += sample[self.indices['trend']] * (t - self.tmiddle)
+                v_at_t += np.polyval(trend_par, t - self.tmiddle)
 
         # the GP prediction
         # if self.GPmodel:
@@ -890,7 +896,9 @@ class KimaResults(object):
                 y[self.obs == i + 1] -= of
 
         if self.trend:  # and subtract the trend
-            y -= sample[self.indices['trend']] * (t - self.tmiddle)
+            trend_par = sample[self.indices['trend']]
+            trend_par = np.r_[trend_par[::-1], 0.0]
+            y -= np.polyval(trend_par, t - self.tmiddle)
 
         if self.KO:  # subtract the known object
             KOpars = sample[self.indices['KOpars']]
@@ -1769,16 +1777,16 @@ class KimaResults(object):
 
             # add the trend, if present
             if self.trend:
-                v += np.polyval(np.r_[self.trendpars[i][::-1], 0.0], tt - self.tmiddle)
-                # v_at_t += self.trendpars[i] * (t - self.tmiddle)
+                trend_par = np.r_[self.trendpars[i][::-1], 0.0]
+                v += np.polyval(trend_par, tt - self.tmiddle)
                 # if self.GPmodel:
                 #     v_at_ttGP += self.trendpars[i] * (ttGP - self.tmiddle)
                 if show_trend:
                     kw = dict(alpha=0.2, color='m', ls=':')
-                    ax.plot(tt, np.polyval(np.r_[self.trendpars[i][::-1], vsys], tt - self.tmiddle), **kw)
+                    trend_par = np.r_[self.trendpars[i][::-1], vsys]
+                    ax.plot(tt, np.polyval(trend_par, tt - self.tmiddle), **kw)
                     if self.KO:
-                        ax1.plot(
-                            tt, vsys + self.trendpars[i] * (tt - self.tmiddle))
+                        ax1.plot(tt, np.polyval(trend_par, tt - self.tmiddle))
 
             # plot the MA "prediction"
             # if self.MAmodel:
@@ -2394,9 +2402,9 @@ class KimaResults(object):
         deg = self.trend_degree
         names = ['slope', 'quadr', 'cubic']
         if self.arbitrary_units:
-            units = [' (/yr)', ' (/yr²)', '']
+            units = [' (/yr)', ' (/yr²)', ' (/yr³)']
         else:
-            units = [' (m/s/yr)', ' (m/s/yr²)', '']
+            units = [' (m/s/yr)', ' (m/s/yr²)', ' (m/s/yr³)']
 
         trend = self.trendpars.copy()
 
@@ -2419,6 +2427,9 @@ class KimaResults(object):
                       ylabel='posterior samples', title=estimate)
             if show_prior:
                 ax[i, 0].legend()
+
+        fig.set_constrained_layout_pads(w_pad=0.3)
+        fig.text(0.01, 0.5, 'posterior samples', rotation=90, va='center')
 
         if self.save_plots:
             filename = 'kima-showresults-fig7.5.png'

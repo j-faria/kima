@@ -588,3 +588,15 @@ double Data::get_adjusted_RV_var() const
     });
     return accum / (y.size()-1);
 }
+
+/**
+ * @brief Order of magnitude of trend coefficient (of degree) given the data
+ * 
+ * Returns the expected order of magnitude of the trend coefficient of degree 
+ * `degree` supported by the data. It calculates the order of magnitude of 
+ *    RVspan / timespan^degree
+*/
+int Data::get_trend_magnitude(int degree) const
+{
+  return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
+}
