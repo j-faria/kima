@@ -9,6 +9,7 @@ const bool trend = false;
 const int degree = 0;
 const bool multi_instrument = false;
 const bool known_object = false;
+const int n_known_object = 0;
 const bool studentt = false;
 
 RVmodel::RVmodel() : fix(true), npmax(1)
