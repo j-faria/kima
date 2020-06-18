@@ -7,8 +7,7 @@ The number of planets is free, with a uniform prior between 0 and 1.
 To compile and run, type
 
 ```
-make
-./run
+kima-run
 ```
 
 With the default options, this should take around 5 min to finish.

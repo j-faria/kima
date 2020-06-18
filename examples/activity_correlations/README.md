@@ -4,6 +4,5 @@ This example showcases the linear correlations with activity indicators.
 To compile and run, type
 
 ```
-make
-./run
+kima-run
 ```

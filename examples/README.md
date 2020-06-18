@@ -9,15 +9,15 @@ and the output is checked against a previous run. **that's the goal, not yet hap
 The easiest way to use these examples is to go in a given directory and type
 
 ```
-make
-./run
+kima-run
 ```
 
-But in order to keep things organized, it is better to copy one of these folders to another place.
-In this way you can use the example as a template and modify it to your will.  
-You will need to change:
+But in order to keep things organized, it is better to copy one of these folders
+to some other directory. In this way you can use the example as a template and
+modify it to your will.  
+You only need to change:
 
-1. the `Makefile`; change the `KIMA_DIR` definition to point to the kima directory
+- in the `Makefile`; change the `KIMA_DIR` definition to point to the kima directory
    
-After this, you should be able to `make` and `./run` the copied example from the new directory location.
+After this, you should be able to `kima-run` the copied example from the new directory location.
 
