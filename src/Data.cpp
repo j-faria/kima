@@ -190,15 +190,6 @@ void Data::load(const std::string filename, const std::string units,
   if(units == "kms")
     printf("# Multiplied all RVs by 1000; units are now m/s.\n");
 
-  for(unsigned i=0; i<data.size(); i++)
-  {
-      if (t[i] > 57170.)
-      {
-          index_fibers = i;
-          break;
-      }
-  }
-
 }
 
 
@@ -248,14 +239,31 @@ void Data::load_multi(const std::string filename, const std::string units, int s
   double factor = 1.;
   if(units == "kms") factor = 1E3;
 
-  for (unsigned n = 0; n < data.size(); n++)
-    {
-      if (n<skip) continue;
-      t.push_back(data[n][0]);
-      y.push_back(data[n][1] * factor);
-      sig.push_back(data[n][2] * factor);
-      obsi.push_back(data[n][3]);
-    }
+  // the 4th column of the file identifies the instrument; can have "0"s
+  // this is to make sure the obsi vector always starts at 1, to avoid
+  // segmentation faults later
+  vector<int> inst_id;
+  int id = 0;
+
+  inst_id.push_back(data[skip][3]);
+
+  for (size_t n = skip+1; n < data.size(); n++)
+  {
+    if (data[n][3] != inst_id.back())
+      inst_id.push_back(data[n][3]);
+  }
+
+  for (unsigned n = skip; n < data.size(); n++)
+  {
+    // if (n < skip) continue;
+    t.push_back(data[n][0]);
+    y.push_back(data[n][1] * factor);
+    sig.push_back(data[n][2] * factor);
+
+    if (data[n][3] != inst_id[id])
+      id++;
+    obsi.push_back(id+1);
+  }
 
   // How many points did we read?
   printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
@@ -267,15 +275,6 @@ void Data::load_multi(const std::string filename, const std::string units, int s
   
   if(units == "kms") 
     cout << "# Multiplied all RVs by 1000; units are now m/s." << endl;
-
-  for(unsigned i=0; i<data.size(); i++)
-  {
-      if (t[i] > 57170.)
-      {
-          index_fibers = i;
-          break;
-      }
-  }
 
   // epoch for the mean anomaly, by default the time of the first observation
   M0_epoch = t[0];
@@ -458,15 +457,6 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
     //     cout << t[i] << "\t" << y[i] << "\t" << sig[i] << "\t" << obsi[i] <<  endl;
   }
 
-  for(unsigned i=0; i<data.size(); i++)
-  {
-      if (t[i] > 57170.)
-      {
-          index_fibers = i;
-          break;
-      }
-  }
-
   // epoch for the mean anomaly, by default the time of the first observation
   M0_epoch = t[0];
 
@@ -597,4 +587,16 @@ double Data::get_adjusted_RV_var() const
         accum += (d - mean) * (d - mean);
     });
     return accum / (y.size()-1);
+}
+
+/**
+ * @brief Order of magnitude of trend coefficient (of degree) given the data
+ * 
+ * Returns the expected order of magnitude of the trend coefficient of degree 
+ * `degree` supported by the data. It calculates the order of magnitude of 
+ *    RVspan / timespan^degree
+*/
+int Data::get_trend_magnitude(int degree) const
+{
+  return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
 }

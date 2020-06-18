@@ -33,7 +33,9 @@ setup(name='pykima',
           'loguniform',
           'kumaraswamy',
           'celerite',
+          'urepr',
       ],
+
       entry_points={
           'console_scripts': [
               'kima-showresults = pykima.showresults:showresults',

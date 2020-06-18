@@ -11,105 +11,108 @@
 using namespace std;
 
 
-/// whether the model includes a Gaussian process component
+// whether the model includes a Gaussian process component
 const bool GP = false;
 
-/// whether the model includes a Moving Average component
+// whether the model includes a Moving Average component
 const bool MA = false;
 
-/// whether there are observations after the change in HARPS fibers
-const bool obs_after_HARPS_fibers = false;
-
-/// whether the model includes a linear trend
+// whether the model includes a trend, of what degree
+// (for a linear trend, degree=1; up to degree=3)
 const bool trend = false;
 const int degree = 0;
 
-/// whether the data comes from different instruments
-/// (and offsets + individual jitters should be included in the model)
+// whether the data comes from different instruments
+// (and offsets + individual jitters should be included in the model)
 const bool multi_instrument = false;
 
-/// include a (better) known extra Keplerian curve? (KO mode!)
+// include (better) known extra Keplerian curve(s)? (KO mode!)
+// this requires setting extra priors for the orbital parameters (see below)
 const bool known_object = false;
+const int n_known_object = 0;  // how many?
 
-/// use a Student-t distribution for the likelihood (instead of Gaussian)
+// use a Student-t distribution for the likelihood (instead of a Gaussian)
 const bool studentt = false;
 
-/// whether the model includes hyper-priors for the orbital period and semi-amplitude
+// whether the model includes hyper-priors for the orbital period and semi-amplitude
 const bool hyperpriors = false;
 
 
 // this is the RVmodel constructor, where the model is built
 RVmodel::RVmodel():
     fix(true), // fix the number of planets? (to npmax)
-    npmax(1)   // maximum number of planets in the model (or number of planets if `fix` is true)
+    npmax(1)   // maximum number of planets in the model (or fixed number of planets if `fix` is true)
 {
+    /* the data object */
+    /*******************/
 
-    // the data "object" can accessed here by using 
+    // the data "object" can accessed here by using
     auto data = get_data();
 
     // and it has a number of methods, accessible with data.method(), whose 
     // output can be used when setting priors, for example
 
-		/// get the number of RV points
+		// get the number of RV points
 		N()
 
-		/// get the array of times
+		// get the array of times
 		get_t()
-		/// get the array of RVs
+		// get the array of RVs
 		get_y()
-		/// get the array of errors
+		// get the array of errors
 		get_sig()
 
-		/// get the mininum (starting) time
+		// get the mininum (starting) time
 		get_t_min()
-		/// get the maximum (ending) time
+		// get the maximum (ending) time
 		get_t_max()
-		/// get the middle (average) time
-		get_t_middle()
-		/// get the timespan
+		// get the timespan
 		get_timespan()
+		// get the middle time (t_min + 0.5*timespan)
+		get_t_middle()
 
-		/// get the mininum RV
+		// get the mininum RV
 		get_y_min()
-		/// get the maximum RV
+		// get the maximum RV
 		get_y_max()
-		/// get the RV span
+		// get the RV span
 		get_RV_span()
-		/// get the variance of the RVs
+		// get the variance of the RVs
 		get_RV_var()
-		/// get the standard deviation of the RVs
+		// get the standard deviation of the RVs
 		get_RV_std()
 		
-		/// get the RV span, adjusted for multiple instruments
+		// get the RV span, adjusted for multiple instruments
 		get_adjusted_RV_span()
-		/// get the RV variance, adjusted for multiple instruments
+		// get the RV variance, adjusted for multiple instruments
 		get_adjusted_RV_var()
-		/// get the RV standard deviation, adjusted for multiple instruments
+		// get the RV standard deviation, adjusted for multiple instruments
 		get_adjusted_RV_std()
 		
-		/// get the maximum slope allowed by the data
+		// get the maximum slope allowed by the data
 		topslope()
 
-		/// get the array of activity indictators
+		// get the array of activity indictators
 		get_actind()
 
-		/// get the array of instrument identifiers
+		// get the array of instrument identifiers
 		get_obsi()
 		
-        /// get the number of instruments.
+        // get the number of instruments.
 		Ninstruments()
 
 
-    /* 
-    see more documentation about setting the priors at 
-    https://github.com/j-faria/kima/wiki/Changing-the-priors
-    */
+    /* priors */
+    /**********/
 
+    // see more documentation about setting the priors at 
+    // https://github.com/j-faria/kima/wiki/Changing-the-priors
+    // 
     // note: LogUniform is usually called the Jeffreys prior
     // note: ModifiedLogUniform is usually called the modified Jeffreys prior
 
    
-    /* set the priors for the orbital period(s) and semi-amplitude(s) */
+    // set the priors for the orbital period(s) and semi-amplitude(s)
 
     // if hyperpriors=false (default)
     Pprior = make_shared<LogUniform>(1.0, 1e5);
@@ -166,9 +169,6 @@ RVmodel::RVmodel():
     sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 10.);
     tauMA_prior = make_prior<LogUniform>(1, 10);
 
-
-    // HARPS fiber offset prior (if obs_after_HARPS_fibers=true)
-    fiber_offset_prior = make_prior<Uniform>(0, 50);
 
     // correlation coefficients with activity indicators
     betaprior = make_prior<Gaussian>(0, 1);

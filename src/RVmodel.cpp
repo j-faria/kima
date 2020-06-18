@@ -46,11 +46,11 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
         if (degree > 3)
             throw std::range_error("can't go higher than 3rd degree trends");
         if (degree >= 1 & !slope_prior)
-            slope_prior = make_prior<Gaussian>(0.0, 1.0);
+            slope_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(1)) );
         if (degree >= 2 & !quadr_prior)
-            quadr_prior = make_prior<Gaussian>(0.0, 1.0);
+            quadr_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2)) );
         if (degree == 3 & !cubic_prior)
-            cubic_prior = make_prior<Gaussian>(0.0, 1.0);
+            cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
     }
 
     if (!offsets_prior)
@@ -67,14 +67,12 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             log_eta4_prior = make_prior<Uniform>(-1, 1);
     }
 
-    if (!fiber_offset_prior)
-        fiber_offset_prior = make_prior<Uniform>(0, 50);
-        // fiber_offset_prior = make_prior<Gaussian>(15., 3.);
-    
-
     if (known_object) { // KO mode!
-        if (!KO_Pprior || !KO_Kprior || !KO_eprior || !KO_phiprior || !KO_wprior)
-            throw std::logic_error("When known_object=true, please set all priors: KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior");
+        // if (n_known_object == 0) cout << "Warning: `known_object` is true, but `n_known_object` is set to 0";
+        for (int i = 0; i < n_known_object; i++){
+            if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i])
+                throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior)");
+        }
     }
 
     if (studentt)
@@ -106,9 +104,6 @@ void RVmodel::from_prior(RNG& rng)
         extra_sigma = Jprior->generate(rng);
     }
 
-
-    if(obs_after_HARPS_fibers)
-        fiber_offset = fiber_offset_prior->generate(rng);
 
     if(trend)
     {
@@ -143,11 +138,19 @@ void RVmodel::from_prior(RNG& rng)
     }
 
     if (known_object) { // KO mode!
-        KO_P = KO_Pprior->generate(rng);
-        KO_K = KO_Kprior->generate(rng);
-        KO_e = KO_eprior->generate(rng);
-        KO_phi = KO_phiprior->generate(rng);
-        KO_w = KO_wprior->generate(rng);
+        KO_P.resize(n_known_object);
+        KO_K.resize(n_known_object);
+        KO_e.resize(n_known_object);
+        KO_phi.resize(n_known_object);
+        KO_w.resize(n_known_object);
+
+        for (int i=0; i<n_known_object; i++){
+            KO_P[i] = KO_Pprior[i]->generate(rng);
+            KO_K[i] = KO_Kprior[i]->generate(rng);
+            KO_e[i] = KO_eprior[i]->generate(rng);
+            KO_phi[i] = KO_phiprior[i]->generate(rng);
+            KO_w[i] = KO_wprior[i]->generate(rng);
+        }
     }
 
     if (studentt)
@@ -325,14 +328,6 @@ void RVmodel::calculate_mu()
             }
         }
 
-        if(obs_after_HARPS_fibers)
-        {
-            for(size_t i=data.index_fibers; i<t.size(); i++)
-            {
-                mu[i] += fiber_offset;
-            }
-        }
-
         if(data.indicator_correlations)
         {
             for(size_t i=0; i<t.size(); i++)
@@ -401,28 +396,35 @@ void RVmodel::calculate_mu()
 void RVmodel::remove_known_object()
 {
     auto data = Data::get_instance();
-    const vector<double>& t = data.get_t();
+    auto t = data.get_t();
     double f, v, ti;
-    for(size_t i=0; i<t.size(); i++)
+    // cout << "in remove_known_obj: " << KO_P[1] << endl;
+    for(int j=0; j<n_known_object; j++)
     {
-        ti = t[i];
-        f = true_anomaly(ti, KO_P, KO_e, data.M0_epoch-(KO_P*KO_phi)/(2.*M_PI));
-        v = KO_K*(cos(f+KO_w) + KO_e*cos(KO_w));
-        mu[i] -= v;
+        for(size_t i=0; i<t.size(); i++)
+        {
+            ti = t[i];
+            f = true_anomaly(ti, KO_P[j], KO_e[j], data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI));
+            v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
+            mu[i] -= v;
+        }
     }
 }
 
 void RVmodel::add_known_object()
 {
     auto data = Data::get_instance();
-    const vector<double>& t = data.get_t();
+    auto t = data.get_t();
     double f, v, ti;
-    for(size_t i=0; i<t.size(); i++)
+    for(int j=0; j<n_known_object; j++)
     {
-        ti = t[i];
-        f = true_anomaly(ti, KO_P, KO_e, data.M0_epoch-(KO_P*KO_phi)/(2.*M_PI));
-        v = KO_K*(cos(f+KO_w) + KO_e*cos(KO_w));
-        mu[i] += v;
+        for(size_t i=0; i<t.size(); i++)
+        {
+            ti = t[i];
+            f = true_anomaly(ti, KO_P[j], KO_e[j], data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI));
+            v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
+            mu[i] += v;
+        }
     }
 }
 
@@ -525,11 +527,15 @@ double RVmodel::perturb(RNG& rng)
             if (known_object)
             {
                 remove_known_object();
-                KO_Pprior->perturb(KO_P, rng);
-                KO_Kprior->perturb(KO_K, rng);
-                KO_eprior->perturb(KO_e, rng);
-                KO_phiprior->perturb(KO_phi, rng);
-                KO_wprior->perturb(KO_w, rng);
+
+                for (int i=0; i<n_known_object; i++){
+                    KO_Pprior[i]->perturb(KO_P[i], rng);
+                    KO_Kprior[i]->perturb(KO_K[i], rng);
+                    KO_eprior[i]->perturb(KO_e[i], rng);
+                    KO_phiprior[i]->perturb(KO_phi[i], rng);
+                    KO_wprior[i]->perturb(KO_w[i], rng);
+                }
+
                 add_known_object();
             }
 
@@ -547,9 +553,6 @@ double RVmodel::perturb(RNG& rng)
                         if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
                     }
                 }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
-                }
             }
 
             Cprior->perturb(background, rng);
@@ -558,11 +561,6 @@ double RVmodel::perturb(RNG& rng)
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++)
                     offsets_prior->perturb(offsets[j], rng);
-            }
-
-            // propose new fiber offset
-            if (obs_after_HARPS_fibers) {
-                fiber_offset_prior->perturb(fiber_offset, rng);
             }
 
             // propose new slope
@@ -580,9 +578,6 @@ double RVmodel::perturb(RNG& rng)
                     for(size_t j=0; j<offsets.size(); j++){
                         if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                     }
-                }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
             }
         }
@@ -633,9 +628,6 @@ double RVmodel::perturb(RNG& rng)
                         if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
                     }
                 }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
-                }
 
                 if(data.indicator_correlations) {
                     for(size_t j = 0; j < data.number_indicators; j++){
@@ -651,11 +643,6 @@ double RVmodel::perturb(RNG& rng)
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++)
                     offsets_prior->perturb(offsets[j], rng);
-            }
-
-            // propose new fiber offset
-            if (obs_after_HARPS_fibers) {
-                fiber_offset_prior->perturb(fiber_offset, rng);
             }
 
             // propose new slope
@@ -679,9 +666,6 @@ double RVmodel::perturb(RNG& rng)
                     for(size_t j=0; j<offsets.size(); j++){
                         if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                     }
-                }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
 
                 if(data.indicator_correlations) {
@@ -722,11 +706,15 @@ double RVmodel::perturb(RNG& rng)
             if (known_object)
             {
                 remove_known_object();
-                KO_Pprior->perturb(KO_P, rng);
-                KO_Kprior->perturb(KO_K, rng);
-                KO_eprior->perturb(KO_e, rng);
-                KO_phiprior->perturb(KO_phi, rng);
-                KO_wprior->perturb(KO_w, rng);
+
+                for (int i=0; i<n_known_object; i++){
+                    KO_Pprior[i]->perturb(KO_P[i], rng);
+                    KO_Kprior[i]->perturb(KO_K[i], rng);
+                    KO_eprior[i]->perturb(KO_e[i], rng);
+                    KO_phiprior[i]->perturb(KO_phi[i], rng);
+                    KO_wprior[i]->perturb(KO_w[i], rng);
+                }
+
                 add_known_object();
             }
         
@@ -744,9 +732,6 @@ double RVmodel::perturb(RNG& rng)
                         if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
                     }
                 }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] -= fiber_offset;
-                }
 
                 if(data.indicator_correlations) {
                     for(size_t j = 0; j < data.number_indicators; j++){
@@ -763,11 +748,6 @@ double RVmodel::perturb(RNG& rng)
                 for(unsigned j=0; j<offsets.size(); j++){
                     offsets_prior->perturb(offsets[j], rng);
                 }
-            }
-
-            // propose new fiber offset
-            if (obs_after_HARPS_fibers) {
-                fiber_offset_prior->perturb(fiber_offset, rng);
             }
 
             // propose new slope
@@ -794,9 +774,6 @@ double RVmodel::perturb(RNG& rng)
                     for(size_t j=0; j<offsets.size(); j++){
                         if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                     }
-                }
-                if (obs_after_HARPS_fibers) {
-                    if (i >= data.index_fibers) mu[i] += fiber_offset;
                 }
 
                 if(data.indicator_correlations) {
@@ -959,15 +936,13 @@ void RVmodel::print(std::ostream& out) const
 
     if(trend)
     {
+        out.precision(15);
         if (degree >= 1) out << slope << '\t';
         if (degree >= 2) out << quadr << '\t';
         if (degree == 3) out << cubic << '\t';
+        out.precision(8);
     }
         
-
-    if (obs_after_HARPS_fibers)
-        out<<fiber_offset<<'\t';
-
     if (multi_instrument){
         for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
@@ -992,8 +967,13 @@ void RVmodel::print(std::ostream& out) const
     if(MA)
         out << sigmaMA << '\t' << tauMA << '\t';
 
-    if(known_object) // KO mode!
-        out << KO_P << "\t" << KO_K << "\t" << KO_phi << "\t" << KO_e << "\t" << KO_w << "\t";
+    if(known_object){ // KO mode!
+        for (auto P: KO_P) out << P << "\t";
+        for (auto K: KO_K) out << K << "\t";
+        for (auto phi: KO_phi) out << phi << "\t";
+        for (auto e: KO_e) out << e << "\t";
+        for (auto w: KO_w) out << w << "\t";
+    }
 
     planets.print(out);
 
@@ -1024,9 +1004,6 @@ string RVmodel::description() const
         if (degree == 3) desc += "cubic   ";
     }
 
-
-    if (obs_after_HARPS_fibers)
-        desc += "fiber_offset   ";
 
     if (multi_instrument){
         for(unsigned j=0; j<offsets.size(); j++)
@@ -1088,7 +1065,6 @@ void RVmodel::save_setup() {
 
     fout << "[kima]" << endl;
 
-	fout << "obs_after_HARPS_fibers: " << obs_after_HARPS_fibers << endl;
     fout << "GP: " << GP << endl;
     fout << "GP_kernel: " << kernel << endl;
     fout << "MA: " << MA << endl;
@@ -1097,6 +1073,7 @@ void RVmodel::save_setup() {
     fout << "degree: " << degree << endl;
     fout << "multi_instrument: " << multi_instrument << endl;
     fout << "known_object: " << known_object << endl;
+    fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
     fout << "indicator_correlations: " << data.indicator_correlations << endl;
     fout << "indicators: ";
@@ -1127,8 +1104,6 @@ void RVmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (obs_after_HARPS_fibers)
-        fout << "fiber_offset_prior: " << *fiber_offset_prior << endl;
     if (multi_instrument)
         fout << "offsets_prior: " << *offsets_prior << endl;
     if (studentt)
@@ -1165,11 +1140,13 @@ void RVmodel::save_setup() {
 
     if (known_object) {
         fout << endl << "[priors.known_object]" << endl;
-        fout << "Pprior: " << *KO_Pprior << endl;
-        fout << "Kprior: " << *KO_Kprior << endl;
-        fout << "eprior: " << *KO_eprior << endl;
-        fout << "phiprior: " << *KO_phiprior << endl;
-        fout << "wprior: " << *KO_wprior << endl;
+        for(int i=0; i<n_known_object; i++){
+            fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
+            fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
+            fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
+            fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
+            fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;
+        }
     }
 
     fout << endl;

@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import norm, t as T
 
 from .utils import get_planet_mass, get_planet_semimajor_axis
 
@@ -36,9 +37,18 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
     if sample is None:
         sample = results.maximum_likelihood_sample(printit=printit)
 
+    mass_errs = False 
+    if isinstance(star_mass, (tuple, list)):
+        mass_errs = True
+
+    format_tuples = lambda data: '{:10.5f} \pm {:.5f}'.format(data[0], data[1]) if mass_errs else '{:12.5f}'.format(data)
+
     if printit:
         print()
-        print('Calculating planet masses with Mstar = %.3f Msun' % star_mass)
+        final_string = star_mass if not mass_errs else '{} \pm {}'.format(star_mass[0], star_mass[1])
+        print('Calculating planet masses with Mstar = {} Msun'.format(final_string))
+
+
     indices = results.indices
     mc = results.max_components
 
@@ -48,7 +58,8 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
     nplanets = (pars[:mc] != 0).sum()
 
     if printit:
-        print(20* ' ' + ('%12s' % 'Mp [Mearth]') + ('%12s' % 'Mp [Mjup]'))
+        extra_padding = 12*' ' if mass_errs else ''
+        print(20* ' ' + ('%12s' % 'Mp [Mearth]') + extra_padding + ('%12s' % 'Mp [Mjup]'))
 
     masses = []
     for j in range(int(nplanets)):
@@ -63,14 +74,48 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
         m_mjup, m_mearth = get_planet_mass(P, K, ecc, star_mass=star_mass)
 
         if printit:
-            s = 20 * ' '
-            s += '%12.5f' % m_mearth
-            s += '%12.5f' % m_mjup
-            print(s)
+            s = 18 * ' '
+            s += format_tuples(m_mearth)
+            s += format_tuples(m_mjup)
             masses.append(m_mearth)
-
+            print(s)
     return np.array(masses)
 
+
+def find_outliers(results, sample, threshold=10, verbose=False):
+    """ 
+    Estimate which observations are outliers, for a model with a Student t
+    likelihood. This function first calculates the residuals given the
+    parameters in `sample`. Then it computes the relative probability of each
+    residual point given a Student-t (Td) and a Gaussian (Gd) likelihoods. If
+    the probability Td is larger than Gd (by a factor of `threshold`), the point
+    is flagged as an outlier. The function returns an "outlier mask".
+    """
+    res = results
+    # the model must have studentt = true
+    if not res.studentT:
+        raise ValueError('studentt option is off, cannot estimate outliers')
+    
+    # calculate residuals for this sample
+    resid = res.y - res.model(sample)
+    
+    # this sample's jitter and degrees of freedom
+    J = sample[res.indices['jitter']]
+    nu = sample[res.indices['nu']]
+    
+    # probabilities within the Gaussian and Student-t likelihoods
+    Gd = norm(loc=0, scale=np.hypot(res.e, J)).pdf(resid)
+    Td = T(df=nu, loc=0, scale=np.hypot(res.e, J)).pdf(resid)
+    
+    # if Td/Gd > threshold, the point is an outlier, in the sense that it is
+    # more likely within the Student-t likelihood than it would have been within
+    # the Gaussian likelihood
+    ratio = Td / Gd
+    outlier = ratio > threshold
+    if verbose:
+        print(f'Found {outlier.sum()} outliers')
+
+    return outlier
 
 
 def column_dynamic_ranges(results):

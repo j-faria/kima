@@ -1,12 +1,13 @@
 #include "kima.h"
 
-const bool obs_after_HARPS_fibers = false;
 const bool GP = false;
 const bool MA = false;
 const bool hyperpriors = false;
 const bool trend = false;
+const int degree = 0;
 const bool multi_instrument = false;
 const bool known_object = false;
+const bool studentt = false;
 
 RVmodel::RVmodel():fix(true),npmax(1)
 {
@@ -16,7 +17,7 @@ RVmodel::RVmodel():fix(true),npmax(1)
 
     /// for example, set the prior for the systemic velocity
     // Cprior = make_prior<Uniform>(0, 1);
-    /// other priors: Jprior, slope_prior, fiber_offset_prior, offsets_prior,
+    /// other priors: Jprior, slope_prior, offsets_prior,
     ///               log_eta1_prior, eta2_prior, eta3_prior, log_eta4_prior
 
 

@@ -75,7 +75,7 @@ def test_percentiles():
 
     a = np.linspace(0, 10, 100)
     npt.assert_allclose(percentile68_ranges(a), [5.0, 3.4, 3.4])
-    assert percentile68_ranges_latex(a) == '$5.00 ^{+3.40} _{-3.40}$'
+    assert percentile68_ranges_latex(a) == '$5.0 ^{+3.4} _{-3.4}$'
 
 
 def test_planet_mass():
@@ -138,7 +138,6 @@ def simple_results_dir(tmpdir_factory):
 
 def write_dummy_model_setup(directory):
     template_setup = ("[kima] \n"
-                      "obs_after_HARPS_fibers: false \n"
                       "GP: false \n"
                       "hyperpriors: false \n"
                       "trend: false \n"

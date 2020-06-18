@@ -2,6 +2,7 @@ import sys, os
 import re
 import numpy as np
 from scipy import stats
+import urepr
 from loguniform import LogUniform, ModifiedLogUniform
 from kumaraswamy import kumaraswamy
 
@@ -11,7 +12,6 @@ mjup2mearth = 317.8284065946748  # 1 Mjup in Mearth
 template_setup = """
 
 [kima]
-obs_after_HARPS_fibers: true / false
 GP: true / false
 hyperpriors: true / false
 trend: true / false
@@ -54,6 +54,14 @@ def read_datafile(datafile, skip):
     else:
         data = np.loadtxt(datafile, usecols=(0, 1, 2), skiprows=skip)
         obs = np.loadtxt(datafile, usecols=(3, ), skiprows=skip, dtype=int)
+        uobs = np.unique(obs)
+
+        id0 = 0
+        for i, o in enumerate(obs):
+            if o != uobs[id0]:
+                id0 += 1
+            obs[i] = id0 + 1
+
         return data, obs
 
 
@@ -106,7 +114,7 @@ def percentile68_ranges(a, min=None, max=None):
 
 def percentile68_ranges_latex(a, min=None, max=None):
     median, plus, minus = percentile68_ranges(a, min, max)
-    return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, plus, minus)
+    return '$' + urepr.core.uformatul(median, plus, minus, 'L') + '$'
 
 
 def percentile_ranges(a, percentile=68, min=None, max=None):
@@ -125,7 +133,7 @@ def percentile_ranges(a, percentile=68, min=None, max=None):
 
 def percentile_ranges_latex(a, percentile, min=None, max=None):
     median, plus, minus = percentile_ranges(a, percentile, min, max)
-    return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, plus, minus)
+    return '$' + urepr.core.uformatul(median, plus, minus, 'L') + '$'
 
 
 def clipped_mean(arr, min, max):
@@ -424,3 +432,6 @@ def get_instrument_name(data_file):
             return re.findall(pattern, bn.upper())[0]
         except IndexError:  # didn't find
             return data_file
+
+
+

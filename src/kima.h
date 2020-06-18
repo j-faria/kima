@@ -4,6 +4,7 @@
 #include "distributions/Fixed.h"
 #include "distributions/Empirical.h"
 #include "distributions/mixGaussianLogUniform.h"
+#include "distributions/Gaussian_from_Tc.h"
 
 #include "Data.h"
 #include "RVmodel.h"

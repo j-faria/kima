@@ -62,6 +62,10 @@ def _parse_args1():
     parser.add_argument('--no-colors', action='store_true', default=False,
                         help=argparse.SUPPRESS)
 
+
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='run with valgrind')
+
     args = parser.parse_args()
     return args, parser
 
@@ -196,7 +200,12 @@ def run_local():
             sys.exit(0)
 
         ## run
-        cmd = './kima -t %d' % args.threads
+        if args.debug:
+            cmd = 'valgrind '
+        else:
+            cmd = ''
+
+        cmd += './kima -t %d' % args.threads
         if args.seed:
             cmd += ' -s %d' % args.seed
 
@@ -217,8 +226,11 @@ def run_local():
 
         start = time.time()
         try:
-            kima = subprocess.check_call(cmd.split(), stdout=stdout,
+            kima = subprocess.check_call(cmd.split(), stdout=stdout,# stderr=subprocess.PIPE,
                                          timeout=TO)
+            # proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # out, err = proc.communicate(timeout=TO)
+            # kima = proc.returncode
 
         except KeyboardInterrupt:
             end = time.time()

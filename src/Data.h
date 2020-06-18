@@ -30,8 +30,6 @@ class Data
 		void load_multi(std::vector<std::string> filenames, const std::string units, int skip=2,
 		                const std::vector<std::string>& indicators = std::vector< std::string >());
 
-		int index_fibers;
-
 
 		bool indicator_correlations;
 		int number_indicators;
@@ -91,6 +89,8 @@ class Data
 		
 		/// @brief Get the maximum slope allowed by the data. @return double
 		double topslope() const;
+		/// @brief Order of magnitude of trend coefficient (of degree) given the data
+		int get_trend_magnitude(int degree) const;
 
 		/// @brief Get the array of activity indictators @return std::vector<std::vector<double>>&
 		const std::vector<std::vector<double>>& get_actind() const { return actind; }
