@@ -2331,7 +2331,7 @@ class KimaResults(object):
                 # inst = get_instrument_name(self.data_file[i])
                 inst = self.instruments[i]
                 dec = abs(int(np.floor(np.log10(jit.mean()))))
-                estimate = percentile68_ranges_latex(jit, decimal=dec) + units
+                estimate = percentile68_ranges_latex(jit) + units
                 axs[i].hist(jit)
                 axs[i].set(xlabel='%s' % inst, title=estimate,
                            ylabel='posterior samples')
@@ -2341,8 +2341,7 @@ class KimaResults(object):
 
         else:
             dec = abs(int(np.floor(np.log10(self.extra_sigma.mean()))))
-            estimate = percentile68_ranges_latex(self.extra_sigma, 
-                                                 decimal=dec+1)
+            estimate = percentile68_ranges_latex(self.extra_sigma)
             estimate += units
 
             fig, ax = plt.subplots(1, 1)
@@ -2423,8 +2422,9 @@ class KimaResults(object):
                 ax[i, 0].hist(prior.rvs(self.ESS) * f, alpha=0.15, color='k', 
                               zorder=-1, label='prior')
 
-            ax[i, 0].set(xlabel=f'{names[i]}{units[i]}',
-                      ylabel='posterior samples', title=estimate)
+            ax[i, 0].set(xlabel=f'{names[i]}{units[i]}', 
+                         title=f'{names[i]} = {estimate}')
+
             if show_prior:
                 ax[i, 0].legend()
 

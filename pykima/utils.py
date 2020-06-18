@@ -2,6 +2,7 @@ import sys, os
 import re
 import numpy as np
 from scipy import stats
+import urepr
 from loguniform import LogUniform, ModifiedLogUniform
 from kumaraswamy import kumaraswamy
 
@@ -111,10 +112,9 @@ def percentile68_ranges(a, min=None, max=None):
     return (median, up - median, median - lp)
 
 
-def percentile68_ranges_latex(a, min=None, max=None, decimal=2):
+def percentile68_ranges_latex(a, min=None, max=None):
     median, plus, minus = percentile68_ranges(a, min, max)
-    d = decimal
-    return f'${median:.{d}f} ^{{+{plus:.{d}f}}} _{{-{minus:.{d}f}}}$'
+    return '$' + urepr.core.uformatul(median, plus, minus, 'L') + '$'
 
 
 def percentile_ranges(a, percentile=68, min=None, max=None):
@@ -133,7 +133,7 @@ def percentile_ranges(a, percentile=68, min=None, max=None):
 
 def percentile_ranges_latex(a, percentile, min=None, max=None):
     median, plus, minus = percentile_ranges(a, percentile, min, max)
-    return r'$%.2f ^{+%.2f} _{-%.2f}$' % (median, plus, minus)
+    return '$' + urepr.core.uformatul(median, plus, minus, 'L') + '$'
 
 
 def clipped_mean(arr, min, max):
@@ -432,3 +432,6 @@ def get_instrument_name(data_file):
             return re.findall(pattern, bn.upper())[0]
         except IndexError:  # didn't find
             return data_file
+
+
+
