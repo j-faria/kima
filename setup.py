@@ -33,7 +33,7 @@ setup(name='pykima',
           'loguniform',
           'kumaraswamy',
           'celerite',
-          'urepr@git+https://github.com/j-faria/urepr#egg=urepr-0.0.1',
+          'urepr',
       ],
 
       entry_points={
