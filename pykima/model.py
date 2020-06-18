@@ -23,6 +23,7 @@ def chdir(dir):
 
 # class to interface with a kima model and a KimaResults instance
 class KimaModel:
+    """ Create and run kima models from Python """
     def __init__(self):
         self.directory = os.getcwd()
         self.kima_setup = 'kima_setup.cpp'
@@ -37,9 +38,10 @@ class KimaModel:
         self.GP = False
         self.MA = False
         self.hyperpriors = False
-        self.trend = False
+        self._trend = False
         self.degree = 0
-        self.known_object = False
+        self._known_object = False
+        self._n_known_object = 0
         self.studentt = False
 
         self.fix = True
@@ -80,6 +82,47 @@ class KimaModel:
             return True
 
     @property
+    def trend(self):
+        return self._trend
+    @trend.setter
+    def trend(self, b):
+        if b and self.degree == 0:
+            print("don't forget to set the degree")
+        self._trend = b
+
+    @property
+    def known_object(self):
+        return self._known_object
+    @known_object.setter
+    def known_object(self, b):
+        if b:
+            print("don't forget to set n_known_object and all respective priors")
+        else:
+            for i in range(self.n_known_object):
+                self._priors.pop(f'KO_Pprior[{i}]')
+                self._priors.pop(f'KO_Kprior[{i}]')
+                self._priors.pop(f'KO_eprior[{i}]')
+                self._priors.pop(f'KO_phiprior[{i}]')
+                self._priors.pop(f'KO_wprior[{i}]')
+            self.n_known_object = 0
+        self._known_object = b
+
+    @property
+    def n_known_object(self):
+        return self._n_known_object
+    @n_known_object.setter
+    def n_known_object(self, val):
+        if val > 0:
+            for i in range(val):
+                self._priors.update({f'KO_Pprior[{i}]': ()})
+                self._priors.update({f'KO_Kprior[{i}]': ()})
+                self._priors.update({f'KO_eprior[{i}]': ()})
+                self._priors.update({f'KO_phiprior[{i}]': ()})
+                self._priors.update({f'KO_wprior[{i}]': ()})
+        self._n_known_object = val
+
+
+    @property
     def _default_priors(self):
         dp = {
             # name: (default, distribution, arg1, arg2)
@@ -114,10 +157,9 @@ class KimaModel:
             set_prior_to_default(prior_name)
         or to set all priors to the defaults just use
             set_priors()
-
         """
-
         return self._priors
+
 
     def set_priors(self, which='default', *args):
         args = [False, *args]
@@ -152,7 +194,8 @@ class KimaModel:
         d = dict(t=[], y=[], e=[])
         for f in self.filename:
             try:
-                t, y, e = np.loadtxt(f, skiprows=self.skip, usecols=range(3)).T
+                t, y, e = np.loadtxt(f, skiprows=self.skip, unpack=True,
+                                     usecols=range(3), comments='')
             except:
                 print(f'cannot read from {f} (is skip correct?)')
                 return None
@@ -240,6 +283,7 @@ class KimaModel:
 
         ints = (
             'degree',
+            'n_known_object',
         )
         for i in ints:
             pat = re.compile(f'const int {i} = (\d+)')
@@ -391,6 +435,7 @@ class KimaModel:
         file.write(f'{ci} degree = {self.degree};\n')
         file.write(f'{cb} multi_instrument = {r(self.multi_instrument)};\n')
         file.write(f'{cb} known_object = {r(self.known_object)};\n')
+        file.write(f'{ci} n_known_object = {self.n_known_object};\n')
         file.write(f'{cb} studentt = {r(self.studentt)};\n')
         file.write('\n')
 
