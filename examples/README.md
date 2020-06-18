@@ -1,8 +1,5 @@
 This folder contains examples of how to run **kima**.  
-
-This is also the test suite for the package. 
-When you type `make test` in the kima directory, all the examples are executed with a given random seed 
-and the output is checked against a previous run. **that's the goal, not yet happening!**
+This is also the test suite for the package.
 
 #### Use the examples
 
