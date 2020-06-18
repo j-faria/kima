@@ -33,7 +33,7 @@ setup(name='pykima',
           'loguniform',
           'kumaraswamy',
           'celerite',
-          'urepr @ https://api.github.com/repos/j-faria/urepr/tarball',
+          'urepr @ git+https://github.com/j-faria/urepr#egg=urepr-0.0.1',
       ],
 
       entry_points={
