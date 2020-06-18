@@ -25,7 +25,7 @@ $(SRCDIR)/main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
 
-EXAMPLES = 51Peg BL2009 CoRoT7 many_planets multi_instrument \
+EXAMPLES = 51Peg BL2009 CoRoT7 many_planets multi_instrument trends \
            activity_correlations default_priors studentT arbitrary_units K2-24
 
 all: main ${EXAMPLES}
