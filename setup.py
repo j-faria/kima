@@ -33,7 +33,9 @@ setup(name='pykima',
           'loguniform',
           'kumaraswamy',
           'celerite',
+          'urepr @ https://api.github.com/repos/j-faria/urepr/tarball',
       ],
+
       entry_points={
           'console_scripts': [
               'kima-showresults = pykima.showresults:showresults',
