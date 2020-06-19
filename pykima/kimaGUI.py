@@ -48,15 +48,16 @@ def chdir(dir):
 
 def no_exception(function):
     """ A decorator that wraps a function and ignores all exceptions """
-    @functools.wraps(function)
     def wrapper(*args, **kwargs):
         try:
+            # print(args)
             return function(*args, **kwargs)
         except Exception as e:
             # do nothing
             print(str(e))
 
     return wrapper
+
 
 
 
@@ -140,6 +141,7 @@ class MainWindow(QtWidgets.QMainWindow):
         that is updated in the GUI.
         """
         self.lineEdit_2.setText(self.model.directory)
+        print(self.model.filename)
         if self.model.filename is None:
             files = ''
         else:
@@ -173,7 +175,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toggleMultiInstrument(self.model.multi_instrument)
 
         for prior_name, prior in self.model.priors.items():
-            # print(prior_name, prior)
+            print(prior_name, prior)
             # each prior's comboBox
             dist = getattr(self, 'comboBox_' + prior_name)
             # find the index of this prior's distribution name
@@ -227,6 +229,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def setmpl(self, tab, fig):
         if tab in self.canvases:
             self.rmmpl(tab)
+        plt.ioff()
         self.addmpl(tab, fig)
 
     def slot1(self):
@@ -279,8 +282,8 @@ class MainWindow(QtWidgets.QMainWindow):
     #     self.setmpl('tab_6', fig)
     #     self.tabWidget.setCurrentIndex(5)
 
-    # @no_exception
-    def makePlotsAll(self):
+    @no_exception
+    def makePlotsAll(self, *args, **kwargs):
         out = self.model.results()
         if out:
             self.results_output.setText(out)
@@ -307,11 +310,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self.setmpl('tab_7_1', fig71)
             if fig72:
                 self.setmpl('tab_7_2', fig72)
-            plt.close()
+            # plt.close()
 
             fig73 = self.model.res.hist_extra_sigma()
             self.setmpl('tab_7_3', fig73)
-            plt.close()
+            # plt.close()
 
             self.tabWidget.setCurrentIndex(6)
 
@@ -334,6 +337,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             self.setmpl('tab_' + p, fig)
             self.tabWidget.setCurrentIndex(int(p)-1)
+
 
     def reloadResults(self):
         out = self.model.results(force=True)

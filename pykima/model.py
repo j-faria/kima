@@ -44,7 +44,7 @@ class KimaModel:
         self._n_known_object = 0
         self.studentt = False
 
-        self.fix = True
+        self.fix_Np = True
         self.max_Np = 1
 
         self.set_priors('default')
@@ -162,14 +162,13 @@ class KimaModel:
 
 
     def set_priors(self, which='default', *args):
-        args = [False, *args]
+        if len(args) > 0 and not isinstance(args[0], bool):
+            args = [False, *args]
         if which == 'default':
             self._priors = self._default_priors
         else:
             if len(args) == 3:
                 assert args[1] == 'Fixed'
-            else:
-                assert len(args) == 4
             self._priors.update({which: args})
 
     def set_prior_to_default(self, which):
@@ -182,6 +181,8 @@ class KimaModel:
     
     @filename.setter
     def filename(self, f):
+        if f is None:
+            return
         self._filename = [f, ]
         self.data
 
@@ -298,7 +299,7 @@ class KimaModel:
         pat = re.compile(r'fix\((\w+)\)')
         match = pat.findall(setup)
         if len(match) == 1:
-            self.fix = True if match[0] == 'true' else False
+            self.fix_Np = True if match[0] == 'true' else False
         else:
             msg = f'Cannot find option for fix in {self.kima_setup}'
             raise ValueError(msg)
@@ -442,7 +443,7 @@ class KimaModel:
     def _write_constructor(self, file):
         def r(val): return 'true' if val else 'false'
         file.write(
-            f'RVmodel::RVmodel():fix({r(self.fix)}),npmax({self.max_Np})\n')
+            f'RVmodel::RVmodel():fix({r(self.fix_Np)}),npmax({self.max_Np})\n')
 
     def _inside_constructor(self, file):
         file.write('{\n')
