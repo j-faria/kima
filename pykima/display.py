@@ -290,8 +290,7 @@ class KimaResults(object):
                 self.GP = GP_celerite(
                     QPkernel_celerite(η1=1, η2=1, η3=1), self.data[:, 0], self.data[:, 2],
                     white_noise=0.)
-                print('ahhhh')
-
+                # print('ahhhh')
 
             self.indices['GPpars_start'] = start_hyperpars
             self.indices['GPpars_end'] = start_hyperpars + n_hyperparameters
@@ -666,8 +665,12 @@ class KimaResults(object):
                     print(s)
 
             if self.GPmodel:
-                eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
-                print('GP parameters: ', eta1, eta2, eta3, eta4)
+                if self.GPkernel == 0:
+                    eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
+                    print('GP parameters: ', eta1, eta2, eta3, eta4)
+                elif self.GPkernel == 1:
+                    eta1, eta2, eta3 = pars[self.indices['GPpars']]
+                    print('GP parameters: ', eta1, eta2, eta3)
 
             if self.trend:
                 names = ('slope', 'quad', 'cubic')
@@ -1307,9 +1310,9 @@ class KimaResults(object):
 
     def make_plot3(self, points=True, gridsize=50):
         """
-        Plot the 2d histograms of the posteriors for semi-amplitude 
-        and orbital period and eccentricity and orbital period.
-        If `points` is True, plot each posterior sample, else plot hexbins
+        Plot the 2d histograms of the posteriors for semi-amplitude and orbital
+        period and eccentricity and orbital period. If `points` is True, plot
+        each posterior sample, else plot hexbins
         """
 
         if self.max_components == 0:
@@ -1385,7 +1388,7 @@ class KimaResults(object):
 
         try:
             ax2.set(xlim=self.priors['Pprior'].support())
-        except (AttributeError, KeyError):
+        except (AttributeError, KeyError, ValueError):
             pass
 
         if self.save_plots:
@@ -1460,12 +1463,14 @@ class KimaResults(object):
         ]
         units = ['m/s'] * self.n_jitters + ['m/s', 'days', 'days', None]
         xlabels = []
-        for i in range(self.n_jitters):
-            l = r'%s$_{{\rm %s}}}$' % (labels[i], self.instruments[i])
+        if self.multi:
+            for i in range(self.n_jitters):
+                l = r'%s$_{{\rm %s}}}$' % (labels[i], self.instruments[i])
+                xlabels.append(l)
+        else:
+            xlabels.append(labels[0])
 
-            xlabels.append(l)
-        for label, unit in zip(labels[self.n_jitters:],
-                               units[self.n_jitters:]):
+        for label, unit in zip(labels[self.n_jitters:], units[self.n_jitters:]):
             xlabels.append(label)
             #    ' (%s)' % unit if unit is not None else label)
 
