@@ -1285,7 +1285,7 @@ class KimaResults(object):
                     try:
                         prior = get_prior(self.setup['priors.planets']['Pprior'])
                         ax.hist(prior.rvs(T.size), **kwargs)
-                    except KeyError:
+                    except (KeyError, AttributeError):
                         pass
 
         ax.legend()
