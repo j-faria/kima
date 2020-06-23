@@ -1038,7 +1038,7 @@ string RVmodel::description() const
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_phi" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
-            desc += "KO_e" + std::to_string(i) + sep;
+            desc += "KO_ecc" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_w" + std::to_string(i) + sep;
     }
@@ -1054,7 +1054,7 @@ string RVmodel::description() const
         for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
-        for(int i = 0; i < maxpl; i++) desc += "e" + std::to_string(i) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "ecc" + std::to_string(i) + sep;
         for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
     }
 
