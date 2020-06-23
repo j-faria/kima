@@ -988,32 +988,33 @@ void RVmodel::print(std::ostream& out) const
 string RVmodel::description() const
 {
     string desc;
+    string sep = "   ";
 
     if (multi_instrument)
     {
         for(int j=0; j<jitters.size(); j++)
-           desc += "jitter" + std::to_string(j+1) + "   ";
+           desc += "jitter" + std::to_string(j+1) + sep;
     }
     else
         desc += "extra_sigma   ";
 
     if(trend)
     {
-        if (degree >= 1) desc += "slope   ";
-        if (degree >= 2) desc += "quadr   ";
-        if (degree == 3) desc += "cubic   ";
+        if (degree >= 1) desc += "slope" + sep;
+        if (degree >= 2) desc += "quadr" + sep;
+        if (degree == 3) desc += "cubic" + sep;
     }
 
 
     if (multi_instrument){
         for(unsigned j=0; j<offsets.size(); j++)
-            desc += "offset" + std::to_string(j+1) + "   ";
+            desc += "offset" + std::to_string(j+1) + sep;
     }
 
     auto data = Data::get_instance();
     if(data.indicator_correlations){
         for(int j=0; j<data.number_indicators; j++){
-            desc += "beta" + std::to_string(j+1) + "   ";
+            desc += "beta" + std::to_string(j+1) + sep;
         }
     }
 
@@ -1021,29 +1022,45 @@ string RVmodel::description() const
     if(GP)
     {
         if(kernel == standard)
-            desc += "eta1   eta2   eta3   eta4   ";
+            desc += "eta1" + sep + "eta2" + sep + "eta3" + sep + "eta4" + sep;
         else
-            desc += "eta1   eta2   eta3   ";
+            desc += "eta1" + sep + "eta2" + sep + "eta3" + sep;
     }
     
     if(MA)
-        desc += "sigmaMA   tauMA   ";
+        desc += "sigmaMA" + sep + "tauMA";
 
-    if(known_object) // KO mode!
-        desc += "KO_P   KO_K   KO_phi   KO_e   KO_w   ";
+    if(known_object) { // KO mode!
+        for(int i=0; i<n_known_object; i++) 
+            desc += "KO_P" + std::to_string(i) + sep;
+        for(int i=0; i<n_known_object; i++) 
+            desc += "KO_K" + std::to_string(i) + sep;
+        for(int i=0; i<n_known_object; i++) 
+            desc += "KO_phi" + std::to_string(i) + sep;
+        for(int i=0; i<n_known_object; i++) 
+            desc += "KO_e" + std::to_string(i) + sep;
+        for(int i=0; i<n_known_object; i++) 
+            desc += "KO_w" + std::to_string(i) + sep;
+    }
 
-    desc += "ndim   maxNp   ";
+    desc += "ndim" + sep + "maxNp" + sep;
     if(hyperpriors)
-        desc += "muP   wP   muK   ";
+        desc += "muP" + sep + "wP" + sep + "muK";
 
-    desc += "Np   ";
+    desc += "Np" + sep;
 
-    if (planets.get_max_num_components()>0)
-        desc += "P   K   phi   ecc   w   ";
+    int maxpl = planets.get_max_num_components();
+    if (maxpl > 0) {
+        for(int i = 0; i < maxpl; i++) desc += "P" + std::to_string(i) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "K" + std::to_string(i) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "phi" + std::to_string(i) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "e" + std::to_string(i) + sep;
+        for(int i = 0; i < maxpl; i++) desc += "w" + std::to_string(i) + sep;
+    }
 
-    desc += "staleness   ";
+    desc += "staleness" + sep;
     if (studentt)
-        desc += "nu   ";
+        desc += "nu" + sep;
     
     desc += "vsys";
 
