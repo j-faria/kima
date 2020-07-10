@@ -2255,7 +2255,8 @@ class KimaResults(object):
             fig.savefig(filename)
 
 
-    def hist_vsys(self, show_offsets=True, specific=None):
+    def hist_vsys(self, show_offsets=True, specific=None, show_prior=False,
+                  **kwargs):
         """ 
         Plot the histogram of the posterior for the systemic velocity and for
         the between-instrument offsets (if `show_offsets` is True and the model
@@ -2278,9 +2279,29 @@ class KimaResults(object):
         fig, ax = plt.subplots(1, 1)
         figures.append(fig)
 
-        ax.hist(vsys)
+        ax.hist(vsys, **kwargs)
+        
         title = 'Posterior distribution for $v_{\\rm sys}$ \n %s' % estimate
-        ax.set(xlabel='vsys' + units, ylabel='posterior samples', title=title)
+        if kwargs.get('density', False):
+            ylabel = 'posterior'
+        else:
+            ylabel = 'posterior samples'
+        ax.set(xlabel='vsys' + units, ylabel=ylabel, title=title)
+
+        if show_prior:
+            try:
+                low, upp = self.priors['Cprior'].interval(1)
+                # if np.isinf(low) or np.isinf(upp):
+                #     xx = np.linspace(vsys.min(), vsys.max(), 500)
+                # else:
+                #     xx = np.linspace(0.999*low, (1/0.999)*upp, 500)
+                d = kwargs.get('density', False)
+                ax.hist(self.priors['Cprior'].rvs(self.ESS), density=d,
+                        alpha=0.15, color='k', zorder=-1)
+                ax.legend(['posterior', 'prior'])
+
+            except Exception as e:
+                print(str(e))
 
         if self.save_plots:
             filename = 'kima-showresults-fig7.2.png'
@@ -2357,7 +2378,7 @@ class KimaResults(object):
             return figures
 
 
-    def hist_extra_sigma(self):
+    def hist_extra_sigma(self, show_prior=False, **kwargs):
         """ 
         Plot the histogram of the posterior for the additional white noise 
         """
@@ -2383,16 +2404,34 @@ class KimaResults(object):
             title = 'Posterior distribution(s) for extra white noise(s)'
             fig.suptitle(title)
 
+            #! missing show_prior
+
         else:
             dec = abs(int(np.floor(np.log10(self.extra_sigma.mean()))))
             estimate = percentile68_ranges_latex(self.extra_sigma)
             estimate += units
 
             fig, ax = plt.subplots(1, 1)
-            ax.hist(self.extra_sigma)
+            ax.hist(self.extra_sigma, **kwargs)
             title = 'Posterior distribution for extra white noise $s$ \n %s' % estimate
-            ax.set(xlabel='extra sigma' + units, ylabel='posterior samples',
-                   title=title)
+            if kwargs.get('density', False):
+                ylabel = 'posterior'
+            else:
+                ylabel = 'posterior samples'
+            ax.set(xlabel='extra sigma' + units, ylabel=ylabel, title=title)
+
+            if show_prior:
+                try:
+                    # low, upp = self.priors['Jprior'].interval(1)
+                    d = kwargs.get('density', False)
+                    ax.hist(self.priors['Jprior'].rvs(self.ESS), density=d,
+                            alpha=0.15, color='k', zorder=-1)
+                    ax.legend(['posterior', 'prior'])
+
+                except Exception as e:
+                    print(str(e))
+
+
 
         if self.save_plots:
             filename = 'kima-showresults-fig7.3.png'
