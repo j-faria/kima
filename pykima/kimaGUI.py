@@ -133,6 +133,14 @@ class MainWindow(QtWidgets.QMainWindow):
         msg.setWindowTitle(title)
         msg.exec_()
 
+    def _warning(self, message, title=''):
+        """ Show a warning message """
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Warning)
+        msg.setText(f"Warning\n{message}")
+        msg.setWindowTitle(title)
+        msg.exec_()
+
     def updateUI(self):
         """
         Updates the widgets whenever an interaction happens. Typically some
@@ -141,7 +149,6 @@ class MainWindow(QtWidgets.QMainWindow):
         that is updated in the GUI.
         """
         self.lineEdit_2.setText(self.model.directory)
-        print(self.model.filename)
         if self.model.filename is None:
             files = ''
         else:
@@ -175,7 +182,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toggleMultiInstrument(self.model.multi_instrument)
 
         for prior_name, prior in self.model.priors.items():
-            print(prior_name, prior)
+            # print(prior_name, prior)
             # each prior's comboBox
             dist = getattr(self, 'comboBox_' + prior_name)
             # find the index of this prior's distribution name
@@ -260,6 +267,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 files = newfiles
 
             self.model.filename = files
+            if self.model.data is None:
+                self._warning('Something went wrong reading the data file.\n'
+                              'Make sure `skip` is set correctly.')
+
             for prior, sets in self.model.priors.items():
                 if sets[0]:
                     self.model.set_prior_to_default(prior)
@@ -284,7 +295,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @no_exception
     def makePlotsAll(self, *args, **kwargs):
-        out = self.model.results()
+        out = self.model.showresults()
         if out:
             self.results_output.setText(out)
         self.terminal_widget.push({'res': self.model.res})
@@ -340,7 +351,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def reloadResults(self):
-        out = self.model.results(force=True)
+        out = self.model.showresults(force=True)
         if out:
             self.results_output.setText(out)
         self.terminal_widget.push({'res': self.model.res})
