@@ -183,7 +183,10 @@ class KimaModel:
     def filename(self, f):
         if f is None:
             return
-        self._filename = [f, ]
+        if isinstance(f, list):
+            self._filename = f
+        else:
+            self._filename = [f, ]
         self.data
 
 
@@ -196,10 +199,12 @@ class KimaModel:
         for f in self.filename:
             try:
                 t, y, e = np.loadtxt(f, skiprows=self.skip, unpack=True,
-                                     usecols=range(3), comments='')
-            except:
+                                     usecols=range(3))
+            except Exception as e:
                 print(f'cannot read from {f} (is skip correct?)')
+                print(str(e))
                 return None
+
             d['t'].append(t)
             d['y'].append(y)
             d['e'].append(e)
