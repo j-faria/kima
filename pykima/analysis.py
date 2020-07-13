@@ -134,14 +134,45 @@ def find_outliers(results, sample, threshold=10, verbose=False):
     return outlier
 
 
-def detection_limits(results, star_mass=1.0, NP=None, bins=None, plot=False,
+def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
                      sorted_samples=True, return_mask=False):
-    res = results
-    if NP is None:
-        NP = passes_threshold_np(res)
-    print(f'Using samples with Np > {NP}')
+    """ 
+    Calculate detection limits using samples with more than `Np` planets. By 
+    default, this function uses the value of `Np` which passes the posterior
+    probability threshold.
 
-    mask = res.posterior_sample[:, res.index_component] > NP
+    Arguments
+    ---------
+    star_mass : float or tuple
+        Stellar mass and optionally its uncertainty [in solar masses].
+    Np : int
+        Consider only posterior samples with more than `Np` planets.
+    bins : int
+        Number of bins at which to calculate the detection limits. The period 
+        ranges from the minimum to the maximum orbital period in the posterior.
+    plot : bool
+        Whether to plot the detection limits
+    sorted_samples : bool
+        undoc
+    return_mask: bool
+        undoc
+    
+    Returns
+    -------
+    P, K, E, M : ndarray
+        Orbital periods, semi-amplitudes, eccentricities, and planet masses used
+        in the calculation of the detection limits. These correspond to all the
+        posterior samples with more than `Np` planets
+    s : DLresult, namedtuple
+        Detection limits result, with attributes `max` and `bins`. The `max` 
+        array is in units of Earth masses, `bins` is in days.
+    """
+    res = results
+    if Np is None:
+        Np = passes_threshold_np(res)
+    print(f'Using samples with Np > {Np}')
+
+    mask = res.posterior_sample[:, res.index_component] > Np
     pars = res.posterior_sample[mask, res.indices['planets']]
 
     if sorted_samples:
@@ -163,25 +194,29 @@ def detection_limits(results, star_mass=1.0, NP=None, bins=None, plot=False,
     E = E[inds]
     M = get_planet_mass(P, K, E, star_mass=star_mass, full_output=True)[2]
 
-    bins = bins or 200
     if P.max() / P.min() > 100:
         bins = 10**np.linspace(np.log10(P.min()), np.log10(P.max()), bins)
     else:
         bins = np.linspace(P.min(), P.max(), bins)
 
+    # bins_start = bins[:-1]# - np.ediff1d(bins)/2
+    # bins_end = bins[1:]# + np.ediff1d(bins)/2
+    # bins_start = np.append(bins_start, bins_end[-1])
+    # bins_end = np.append(bins_end, P.max())
+
     DLresult = namedtuple('DLresult', ['max', 'bins'])
     s = binned_statistic(P, M, statistic='max', bins=bins)
-    s = DLresult(max=s.statistic,
+    s = DLresult(max=s.statistic * mjup2mearth,
                  bins=s.bin_edges[:-1] + np.ediff1d(s.bin_edges) / 2)
 
-    s99 = binned_statistic(P, M, statistic=lambda x: np.percentile(x, 99),
-                           bins=bins)
-    s99 = DLresult(max=s99.statistic,
-                   bins=s99.bin_edges[:-1] + np.ediff1d(s99.bin_edges) / 2)
+    # s99 = binned_statistic(P, M, statistic=lambda x: np.percentile(x, 99),
+    #                        bins=bins)
+    # s99 = DLresult(max=s99.statistic,
+    #                bins=s99.bin_edges[:-1] + np.ediff1d(s99.bin_edges) / 2)
 
     if plot:
         import matplotlib.pyplot as plt
-        fig, ax = plt.subplots(1, 1, constrained_layout=True)
+        _, ax = plt.subplots(1, 1, constrained_layout=True)
         if isinstance(star_mass, tuple):
             star_mass = star_mass[0]
 
@@ -192,23 +227,23 @@ def detection_limits(results, star_mass=1.0, NP=None, bins=None, plot=False,
         ax.loglog(sP, 3 * one_ms * mjup2mearth, ls='--', **kw)
         ax.loglog(sP, one_ms * mjup2mearth, ls='-', **kw)
 
-        ax.loglog(P, M * mjup2mearth, '.', color='k', ms=2, alpha=0.2,
-                  zorder=-1)
-        ax.loglog(s.bins, s.max * mjup2mearth, color='C3')
+        ax.loglog(P, M * mjup2mearth, 'k.', ms=2, alpha=0.2, zorder=-1)
+        ax.loglog(s.bins, s.max, color='C3')
+        # ax.hlines(s.max, bins_start, bins_end, lw=2)
         # ax.loglog(s99.bins, s99.max * mjup2mearth)
 
-        leg = ['%d m/s' % i for i in (5, 3, 1)] \
-                   + ['posterior samples', 'binned maximum']
-        ax.legend(leg, ncol=2, frameon=False)
+        lege = [f'{i} m/s' for i in (5, 3, 1)] 
+        lege += ['posterior samples', 'binned maximum']
+
+        ax.legend(lege, ncol=2, frameon=False)
         ax.set(ylim=(0.5, None))
-        ax.set(xlabel='Orbital period [days]',
-               ylabel='Planet mass [M$_\odot$]')
-        plt.show()
+        ax.set(xlabel='Orbital period [days]', ylabel='Planet mass [M$_\odot$]')
 
     if return_mask:
         return P, K, E, M, s, mask
     else:
         return P, K, E, M, s
+
 
 
 def column_dynamic_ranges(results):
