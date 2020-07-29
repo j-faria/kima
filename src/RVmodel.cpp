@@ -1111,6 +1111,9 @@ void RVmodel::save_setup() {
     for (auto f: data.datafiles)
         fout << f << ",";
     fout << endl;
+
+    fout << "M0_epoch: " << data.M0_epoch << endl;
+
     fout << endl;
 
     fout << "[priors.general]" << endl;

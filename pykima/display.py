@@ -135,6 +135,7 @@ class KimaResults(object):
 
         self.data_skip = int(setup['kima']['skip'])
         self.units = setup['kima']['units']
+        self.M0_epoch = float(setup['kima']['M0_epoch'])
 
         if debug:
             print('--- skipping first %d rows of data file' % self.data_skip)
@@ -574,7 +575,7 @@ class KimaResults(object):
         self.Omegaall = np.copy(self.Omega)
 
         # times of periastron
-        self.T0 = self.data[0, 0] - (self.T * self.phi) / (2. * np.pi)
+        self.T0 = self.M0_epoch - (self.T * self.phi) / (2. * np.pi)
         self.T0all = np.copy(self.T0)
 
         which = self.T != 0
@@ -782,7 +783,7 @@ class KimaResults(object):
                 continue
             K = pars[j + 1 * self.max_components]
             phi = pars[j + 2 * self.max_components]
-            t0 = t[0] - (P * phi) / (2. * np.pi)
+            t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
             ecc = pars[j + 3 * self.max_components]
             w = pars[j + 4 * self.max_components]
             v += keplerian(t, P, K, ecc, w, t0, 0.)
@@ -849,7 +850,7 @@ class KimaResults(object):
             # assert p.size == self.n_dimensions
             P = p[0]
             phi = p[2]
-            t0 = t[0] - (P * phi) / (2. * np.pi)
+            t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
             return np.array([P, p[1], p[3], p[4], t0, 0.0])
 
         mc = self.max_components
@@ -877,7 +878,7 @@ class KimaResults(object):
         # extract periods, phases and calculate times of periastron
         P = pars[0 * mc:1 * mc]
         phi = pars[2 * mc:3 * mc]
-        T0 = t[0] - (P * phi) / (2. * np.pi)
+        T0 = self.M0_epoch - (P * phi) / (2. * np.pi)
 
         # how many planets in this sample?
         # nplanets = int(pars.size / self.n_dimensions) <-- this is wrong!
@@ -1759,7 +1760,7 @@ class KimaResults(object):
                     P = pars[iKO::self.nKO][0]
                     K = pars[iKO::self.nKO][1]
                     phi = pars[iKO::self.nKO][2]
-                    t0 = t[0] - (P * phi) / (2. * np.pi)
+                    t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                     ecc = pars[iKO::self.nKO][3]
                     w = pars[iKO::self.nKO][4]
                     # P = pars[5*iKO + 0]
@@ -1790,7 +1791,7 @@ class KimaResults(object):
                     continue
                 K = pars[j + 1 * self.max_components]
                 phi = pars[j + 2 * self.max_components]
-                t0 = t[0] - (P * phi) / (2. * np.pi)
+                t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
                 v += keplerian(tt, P, K, ecc, w, t0, 0.)
@@ -2065,7 +2066,7 @@ class KimaResults(object):
                 P = pars[0]
                 K = pars[1]
                 phi = pars[2]
-                t0 = t[0] - (P * phi) / (2. * np.pi)
+                t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                 ecc = pars[3]
                 w = pars[4]
 
@@ -2092,7 +2093,7 @@ class KimaResults(object):
                     continue
                 K = pars[j + 1 * self.max_components]
                 phi = pars[j + 2 * self.max_components]
-                t0 = t[0] - (P * phi) / (2. * np.pi)
+                t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
                 v += keplerian(tt, P, K, ecc, w, t0, 0.)
