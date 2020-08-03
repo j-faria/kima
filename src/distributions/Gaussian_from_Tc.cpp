@@ -7,7 +7,7 @@ namespace DNest4
 Gaussian_from_Tc::Gaussian_from_Tc(double Tc, double errTc, double P, double errP)
     {
         double t0 = Data::get_instance().M0_epoch;
-        
+
         // propagate uncertainty on Tc and P to phi
         double A, B, AoB, sA, sB;
         A = t0 - Tc;
@@ -18,7 +18,7 @@ Gaussian_from_Tc::Gaussian_from_Tc(double Tc, double errTc, double P, double err
 
         // build the Gaussian distribution for phi
         m = AoB;
-        s = abs(AoB) * sqrt(pow(sA/A, 2) + pow(sB/B, 2));
+        s = fabs(AoB) * sqrt(pow(sA/A, 2) + pow(sB/B, 2));
         d = Gaussian(m, s);
     }
 
