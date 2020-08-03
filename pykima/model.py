@@ -32,6 +32,7 @@ class KimaModel:
         self.skip = 0
         self.units = 'kms'
 
+        self._warnings = True
         self._levels_hash = ''
         self._loaded = False
 
@@ -86,7 +87,7 @@ class KimaModel:
         return self._trend
     @trend.setter
     def trend(self, b):
-        if b and self.degree == 0:
+        if self._warnings and b and self.degree == 0:
             print("don't forget to set the degree")
         self._trend = b
 
@@ -95,7 +96,7 @@ class KimaModel:
         return self._known_object
     @known_object.setter
     def known_object(self, b):
-        if b:
+        if self._warnings and b:
             print("don't forget to set n_known_object and all respective priors")
         else:
             for i in range(self.n_known_object):
@@ -110,6 +111,7 @@ class KimaModel:
     @property
     def n_known_object(self):
         return self._n_known_object
+
     @n_known_object.setter
     def n_known_object(self, val):
         if val > 0:
@@ -119,8 +121,9 @@ class KimaModel:
                 self._priors.update({f'KO_eprior[{i}]': ()})
                 self._priors.update({f'KO_phiprior[{i}]': ()})
                 self._priors.update({f'KO_wprior[{i}]': ()})
-        self._n_known_object = val
+                self._priors.update({f'separator{4+i}': ''})
 
+        self._n_known_object = val
 
     @property
     def _default_priors(self):
@@ -128,19 +131,28 @@ class KimaModel:
             # name: (default, distribution, arg1, arg2)
             'Cprior': (True, 'Uniform', self.ymin, self.ymax),
             'Jprior': (True, 'ModifiedLogUniform', 1.0, 100.0),
-            'slope_prior': 
+            'slope_prior':
                 (True, 'Uniform', -self.topslope if self.data else None, self.topslope),
-            'offsets_prior': 
+            'offsets_prior':
                 (True, 'Uniform', -self.yspan if self.data else None, self.yspan),
+            #
+            'separator1': '',
             #
             'log_eta1_prior': (True, 'Uniform', -5.0, 5.0),
             'eta2_prior': (True, 'LogUniform', 1.0, 100.0),
             'eta3_prior': (True, 'Uniform', 10.0, 40.0),
             'log_eta4_prior': (True, 'Uniform', -1.0, 1.0),
             #
+            'separator2': '',
+            #
             'Pprior': (True, 'LogUniform', 1.0, 100000.0),
             'Kprior': (True, 'ModifiedLogUniform', 1.0, 1000.0),
             'eprior': (True, 'Uniform', 0.0, 1.0),
+            'wprior': (True, 'Uniform', -np.pi, np.pi),
+            'phiprior': (True, 'Uniform', 0, np.pi),
+            #
+            'separator3': '',
+            #
         }
         return dp
 
@@ -160,7 +172,6 @@ class KimaModel:
         """
         return self._priors
 
-
     def set_priors(self, which='default', *args):
         if len(args) > 0 and not isinstance(args[0], bool):
             args = [False, *args]
@@ -178,7 +189,7 @@ class KimaModel:
     @property
     def filename(self):
         return self._filename
-    
+
     @filename.setter
     def filename(self, f):
         if f is None:
@@ -253,7 +264,7 @@ class KimaModel:
             # with io.StringIO() as buf, contextlib.redirect_stdout(buf):  # redirect stdout
             with chdir(self.directory):
                 self.res = pkshowresults(force_return=True, show_plots=False, verbose=False)
-               # output = buf.getvalue()
+            # output = buf.getvalue()
         # self.res.return_figs = True
 
         return output
@@ -453,33 +464,51 @@ class KimaModel:
     def _inside_constructor(self, file):
         file.write('{\n')
 
+        def write_prior_n(name, sets, add_conditional=False):
+            s = 'c->' if add_conditional else ''
+            arguments = ", ".join(map(str, sets[2:]))
+            return s + f'{name} = make_prior<{sets[1]}>({arguments});\n'
+
         def write_prior_2(name, sets, add_conditional=False):
             s = 'c->' if add_conditional else ''
             return s + f'{name} = make_prior<{sets[1]}>({sets[2]}, {sets[3]});\n'
+
         def write_prior_1(name, sets, add_conditional=False):
             s = 'c->' if add_conditional else ''
             return s + f'{name} = make_prior<{sets[1]}>({sets[2]});\n'
 
+        def write_prior(name, sets, add_conditional):
+            if len(sets) > 4:
+                return write_prior_n(name, sets, add_conditional)
+            elif sets[1] == 'Fixed':
+                return write_prior_1(name, sets, add_conditional)
+            else:
+                return write_prior_2(name, sets, add_conditional)
+
         got_conditional = False
+        wrote_something = False
         for name, sets in self._priors.items():
+
+            if name.startswith('separator'):
+                if wrote_something:
+                    file.write('\n')
+                continue
+
             # print(name, sets)
             if not sets[0]:  # if not default prior
+                wrote_something = True
                 if name in self._planet_priors:
                     if not got_conditional:
                         file.write(
+                            '\t' +
                             f'auto c = planets.get_conditional_prior();\n')
                         got_conditional = True
-                    if sets[1] == 'Fixed':
-                        file.write(write_prior_1(name, sets, True))
-                    else:
-                        file.write(write_prior_2(name, sets, True))
+                    
+                    file.write('\t' + write_prior(name, sets, True))
                 else:
-                    if sets[1] == 'Fixed':
-                        file.write(write_prior_1(name, sets, False))
-                    else:
-                        file.write(write_prior_2(name, sets, False))
+                    file.write('\t' + write_prior(name, sets, False))
 
-        file.write('\n}\n')
+        file.write('}\n')
         file.write('\n')
 
     def _write_sampler(self, file):
@@ -548,4 +577,3 @@ class KimaModel:
         self.save()
         cmd = f'kima-run {self.directory}'
         out = subprocess.check_call(cmd.split())
-
