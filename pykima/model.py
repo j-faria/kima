@@ -51,6 +51,8 @@ class KimaModel:
         self.set_priors('default')
         self._planet_priors = ('Pprior', 'Kprior', 'eprior', 'wprior', 'phiprior')
 
+        self.priors_need_data = False
+
         self.threads = 1
         self.OPTIONS = {
             'particles': 2,
@@ -463,6 +465,9 @@ class KimaModel:
 
     def _inside_constructor(self, file):
         file.write('{\n')
+
+        if self.priors_need_data:
+            file.write('\t' + 'auto data = get_data();\n\n')
 
         def write_prior_n(name, sets, add_conditional=False):
             s = 'c->' if add_conditional else ''
