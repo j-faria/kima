@@ -351,7 +351,7 @@ void RVmodel::calculate_mu()
 
 
     double f, v, ti;
-    double P, K, phi, ecc, omega;
+    double P, K, phi, ecc, omega, Tp;
     for(size_t j=0; j<components.size(); j++)
     {
         if(hyperpriors)
@@ -367,7 +367,8 @@ void RVmodel::calculate_mu()
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            f = true_anomaly(ti, P, ecc, data.M0_epoch-(P*phi)/(2.*M_PI));
+            Tp = data.M0_epoch-(P*phi)/(2.*M_PI);
+            f = kepler::true_anomaly(ti, P, ecc, Tp);
             v = K*(cos(f+omega) + ecc*cos(omega));
             mu[i] += v;
         }
@@ -397,14 +398,15 @@ void RVmodel::remove_known_object()
 {
     auto data = Data::get_instance();
     auto t = data.get_t();
-    double f, v, ti;
+    double f, v, ti, Tp;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            f = true_anomaly(ti, KO_P[j], KO_e[j], data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI));
+            Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
+            f = kepler::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
             v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
             mu[i] -= v;
         }
@@ -415,13 +417,14 @@ void RVmodel::add_known_object()
 {
     auto data = Data::get_instance();
     auto t = data.get_t();
-    double f, v, ti;
+    double f, v, ti, Tp;
     for(int j=0; j<n_known_object; j++)
     {
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            f = true_anomaly(ti, KO_P[j], KO_e[j], data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI));
+            Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
+            f = kepler::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
             v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
             mu[i] += v;
         }
@@ -1174,93 +1177,123 @@ void RVmodel::save_setup() {
 }
 
 
-/**
-    Calculates the eccentric anomaly at time t by solving Kepler's equation.
-    See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
-
-    @param t the time at which to calculate the eccentric anomaly.
-    @param period the orbital period of the planet
-    @param ecc the eccentricity of the orbit
-    @param t_peri time of periastron passage
-    @return eccentric anomaly.
-*/
-double RVmodel::ecc_anomaly(double t, double period, double ecc, double time_peri)
+namespace murison
 {
-    double tol;
-    if (ecc < 0.8) tol = 1e-14;
-    else tol = 1e-13;
+    // A solver for Kepler's equation based on 
+    // "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
 
-    double n = 2.*M_PI/period;  // mean motion
-    double M = n*(t - time_peri);  // mean anomaly
-    double Mnorm = fmod(M, 2.*M_PI);
-    double E0 = keplerstart3(ecc, Mnorm);
-    double dE = tol + 1;
-    double E = M;
-    int count = 0;
-    while (dE > tol)
+
+    double kepler(double M, double ecc)
     {
-        E = E0 - eps3(ecc, Mnorm, E0);
-        dE = abs(E-E0);
-        E0 = E;
-        count++;
-        // failed to converge, this only happens for nearly parabolic orbits
-        if (count == 100) break;
+        double tol;
+        if (ecc < 0.8) tol = 1e-14;
+        else tol = 1e-13;
+
+        double Mnorm = fmod(M, 2.*M_PI);
+        double E0 = keplerstart3(ecc, Mnorm);
+        double dE = tol + 1;
+        double E = M;
+        int count = 0;
+        while (dE > tol)
+        {
+            E = E0 - eps3(ecc, Mnorm, E0);
+            dE = abs(E-E0);
+            E0 = E;
+            count++;
+            // failed to converge, this only happens for nearly parabolic orbits
+            if (count == 100) break;
+        }
+        return E;
+
     }
-    return E;
-}
 
 
-/**
-    Provides a starting value to solve Kepler's equation.
-    See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
+    /**
+        Calculates the eccentric anomaly at time t by solving Kepler's equation.
+        See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
 
-    @param e the eccentricity of the orbit
-    @param M mean anomaly (in radians)
-    @return starting value for the eccentric anomaly.
-*/
-double RVmodel::keplerstart3(double e, double M)
-{
-    double t34 = e*e;
-    double t35 = e*t34;
-    double t33 = cos(M);
-    return M + (-0.5*t35 + e + (t34 + 1.5*t33*t35)*t33)*sin(M);
-}
+        @param t the time at which to calculate the eccentric anomaly.
+        @param period the orbital period of the planet
+        @param ecc the eccentricity of the orbit
+        @param t_peri time of periastron passage
+        @return eccentric anomaly.
+    */
+    double ecc_anomaly(double t, double period, double ecc, double time_peri)
+    {
+        double tol;
+        if (ecc < 0.8) tol = 1e-14;
+        else tol = 1e-13;
 
-
-/**
-    An iteration (correction) method to solve Kepler's equation.
-    See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
-
-    @param e the eccentricity of the orbit
-    @param M mean anomaly (in radians)
-    @param x starting value for the eccentric anomaly
-    @return corrected value for the eccentric anomaly
-*/
-double RVmodel::eps3(double e, double M, double x)
-{
-    double t1 = cos(x);
-    double t2 = -1 + e*t1;
-    double t3 = sin(x);
-    double t4 = e*t3;
-    double t5 = -x + t4 + M;
-    double t6 = t5/(0.5*t5*t4/t2+t2);
-
-    return t5/((0.5*t3 - 1/6*t1*t6)*e*t6+t2);
-}
+        double n = 2.*M_PI/period;  // mean motion
+        double M = n*(t - time_peri);  // mean anomaly
+        double Mnorm = fmod(M, 2.*M_PI);
+        double E0 = keplerstart3(ecc, Mnorm);
+        double dE = tol + 1;
+        double E = M;
+        int count = 0;
+        while (dE > tol)
+        {
+            E = E0 - eps3(ecc, Mnorm, E0);
+            dE = abs(E-E0);
+            E0 = E;
+            count++;
+            // failed to converge, this only happens for nearly parabolic orbits
+            if (count == 100) break;
+        }
+        return E;
+    }
 
 
+    /**
+        Provides a starting value to solve Kepler's equation.
+        See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
 
-/**
-    Calculates the true anomaly at time t.
-    See Eq. 2.6 of The Exoplanet Handbook, Perryman 2010
+        @param e the eccentricity of the orbit
+        @param M mean anomaly (in radians)
+        @return starting value for the eccentric anomaly.
+    */
+    double keplerstart3(double e, double M)
+    {
+        double t34 = e*e;
+        double t35 = e*t34;
+        double t33 = cos(M);
+        return M + (-0.5*t35 + e + (t34 + 1.5*t33*t35)*t33)*sin(M);
+    }
 
-    @param t the time at which to calculate the true anomaly.
-    @param period the orbital period of the planet
-    @param ecc the eccentricity of the orbit
-    @param t_peri time of periastron passage
-    @return true anomaly.
-*/
-double RVmodel::true_anomaly(double t, double period, double ecc, double t_peri)
+
+    /**
+        An iteration (correction) method to solve Kepler's equation.
+        See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
+
+        @param e the eccentricity of the orbit
+        @param M mean anomaly (in radians)
+        @param x starting value for the eccentric anomaly
+        @return corrected value for the eccentric anomaly
+    */
+    double eps3(double e, double M, double x)
+    {
+        double t1 = cos(x);
+        double t2 = -1 + e*t1;
+        double t3 = sin(x);
+        double t4 = e*t3;
+        double t5 = -x + t4 + M;
+        double t6 = t5/(0.5*t5*t4/t2+t2);
+
+        return t5/((0.5*t3 - 1/6*t1*t6)*e*t6+t2);
+    }
+
+
+    /**
+        Calculates the true anomaly at time t.
+        See Eq. 2.6 of The Exoplanet Handbook, Perryman 2010
+
+        @param t the time at which to calculate the true anomaly.
+        @param period the orbital period of the planet
+        @param ecc the eccentricity of the orbit
+        @param t_peri time of periastron passage
+        @return true anomaly.
+    */
+    double true_anomaly(double t, double period, double ecc, double t_peri)
 {
     double E = ecc_anomaly(t, period, ecc, t_peri);
     // double E = solve_kepler(t, period, ecc, t_peri);
@@ -1274,96 +1307,147 @@ double RVmodel::true_anomaly(double t, double period, double ecc, double t_peri)
     return f;
 }
 
+} // namespace murison
 
 
-/// Calculates x-sin(x) and 1-cos(x) to 20 significant digits for x in [0, pi)
-/// From github.com/dfm/exoplanet
-template <typename T>
-inline void RVmodel::sin_cos_reduc (T x, T* SnReduc, T* CsReduc) {
-    const T s[] = {T(1)/6, T(1)/20, T(1)/42, T(1)/72, T(1)/110, T(1)/156, T(1)/210, T(1)/272, T(1)/342, T(1)/420};
-    const T c[] = {T(0.5), T(1)/12, T(1)/30, T(1)/56, T(1)/90, T(1)/132, T(1)/182, T(1)/240, T(1)/306, T(1)/380};
 
-    bool bigg = x > M_PI_2;
-    T u = (bigg) ? M_PI - x : x;
-    bool big = u > M_PI_2;
-    T v = (big) ? M_PI_2 - u : u;
-    T w = v * v;
-
-    T ss = T(1);
-    T cc = T(1);
-    for (int i = 9; i >= 1; --i) {
-        ss = 1 - w * s[i] * ss;
-        cc = 1 - w * c[i] * cc;
-    }
-    ss *= v * w * s[0];
-    cc *= w * c[0];
-
-    if (big) {
-        *SnReduc = u - 1 + cc;
-        *CsReduc = 1 - M_PI_2 + u + ss;
-    } else {
-        *SnReduc = ss;
-        *CsReduc = cc;
-    }
-    if (bigg) {
-        *SnReduc = 2 * x - M_PI + *SnReduc;
-        *CsReduc = 2 - *CsReduc;
-    }
-}
+// Code from https://github.com/dfm/kepler.py
+namespace kepler
+{
+    // A solver for Kepler's equation based on:
+    //
+    // Nijenhuis (1991)
+    // http://adsabs.harvard.edu/abs/1991CeMDA..51..319N
+    //
+    // and
+    //
+    // Markley (1995)
+    // http://adsabs.harvard.edu/abs/1995CeMDA..63..101M
 
 
-/// Solve Kepler's equation for the eccentric anomaly
-/// From github.com/dfm/exoplanet
-template <typename T>
-inline T RVmodel::solve_kepler (T t, T period, T ecc, T time_peri) {
+    // Implementation from numpy
+    inline double npy_mod(double a, double b)
+    {
+        double mod = fmod(a, b);
 
-    const T two_pi = 2 * M_PI;
-    T n = two_pi / period;  // mean motion
-    T M = n * (t - time_peri);  // mean anomaly
+        if (!b)
+        {
+            // If b == 0, return result of fmod. For IEEE is nan
+            return mod;
+        }
 
-    T M_ref = two_pi * floor(M / two_pi);
-    M -= M_ref;
+        // adjust fmod result to conform to Python convention of remainder
+        if (mod)
+        {
+            if ((b < 0) != (mod < 0))
+            {
+            mod += b;
+            }
+        }
+        else
+        {
+            // if mod is zero ensure correct sign
+            mod = copysign(0, b);
+        }
 
-    bool high = M > M_PI;
-    if (high) {
-        M = two_pi - M;
+        return mod;
     }
 
-    T ome = 1.0 - ecc;
+    inline double get_markley_starter(double M, double ecc, double ome)
+    {
+        // M must be in the range [0, pi)
+        const double FACTOR1 = 3 * M_PI / (M_PI - 6 / M_PI);
+        const double FACTOR2 = 1.6 / (M_PI - 6 / M_PI);
 
-    // Get starter
-    T M2 = M*M;
-    T M3 = M2*M;
-    T alpha = (3*M_PI + 1.6*(M_PI-std::abs(M))/(1+ecc) )/(M_PI - 6/M_PI);
-    T d = 3*ome + alpha*ecc;
-    T r = 3*alpha*d*(d-ome)*M + M3;
-    T q = 2*alpha*d*ome - M2;
-    T q2 = q*q;
-    T w = pow(std::abs(r) + sqrt(q2*q + r*r), 2.0/3);
-    T E = (2*r*w/(w*w + w*q + q2) + M) / d;
-
-    // Approximate Mstar = E - e*sin(E) with numerically stability
-    T sE, cE;
-    sin_cos_reduc (E, &sE, &cE);
-
-    // Refine the starter
-    T f_0 = ecc * sE + E * ome - M;
-    T f_1 = ecc * cE + ome;
-    T f_2 = ecc * (E - sE);
-    T f_3 = 1-f_1;
-    T d_3 = -f_0/(f_1 - 0.5*f_0*f_2/f_1);
-    T d_4 = -f_0/(f_1 + 0.5*d_3*f_2 + (d_3*d_3)*f_3/6);
-    T d_42 = d_4*d_4;
-    E -= f_0/(f_1 + 0.5*d_4*f_2 + d_4*d_4*f_3/6 - d_42*d_4*f_2/24);
-
-    if (high) {
-        E = two_pi - E;
+        double M2 = M * M;
+        double alpha = FACTOR1 + FACTOR2 * (M_PI - M) / (1 + ecc);
+        double d = 3 * ome + alpha * ecc;
+        double alphad = alpha * d;
+        double r = (3 * alphad * (d - ome) + M2) * M;
+        double q = 2 * alphad * ome - M2;
+        double q2 = q * q;
+        double w = pow(std::abs(r) + sqrt(q2 * q + r * r), 2.0 / 3);
+        return (2 * r * w / (w * w + w * q + q2) + M) / d;
     }
 
-    return E + M_ref;
-}
+    inline double refine_estimate(double M, double ecc, double ome, double E)
+    {
+        double sE = E - sin(E);
+        double cE = 1 - cos(E);
 
+        double f_0 = ecc * sE + E * ome - M;
+        double f_1 = ecc * cE + ome;
+        double f_2 = ecc * (E - sE);
+        double f_3 = 1 - f_1;
+        double d_3 = -f_0 / (f_1 - 0.5 * f_0 * f_2 / f_1);
+        double d_4 = -f_0 / (f_1 + 0.5 * d_3 * f_2 + (d_3 * d_3) * f_3 / 6);
+        double d_42 = d_4 * d_4;
+        double dE = -f_0 /
+                (f_1 + 0.5 * d_4 * f_2 + d_4 * d_4 * f_3 / 6 - d_42 * d_4 * f_2 / 24);
 
-// instantiate for doubles
-template void RVmodel::sin_cos_reduc<double>(double, double*, double*);
-template double RVmodel::solve_kepler<double>(double, double, double, double);
+        return E + dE;
+    }
+
+    /**
+        Solve Kepler's equation for the eccentric anomaly
+
+        @param M the mean anomaly
+        @param ecc the orbital eccentricity
+        @return E the eccentric anomaly
+    */
+    double kepler(double M, double ecc)
+    {
+        const double two_pi = 2 * M_PI;
+
+        // Wrap M into the range [0, 2*pi]
+        M = npy_mod(M, two_pi);
+
+        //
+        bool high = M > M_PI;
+        if (high)
+            M = two_pi - M;
+
+        // Get the starter
+        double ome = 1.0 - ecc;
+        double E = get_markley_starter(M, ecc, ome);
+
+        // Refine this estimate using a high order Newton step
+        E = refine_estimate(M, ecc, ome, E);
+
+        if (high)
+            E = two_pi - E;
+
+        return E;
+    }
+
+    /**
+        Calculates the true anomaly at time t.
+        See Eq. 2.6 of The Exoplanet Handbook, Perryman 2010
+
+        @param t the time at which to calculate the true anomaly.
+        @param period the orbital period of the planet
+        @param ecc the eccentricity of the orbit
+        @param t_peri time of periastron passage
+        @return true anomaly.
+    */
+    double true_anomaly(double t, double period, double ecc, double t_peri)
+    {
+        double n = 2.*M_PI/period;  // mean motion
+        double M = n*(t - t_peri);  // mean anomaly
+
+        // Solve Kepler's equation
+        double E = kepler(M, ecc);
+
+        // Calculate true anomaly
+        double cosE = cos(E);
+        double f = acos( (cosE - ecc)/( 1 - ecc*cosE ) );
+        // acos gives the principal values ie [0:PI]
+        // when E goes above PI we need another condition
+        if(E > M_PI)
+            f = 2*M_PI - f;
+
+        return f;
+
+    }
+
+} // namespace kepler
