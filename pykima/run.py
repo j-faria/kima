@@ -2,9 +2,11 @@
 import sys
 import os
 import shutil
+import fileinput
 import subprocess
 import argparse
 import time
+from datetime import datetime
 import contextlib
 import pipes
 import signal
@@ -48,12 +50,14 @@ def _parse_args1():
     # parser.add_argument('-id', type=str, default='',
     #                     help='job ID, added to sample.txt, levels.txt, etc')
 
+    parser.add_argument('--save', nargs='?', type=str, const='',
+                        help='Save output of run to a directory')
+
     parser.add_argument('--timeout', type=int,
                         help='stop the job after TIMEOUT seconds')
 
     parser.add_argument('-c', '--compile', action='store_true', default=False,
                         help="just compile, don't run")
-
     parser.add_argument('--vc', action='store_true', default=False,
                         help="verbose compilation")
 
@@ -148,13 +152,15 @@ def run_local():
     """ Run kima jobs """
     args, parser = _parse_args1()
     # print(args)
+    # return
+
     if args.version:
         version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
         v = open(version_file).read().strip() # same as kima
         print('kima (%s script)' % parser.prog, v)
         sys.exit(0)
 
-
+    # get back to current directory when finished
     with remember_cwd():
 
         if args.DIR != os.getcwd():
@@ -263,8 +269,50 @@ def run_local():
                 print(kimastr, 'job finished, took %.2f seconds' % (end - start))
             if not args.no_notify:
                 notify('kima job finished', 'took %.2f seconds' % took)
+
         finally:
             if args.background:
                 stdout.close()
                 if not args.quiet:
                     print('output saved to "%s"' % stdout.name)
+
+        if args.save is not None:
+            save = args.save
+            if save == '':
+                save = datetime.now().isoformat().split('.')[0]
+
+            print(f'Saving results to "{save}"')
+
+            if not os.path.isdir(save):
+                os.mkdir(save)
+
+            # shutil.copy('OPTIONS', save)
+            # shutil.copy('kima_setup.cpp', save)
+            shutil.copy('kima_model_setup.txt', save)
+            shutil.copy('sample.txt', save)
+            shutil.copy('sample_info.txt', save)
+            shutil.copy('levels.txt', save)
+
+            # the datafile paths need to be absolute, otherwise kima-showresults
+            # will fail in the save directory
+            from .utils import read_model_setup
+            setup = read_model_setup()
+            multi = setup['kima']['multi'] == 'true'
+
+            if multi:
+                model_file = os.path.join(save, 'kima_model_setup.txt')
+                data_files = setup['kima']['files'].split(',')[:-1]
+                for line in fileinput.FileInput(model_file, inplace=True):
+                    if line.startswith('files:'):
+                        for data_file in data_files:
+                            print(line.replace(data_file, os.path.abspath(data_file)), end='')
+                    else:
+                        print(line, end='')
+            else:
+                model_file = os.path.join(save, 'kima_model_setup.txt')
+                data_file = setup['kima']['file']
+                for line in fileinput.FileInput(model_file, inplace=True):
+                    if line.startswith('file:'):
+                        print(line.replace(data_file, os.path.abspath(data_file)), end='')
+                    else:
+                        print(line, end='')
