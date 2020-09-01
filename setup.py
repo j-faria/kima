@@ -38,7 +38,7 @@ setup(name='pykima',
 
       entry_points={
           'console_scripts': [
-              'kima-showresults = pykima.showresults:showresults',
+              'kima-showresults = pykima.showresults:showresults2',
               'kima-checkpriors = pykima.check_priors:main',
               'kima-template = pykima.make_template:main',
               'kima-run = pykima.run:run_local',

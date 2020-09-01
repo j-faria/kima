@@ -1,3 +1,10 @@
+""" This module defines the `kima-showresults` script """
+
+# the reasoning to have both named and numbered arguments (that do mostly the
+# same thing) is that the named arguments are easier to remember and more
+# intuitive, but the numbered arguments are faster to type. Choosing to
+# deprecate either option has disadvantages.
+
 from __future__ import print_function
 
 import __main__
@@ -6,6 +13,7 @@ from .display import KimaResults
 from .crossing_orbits import rem_crossing_orbits
 from .utils import show_tips
 import sys, os, re
+import argparse
 from io import StringIO
 from contextlib import redirect_stdout
 import time
@@ -61,11 +69,16 @@ def findpop(value, lst):
         return False  # didn't find the value
 
 
-def usage(full=True):
-    u = "usage: kima-showresults "\
-        "[rv] [phase] [planets] [orbital] [gp] [extra] [1, ..., 8]\n"\
-        "                        [all] [pickle] [zip] [--save-plots] "\
-                                "[-h/--help] [--version]"
+def usage(full=True, add_usage=True):
+    if add_usage:
+        u = 'usage: '
+    else:
+        u = ''
+
+    u += "kima-showresults "\
+         "[rv] [phase] [planets] [orbital] [gp] [extra] [1, ..., 8]\n"\
+         "                        [all] [pickle] [zip] [--save-plots] "\
+                                 "[-h/--help] [--version]"
     u += '\n\n'
     if not full: return u
 
@@ -111,7 +124,7 @@ def _parse_args(options):
     if '--version' in args:
         version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
         v = open(version_file).read().strip()  # same as kima
-        print('kima (kima-showresults script)', v) 
+        print('kima (kima-showresults script)', v)
         sys.exit(0)
 
     if '--help-remove-crossing' in args:
@@ -178,7 +191,7 @@ def _parse_args(options):
                      remove_crossing=remove_crossing)
 
 
-def showresults(options='', force_return=False, verbose=True, show_plots=True, 
+def showresults(options='', force_return=False, verbose=True, show_plots=True,
                 kima_tips=True):
     """
     Generate and plot results from a kima run. The argument `options` should be 
@@ -226,11 +239,11 @@ def showresults(options='', force_return=False, verbose=True, show_plots=True,
         raise e from None
         # print(e)
         # sys.exit(1)
-    
-    # sometimes an IndexError is raised when the levels.txt file is being 
+
+    # sometimes an IndexError is raised when the levels.txt file is being
     # updated too quickly, and the read operation is not atomic... we try one
     # more time and then give up
-    except IndexError: 
+    except IndexError:
         try:
             with redirect_stdout(stdout):
                 evidence, H, logx_samples = postprocess(
@@ -268,8 +281,250 @@ def showresults(options='', force_return=False, verbose=True, show_plots=True,
     if not args.save_plots and show_plots:
         show()  # render the plots
 
+    #! old solution, but fails when running scripts (res ends up as None)
     # __main__.__file__ doesn't exist in the interactive interpreter
-    if not hasattr(__main__, '__file__') or force_return:
+    # if not hasattr(__main__, '__file__') or force_return:
+    #! this solution seems to always return, except with kima-showresults
+    if not hasattr(__main__, 'load_entry_point') or force_return:
+        return res
+
+
+def make_wide(formatter, w=120, h=36):
+    """Return a wider HelpFormatter, if possible."""
+    try:
+        # https://stackoverflow.com/a/5464440
+        # beware: "Only the name of this class is considered a public API."
+        kwargs = {'width': w, 'max_help_position': h}
+        formatter(None, **kwargs)
+        return lambda prog: formatter(prog, **kwargs)
+    except TypeError:
+        warnings.warn("argparse help formatter failed, falling back.")
+        return formatter
+
+class NoAction(argparse.Action):
+    def __init__(self, **kwargs):
+        kwargs.setdefault('default', argparse.SUPPRESS)
+        kwargs.setdefault('nargs', 0)
+        super(NoAction, self).__init__(**kwargs)
+    def __call__(self, parser, namespace, values, option_string=None):
+        pass
+
+class ChoicesAction(argparse._StoreAction):
+    def add_choice(self, choice, help=''):
+        if self.choices is None:
+            self.choices = []
+        self.choices.append(choice)
+        self.container.add_argument(choice, help=help, action='none')
+
+    def add_undocumented(self, choice, help=''):
+        if self.choices is None:
+            self.choices = []
+        self.choices.append(choice)
+        # self.container.add_argument(choice, help=help, action='none')
+
+def _parse_args2(options):
+    if options == '':
+        if 'kima-showresults' in sys.argv[0]:
+            args_in = sys.argv[1:]
+        else:
+            args_in = options
+    else:
+        args_in = options.split()
+
+    # create the top-level parser
+    parser = argparse.ArgumentParser(
+        'kima-showresults', description='Show the results from a kima run.',
+        usage=usage(full=False, add_usage=False),
+        # formatter_class=make_wide(argparse.HelpFormatter, w=140, h=20)
+        formatter_class=make_wide(argparse.RawTextHelpFormatter, w=140, h=25)
+    )
+    parser.add_argument('--version', action='store_true',
+                        help="show the version of kima and exit")
+
+    parser.register('action', 'none', NoAction)
+    parser.register('action', 'store_choice', ChoicesAction)
+
+    group_opt = parser.add_argument_group(title='positional arguments')
+
+    options = group_opt.add_argument('commands', metavar='', help='', nargs=argparse.REMAINDER,
+                                     action='store_choice')
+
+    # options.add_undocumented('rv', help="")
+    options.add_choice('diagnostic', help="show diagnostics from DNest4")
+
+    options.add_choice('rv', help="samples from posterior in data-space together with the RV data")
+    options.add_choice('phase', help="phase curve(s) of the maximum likelihood solution")
+    options.add_choice('planets', help="posterior for number of planets")
+    options.add_choice('orbital', help="posteriors for some of the orbital parameters")
+    options.add_choice('gp', help="posteriors for GP hyperparameters")
+    options.add_choice('extra', help="posteriors for systemic velocity, extra white noise, etc")
+    options.add_choice('all', help="show all plots\n\n")
+    options.add_choice('pickle', help="save the model into a pickle file (filename will be prompted)")
+    options.add_choice('zip', help="save output files into a zip file (filename will be prompted)\n\n")
+
+    options.add_choice('1', help="posterior for number of planets")
+    options.add_choice('2', help="posterior for the orbital periods")
+    options.add_choice('3', help="joint posterior for semi-amplitudes, eccentricities and orbital periods")
+    options.add_choice('4', help="posteriors for the GP hyperparameters (marginal)")
+    options.add_choice('5', help="posteriors for the GP hyperparameters (joint)")
+    options.add_choice('6', help="samples from posterior in data-space together with the RV data")
+    options.add_choice('6p', help="same as 6, plus the phase curves of the maximum likelihood solution")
+    options.add_choice('7', help="posteriors for systemic velocity, extra white noise, etc)")
+    options.add_choice('8', help="posteriors for the moving average parameters")
+
+    parser.add_argument('--save-plots', action='store_true',
+        help="instead of showing, save the plots as .png files (except for diagnostic plots)")
+    parser.add_argument('--remove-roche', action='store_true',
+        help="remove orbits crossing the Roche limit of the star")
+    parser.add_argument('--remove-crossing', action='store_true',
+        help="remove crossing orbits (use --help-remove-crossing for details)")
+    parser.add_argument('--help-remove-crossing', action='store_true',
+                        help=argparse.SUPPRESS)
+
+    args = parser.parse_args(args_in)
+
+    unrecognized = []
+    wrong_place = []
+    for cmd in args.commands:
+        # hack!
+        # using argparse.REMAINDER above means the optional arguments cannot
+        # come after the other arguments but this is not ideal
+        # set them to True if they were given
+        if cmd in ('--save-plots', '--remove-roche', '--remove-crossing'):
+            args.__setattr__(cmd.replace('--', '').replace('-', '_'), True)
+            wrong_place.append(cmd)
+        # is there any argument not in the allowed choices?
+        elif cmd not in options.choices:
+            unrecognized.append(cmd)
+
+    if len(unrecognized) > 0:
+        print(f'kima-showresults: warning: unrecognized arguments: '\
+              f'{", ".join(unrecognized)}')
+
+    for cmd in unrecognized:
+        args.commands.remove(cmd)
+    for cmd in wrong_place:
+        args.commands.remove(cmd)
+
+    return args
+
+def showresults2(options='', force_return=False, verbose=True, show_plots=True,
+                kima_tips=True):
+    """
+    Generate and plot results from a kima run. The argument `options` should be 
+    a string with the same options as for the kima-showresults script.
+    """
+
+    # force correct CLI arguments
+    args = _parse_args2(options)
+    # print(args)
+
+    if args.help_remove_crossing:
+        print(help_remove_crossing)
+        return
+
+    if args.version:
+        version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
+        v = open(version_file).read().strip()  # same as kima
+        print('kima (kima-showresults script)', v)
+        return
+
+    plots = []
+    if 'rv' in args.commands:
+        plots.append('6')
+    if 'phase' in args.commands:
+        plots.append('6p')
+    if 'planets' in args.commands:
+        plots.append('1')
+    if 'orbital' in args.commands:
+        plots.append('2')
+        plots.append('3')
+    if 'gp' in args.commands:
+        plots.append('4')
+        plots.append('5')
+    if 'extra' in args.commands:
+        plots.append('7')
+
+    for cmd in args.commands:
+        try:
+            int(cmd)
+            plots.append(cmd)
+        except ValueError:
+            pass
+    
+    if '6p' in args.commands:
+        plots.append('6p')
+
+    # don't repeat plot 6
+    if '6p' in plots:
+        try:
+            plots.remove('6')
+        except ValueError:
+            pass
+
+    diagnostic = 'diagnostic' in args.commands
+
+    hidden = StringIO()
+    stdout = sys.stdout if verbose else hidden
+
+    try:
+        with redirect_stdout(stdout):
+            evidence, H, logx_samples = postprocess(plot=diagnostic,
+                                                    numResampleLogX=1,
+                                                    moreSamples=1)
+    except IOError as e:
+        sys.tracebacklimit = 0
+        raise e from None
+        # print(e)
+        # sys.exit(1)
+
+    # sometimes an IndexError is raised when the levels.txt file is being
+    # updated too quickly, and the read operation is not atomic... we try one
+    # more time and then give up
+    except IndexError:
+        try:
+            with redirect_stdout(stdout):
+                evidence, H, logx_samples = postprocess(plot=diagnostic,
+                                                        numResampleLogX=1,
+                                                        moreSamples=1)
+        except IndexError:
+            sys.tracebacklimit = 0
+            raise IOError('something went wrong reading levels.txt') from None
+
+
+    # show kima tips
+    if verbose and kima_tips:
+        show_tips()
+
+    res = KimaResults('')
+
+    if args.remove_crossing:
+        res = rem_crossing_orbits(res)
+
+    res.make_plots(list(set(plots)), save_plots=args.save_plots)
+
+    res.evidence = evidence
+    res.information = H
+    res.ESS = res.posterior_sample.shape[0]
+
+    # getinput = input
+    # # if Python 2, use raw_input()
+    # if sys.version_info[:2] <= (2, 7):
+    #     getinput = raw_input
+
+    if 'pickle' in args.commands:
+        res.save_pickle(input('Filename to save pickle model: '))
+    if 'zip' in args.commands:
+        res.save_zip(input('Filename to save model (must end with .zip): '))
+
+    if not args.save_plots and show_plots:
+        show()  # render the plots
+
+    #! old solution, but fails when running scripts (res ends up as None)
+    # __main__.__file__ doesn't exist in the interactive interpreter
+    # if not hasattr(__main__, '__file__') or force_return:
+    #! this solution seems to always return, except with kima-showresults
+    if not hasattr(__main__, 'load_entry_point') or force_return:
         return res
 
 
