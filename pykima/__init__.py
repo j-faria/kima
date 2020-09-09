@@ -1,6 +1,6 @@
 from .classic import postprocess
 from .analysis import most_probable_np, passes_threshold_np
-from .display import KimaResults
+from .results import KimaResults
 load = KimaResults.load
 from .showresults import showresults
 from .crossing_orbits import rem_crossing_orbits, rem_roche

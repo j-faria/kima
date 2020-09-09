@@ -137,18 +137,7 @@ def simple_results_dir(tmpdir_factory):
 
 
 def write_dummy_model_setup(directory):
-    template_setup = ("[kima] \n"
-                      "GP: false \n"
-                      "hyperpriors: false \n"
-                      "trend: false \n"
-                      "multi_instrument: false \n\n"
-                      "file: filename.txt \n"
-                      "units: kms \n"
-                      "skip: 0 \n"
-                      "multi: false \n"
-                      "files: \n"
-                      "[priors.general] \n"
-                      "Cprior: Uniform(0; 1)")
+    from pykima.utils import template_setup
     directory.join('kima_model_setup.txt').write(template_setup)
 
 
