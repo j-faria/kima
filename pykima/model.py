@@ -444,6 +444,9 @@ class KimaModel:
 
     # the following are helper methods to fill parts of the kima_setup file
     def _write_settings(self, file):
+        """
+        fill in the settings part of the file, with general model options
+        """
         def r(val): return 'true' if val else 'false'
         cb = 'const bool'
         ci = 'const int'
@@ -459,11 +462,13 @@ class KimaModel:
         file.write('\n')
 
     def _write_constructor(self, file):
+        """ fill in the beginning of the RVmodel constructor """
         def r(val): return 'true' if val else 'false'
         file.write(
             f'RVmodel::RVmodel():fix({r(self.fix_Np)}),npmax({self.max_Np})\n')
 
     def _inside_constructor(self, file):
+        """ fill in inside the RVmodel constructor """
         file.write('{\n')
 
         if self.priors_need_data:
