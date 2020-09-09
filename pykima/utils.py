@@ -14,15 +14,29 @@ from kumaraswamy import kumaraswamy
 mjup2mearth = 317.8284065946748  # 1 Mjup in Mearth
 
 template_setup = """
-
 [kima]
-GP: true / false
-hyperpriors: true / false
-trend: true / false
+    GP: false
+    GP_kernel: 0
+    MA: false
+    hyperpriors: false
+    trend: false
+    degree: 0
+    multi_instrument: false
+    known_object: false
+    n_known_object: 0
+    studentt: false
+    indicator_correlations: false
+    indicators:
 
-file: filename.txt
-units: ms / kms
-skip: 0
+    file: filename.txt
+    units: kms
+    skip: 0
+    multi: false
+    files:
+    M0_epoch: 0.0
+
+[priors.general]
+[priors.planets]
 """
 
 
