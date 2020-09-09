@@ -42,6 +42,7 @@ setup(name='pykima',
               'kima-checkpriors = pykima.check_priors:main',
               'kima-template = pykima.make_template:main',
               'kima-run = pykima.run:run_local',
+              'kima-kill = pykima.run:kill',
               'kima-gui = pykima.kimaGUI:main',
           ]
       },
