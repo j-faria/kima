@@ -153,10 +153,7 @@ class GP():
             pred = self.predict(y, t, return_cov=False, return_std=return_std)
             return pred
 
-        mu = self.predict(y, results.t, return_cov=False,
-                          return_std=return_std)
-        if return_std:
-            mu, std = mu
+        mu = self.predict(y, results.t, return_cov=False)
 
         if add_parts:
             # add the trend back
@@ -167,8 +164,7 @@ class GP():
                 for i in range(1, results.n_instruments):
                     mu[results.obs == i] += sample[results.indices['inst_offsets']][i-1]
 
-        return mu, std
-
+        return mu
 
     def sample_conditional(self, y, t, size=1):
         """ 
