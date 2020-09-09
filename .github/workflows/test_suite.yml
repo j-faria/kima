@@ -77,6 +77,8 @@ jobs:
         # test the output
         echo "Comparing output to known output for seed"
         cmp multi_instrument_sample_seed43.txt ../../examples/multi_instrument/sample.txt
+        # test showresults
+        kima-showresults all --save-plots
 
     - name: Run studentT example
       run: |
