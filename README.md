@@ -7,6 +7,7 @@
 [![cite](https://img.shields.io/badge/cite-kima-red.svg)](https://github.com/j-faria/kima/wiki/Citing-kima)
 [![say kima](https://img.shields.io/badge/say-kima-orange.svg)](https://raw.githubusercontent.com/j-faria/kima/master/.github/sounds/all.mp3)
 [![docs](https://img.shields.io/badge/read%20the-docs-green.svg)](https://github.com/j-faria/kima/wiki/)
+[![tag](https://img.shields.io/github/tag/j-faria/kima.svg)](https://gitbub.com/j-faria/kima/tags/)
 <!-- [![Coverage Status](https://coveralls.io/repos/github/j-faria/kima/badge.svg?branch=master)](https://coveralls.io/github/j-faria/kima?branch=master) -->
 
 <img src="logo/logo.png" width="200"
