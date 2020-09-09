@@ -376,12 +376,13 @@ class KimaModel:
                 self.filename = None
                 return
 
-            pat = re.compile(r'datafile\s?\=\s?"(.+?)"\s?;')
+            pat = re.compile(r'^[^\/\/\n]*datafile\s?\=\s?"(.+?)"\s?;',
+                             re.MULTILINE)
             match = pat.findall(setup)
             if len(match) == 1:
                 self.filename = match
             else:
-                msg = f'Cannot find datafile in {self.kima_setup}'
+                msg = f'Cannot find unique datafile in {self.kima_setup}'
                 raise ValueError(msg)
 
             pat = re.compile(r'load\(datafile,\s*"(.*?)"\s*,\s*(\d)')
@@ -508,7 +509,7 @@ class KimaModel:
                             '\t' +
                             f'auto c = planets.get_conditional_prior();\n')
                         got_conditional = True
-                    
+
                     file.write('\t' + write_prior(name, sets, True))
                 else:
                     file.write('\t' + write_prior(name, sets, False))
