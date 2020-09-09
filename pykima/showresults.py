@@ -461,6 +461,9 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
             plots.remove('6')
         except ValueError:
             pass
+    
+    if 'all' in args.commands:
+        plots = '1 2 3 4 5 6 7 8'.split()
 
     diagnostic = 'diagnostic' in args.commands
 

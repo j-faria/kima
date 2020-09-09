@@ -304,8 +304,11 @@ def run_local():
                 data_files = setup['kima']['files'].split(',')[:-1]
                 for line in fileinput.FileInput(model_file, inplace=True):
                     if line.startswith('files:'):
+                        newline = line
                         for data_file in data_files:
-                            print(line.replace(data_file, os.path.abspath(data_file)), end='')
+                            newline = newline.replace(
+                                data_file, os.path.abspath(data_file))
+                        print(newline, end='')
                     else:
                         print(line, end='')
             else:
