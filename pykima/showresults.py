@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import __main__
 from .classic import postprocess
-from .display import KimaResults
+from .results import KimaResults
 from .crossing_orbits import rem_crossing_orbits
 from .utils import show_tips
 import sys, os, re
