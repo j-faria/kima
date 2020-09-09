@@ -34,6 +34,7 @@ setup(name='pykima',
           'kumaraswamy',
           'celerite',
           'urepr',
+          'psutil',
       ],
 
       entry_points={
