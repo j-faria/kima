@@ -5,7 +5,7 @@
 import os
 import numpy as np
 
-from .display import KimaResults
+from .results import KimaResults
 
 # from astropy.constants
 G = 6.67408e-11  # m3/(kg s2)

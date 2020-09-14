@@ -17,7 +17,7 @@ class QPkernel():
         self.eta2 = eta2
         self.eta3 = eta3
         self.eta4 = eta4
-    
+
     def setpars(self, eta1=None, eta2=None, eta3=None, eta4=None):
         self.eta1 = eta1 if eta1 else self.eta1
         self.eta2 = eta2 if eta2 else self.eta2
@@ -90,9 +90,9 @@ class GP():
         Conditional predictive distribution of the GP model 
         given observations y, evaluated at coordinates t.
         """
-        if t is None: 
+        if t is None:
             t = self.t
-        
+
         self.K = self._cov(self.t)
         self.L_ = cholesky(self.K, lower=True)
         self.alpha_ = cho_solve((self.L_, True), y)
@@ -123,7 +123,8 @@ class GP():
         else:
             return mean
 
-    def predict_with_hyperpars(self, results, sample, t=None, add_parts=True):
+    def predict_with_hyperpars(self, results, sample, t=None, add_parts=True,
+                               return_std=False):
         """ 
         Given the parameters in `sample`, return the GP predictive mean. If `t`
         is None, the prediction is done at the observed times and will contain
@@ -149,9 +150,9 @@ class GP():
             y -= sample[results.indices['trend']] * (results.t - results.tmiddle)
 
         if t is not None:
-            mu = self.predict(y, t, return_cov=False)
-            return mu
-        
+            pred = self.predict(y, t, return_cov=False, return_std=return_std)
+            return pred
+
         mu = self.predict(y, results.t, return_cov=False)
 
         if add_parts:
@@ -164,7 +165,6 @@ class GP():
                     mu[results.obs == i] += sample[results.indices['inst_offsets']][i-1]
 
         return mu
-
 
     def sample_conditional(self, y, t, size=1):
         """ 
@@ -262,8 +262,8 @@ class GP():
 
 class QPkernel_celerite(terms.Term):
     # This implements a quasi-periodic kernel (QPK) devised by Andrew Collier
-    # Cameron, which mimics a standard QP kernel with a roughness parameter 0.5, 
-    # and has zero derivative at the origin: k(tau=0)=amp and k'(tau=0)=0 
+    # Cameron, which mimics a standard QP kernel with a roughness parameter 0.5,
+    # and has zero derivative at the origin: k(tau=0)=amp and k'(tau=0)=0
     # The kernel defined in the celerite paper (Eq 56 in Foreman-Mackey et al. 2017)
     # does not satisfy k'(tau=0)=0
     #

@@ -10,6 +10,7 @@ from datetime import datetime
 import contextlib
 import pipes
 import signal
+import psutil
 
 kimabold = "\033[1mkima\033[0m"
 kimanormal = "kima"
@@ -74,6 +75,11 @@ def _parse_args1():
     return args, parser
 
 
+def _parse_args2():
+    desc = """Kill running kima jobs"""
+    parser = argparse.ArgumentParser(description=desc, prog='kima-kill')
+    args = parser.parse_args()
+    return args
 
 @contextlib.contextmanager
 def remember_cwd():
@@ -83,8 +89,9 @@ def remember_cwd():
     finally:
         os.chdir(curdir)
 
+
 # count lines in a file, fast! https://stackoverflow.com/a/27518377
-def rawgencount(filename):
+def rawgencount(filename, sub=0):
     def _make_gen(reader):
         b = reader(1024 * 1024)
         while b:
@@ -93,7 +100,7 @@ def rawgencount(filename):
 
     with open(filename, 'rb') as f:
         f_gen = _make_gen(f.raw.read)
-        return sum(buf.count(b'\n') for buf in f_gen)
+        return sum(buf.count(b'\n') for buf in f_gen) - sub
 
 
 # check if we can send notifications
@@ -232,28 +239,34 @@ def run_local():
 
         start = time.time()
         try:
-            kima = subprocess.check_call(cmd.split(), stdout=stdout,# stderr=subprocess.PIPE,
-                                         timeout=TO)
-            # proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            # out, err = proc.communicate(timeout=TO)
-            # kima = proc.returncode
+            kima = subprocess.Popen(cmd.split(), stdout=stdout)
+
+            with open('kima_running_pid', 'w') as f:
+                f.write(str(kima.pid))
+
+            kima.communicate(timeout=TO)
+
+            # kima = subprocess.check_call(cmd.split(), stdout=stdout,
+            #                              timeout=TO)
 
         except KeyboardInterrupt:
             end = time.time()
             took = end - start
             if not args.quiet:
                 print(' finishing the job, took %.2f seconds' % took, end=' ')
-                print('(saved %d samples)' % rawgencount('sample.txt'))
+                print('(saved %d samples)' % rawgencount('sample.txt', sub=1))
             if not args.no_notify:
                 notify('kima job finished', 'took %.2f seconds' % took)
 
         except subprocess.TimeoutExpired:
+            kima.terminate()
             end = time.time()
             took = end - start
             if not args.quiet:
-                print(kimastr, 'job timed out after %.1f seconds' % took,
+                time.sleep(0.5)  # allow stdout flush before printing stuff
+                print(kimastr, f'job timed out after {took:.1f} seconds',
                       end=' ')
-                print('(saved %d samples)' % rawgencount('sample.txt'))
+                print('(saved %d samples)' % rawgencount('sample.txt', sub=1))
             if not args.no_notify:
                 notify('kima job finished',
                        'after timeout of %.2f seconds' % took)
@@ -319,3 +332,30 @@ def run_local():
                         print(line.replace(data_file, os.path.abspath(data_file)), end='')
                     else:
                         print(line, end='')
+            if os.path.exists('kima_running_pid'):
+                os.remove('kima_running_pid')
+
+
+def kill():
+    _parse_args2()
+
+    if os.path.exists('kima_running_pid'):
+        proc = psutil.Process(int(open('kima_running_pid').read()))
+        time_user = proc.cpu_times().user
+        time_user /= (proc.num_threads() - 1)
+        if time_user > 60:
+            if time_user > 3600:
+                unit, time_user = 'hours', time_user / 3600
+            else:
+                unit, time_user = 'minutes', time_user / 60
+        else:
+            unit = 'seconds'
+
+        time_user = f'{time_user:.1f} {unit}'
+        print(f'Process {proc.pid} has been running for {time_user}')
+        print(f'and already saved {rawgencount("sample.txt", sub=1)} samples')
+        ans = input('Kill it? (Y/n) ')
+        if ans.lower() in ('y', 'yes'):
+            proc.kill()
+    else:
+        print('No process seems to be running...')

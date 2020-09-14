@@ -238,6 +238,10 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
         ax.legend(lege, ncol=2, frameon=False)
         ax.set(ylim=(0.5, None))
         ax.set(xlabel='Orbital period [days]', ylabel='Planet mass [M$_\odot$]')
+        try:
+            ax.set_title(res.star)
+        except AttributeError:
+            pass
 
     if return_mask:
         return P, K, E, M, s, mask

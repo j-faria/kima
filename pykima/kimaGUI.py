@@ -184,7 +184,11 @@ class MainWindow(QtWidgets.QMainWindow):
         for prior_name, prior in self.model.priors.items():
             # print(prior_name, prior)
             # each prior's comboBox
-            dist = getattr(self, 'comboBox_' + prior_name)
+            try:
+                dist = getattr(self, 'comboBox_' + prior_name)
+            except AttributeError:
+                continue
+
             # find the index of this prior's distribution name
             index = dist.findText(prior[1], Qt.MatchFixedString)
             if index >= 0:
@@ -272,6 +276,8 @@ class MainWindow(QtWidgets.QMainWindow):
                               'Make sure `skip` is set correctly.')
 
             for prior, sets in self.model.priors.items():
+                if 'separator' in prior:
+                    continue
                 if sets[0]:
                     self.model.set_prior_to_default(prior)
 
@@ -390,9 +396,14 @@ class MainWindow(QtWidgets.QMainWindow):
             'Jprior': 'jitter',
             'slope_prior': 'trend slope',
         }
-        dist = getattr(self, 'comboBox_' + prior_name).currentText()
-        arg1 = getattr(self, 'lineEdit_' + prior_name + '_arg1').text()
-        arg2 = getattr(self, 'lineEdit_' + prior_name + '_arg2').text()
+        try:
+            dist = getattr(self, 'comboBox_' + prior_name).currentText()
+            arg1 = getattr(self, 'lineEdit_' + prior_name + '_arg1').text()
+            arg2 = getattr(self, 'lineEdit_' + prior_name + '_arg2').text()
+
+        except AttributeError:
+            return
+
         if arg1 == '' or arg2 == '':
             name = names[prior_name]
             self._error(
@@ -414,8 +425,8 @@ class MainWindow(QtWidgets.QMainWindow):
                         'Prior limits')
                     return
 
-            self.model.set_priors(prior_name, False, dist,
-                                  float(arg1), float(arg2))
+        self.model.set_priors(prior_name, False, dist, float(arg1),
+                              float(arg2))
 
     def toggleTrend(self, toggled):
         self.model.trend = toggled
@@ -475,6 +486,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.setOPTIONS()
         for prior in self.model.priors.keys():
+            if 'separator' in prior:
+                continue
             self.setPrior(prior)
 
         self.updateUI()

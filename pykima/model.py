@@ -376,12 +376,13 @@ class KimaModel:
                 self.filename = None
                 return
 
-            pat = re.compile(r'datafile\s?\=\s?"(.+?)"\s?;')
+            pat = re.compile(r'^[^\/\/\n]*datafile\s?\=\s?"(.+?)"\s?;',
+                             re.MULTILINE)
             match = pat.findall(setup)
             if len(match) == 1:
                 self.filename = match
             else:
-                msg = f'Cannot find datafile in {self.kima_setup}'
+                msg = f'Cannot find unique datafile in {self.kima_setup}'
                 raise ValueError(msg)
 
             pat = re.compile(r'load\(datafile,\s*"(.*?)"\s*,\s*(\d)')
@@ -444,6 +445,9 @@ class KimaModel:
 
     # the following are helper methods to fill parts of the kima_setup file
     def _write_settings(self, file):
+        """
+        fill in the settings part of the file, with general model options
+        """
         def r(val): return 'true' if val else 'false'
         cb = 'const bool'
         ci = 'const int'
@@ -459,11 +463,13 @@ class KimaModel:
         file.write('\n')
 
     def _write_constructor(self, file):
+        """ fill in the beginning of the RVmodel constructor """
         def r(val): return 'true' if val else 'false'
         file.write(
             f'RVmodel::RVmodel():fix({r(self.fix_Np)}),npmax({self.max_Np})\n')
 
     def _inside_constructor(self, file):
+        """ fill in inside the RVmodel constructor """
         file.write('{\n')
 
         if self.priors_need_data:
@@ -508,7 +514,7 @@ class KimaModel:
                             '\t' +
                             f'auto c = planets.get_conditional_prior();\n')
                         got_conditional = True
-                    
+
                     file.write('\t' + write_prior(name, sets, True))
                 else:
                     file.write('\t' + write_prior(name, sets, False))

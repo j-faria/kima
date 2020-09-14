@@ -1,7 +1,11 @@
 import sys, os
 import re
+import math
+import datetime as dt
+
 import numpy as np
 from scipy import stats
+
 import urepr
 from loguniform import LogUniform, ModifiedLogUniform
 from kumaraswamy import kumaraswamy
@@ -10,15 +14,29 @@ from kumaraswamy import kumaraswamy
 mjup2mearth = 317.8284065946748  # 1 Mjup in Mearth
 
 template_setup = """
-
 [kima]
-GP: true / false
-hyperpriors: true / false
-trend: true / false
+    GP: false
+    GP_kernel: 0
+    MA: false
+    hyperpriors: false
+    trend: false
+    degree: 0
+    multi_instrument: false
+    known_object: false
+    n_known_object: 0
+    studentt: false
+    indicator_correlations: false
+    indicators:
 
-file: filename.txt
-units: ms / kms
-skip: 0
+    file: filename.txt
+    units: kms
+    skip: 0
+    multi: false
+    files:
+    M0_epoch: 0.0
+
+[priors.general]
+[priors.planets]
 """
 
 
@@ -47,7 +65,7 @@ def read_datafile(datafile, skip):
         data = np.empty((0, 3))
         obs = np.empty((0, ))
         for i, df in enumerate(datafile):
-            d = np.loadtxt(df, usecols=(0, 1, 2), skiprows=skip)
+            d = np.loadtxt(df, usecols=(0, 1, 2), skiprows=skip, ndmin=2)
             data = np.append(data, d, axis=0)
             obs = np.append(obs, (i + 1) * np.ones((d.shape[0])))
         return data, obs
@@ -182,8 +200,8 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
             star_mass = np.random.normal(star_mass[0], star_mass[1], 5000)
             uncertainty_star_mass = True
 
-        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(
-            1. / 3) * K * np.sqrt(1 - e**2)
+        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 -
+                                                                          e**2)
         m_me = m_mj * mjup2mearth
         if uncertainty_star_mass:
             return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
@@ -196,8 +214,8 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
             # include (Gaussian) uncertainty on the stellar mass
             star_mass = np.random.normal(star_mass[0], star_mass[1], P.size)
 
-        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(
-            1. / 3) * K * np.sqrt(1 - e**2)
+        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 -
+                                                                          e**2)
         m_me = m_mj * mjup2mearth
 
         if full_output:
@@ -422,8 +440,16 @@ def get_instrument_name(data_file):
     bn = os.path.basename(data_file)
     try:
         pattern = '|'.join([
-            'ESPRESSO', 'HARPS[^\W_]*[\d+]*', 'HIRES', 'APF', 'CORALIE', 'HJS',
-            'ELODIE', 'KECK', 'HET', 'LICK',
+            'ESPRESSO',
+            'HARPS[^\W_]*[\d+]*',
+            'HIRES',
+            'APF',
+            'CORALIE',
+            'HJS',
+            'ELODIE',
+            'KECK',
+            'HET',
+            'LICK',
         ])
         return re.findall(pattern, bn, re.IGNORECASE)[0]
 
@@ -434,4 +460,261 @@ def get_instrument_name(data_file):
             return data_file
 
 
+# covert dates to/from Julian days and MJD
+# originally from https://gist.github.com/jiffyclub/1294443
+# author: Matt Davis (http://github.com/jiffyclub)
 
+
+def mjd_to_jd(mjd):
+    """ Convert Modified Julian Day to Julian Day.
+
+    Parameters
+    ----------
+    mjd : float
+        Modified Julian Day
+
+    Returns
+    -------
+    jd : float
+        Julian Day
+    """
+    return mjd + 2400000.5
+
+
+def jd_to_mjd(jd):
+    """ Convert Julian Day to Modified Julian Day
+
+    Parameters
+    ----------
+    jd : float
+        Julian Day
+
+    Returns
+    -------
+    mjd : float
+        Modified Julian Day
+    """
+    return jd - 2400000.5
+
+
+def date_to_jd(year, month, day):
+    """ Convert a date (year, month, day) to Julian Day.
+
+    Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
+        4th ed., Duffet-Smith and Zwart, 2011.
+
+    Parameters
+    ----------
+    year : int
+        Year as integer. Years preceding 1 A.D. should be 0 or negative.
+        The year before 1 A.D. is 0, 10 B.C. is year -9.
+    month : int
+        Month as integer, Jan = 1, Feb. = 2, etc.
+    day : float
+        Day, may contain fractional part.
+
+    Returns
+    -------
+    jd : float
+        Julian Day
+
+    Examples
+    --------
+    Convert 6 a.m., February 17, 1985 to Julian Day
+    >>> date_to_jd(1985, 2, 17.25)
+    2446113.75
+    """
+    if month == 1 or month == 2:
+        yearp = year - 1
+        monthp = month + 12
+    else:
+        yearp = year
+        monthp = month
+
+    # this checks where we are in relation to October 15, 1582, the beginning
+    # of the Gregorian calendar.
+    if ((year < 1582) or (year == 1582 and month < 10)
+            or (year == 1582 and month == 10 and day < 15)):
+        # before start of Gregorian calendar
+        B = 0
+    else:
+        # after start of Gregorian calendar
+        A = math.trunc(yearp / 100.)
+        B = 2 - A + math.trunc(A / 4.)
+
+    if yearp < 0:
+        C = math.trunc((365.25 * yearp) - 0.75)
+    else:
+        C = math.trunc(365.25 * yearp)
+
+    D = math.trunc(30.6001 * (monthp + 1))
+
+    jd = B + C + D + day + 1720994.5
+
+    return jd
+
+
+def jd_to_date(jd):
+    """ Convert Julian Day to date.
+
+    Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
+        4th ed., Duffet-Smith and Zwart, 2011.
+
+    Parameters
+    ----------
+    jd : float
+        Julian Day
+
+    Returns
+    -------
+    year : int
+        Year as integer. Years preceding 1 A.D. should be 0 or negative.
+        The year before 1 A.D. is 0, 10 B.C. is year -9.
+    month : int
+        Month as integer, Jan = 1, Feb. = 2, etc.
+    day : float
+        Day, may contain fractional part.
+
+    Examples
+    --------
+    Convert Julian Day 2446113.75 to year, month, and day.
+    >>> jd_to_date(2446113.75)
+    (1985, 2, 17.25)
+    """
+    jd = jd + 0.5
+
+    F, I = math.modf(jd)
+    I = int(I)
+
+    A = math.trunc((I - 1867216.25) / 36524.25)
+
+    if I > 2299160:
+        B = I + 1 + A - math.trunc(A / 4.)
+    else:
+        B = I
+
+    C = B + 1524
+
+    D = math.trunc((C - 122.1) / 365.25)
+
+    E = math.trunc(365.25 * D)
+
+    G = math.trunc((C - E) / 30.6001)
+
+    day = C - E + F - math.trunc(30.6001 * G)
+
+    if G < 13.5:
+        month = G - 1
+    else:
+        month = G - 13
+
+    if month > 2.5:
+        year = D - 4716
+    else:
+        year = D - 4715
+
+    return year, month, day
+
+
+def hmsm_to_days(hour=0, min=0, sec=0, micro=0):
+    """
+    Convert hours, minutes, seconds, and microseconds to fractional days.
+
+    Parameters
+    ----------
+    hour : int, optional
+        Hour number. Defaults to 0.
+    min : int, optional
+        Minute number. Defaults to 0.
+    sec : int, optional
+        Second number. Defaults to 0.
+    micro : int, optional
+        Microsecond number. Defaults to 0.
+
+    Returns
+    -------
+    days : float
+        Fractional days.
+
+    Examples
+    --------
+    >>> hmsm_to_days(hour=6)
+    0.25
+    """
+    days = sec + (micro / 1.e6)
+
+    days = min + (days / 60.)
+
+    days = hour + (days / 60.)
+
+    return days / 24.
+
+
+def days_to_hmsm(days):
+    """ Convert fractional days to hours, minutes, seconds, and microseconds.
+    Precision beyond microseconds is rounded to the nearest microsecond.
+
+    Parameters
+    ----------
+    days : float
+        A fractional number of days. Must be less than 1.
+
+    Returns
+    -------
+    hour : int
+        Hour number.
+    min : int
+        Minute number.
+    sec : int
+        Second number.
+    micro : int
+        Microsecond number.
+
+    Raises
+    ------
+    ValueError
+        If `days` is >= 1.
+
+    Examples
+    --------
+    >>> days_to_hmsm(0.1)
+    (2, 24, 0, 0)
+    """
+    hours = days * 24.
+    hours, hour = math.modf(hours)
+
+    mins = hours * 60.
+    mins, min = math.modf(mins)
+
+    secs = mins * 60.
+    secs, sec = math.modf(secs)
+
+    micro = round(secs * 1.e6)
+
+    return int(hour), int(min), int(sec), int(micro)
+
+
+def datetime_to_jd(date):
+    """ Convert a `datetime.datetime` object to Julian Day.
+
+    Parameters
+    ----------
+    date : `datetime.datetime` instance
+
+    Returns
+    -------
+    jd : float
+        Julian day.
+
+    Examples
+    --------
+    >>> d = datetime.datetime(1985, 2, 17, 6)
+    >>> d
+    datetime.datetime(1985, 2, 17, 6, 0)
+    >>> jdutil.datetime_to_jd(d)
+    2446113.75
+    """
+    days = date.day + hmsm_to_days(date.hour, date.minute, date.second,
+                                   date.microsecond)
+
+    return date_to_jd(date.year, date.month, days)
