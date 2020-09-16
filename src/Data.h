@@ -3,10 +3,17 @@
 #pragma once
 
 #include <string>
+#include <stdexcept>
+#include <sstream>
 #include <vector>
 #include <algorithm>
 #include <set>
 #include <cmath>
+#include <glob.h> // glob(), globfree()
+#include <string.h> // memset()
+
+// from https://stackoverflow.com/a/8615450
+std::vector<std::string> glob(const std::string& pattern);
 
 class Data
 {
