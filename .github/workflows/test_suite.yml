@@ -38,37 +38,37 @@ jobs:
         python setup.py install
 
 
-    - name: Run 51Peg example
-      run: |
-        export PATH="$HOME/miniconda/bin:$PATH"
-        cd tests/test_suite
-        cp OPTIONS ../../examples/51Peg/OPTIONS
-        kima-run ../../examples/51Peg -s 43
-        # test the output
-        echo "Comparing output to known output for seed"
-        cmp 51Peg_sample_seed43.txt ../../examples/51Peg/sample.txt
+    # - name: Run 51Peg example
+    #   run: |
+    #     export PATH="$HOME/miniconda/bin:$PATH"
+    #     cd tests/test_suite
+    #     cp OPTIONS ../../examples/51Peg/OPTIONS
+    #     kima-run ../../examples/51Peg -s 43
+    #     # test the output
+    #     echo "Comparing output to known output for seed"
+    #     cmp 51Peg_sample_seed43.txt ../../examples/51Peg/sample.txt
 
-    - name: Run CoRoT7 example
-      run: |
-        export PATH="$HOME/miniconda/bin:$PATH"
-        cd tests/test_suite
-        cp OPTIONS ../../examples/CoRoT7/OPTIONS
-        kima-run ../../examples/CoRoT7 -s 43
-        # test the output
-        echo "Comparing output to known output for seed"
-        cmp CoRoT7_sample_seed43.txt ../../examples/CoRoT7/sample.txt
+    # - name: Run CoRoT7 example
+    #   run: |
+    #     export PATH="$HOME/miniconda/bin:$PATH"
+    #     cd tests/test_suite
+    #     cp OPTIONS ../../examples/CoRoT7/OPTIONS
+    #     kima-run ../../examples/CoRoT7 -s 43
+    #     # test the output
+    #     echo "Comparing output to known output for seed"
+    #     cmp CoRoT7_sample_seed43.txt ../../examples/CoRoT7/sample.txt
 
-    - name: Run BL2009 example
-      run: |
-        export PATH="$HOME/miniconda/bin:$PATH"
-        cd tests/test_suite
-        cp OPTIONS ../../examples/BL2009/OPTIONS
-        kima-run ../../examples/BL2009 -s 43
-        # test the output
-        echo "Comparing output to known output for seed"
-        cmp BL2009_sample_seed43.txt ../../examples/BL2009/sample.txt
+    # - name: Run BL2009 example
+    #   run: |
+    #     export PATH="$HOME/miniconda/bin:$PATH"
+    #     cd tests/test_suite
+    #     cp OPTIONS ../../examples/BL2009/OPTIONS
+    #     kima-run ../../examples/BL2009 -s 43
+    #     # test the output
+    #     echo "Comparing output to known output for seed"
+    #     cmp BL2009_sample_seed43.txt ../../examples/BL2009/sample.txt
 
-    - name: Run multi_instrument example
+    - name: Run multi_instrument (1) example
       run: |
         export PATH="$HOME/miniconda/bin:$PATH"
         cd tests/test_suite
@@ -80,13 +80,45 @@ jobs:
         # test showresults
         ( cd ../../examples/multi_instrument ; kima-showresults all --save-plots )
 
-    - name: Run studentT example
+    - name: Run multi_instrument (2) example
       run: |
         export PATH="$HOME/miniconda/bin:$PATH"
         cd tests/test_suite
-        cp OPTIONS ../../examples/studentT/OPTIONS
-        kima-run ../../examples/studentT -s 43
+        cp OPTIONS ../../examples/multi_instrument/OPTIONS
+
+        # this is added to multi_instrument (1)
+        sed -i -e '21,30d' -e 's/\/\/ datafile/datafile/' -e 's/\/\/ load/load/' ../../examples/multi_instrument/kima_setup.cpp
+
+        kima-run ../../examples/multi_instrument -s 43
         # test the output
-        echo "Comparing output to known output for seed"
-        cmp studentT_sample_seed43.txt ../../examples/studentT/sample.txt
+        # echo "Comparing output to known output for seed"
+        # cmp multi_instrument_sample_seed43.txt ../../examples/multi_instrument/sample.txt
+        # test showresults
+        ( cd ../../examples/multi_instrument ; kima-showresults all --save-plots )
+
+    - name: Run multi_instrument (3) example
+      run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
+        cd tests/test_suite
+        cp OPTIONS ../../examples/multi_instrument/OPTIONS
+
+        # this is added to multi_instrument (2)
+        CONT=`cat ../../examples/multi_instrument/HD106252_joined.txt`; echo "$CONT" | (sed -u 1q; sort -s -n -k 1,1) > ../../examples/multi_instrument/HD106252_joined.txt
+
+        kima-run ../../examples/multi_instrument -s 43
+        # test the output
+        # echo "Comparing output to known output for seed"
+        # cmp multi_instrument_sample_seed43.txt ../../examples/multi_instrument/sample.txt
+        # test showresults
+        ( cd ../../examples/multi_instrument ; kima-showresults all --save-plots )
+
+    # - name: Run studentT example
+    #   run: |
+    #     export PATH="$HOME/miniconda/bin:$PATH"
+    #     cd tests/test_suite
+    #     cp OPTIONS ../../examples/studentT/OPTIONS
+    #     kima-run ../../examples/studentT -s 43
+    #     # test the output
+    #     echo "Comparing output to known output for seed"
+    #     cmp studentT_sample_seed43.txt ../../examples/studentT/sample.txt
 
