@@ -29,7 +29,7 @@ int main(int argc, char** argv)
     load_multi(datafiles, "ms", 2);
 
     // could also do (but not both!)
-    //char* datafile = "HD106252_joined.txt";
+    // datafile = "HD106252_joined.txt";
     // load_multi(datafile, "ms", 1);
 
     Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);

@@ -243,7 +243,7 @@ void Data::load_multi(const std::string filename, const std::string units, int s
   // this is to make sure the obsi vector always starts at 1, to avoid
   // segmentation faults later
   vector<int> inst_id;
-  int id = 0;
+  int id_offset = 0;
 
   inst_id.push_back(data[skip][3]);
 
@@ -253,16 +253,15 @@ void Data::load_multi(const std::string filename, const std::string units, int s
       inst_id.push_back(data[n][3]);
   }
 
+  id_offset = *min_element(inst_id.begin(), inst_id.end());
+
   for (unsigned n = skip; n < data.size(); n++)
   {
     // if (n < skip) continue;
     t.push_back(data[n][0]);
     y.push_back(data[n][1] * factor);
     sig.push_back(data[n][2] * factor);
-
-    if (data[n][3] != inst_id[id])
-      id++;
-    obsi.push_back(id+1);
+    obsi.push_back(data[n][3] - id_offset + 1);
   }
 
   // How many points did we read?
@@ -599,4 +598,35 @@ double Data::get_adjusted_RV_var() const
 int Data::get_trend_magnitude(int degree) const
 {
   return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
+}
+
+/**
+ * @brief Find pathnames matching a pattern
+ *
+ * from https://stackoverflow.com/a/8615450
+*/
+std::vector<std::string> glob(const std::string& pattern) {
+    // glob struct resides on the stack
+    glob_t glob_result;
+    memset(&glob_result, 0, sizeof(glob_result));
+
+    // do the glob operation
+    int return_value = glob(pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
+    if(return_value != 0) {
+        globfree(&glob_result);
+        stringstream ss;
+        ss << "glob() failed with return_value " << return_value << endl;
+        throw std::runtime_error(ss.str());
+    }
+
+    // collect all the filenames into a vector<string>
+    vector<string> filenames;
+    for(size_t i = 0; i < glob_result.gl_pathc; ++i) {
+        filenames.push_back(string(glob_result.gl_pathv[i]));
+    }
+
+    // cleanup
+    globfree(&glob_result);
+
+    return filenames;
 }
