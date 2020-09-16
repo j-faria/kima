@@ -2,6 +2,7 @@ import sys, os
 import re
 import math
 import datetime as dt
+import configparser
 
 import numpy as np
 from scipy import stats
@@ -51,6 +52,24 @@ def need_model_setup(exception):
 
     sys.tracebacklimit = 0
     raise exception
+
+def read_model_setup(filename='kima_model_setup.txt'):
+    setup = configparser.ConfigParser()
+    setup.optionxform = str
+
+    try:
+        open('kima_model_setup.txt')
+    except IOError as exc:
+        need_model_setup(exc)
+
+    setup.read(filename)
+
+    # if sys.version_info < (3, 0):
+    #     setup = setup._sections
+    #     # because we cheated, we need to cheat a bit more...
+    #     setup['kima']['GP'] = setup['kima'].pop('gp')
+
+    return setup
 
 
 def read_datafile(datafile, skip):

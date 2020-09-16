@@ -2,15 +2,10 @@ import os, sys
 import pickle
 import zipfile
 import tempfile
-try:
-    import configparser
-except ImportError:
-    # Python 2
-    import ConfigParser as configparser
 
 from .keplerian import keplerian
 from .GP import GP, QPkernel, GP_celerite, QPkernel_celerite
-from .utils import (need_model_setup, get_planet_mass,
+from .utils import (need_model_setup, read_model_setup, get_planet_mass,
                     get_planet_semimajor_axis, percentile68_ranges,
                     percentile68_ranges_latex, read_datafile, lighten_color,
                     wrms, get_prior, hyperprior_samples, get_star_name,
@@ -65,22 +60,7 @@ class KimaResults(object):
             print('top_level:', top_level)
             print()
 
-        setup = configparser.ConfigParser()
-        setup.optionxform = str
-
-        try:
-            open('kima_model_setup.txt')
-        except IOError as exc:
-            need_model_setup(exc)
-
-        setup.read('kima_model_setup.txt')
-
-        if sys.version_info < (3, 0):
-            setup = setup._sections
-            # because we cheated, we need to cheat a bit more...
-            setup['kima']['GP'] = setup['kima'].pop('gp')
-
-        self.setup = setup
+        self.setup = read_model_setup()
 
         # read the priors
         priors = list(setup['priors.general'].values())

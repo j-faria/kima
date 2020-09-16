@@ -332,6 +332,7 @@ def run_local():
                         print(line.replace(data_file, os.path.abspath(data_file)), end='')
                     else:
                         print(line, end='')
+
             if os.path.exists('kima_running_pid'):
                 os.remove('kima_running_pid')
 
