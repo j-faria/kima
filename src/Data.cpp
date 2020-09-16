@@ -243,7 +243,7 @@ void Data::load_multi(const std::string filename, const std::string units, int s
   // this is to make sure the obsi vector always starts at 1, to avoid
   // segmentation faults later
   vector<int> inst_id;
-  int id = 0;
+  int id_offset = 0;
 
   inst_id.push_back(data[skip][3]);
 
@@ -253,16 +253,15 @@ void Data::load_multi(const std::string filename, const std::string units, int s
       inst_id.push_back(data[n][3]);
   }
 
+  id_offset = *min_element(inst_id.begin(), inst_id.end());
+
   for (unsigned n = skip; n < data.size(); n++)
   {
     // if (n < skip) continue;
     t.push_back(data[n][0]);
     y.push_back(data[n][1] * factor);
     sig.push_back(data[n][2] * factor);
-
-    if (data[n][3] != inst_id[id])
-      id++;
-    obsi.push_back(id+1);
+    obsi.push_back(data[n][3] - id_offset + 1);
   }
 
   // How many points did we read?
