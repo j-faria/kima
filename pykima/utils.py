@@ -286,6 +286,35 @@ def get_planet_semimajor_axis_latex(P, K, star_mass=1.0, earth=False, **kargs):
         return '$%f$' % out[0]
 
 
+def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
+                                       full_output=False, verbose=False):
+    """
+    Calculate the planet (minimum) mass Msini and the semi-major axis given
+    orbital period `P`, semi-amplitude `K`, eccentricity `e`, and stellar mass.
+    If star_mass is a tuple with (estimate, uncertainty), this (Gaussian)
+    uncertainty will be taken into account in the calculation.
+
+    Units:
+        P [days]
+        K [m/s]
+        e []
+        star_mass [Msun]
+    Returns:
+        (M, A) where
+            M is the output of get_planet_mass
+            A is the output of get_planet_semimajor_axis
+    """
+    # this is just a convenience function for calling
+    # get_planet_mass and get_planet_semimajor_axis
+
+    if verbose:
+        print('Using star mass = %s solar mass' % star_mass)
+
+    mass = get_planet_mass(P, K, e, star_mass, full_output, verbose=False)
+    a = get_planet_semimajor_axis(P, K, star_mass, full_output, verbose=False)
+    return mass, a
+
+
 def lighten_color(color, amount=0.5):
     """
     Lightens the given color by multiplying (1-luminosity) by the given amount.
