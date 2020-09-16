@@ -12,7 +12,7 @@ const bool studentt = false;
 
 RVmodel::RVmodel():fix(true),npmax(1)
 {
-    // auto data = Data::get_data();
+    // auto data = get_data();
     // double ymin = data.get_y_min();
     // double tspan = data.get_timespan();
 
