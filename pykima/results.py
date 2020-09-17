@@ -60,7 +60,7 @@ class KimaResults(object):
             print('top_level:', top_level)
             print()
 
-        self.setup = read_model_setup()
+        self.setup = setup = read_model_setup()
 
         # read the priors
         priors = list(setup['priors.general'].values())
