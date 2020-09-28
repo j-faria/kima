@@ -12,7 +12,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 old_subplots = plt.subplots
 old_tl = plt.tight_layout
 
-from colorful import blue
 import pykima as pk
 
 
@@ -222,7 +221,7 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
 
             with PdfPages(save) as pdf:
                 if verbose:
-                    print(blue | 'Saving report to', save)
+                    print('Saving report to', save)
                 pdf.savefig(fig)
 
             plt.close('all')
