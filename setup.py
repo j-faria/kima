@@ -45,6 +45,7 @@ setup(name='pykima',
               'kima-run = pykima.run:run_local',
               'kima-kill = pykima.run:kill',
               'kima-gui = pykima.kimaGUI:main',
+              'kima-report = pykima.report_template:main',
           ]
       },
       package_data={'pykima': ['template/*']},

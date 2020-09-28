@@ -796,7 +796,7 @@ def hist_nu(res, show_prior=False, **kwargs):
             print(str(e))
 
 
-def phase_plot(res, sample, highlight=None):
+def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
     """ Plot the phase curves given the solution in `sample` """
     # this is probably the most complicated function in the whole file!!
 
@@ -928,7 +928,10 @@ def phase_plot(res, sample, highlight=None):
 
     # for each planet in this sample
     for i, letter in zip(range(nplanets), ascii_lowercase[1:]):
-        ax = fig.add_subplot(gs[gs_indices[i]])
+        if phase_axs is None:
+            ax = fig.add_subplot(gs[gs_indices[i]])
+        else:
+            ax = phase_axs[i]
 
         p = P[i]
         t0 = T0[i]
@@ -992,14 +995,15 @@ def phase_plot(res, sample, highlight=None):
 
         ax.set_xlim(-0.2, 1.2)
         ax.set(xlabel="phase", ylabel="RV [m/s]")
-        ax.set_title('%s' % letter, loc='left')
-        if nplanets == 1:
-            k = parsi(i)[1]
-            ecc = parsi(i)[2]
-            title = f'P={p:.2f} days\n K={k:.2f} m/s  ecc={ecc:.2f}'
-            ax.set_title(title, loc='right')
-        else:
-            ax.set_title('P=%.2f days' % p, loc='right')
+        if add_titles:
+            ax.set_title('%s' % letter, loc='left')
+            if nplanets == 1:
+                k = parsi(i)[1]
+                ecc = parsi(i)[2]
+                title = f'P={p:.2f} days\n K={k:.2f} m/s  ecc={ecc:.2f}'
+                ax.set_title(title, loc='right')
+            else:
+                ax.set_title('P=%.2f days' % p, loc='right')
 
     if res.GPmodel:
         axGP = fig.add_subplot(gs[1, :])
@@ -1073,5 +1077,8 @@ def phase_plot(res, sample, highlight=None):
         filename = 'kima-showresults-fig6.1.png'
         print('saving in', filename)
         fig.savefig(filename)
+
+    if res.return_figs:
+        return fig
 
     return residuals

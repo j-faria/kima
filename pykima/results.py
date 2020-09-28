@@ -841,9 +841,9 @@ class KimaResults(object):
 
     # most of the following methods just dispatch to display
 
-    def phase_plot(self, sample, highlight=None):
+    def phase_plot(self, sample, highlight=None, **kwargs):
         """ Plot the phase curves given the solution in `sample` """
-        return display.phase_plot(self, sample, highlight)
+        return display.phase_plot(self, sample, highlight, **kwargs)
 
     def make_plots(self, options, save_plots=False):
         display.make_plots(self, options, save_plots)
