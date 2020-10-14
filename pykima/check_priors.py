@@ -39,7 +39,7 @@ def main():
     # print(args)
     columns = args.column
     log = args.log
-   
+
     with open('sample.txt') as f:
         firstline = f.readline()
     firstline = firstline.strip().replace('#', '')
@@ -87,7 +87,7 @@ def main():
 
         # ax.set_xlabel(xlabel)
 
-        ax.hist(
+        _, bins, _ = ax.hist(
             data,
             density=True,
             bins=100,
@@ -108,13 +108,10 @@ def main():
 
             ax.hist(
                 samples,
+                density=True,
                 alpha=0.3,
-                bins=100,
+                bins=bins,
                 align='mid',
-                # range=[
-                #     data.min() - 0.2 * data.ptp(),
-                #     data.max() + 0.2 * data.ptp()
-                # ],
             )
 
     ax.legend()
