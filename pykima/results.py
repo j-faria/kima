@@ -848,13 +848,13 @@ class KimaResults(object):
     def make_plots(self, options, save_plots=False):
         display.make_plots(self, options, save_plots)
 
-    def make_plot1(self):
+    def make_plot1(self, **kwargs):
         """ Plot the histogram of the posterior for Np """
-        return display.make_plot1(self)
+        return display.make_plot1(self, **kwargs)
 
     def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
                    density=False, kde=False, kde_bw=None, show_peaks=False,
-                   show_prior=False):
+                   show_prior=False, show_year=True, show_timespan=True):
         """
         Plot the histogram (or the kde) of the posterior for the orbital period(s).
         Optionally provide the number of histogram bins, the bins themselves, the
@@ -874,12 +874,13 @@ class KimaResults(object):
         """
         return display.make_plot3(self, points, gridsize)
 
-    def make_plot4(self, Np=None, ranges=None):
+    def make_plot4(self, Np=None, ranges=None, show_prior=False, 
+                   **hist_kwargs):
         """
         Plot histograms for the GP hyperparameters. If Np is not None,
         highlight the samples with Np Keplerians.
         """
-        return display.make_plot4(self, Np, ranges)
+        return display.make_plot4(self, Np, ranges, show_prior, **hist_kwargs)
 
     def make_plot5(self, show=True, ranges=None):
         """ Corner plot for the GP hyperparameters """
