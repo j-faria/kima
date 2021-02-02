@@ -6,7 +6,7 @@ from pprint import pformat, pprint
 from hashlib import md5
 import contextlib
 import numpy as np
-from . import showresults as pkshowresults
+from .showresults import showresults2 as pkshowresults
 
 thisdir = os.path.dirname(os.path.realpath(__file__))
 kimadir = os.path.dirname(thisdir)
@@ -160,7 +160,7 @@ class KimaModel:
 
     @property
     def priors(self):
-        """ 
+        """
         This dictionary holds the model priors in the form
             prior_name: (default?, distribution, parameter1, parameter2)
         when parameter1 or parameter2 are None, they depend on the data.
@@ -210,6 +210,7 @@ class KimaModel:
 
         d = dict(t=[], y=[], e=[])
         for f in self.filename:
+            f = os.path.join(self.directory, f)
             try:
                 t, y, e = np.loadtxt(f, skiprows=self.skip, unpack=True,
                                      usecols=range(3))
@@ -348,20 +349,43 @@ class KimaModel:
         pat = re.compile(f'const bool multi_instrument = (\w+)')
         match = pat.findall(setup)
         multi_instrument = True if match[0] == 'true' else False
+        multi_instrument_multi_file = False
 
         if multi_instrument:
-            pat = re.compile(r'datafiles\s?\=\s?\{(.*?)\}',
-                             flags=re.MULTILINE | re.DOTALL)
-            match_inside_braces = pat.findall(setup)
-            inside_braces = match_inside_braces[0]
+            try:
+                pat = re.compile(r'datafiles\s?\=\s?\{(.*?)\}',
+                                flags=re.MULTILINE | re.DOTALL)
+                match_inside_braces = pat.findall(setup)
+                inside_braces = match_inside_braces[0]
 
-            pat = re.compile(r'"(.*?)"')
-            match = pat.findall(inside_braces)
-            self.filename = match
-            #     msg = f'Cannot find datafiles in {self.kima_setup}'
-            #     raise ValueError(msg)
+                pat = re.compile(r'"(.*?)"')
+                match = pat.findall(inside_braces)
+                self.filename = match
+                #     msg = f'Cannot find datafiles in {self.kima_setup}'
+                #     raise ValueError(msg)
 
-            pat = re.compile(r'load_multi\(datafiles,\s*"(.*?)"\s*,\s*(\d)')
+                pat = re.compile(r'load_multi\(datafiles,\s*"(.*?)"\s*,\s*(\d)')
+                match = pat.findall(setup)
+                if len(match) == 1:
+                    units, skip = match[0]
+                    self.units = units
+                    self.skip = int(skip)
+                else:
+                    msg = f'Cannot find units and skip in {self.kima_setup}'
+                    raise ValueError(msg)
+
+            except IndexError:
+                multi_instrument_multi_file = True
+
+        if not multi_instrument or multi_instrument_multi_file:
+            if 'datafile = ""' in setup:
+                self.filename = None
+                return
+
+            if multi_instrument_multi_file:
+                pat = re.compile(r'load_multi\(datafile,\s*"(.*?)"\s*,\s*(\d)')
+            else:
+                pat = re.compile(r'load\(datafile,\s*"(.*?)"\s*,\s*(\d)')
             match = pat.findall(setup)
             if len(match) == 1:
                 units, skip = match[0]
@@ -370,11 +394,6 @@ class KimaModel:
             else:
                 msg = f'Cannot find units and skip in {self.kima_setup}'
                 raise ValueError(msg)
-
-        else:
-            if 'datafile = ""' in setup:
-                self.filename = None
-                return
 
             pat = re.compile(r'^[^\/\/\n]*datafile\s?\=\s?"(.+?)"\s?;',
                              re.MULTILINE)
@@ -385,15 +404,6 @@ class KimaModel:
                 msg = f'Cannot find unique datafile in {self.kima_setup}'
                 raise ValueError(msg)
 
-            pat = re.compile(r'load\(datafile,\s*"(.*?)"\s*,\s*(\d)')
-            match = pat.findall(setup)
-            if len(match) == 1:
-                units, skip = match[0]
-                self.units = units
-                self.skip = int(skip)
-            else:
-                msg = f'Cannot find units and skip in {self.kima_setup}'
-                raise ValueError(msg)
 
         # store that the model has been loaded
         self._loaded = True
@@ -581,10 +591,15 @@ class KimaModel:
                 print('include $(KIMA_DIR)/examples.mk', file=f)
 
 
-    def run(self):
+    def run(self, ncores=4, verbose=True, skip_save=False):
         if self.data is None:
             raise ValueError('Must set .filename before running')
 
-        self.save()
-        cmd = f'kima-run {self.directory}'
-        out = subprocess.check_call(cmd.split())
+        if not skip_save:
+            self.save()
+
+        cmd = f'kima-run -t {ncores} {self.directory}'
+        if not verbose:
+            cmd += ' -q'
+
+        _ = subprocess.check_call(cmd.split())
