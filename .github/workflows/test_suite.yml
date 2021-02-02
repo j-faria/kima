@@ -87,12 +87,10 @@ jobs:
         cp OPTIONS ../../examples/multi_instrument/OPTIONS
 
         # this is added to multi_instrument (1)
+        # to read the 4th-column file instead of separate files
         sed -i -e '21,30d' -e 's/\/\/ datafile/datafile/' -e 's/\/\/ load/load/' ../../examples/multi_instrument/kima_setup.cpp
 
         kima-run ../../examples/multi_instrument -s 43
-        # test the output
-        # echo "Comparing output to known output for seed"
-        # cmp multi_instrument_sample_seed43.txt ../../examples/multi_instrument/sample.txt
         # test showresults
         ( cd ../../examples/multi_instrument ; kima-showresults all --save-plots )
 
@@ -103,12 +101,10 @@ jobs:
         cp OPTIONS ../../examples/multi_instrument/OPTIONS
 
         # this is added to multi_instrument (2)
+        # sort the 4th-column file by time so instrument ids are intermingled
         CONT=`cat ../../examples/multi_instrument/HD106252_joined.txt`; echo "$CONT" | (sed -u 1q; sort -s -n -k 1,1) > ../../examples/multi_instrument/HD106252_joined.txt
 
         kima-run ../../examples/multi_instrument -s 43
-        # test the output
-        # echo "Comparing output to known output for seed"
-        # cmp multi_instrument_sample_seed43.txt ../../examples/multi_instrument/sample.txt
         # test showresults
         ( cd ../../examples/multi_instrument ; kima-showresults all --save-plots )
 
