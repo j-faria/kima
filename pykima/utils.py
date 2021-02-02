@@ -53,6 +53,7 @@ def need_model_setup(exception):
     sys.tracebacklimit = 0
     raise exception
 
+
 def read_model_setup(filename='kima_model_setup.txt'):
     setup = configparser.ConfigParser()
     setup.optionxform = str
@@ -389,6 +390,7 @@ def find_prior_limits(prior):
     Find lower and upper limits of a prior from the kima_model_setup.txt file.
     """
     inparens, truncs, name = _get_prior_parts(prior)
+    # print(inparens, truncs, name)
 
     if 'Truncated' in name:
         return tuple(float(v) for v in truncs.split(','))
@@ -447,9 +449,18 @@ def get_prior(prior):
     """ Return a scipt.stats-like prior from a kima_model_setup.txt prior """
     _, _, name = _get_prior_parts(prior)
     pars = find_prior_parameters(prior)
+
+    if 'T' in pars:
+        a, b = find_prior_limits(prior)
+        loc, scale, _ = pars
+        a, b = (a - loc) / scale, (b - loc) / scale
+
     try:
         d = _prior_to_dist()
-        return d[name](*pars)
+        if 'T' in pars:
+            return d[name](a=a, b=b, loc=loc, scale=scale)
+        else:
+            return d[name](*pars)
     except KeyError:
         return None
 
