@@ -227,6 +227,10 @@ def run_local():
 
         if args.background:
             stdout = open(args.output, 'wb')
+            stdout.write(b'starting kima at ')
+            stdout.write(str(datetime.now()).encode())
+            stdout.write(b'\n')
+            stdout.flush()
         else:
             stdout = sys.stdout
 
@@ -252,9 +256,15 @@ def run_local():
         except KeyboardInterrupt:
             end = time.time()
             took = end - start
+            msg1 = ' finishing the job, took %.2f seconds' % took
+            msg2 = '(saved %d samples)' % rawgencount('sample.txt', sub=1)
             if not args.quiet:
-                print(' finishing the job, took %.2f seconds' % took, end=' ')
-                print('(saved %d samples)' % rawgencount('sample.txt', sub=1))
+                print(msg1, end=' ')
+                print(msg2)
+            if args.background:
+                stdout.write(msg1[1:].encode())
+                stdout.write(msg2.encode())
+                
             if not args.no_notify:
                 notify('kima job finished', 'took %.2f seconds' % took)
 
@@ -262,11 +272,17 @@ def run_local():
             kima.terminate()
             end = time.time()
             took = end - start
+
+            msg1 = f'job timed out after {took:.1f} seconds'
+            msg2 = '(saved %d samples)' % rawgencount('sample.txt', sub=1)
             if not args.quiet:
                 time.sleep(0.5)  # allow stdout flush before printing stuff
-                print(kimastr, f'job timed out after {took:.1f} seconds',
-                      end=' ')
-                print('(saved %d samples)' % rawgencount('sample.txt', sub=1))
+                print(kimastr, msg1, end=' ')
+                print(msg2)
+            if args.background:
+                stdout.write(('kima ' + msg1 + ' ').encode())
+                stdout.write(msg2.encode())
+
             if not args.no_notify:
                 notify('kima job finished',
                        'after timeout of %.2f seconds' % took)
@@ -278,8 +294,13 @@ def run_local():
         else:
             end = time.time()
             took = end - start
+            
+            msg1 = ' job finished, took %.2f seconds' % took
             if not args.quiet:
-                print(kimastr, 'job finished, took %.2f seconds' % (end - start))
+                print(kimastr + msg1)
+            if args.background:
+                stdout.write(('kima' + msg1).encode())
+
             if not args.no_notify:
                 notify('kima job finished', 'took %.2f seconds' % took)
 
