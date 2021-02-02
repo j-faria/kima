@@ -20,7 +20,7 @@ from . import display
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde, uniform
 try:  # only available in scipy 1.1.0
     from scipy.signal import find_peaks
 except ImportError:
@@ -65,6 +65,13 @@ class KimaResults(object):
             print()
 
         self.setup = setup = read_model_setup()
+
+        try:
+            self.fix = setup['kima']['fix'] == 'true'
+            self.npmax = int(setup['kima']['npmax'])
+        except KeyError:
+            self.fix = True
+            self.npmax = 0
 
         # read the priors
         priors = list(setup['priors.general'].values())
@@ -113,7 +120,6 @@ class KimaResults(object):
 
         self.data_skip = int(setup['kima']['skip'])
         self.units = setup['kima']['units']
-        self.M0_epoch = float(setup['kima']['M0_epoch'])
 
         if debug:
             print('--- skipping first %d rows of data file' % self.data_skip)
@@ -135,6 +141,12 @@ class KimaResults(object):
         if self.units == 'kms':
             self.data[:, 1] *= 1e3
             self.data[:, 2] *= 1e3
+
+        try:
+            self.M0_epoch = float(setup['kima']['M0_epoch'])
+        except KeyError:
+            self.M0_epoch = self.data[0, 0]
+
 
         # arbitrary units?
         if 'arb' in self.units:
@@ -395,6 +407,19 @@ class KimaResults(object):
         # indices of the planet parameters
         self.indices['planets'] = slice(self.index_component + 1,
                                         -3 if self.studentT else -2)
+
+        # check again if Np is not changing
+        if self.npmax == 0:
+            n = np.unique(self.posterior_sample[:, self.index_component]).size
+            if n > 1:
+                print('warning: Np is changing even though fix=True !')
+                print('--> check if .fix and .npmax are correct')
+                self.npmax = n - 1
+                self.fix = False
+
+        if not self.fix:
+            self.total_parameters += 1  # Np
+            self.priors['np_prior'] = uniform(0, self.npmax)
 
         # build the marginal posteriors for planet parameters
         self.get_marginals()

@@ -45,11 +45,11 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             throw std::logic_error("trend=true but degree=0, what gives?");
         if (degree > 3)
             throw std::range_error("can't go higher than 3rd degree trends");
-        if (degree >= 1 & !slope_prior)
+        if (degree >= 1 && !slope_prior)
             slope_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(1)) );
-        if (degree >= 2 & !quadr_prior)
+        if (degree >= 2 && !quadr_prior)
             quadr_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2)) );
-        if (degree == 3 & !cubic_prior)
+        if (degree == 3 && !cubic_prior)
             cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
     }
 
@@ -1272,6 +1272,9 @@ void RVmodel::save_setup() {
     fout << ";" << ctime(&rawtime) << endl;
 
     fout << "[kima]" << endl;
+
+    fout << "fix: " << fix << endl;
+    fout << "npmax: " << npmax << endl << endl;
 
     fout << "GP: " << GP << endl;
     fout << "GP_kernel: " << kernel << endl;
