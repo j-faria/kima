@@ -4,7 +4,11 @@ import zipfile
 import tempfile
 
 from .keplerian import keplerian
-from .GP import GP, QPkernel, GP_celerite, QPkernel_celerite
+
+from .GP import (available_kernels, GP, QPkernel, QPMatern32kernel,
+                 SqExpkernel, QPMatern52kernel, QPRQkernel, GP_celerite,
+                 QPkernel_celerite)
+
 from .utils import (need_model_setup, read_model_setup, get_planet_mass,
                     get_planet_semimajor_axis, percentile68_ranges,
                     percentile68_ranges_latex, read_datafile, lighten_color,
@@ -170,6 +174,7 @@ class KimaResults(object):
 
         self.indices = {}
 
+        self.total_parameters = 0
         start_parameters = 0
         if self.multi:
             i1, i2 = start_parameters, start_parameters + self.n_jitters
@@ -181,6 +186,7 @@ class KimaResults(object):
         else:
             self.extra_sigma = self.posterior_sample[:, start_parameters]
             self.indices['jitter'] = start_parameters
+        self.total_parameters += self.n_jitters
 
         # find trend in the compiled model
         if trend is None:
@@ -200,6 +206,7 @@ class KimaResults(object):
             self.indices['trend'] = slice(i1, i2)
         else:
             n_trend = 0
+        self.total_parameters += n_trend
 
         # multiple instruments ??
         if self.multi:
@@ -214,6 +221,7 @@ class KimaResults(object):
             self.indices['inst_offsets'] = slice(istart, iend)
         else:
             n_inst_offsets = 0
+        self.total_parameters += n_inst_offsets
 
         # activity indicator correlations?
         try:
@@ -233,6 +241,7 @@ class KimaResults(object):
             self.indices['betas'] = slice(istart, iend)
         else:
             n_act_ind = 0
+        self.total_parameters += n_act_ind
 
         # find GP in the compiled model
         if GPmodel is None:
@@ -248,10 +257,18 @@ class KimaResults(object):
             print('GP model:', self.GPmodel)
 
         if self.GPmodel:
-            if self.GPkernel == 0:
+            k = ('standard', 'permatern32', 'permatern52')
+            if available_kernels[self.GPkernel] in k:
                 n_hyperparameters = 4
-            elif self.GPkernel == 1:
+
+            elif available_kernels[self.GPkernel] == 'celerite':
                 n_hyperparameters = 3
+
+            elif available_kernels[self.GPkernel] == 'perrq':
+                n_hyperparameters = 5
+
+            elif available_kernels[self.GPkernel] == 'sqexp':
+                n_hyperparameters = 2
 
             start_hyperpars = start_parameters + n_trend + n_inst_offsets + 1
             self.etas = self.posterior_sample[:, start_hyperpars:
@@ -264,14 +281,32 @@ class KimaResults(object):
                 setattr(self, name, self.posterior_sample[:, ind])
 
             if self.GPkernel == 0:
-                self.GP = GP(
-                    QPkernel(1, 1, 1, 1), self.data[:, 0], self.data[:, 2],
-                    white_noise=0.)
+                self.GP = GP(QPkernel(1, 1, 1, 1),
+                             self.t,
+                             self.e,
+                             white_noise=0.)
+
             elif self.GPkernel == 1:
-                self.GP = GP_celerite(
-                    QPkernel_celerite(η1=1, η2=1, η3=1), self.data[:, 0], self.data[:, 2],
-                    white_noise=0.)
-                # print('ahhhh')
+                self.GP = GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1),
+                                      self.t,
+                                      self.e,
+                                      white_noise=0.)
+
+            elif self.GPkernel == 2:
+                self.GP = GP(QPMatern32kernel(1, 1, 1, 1),
+                             self.t, self.e, white_noise=0.)
+
+            elif self.GPkernel == 3:
+                self.GP = GP(QPMatern52kernel(1, 1, 1, 1),
+                             self.t, self.e, white_noise=0.)
+
+            elif self.GPkernel == 4:
+                self.GP = GP(QPRQkernel(1, 1, 1, 1, 1),
+                             self.t, self.e, white_noise=0.)
+
+            elif self.GPkernel == 5:
+                self.GP = GP(SqExpkernel(1, 1),
+                             self.t, self.e, white_noise=0.)
 
             self.indices['GPpars_start'] = start_hyperpars
             self.indices['GPpars_end'] = start_hyperpars + n_hyperparameters
@@ -279,6 +314,9 @@ class KimaResults(object):
                                            start_hyperpars + n_hyperparameters)
         else:
             n_hyperparameters = 0
+
+        self.n_hyperparameters = n_hyperparameters
+        self.total_parameters += n_hyperparameters
 
         # find MA in the compiled model
         try:
@@ -296,6 +334,7 @@ class KimaResults(object):
                                             start_hyperpars + n_MAparameters]
         else:
             n_MAparameters = 0
+        self.total_parameters += n_MAparameters
 
         # find KO in the compiled model
         try:
@@ -313,7 +352,7 @@ class KimaResults(object):
             self.indices['KOpars'] = koinds
         else:
             n_KOparameters = 0
-
+        self.total_parameters += n_KOparameters
 
         start_objects_print = start_parameters + n_inst_offsets + \
                               n_trend + n_act_ind + n_hyperparameters + \
@@ -325,6 +364,8 @@ class KimaResults(object):
         self.max_components = int(
             self.posterior_sample[0, start_objects_print + 1])
 
+        self.total_parameters += self.n_dimensions * self.max_components
+
         # find hyperpriors in the compiled model
         if hyperpriors is None:
             self.hyperpriors = setup['kima']['hyperpriors'] == 'true'
@@ -333,6 +374,7 @@ class KimaResults(object):
 
         # number of hyperparameters (muP, wP, muK)
         n_dist_print = 3 if self.hyperpriors else 0
+        self.total_parameters += n_dist_print
         # if hyperpriors, then the period is sampled in log
         self.log_period = self.hyperpriors
 
@@ -348,6 +390,7 @@ class KimaResults(object):
 
         self.vsys = self.posterior_sample[:, -1]
         self.indices['vsys'] = -1
+        self.total_parameters += 1
 
         # indices of the planet parameters
         self.indices['planets'] = slice(self.index_component + 1,
@@ -1258,12 +1301,9 @@ class KimaResults(object):
 
             # plot the GP prediction
             if self.GPmodel:
-                if self.GPkernel == 0:
-                    self.GP.kernel.setpars(self.eta1[i], self.eta2[i],
-                                           self.eta3[i], self.eta4[i])
-                elif self.GPkernel == 1:
-                    self.GP.kernel.setpars(self.eta1[i], self.eta2[i],
-                                           self.eta3[i])
+                pars = self.etas[i]
+                self.GP.kernel.setpars(*pars)
+
                 mu = self.GP.predict(y - v_at_t, ttGP, return_std=False)
                 ax.plot(ttGP, mu + v_at_ttGP, alpha=0.2, color='plum')
 
