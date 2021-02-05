@@ -1106,8 +1106,10 @@ class KimaResults(object):
             mask = np.ones(samples.shape[0], dtype=bool)
 
         t = self.data[:, 0].copy()
+        M0_epoch = self.M0_epoch
         if t[0] > 24e5:
             t -= 24e5
+            M0_epoch -= 24e5
 
         tt = np.linspace(t.min() - over * t.ptp(),
                          t.max() + over * t.ptp(), ntt + int(100 * over))
@@ -1181,7 +1183,7 @@ class KimaResults(object):
                     P = pars[iKO::self.nKO][0]
                     K = pars[iKO::self.nKO][1]
                     phi = pars[iKO::self.nKO][2]
-                    t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
+                    t0 = M0_epoch - (P * phi) / (2. * np.pi)
                     ecc = pars[iKO::self.nKO][3]
                     w = pars[iKO::self.nKO][4]
                     # P = pars[5*iKO + 0]
@@ -1220,7 +1222,7 @@ class KimaResults(object):
                     continue
                 K = pars[j + 1 * self.max_components]
                 phi = pars[j + 2 * self.max_components]
-                t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
+                t0 = M0_epoch - (P * phi) / (2. * np.pi)
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
 

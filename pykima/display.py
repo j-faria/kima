@@ -834,8 +834,10 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
 
     # make copies to not change attributes
     t, y, e = res.t.copy(), res.y.copy(), res.e.copy()
+    M0_epoch = res.M0_epoch
     if t[0] > 24e5:
         t -= 24e5
+        M0_epoch -= 24e5
 
     def kima_pars_to_keplerian_pars(p):
         # transforms kima planet pars (P,K,phi,ecc,w)
@@ -843,7 +845,7 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
         # assert p.size == res.n_dimensions
         P = p[0]
         phi = p[2]
-        t0 = res.M0_epoch - (P * phi) / (2. * np.pi)
+        t0 = M0_epoch - (P * phi) / (2. * np.pi)
         return np.array([P, p[1], p[3], p[4], t0, 0.0])
 
     if highlight_points is not None:
@@ -875,7 +877,7 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
     # extract periods, phases and calculate times of periastron
     P = pars[0 * mc:1 * mc]
     phi = pars[2 * mc:3 * mc]
-    T0 = res.M0_epoch - (P * phi) / (2. * np.pi)
+    T0 = M0_epoch - (P * phi) / (2. * np.pi)
 
     # how many planets in this sample?
     nplanets = (pars[:mc] != 0).sum()
