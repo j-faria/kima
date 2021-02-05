@@ -1306,7 +1306,9 @@ void RVmodel::save_setup() {
         fout << f << ",";
     fout << endl;
 
+    fout.precision(15);
     fout << "M0_epoch: " << data.M0_epoch << endl;
+    fout.precision(6);
 
     fout << endl;
 
