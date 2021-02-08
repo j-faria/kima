@@ -137,6 +137,7 @@ class KimaResults(object):
             self.sample_info = None
 
         self.indices = {}
+        self.total_parameters = 0
 
         # if model == 'MOmodel':
         #     self._read_parameters()
