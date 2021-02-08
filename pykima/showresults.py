@@ -478,7 +478,7 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
 
     try:
         with redirect_stdout(stdout):
-            evidence, H, logx_samples = postprocess(plot=diagnostic,
+            evidence, H, logx_samples = postprocess(plot=args.diagnostic,
                                                     numResampleLogX=1,
                                                     moreSamples=1)
     except IOError as e:
