@@ -4,6 +4,7 @@ from copy import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
+import matplotlib as mpl
 from scipy.stats import gaussian_kde
 from scipy.stats._continuous_distns import reciprocal_gen
 from scipy.signal import find_peaks
@@ -11,7 +12,7 @@ from corner import corner
 
 from .analysis import passes_threshold_np, find_outliers
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
-                    wrms)
+                    wrms, lighten_color)
 
 from .keplerian import keplerian
 # from .results import KimaResults
@@ -51,7 +52,7 @@ def make_plots(res, options, save_plots=False):
         ],
         '7': [
             (res.hist_vsys,
-             res.hist_extra_sigma,
+             res.hist_jitter,
              res.hist_trend,
              res.hist_correlations
              ), {}],
@@ -72,6 +73,7 @@ def make_plots(res, options, save_plots=False):
 
 def make_plot1(res):
     """ Plot the histogram of the posterior for Np """
+
     fig, ax = plt.subplots(1, 1)
 
     bins = np.arange(res.max_components + 2)
@@ -340,26 +342,37 @@ def make_plot4(res, Np=None, ranges=None):
         print('Model does not have GP! make_plot4() doing nothing...')
         return
 
-    available_etas = [v for v in dir(res) if v.startswith('eta')][:-1]
-    labels = available_etas
+    if res.model == 'MOmodel':
+        make_plot4_mo(res)
+        return
+
+    n = res.etas.shape[1]
+    labels = [f'eta{i}' for i in range(1, n + 1)]
     if ranges is None:
         ranges = len(labels) * [None]
 
     if Np is not None:
         m = res.posterior_sample[:, res.index_component] == Np
 
-    fig, axes = plt.subplots(2, int(np.ceil(len(available_etas) / 2)))
-    for i, eta in enumerate(available_etas):
-        ax = np.ravel(axes)[i]
-        ax.hist(getattr(res, eta), bins=40, range=ranges[i])
+    fig, axes = plt.subplots(2, int(np.ceil(n / 2)))
+    axes = np.ravel(axes)
+    for i, eta in enumerate(res.etas.T):
+        ax = axes[i]
+        ax.hist(eta, bins=40, range=ranges[i])
 
         if Np is not None:
-            ax.hist(
-                getattr(res, eta)[m], bins=40, histtype='step', alpha=0.5,
-                label='$N_p$=%d samples' % Np, range=ranges[i])
+            ax.hist(eta[m],
+                    bins=40,
+                    histtype='step',
+                    alpha=0.5,
+                    label='$N_p$=%d samples' % Np,
+                    range=ranges[i])
             ax.legend()
 
         ax.set(xlabel=labels[i], ylabel='posterior samples')
+
+    for ii in range(i+1, len(fig.axes)):
+        axes[ii].axis('off')
 
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
@@ -371,6 +384,72 @@ def make_plot4(res, Np=None, ranges=None):
     if res.return_figs:
         return fig
 
+
+def make_plot4_mo(res, Np=None, ranges=None):
+    """
+    Plot histograms for the GP hyperparameters. If Np is not None, highlight
+    the samples with Np Keplerians. 
+    """
+    if not res.GPmodel:
+        print('Model does not have GP! make_plot4() doing nothing...')
+        return
+
+    n = res.etas.shape[1]
+    labels = [f'eta{i}' for i in range(1, n + 1)]
+    if ranges is None:
+        ranges = len(labels) * [None]
+
+    if Np is not None:
+        m = res.posterior_sample[:, res.index_component] == Np
+
+    fig = plt.figure(constrained_layout=True)
+    gs = fig.add_gridspec(6, 2)
+
+    histkw = dict(density=True)
+    allkw = dict(yticks=[])
+
+    ax = fig.add_subplot(gs[0:3, 0])
+    ax.hist(res.etas[:, 0], **histkw)
+    ax.set(xlabel=r'$\eta_1$ RV [m/s]', ylabel='posterior', **allkw)
+
+    ax = fig.add_subplot(gs[3:6, 0])
+    ax.hist(res.etas[:, 1], **histkw)
+    ax.set(xlabel=r'$\eta_1$ FWHM [m/s]', ylabel='posterior', **allkw)
+
+    units = [' [days]', ' [days]', '']
+    for i in range(3):
+        ax = fig.add_subplot(gs[2*i:2*(i+1), 1])
+        ax.hist(res.etas[:, 2+i], **histkw)
+        ax.set(xlabel=fr'$\eta_{2+i}$' + units[i], ylabel='posterior', **allkw)
+    # fig, axes = plt.subplots(2, int(np.ceil(n / 2)))
+    # axes = np.ravel(axes)
+    # for i, eta in enumerate(res.etas.T):
+    #     ax = axes[i]
+    #     ax.hist(eta, bins=40, range=ranges[i])
+
+    #     if Np is not None:
+    #         ax.hist(eta[m],
+    #                 bins=40,
+    #                 histtype='step',
+    #                 alpha=0.5,
+    #                 label='$N_p$=%d samples' % Np,
+    #                 range=ranges[i])
+    #         ax.legend()
+
+    #     ax.set(xlabel=labels[i], ylabel='posterior samples')
+
+    # for ii in range(i+1, len(fig.axes)):
+    #     axes[ii].axis('off')
+
+    # fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    # if res.save_plots:
+    #     filename = 'kima-showresults-fig4.png'
+    #     print('saving in', filename)
+    #     fig.savefig(filename)
+
+    # if res.return_figs:
+    #     return fig
 
 def make_plot5(res, show=True, ranges=None):
     """ Corner plot for the GP hyperparameters """
@@ -595,7 +674,7 @@ def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
         return figures
 
 
-def hist_extra_sigma(res, show_prior=False, **kwargs):
+def hist_jitter(res, show_prior=False, **kwargs):
     """
     Plot the histogram of the posterior for the additional white noise
     """
@@ -604,12 +683,46 @@ def hist_extra_sigma(res, show_prior=False, **kwargs):
     else:
         units = ' (m/s)'  # if res.units == 'ms' else ' (km/s)'
 
+    kw = dict(constrained_layout=True)
+    if res.model == 'MOmodel':
+        fig, axs = plt.subplots(2, res.n_instruments, **kw)
+    elif res.model == 'RVmodel':
+        fig, axs = plt.subplots(1, res.n_instruments, **kw)
+    fig.suptitle('Posterior distribution for extra white noise')
+    axs_matrix = axs.copy()
+    axs = np.ravel(axs)
+
+    for i, ax in enumerate(axs):
+        estimate = percentile68_ranges_latex(res.jitter[:, i]) + ' m/s'
+        ax.hist(res.jitter[:, i])
+        leg = ax.legend([], title=estimate)
+        leg._legend_box.sep = 0
+
+    for ax in axs:
+        ax.set(yticks=[], ylabel='posterior')
+
+
+    if res.model == 'MOmodel':
+        labels = [f'RV jitter {i} [m/s]' for i in res.instruments]
+        labels += [f'FWHM jitter {i} [m/s]' for i in res.instruments]
+    else:
+        labels = [f'jitter {i} [m/s]' for i in res.instruments]
+
+    for ax, label in zip(axs, labels):
+        ax.set_xlabel(label)
+
+    for row in axs_matrix:
+        for ax in row[1:]:
+            ax.sharex(row[0])
+
+
+    return 
     if res.multi:  # there are n_instruments jitters
         # lambda substrs
         fig, axs = plt.subplots(1, res.n_instruments, sharey=True,
                                 figsize=(res.n_instruments * 3, 5),
                                 squeeze=True)
-        for i, jit in enumerate(res.extra_sigma.T):
+        for i, jit in enumerate(res.jitter.T):
             # inst = get_instrument_name(res.data_file[i])
             inst = res.instruments[i]
             estimate = percentile68_ranges_latex(jit) + units
@@ -854,7 +967,7 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
 
     # get the model for this sample
     # (this adds in the instrument offsets and the systemic velocity)
-    v = res.model(sample)
+    v = res.eval_model(sample)
 
     # put all data around zero
     if res.GPmodel:
@@ -1082,3 +1195,227 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
         return fig
 
     return residuals
+
+
+def plot_random_samples_mo(res,
+                           ncurves=50,
+                           over=0.1,
+                           pmin=None,
+                           pmax=None,
+                           show_vsys=False,
+                           show_trend=False,
+                           Np=None,
+                           return_residuals=False,
+                           ntt=10000,
+                           **kwargs):
+    """
+    Display the RV data together with curves from the posterior predictive.
+    A total of `ncurves` random samples are chosen, and the Keplerian 
+    curves are calculated covering 100 + `over`% of the data timespan.
+    If the model has a GP component, the prediction is calculated using the
+    GP hyperparameters for each of the random samples.
+    """
+    colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
+
+    samples = res.get_sorted_planet_samples()
+    if res.max_components > 0:
+        samples, mask = \
+            res.apply_cuts_period(samples, pmin, pmax, return_mask=True)
+    else:
+        mask = np.ones(samples.shape[0], dtype=bool)
+
+    t = res.t.copy()
+    if t[0] > 24e5:
+        t -= 24e5
+
+    tt = np.linspace(t.min() - over * t.ptp(), t.max() + over * t.ptp(),
+                     ntt + int(100 * over))
+
+    if res.GPmodel:
+        # let's be more reasonable for the number of GP prediction points
+        ## OLD: linearly spaced points (lots of useless points within gaps)
+        # ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
+        ## NEW: have more points near where there is data
+        kde = gaussian_kde(t)
+        ttGP = kde.resample(25000 + t.size * 3).reshape(-1)
+        # constrain ttGP within observed times, to not waste (this could go...)
+        ttGP = (ttGP + t[0]) % t.ptp() + t[0]
+        ttGP = np.r_[ttGP, t]
+        ttGP.sort()  # in-place
+
+        if t.size > 100:
+            ncurves = 10
+
+    y = res.y.copy()
+    yerr = res.e.copy()
+
+    ncurves = min(ncurves, samples.shape[0])
+
+    if samples.shape[0] == 1:
+        ii = np.zeros(1, dtype=int)
+    elif ncurves == samples.shape[0]:
+        ii = np.arange(ncurves)
+    else:
+        # select random `ncurves` indices
+        # from the (sorted, period-cut) posterior samples
+        # ii = np.random.randint(samples.shape[0], size=ncurves)
+
+        # select `ncurves` indices from the 70% highest likelihood samples
+        lnlike = res.posterior_lnlike[:,1]
+        sorted_lnlike = np.sort(lnlike)[::-1]
+        mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
+        ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
+
+    if res.KO:
+        fig, (ax, ax1) = plt.subplots(1, 2, figsize=[2 * 6.4, 4.8],
+                                        constrained_layout=True)
+        ax1.set_title('Keplerian curve(s) from known object(s) removed')
+    else:
+        fig, (ax, ax2) = plt.subplots(2, 1, sharex=True,
+                                      constrained_layout=True)
+
+    ax.set_title('Posterior samples in data space')
+
+    ## plot the Keplerian curves
+
+    # known_object, calculated at tt and at t, all curves in one array
+    v_KO = np.zeros((ncurves, tt.size))
+    v_KO_at_t = np.zeros((ncurves, t.size))
+
+    alpha = 0.1 if ncurves > 1 else 1
+
+    for icurve, i in enumerate(ii):
+        stoc_model = res.stochastic_model(res.posterior_sample[i], tt)
+        model = res.eval_model(res.posterior_sample[i], tt)
+        ax.plot(tt, stoc_model[0] + model[0], 'k', alpha=alpha)
+        # ax2.plot(tt, stoc_model[1] + model[1], 'k', alpha=alpha)
+
+        offset_model = res.eval_model(res.posterior_sample[i], tt,
+                                     include_planets=False)
+        ax.plot(tt, stoc_model[0] + offset_model[0], 'plum', alpha=alpha)
+        ax2.plot(tt, stoc_model[1] + offset_model[1], 'plum', alpha=alpha)
+
+        if show_vsys:
+            kw = dict(alpha=0.1, color='r', ls='--')
+            if res.multi:
+                for j in range(res.n_instruments):
+                    instrument_mask = res.obs == j + 1
+                    start = t[instrument_mask].min()
+                    end = t[instrument_mask].max()
+                    m = np.where( (tt > start) & (tt < end) )
+                    ax.plot(tt[m], offset_model[0][m], **kw)
+                    ax2.plot(tt[m], offset_model[1][m], **kw)
+            else:
+                ax.plot(tt, offset_model[0], **kw)
+                ax2.plot(tt, offset_model[1], **kw)
+        continue
+
+        if res.KO:  # known object
+            pars = res.KOpars[i]
+            for iKO in range(res.nKO):
+                P = pars[iKO::res.nKO][0]
+                K = pars[iKO::res.nKO][1]
+                phi = pars[iKO::res.nKO][2]
+                t0 = res.M0_epoch - (P * phi) / (2. * np.pi)
+                ecc = pars[iKO::res.nKO][3]
+                w = pars[iKO::res.nKO][4]
+                # P = pars[5*iKO + 0]
+                # K = pars[5*iKO + 1]
+                # phi = pars[5*iKO + 2]
+                # t0 = t[0] - (P * phi) / (2. * np.pi)
+                # ecc = pars[5*iKO + 3]
+                # w = pars[5*iKO + 4]
+
+                v += keplerian(tt, P, K, ecc, w, t0, 0.)
+                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
+
+            # add to v, evaluated at tt, has everything (note vsys=0)
+            v += keplerian(tt, P, K, ecc, w, t0, 0.)
+            v_KO[icurve] = v  # first KO curve, at tt
+
+            # add to v_at_t, evaluated at t, has everything (note vsys=0)
+            v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
+            v_KO_at_t[icurve] = v_at_t  # first KO curve, at t
+
+            # ax.plot(tt, v_KO[icurve], alpha=0.4, color='g', ls='-')
+            # ax.add_line(plt.Line2D(tt, v_KO[icurve]))
+
+
+        # plot the MA "prediction"
+        # if res.MAmodel:
+        #     vMA = v_at_t.copy()
+        #     dt = np.ediff1d(res.t)
+        #     sigmaMA, tauMA = res.MA.mean(axis=0)
+        #     vMA[1:] += sigmaMA * np.exp(np.abs(dt) / tauMA) * (res.y[:-1] - v_at_t[:-1])
+        #     vMA[np.abs(vMA) > 1e6] = np.nan
+        #     ax.plot(t, vMA, 'o-', alpha=1, color='m')
+
+        # v only has the Keplerian components, not the GP predictions
+        # ax.plot(tt, v, alpha=0.2, color='k')
+
+
+    residuals = y.copy()
+
+    ## plot the data
+    if res.multi:
+        for j in range(res.inst_offsets.shape[1]//2 + 1):
+            inst = res.instruments[j]
+            m = res.obs == j + 1
+            kw = dict(fmt='o', ms=3, color=colors[j], label=inst)
+            kw.update(**kwargs)
+
+            ax.errorbar(t[m], y[m], yerr[m], **kw)
+            ax2.errorbar(t[m], res.y2[m], res.e2[m], **kw)
+
+            if res.KO:
+                mod = v_KO_at_t.mean(axis=0)[m]
+                ax1.errorbar(t[m], y[m] - mod, yerr[m], **kw)
+
+            # calculate residuals
+            # residuals[m] -= v_at_t[m]
+
+        ax.legend(loc='upper left', fontsize=8)
+
+    else:
+        ax.errorbar(t, y, yerr, fmt='o')
+        ax2.errorbar(t, res.y2, res.e2, fmt='o')
+
+        if res.KO:
+            ax1.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
+
+        residuals -= v_at_t
+
+    if res.arbitrary_units:
+        ylabel = 'Q [arbitrary]'
+    else:
+        ylabel = 'RV [m/s]'
+
+    ax.set_ylabel(ylabel)
+    ax2.set(xlabel='Time [days]', ylabel=f'FWHM [m/s]')
+
+    if res.KO:
+        ax1.set(**lab)
+
+        from matplotlib.patches import Patch
+        from matplotlib.lines import Line2D
+
+        legend_elements = [
+            Line2D([0], [0], marker='o', color='w', label='Data', markerfacecolor='C0', markersize=6),
+            Line2D([0], [0], color='k', lw=1, label='Known object(s) samples'),
+            Line2D([0], [0], color='g', lw=1, label='Full model samples'),
+            # Patch(facecolor='orange', edgecolor='r', label='Color Patch')
+        ]
+
+        ax.legend(handles=legend_elements, loc='best')
+
+
+    if res.save_plots:
+        filename = 'kima-showresults-fig6.png'
+        print('saving in', filename)
+        fig.savefig(filename)
+
+    if res.return_figs:
+        return fig
+
+    if return_residuals:
+        return residuals

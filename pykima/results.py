@@ -7,9 +7,9 @@ from .keplerian import keplerian
 from .GP import GP, QPkernel, GP_celerite, QPkernel_celerite
 from .utils import (need_model_setup, read_model_setup, get_planet_mass,
                     get_planet_semimajor_axis, percentile68_ranges,
-                    percentile68_ranges_latex, read_datafile, lighten_color,
-                    wrms, get_prior, hyperprior_samples, get_star_name,
-                    get_instrument_name)
+                    percentile68_ranges_latex, read_datafile, read_datafile_mo,
+                    lighten_color, wrms, get_prior, hyperprior_samples,
+                    get_star_name, get_instrument_name)
 
 from . import display
 
@@ -31,6 +31,32 @@ except ImportError:
 
 pathjoin = os.path.join
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
+
+
+def _read_priors(setup):
+    priors = list(setup['priors.general'].values())
+    prior_names = list(setup['priors.general'].keys())
+    try:
+        for section in ('priors.planets', 'priors.hyperpriors', 'priors.GP'):
+            try:
+                priors += list(setup[section].values())
+                prior_names += list(setup[section].keys())
+            except KeyError:
+                continue
+
+        priors += list(setup['priors.known_object'].values())
+        prior_names += [
+            'KO_' + k for k in setup['priors.known_object'].keys()
+        ]
+    except KeyError:
+        pass
+
+    priors = {
+        n: v
+        for n, v in zip(prior_names, [get_prior(p) for p in priors])
+    }
+
+    return priors
 
 
 class KimaResults(object):
@@ -61,87 +87,18 @@ class KimaResults(object):
             print()
 
         self.setup = setup = read_model_setup()
+        try:
+            self.model = setup['kima']['model']
+        except KeyError:
+            self.model = 'RVmodel'
+
+        if self.model not in ('RVmodel', 'MOmodel'):
+            raise NotImplementedError(self.model)
 
         # read the priors
-        priors = list(setup['priors.general'].values())
-        prior_names = list(setup['priors.general'].keys())
-        try:
-            for section in ('priors.planets', 'priors.hyperpriors', 'priors.GP'):
-                try:
-                    priors += list(setup[section].values())
-                    prior_names += list(setup[section].keys())
-                except KeyError:
-                    continue
-
-            priors += list(setup['priors.known_object'].values())
-            prior_names += [
-                'KO_' + k for k in setup['priors.known_object'].keys()
-            ]
-        except KeyError:
-            pass
-
-        self.priors = {
-            n: v
-            for n, v in zip(prior_names, [get_prior(p) for p in priors])
-        }
-
-        if data_file is None:
-            try:
-                self.multi = setup['kima']['multi'] == 'true'
-            except KeyError:
-                self.multi = False
-
-            if self.multi:
-                if setup['kima']['files'] == '':
-                    # multi is true but in only one file
-                    data_file = setup['kima']['file']
-                    self.multi_onefile = True
-                else:
-                    data_file = setup['kima']['files'].split(',')[:-1]
-                    self.multi_onefile = False
-                    # raise NotImplementedError('TO DO')
-            else:
-                data_file = setup['kima']['file']
-
-        if verbose:
-            print('Loading data file %s' % data_file)
-        self.data_file = data_file
-
-        self.data_skip = int(setup['kima']['skip'])
-        self.units = setup['kima']['units']
-        self.M0_epoch = float(setup['kima']['M0_epoch'])
-
-        if debug:
-            print('--- skipping first %d rows of data file' % self.data_skip)
-
-        if self.multi:
-            self.data, self.obs = read_datafile(self.data_file, self.data_skip)
-            # make sure the times are sorted when coming from multiple instruments
-            ind = self.data[:, 0].argsort()
-            self.data = self.data[ind]
-            self.obs = self.obs[ind]
-            self.n_instruments = np.unique(self.obs).size
-            self.n_jitters = self.n_instruments
-        else:
-            self.data = np.loadtxt(self.data_file, skiprows=self.data_skip,
-                                   usecols=(0, 1, 2))
-            self.n_jitters = 1
-
-        # to m/s
-        if self.units == 'kms':
-            self.data[:, 1] *= 1e3
-            self.data[:, 2] *= 1e3
-
-        # arbitrary units?
-        if 'arb' in self.units:
-            self.arbitrary_units = True
-        else:
-            self.arbitrary_units = False
-
-        self.t = self.data[:, 0].copy()
-        self.y = self.data[:, 1].copy()
-        self.e = self.data[:, 2].copy()
-        self.tmiddle = self.data[:, 0].min() + 0.5 * self.data[:, 0].ptp()
+        self.priors = _read_priors(setup)
+        # and the data
+        self._read_data()
 
         self.posterior_sample = np.atleast_2d(
             np.loadtxt(posterior_samples_file))
@@ -170,52 +127,211 @@ class KimaResults(object):
 
         self.indices = {}
 
-        start_parameters = 0
+        # if model == 'MOmodel':
+        #     self._read_parameters()
+
+        self._current_column = 0
+        # read jitters
+        self._read_jitters()
+        # find trend in the compiled model and read it
+        self._read_trend()
+        # multiple instruments? read offsets
+        self._read_multiple_instruments()
+        # activity indicator correlations?
+        self._read_actind_correlations()
+        # find GP in the compiled model
+        self._read_GP()
+        # find MA in the compiled model
+        self._read_MA()
+        # find KO in the compiled model
+        self._read_KO()
+
+        # how many parameters per component
+        self.n_dimensions = int(self.posterior_sample[0, self._current_column])
+        self._current_column += 1
+
+        # maximum number of components
+        self.max_components = int(self.posterior_sample[0,
+                                                        self._current_column])
+        self._current_column += 1
+
+        # find hyperpriors in the compiled model
+        self.hyperpriors = setup['kima']['hyperpriors'] == 'true'
+
+        # number of hyperparameters (muP, wP, muK)
+        if self.hyperpriors:
+            n_dist_print = 3
+            istart = self._current_column
+            iend = istart + n_dist_print
+            self._current_column += n_dist_print
+            self.indices['hyperpriors'] = slice(istart, iend)
+        else:
+            n_dist_print = 0
+
+        # if hyperpriors, then the period is sampled in log
+        self.log_period = self.hyperpriors
+
+        # the column with the number of planets in each sample
+        self.index_component = self._current_column
+        self.indices['np'] = self.index_component
+        self._current_column += 1
+
+        # indices of the planet parameters
+        n_planet_pars = self.max_components * self.n_dimensions
+        istart = self._current_column
+        iend = istart + n_planet_pars
+        self._current_column += n_planet_pars
+        self.indices['planets'] = slice(istart, iend)
+
+        # staleness (ignored)
+        self._current_column += 1
+
+        # student-t likelihood?
+        self.studentT = self.setup['kima']['studentt'] == 'true'
+        if self.studentT:
+            self.nu = self.posterior_sample[:, self._current_column]
+            self.indices['nu'] = self._current_column
+            self._current_column += 1
+
+        if self.model == 'MOmodel':
+            self.C2 = self.posterior_sample[:, self._current_column]
+            self.indices['C2'] = self._current_column
+            self._current_column += 1
+
+        self.vsys = self.posterior_sample[:, -1]
+        self.indices['vsys'] = -1
+
+        # build the marginal posteriors for planet parameters
+        self.get_marginals()
+
+        # make the plots, if requested
+        self.make_plots(options, self.save_plots)
+
+
+    def _read_data(self):
+        setup = self.setup
+        section = 'data' if 'data' in setup else 'kima'
+
+        try:
+            self.multi = setup[section]['multi'] == 'true'
+        except KeyError:
+            self.multi = False
+
         if self.multi:
-            i1, i2 = start_parameters, start_parameters + self.n_jitters
-            self.extra_sigma = self.posterior_sample[:, i1:i2]
-            start_parameters += self.n_jitters - 1
-            self.indices['jitter_start'] = i1
-            self.indices['jitter_end'] = i2
-            self.indices['jitter'] = slice(i1, i2)
+            if setup[section]['files'] == '':
+                # multi is true but in only one file
+                data_file = setup[section]['file']
+                self.multi_onefile = True
+            else:
+                data_file = setup[section]['files'].split(',')[:-1]
+                self.multi_onefile = False
+                # raise NotImplementedError('TO DO')
         else:
-            self.extra_sigma = self.posterior_sample[:, start_parameters]
-            self.indices['jitter'] = start_parameters
+            data_file = setup[section]['file']
 
-        # find trend in the compiled model
-        if trend is None:
-            self.trend = setup['kima']['trend'] == 'true'
-            self.trend_degree = int(setup['kima']['degree'])
+        if self.verbose:
+            print('Loading data file %s' % data_file)
+        self.data_file = data_file
+
+        self.data_skip = int(setup[section]['skip'])
+        self.units = setup[section]['units']
+        self.M0_epoch = float(setup[section]['M0_epoch'])
+
+        if self.multi:
+            if self.model == 'MOmodel':
+                self.data, self.obs = read_datafile_mo(self.data_file,
+                                                       self.data_skip)
+            elif self.model == 'RVmodel':
+                self.data, self.obs = read_datafile(self.data_file,
+                                                    self.data_skip)
+            # make sure the times are sorted when coming from multiple instruments
+            ind = self.data[:, 0].argsort()
+            self.data = self.data[ind]
+            self.obs = self.obs[ind]
+            self.n_instruments = np.unique(self.obs).size
+            if self.model == 'MOmodel':
+                self.n_jitters = 2 * self.n_instruments
+            elif self.model == 'RVmodel':
+                self.n_jitters = self.n_instruments
+
         else:
-            self.trend = trend
-            self.trend_degree = 1
+            if self.model == 'MOmodel':
+                cols = range(5)
+                self.n_jitters = 2
+            elif self.model == 'RVmodel':
+                cols = range(3)
+                self.n_jitters = 1
+            self.n_instruments = 1
 
-        if debug: print('trend:', self.trend)
+            self.data = np.loadtxt(self.data_file,
+                                   skiprows=self.data_skip,
+                                   usecols=cols)
+
+        # to m/s
+        if self.units == 'kms':
+            self.data[:, 1] *= 1e3
+            self.data[:, 2] *= 1e3
+            self.data[:, 3] *= 1e3
+            self.data[:, 4] *= 1e3
+
+        # arbitrary units?
+        if 'arb' in self.units:
+            self.arbitrary_units = True
+        else:
+            self.arbitrary_units = False
+
+        self.t = self.data[:, 0].copy()
+        self.y = self.data[:, 1].copy()
+        self.e = self.data[:, 2].copy()
+        if self.model == 'MOmodel':
+            self.y2 = self.data[:, 3].copy()
+            self.e2 = self.data[:, 4].copy()
+
+        self.tmiddle = self.data[:, 0].min() + 0.5 * self.data[:, 0].ptp()
+
+    def _read_jitters(self):
+        i1, i2 = self._current_column, self._current_column + self.n_jitters
+        self.jitter = self.posterior_sample[:, i1:i2]
+        self._current_column += self.n_jitters
+        self.indices['jitter_start'] = i1
+        self.indices['jitter_end'] = i2
+        self.indices['jitter'] = slice(i1, i2)
+
+    def _read_trend(self):
+        self.trend = self.setup['kima']['trend'] == 'true'
+        self.trend_degree = int(self.setup['kima']['degree'])
 
         if self.trend:
             n_trend = self.trend_degree
-            i1 = start_parameters + 1
-            i2 = start_parameters + n_trend + 1
+            i1 = self._current_column
+            i2 = self._current_column + n_trend
             self.trendpars = self.posterior_sample[:, i1:i2]
+            self._current_column += n_trend
             self.indices['trend'] = slice(i1, i2)
         else:
             n_trend = 0
 
-        # multiple instruments ??
+    def _read_multiple_instruments(self):
         if self.multi:
-            # there are n instruments and n-1 offsets
-            n_inst_offsets = self.n_instruments - 1
-            istart = start_parameters + n_trend + 1
+            # there are n instruments and n-1 offsets per output
+            if self.model == 'MOmodel':
+                n_inst_offsets = 2 * (self.n_instruments - 1)
+            elif self.model == 'RVmodel':
+                n_inst_offsets = self.n_instruments - 1
+
+            istart = self._current_column
             iend = istart + n_inst_offsets
             ind = np.s_[istart:iend]
             self.inst_offsets = self.posterior_sample[:, ind]
+            self._current_column += n_inst_offsets
             self.indices['inst_offsets_start'] = istart
             self.indices['inst_offsets_end'] = iend
             self.indices['inst_offsets'] = slice(istart, iend)
         else:
             n_inst_offsets = 0
 
-        # activity indicator correlations?
+    def _read_actind_correlations(self):
+        setup = self.setup
         try:
             self.indcorrel = setup['kima']['indicator_correlations'] == 'true'
         except KeyError:
@@ -224,140 +340,105 @@ class KimaResults(object):
         if self.indcorrel:
             self.activity_indicators = setup['kima']['indicators'].split(',')
             n_act_ind = len(self.activity_indicators)
-            istart = start_parameters + n_trend + n_inst_offsets + 1
+            istart = self._current_column
             iend = istart + n_act_ind
             ind = np.s_[istart:iend]
             self.betas = self.posterior_sample[:, ind]
+            self._current_column += n_act_ind
             self.indices['betas_start'] = istart
             self.indices['betas_end'] = iend
             self.indices['betas'] = slice(istart, iend)
         else:
             n_act_ind = 0
 
-        # find GP in the compiled model
-        if GPmodel is None:
-            try:
-                self.GPmodel = setup['kima']['GP'] == 'true'
-                self.GPkernel = int(setup['kima']['GP_kernel'])
-            except KeyError:
-                self.GPmodel = False
-        else:
-            self.GPmodel = GPmodel
-
-        if debug:
-            print('GP model:', self.GPmodel)
+    def _read_GP(self):
+        try:
+            self.GPmodel = self.setup['kima']['GP'] == 'true'
+            self.GPkernel = int(self.setup['kima']['GP_kernel'])
+        except KeyError:
+            self.GPmodel = False
 
         if self.GPmodel:
-            if self.GPkernel == 0:
-                n_hyperparameters = 4
-            elif self.GPkernel == 1:
-                n_hyperparameters = 3
+            if self.model == 'RVmodel':
+                try:
+                    n_hyperparameters = {0: 4, 1: 3}[self.GPkernel]
+                except KeyError:
+                    raise ValueError(
+                        f'GP kernel = {self.GPkernel} not recognized')
+            elif self.model == 'MOmodel':
+                self.share_eta2 = self.setup['kima']['share_eta2'] == 'true'
+                self.share_eta3 = self.setup['kima']['share_eta3'] == 'true'
+                self.share_eta4 = self.setup['kima']['share_eta4'] == 'true'
+                n_hyperparameters = 2  # at least 2 x eta1
+                n_hyperparameters += 1 if self.share_eta2 else 2
+                n_hyperparameters += 1 if self.share_eta3 else 2
+                n_hyperparameters += 1 if self.share_eta4 else 2
+            else:
+                raise ValueError
 
-            start_hyperpars = start_parameters + n_trend + n_inst_offsets + 1
-            self.etas = self.posterior_sample[:, start_hyperpars:
-                                              start_hyperpars +
-                                              n_hyperparameters]
+            istart = self._current_column
+            iend = istart + n_hyperparameters
+            self.etas = self.posterior_sample[:, istart:iend]
 
-            for i in range(n_hyperparameters):
-                name = 'eta' + str(i + 1)
-                ind = start_hyperpars + i
-                setattr(self, name, self.posterior_sample[:, ind])
+            # for i in range(n_hyperparameters):
+            #     name = 'eta' + str(i + 1)
+            #     ind = istart + i
+            #     setattr(self, name, self.posterior_sample[:, ind])
 
-            if self.GPkernel == 0:
-                self.GP = GP(
-                    QPkernel(1, 1, 1, 1), self.data[:, 0], self.data[:, 2],
-                    white_noise=0.)
-            elif self.GPkernel == 1:
-                self.GP = GP_celerite(
-                    QPkernel_celerite(η1=1, η2=1, η3=1), self.data[:, 0], self.data[:, 2],
-                    white_noise=0.)
-                # print('ahhhh')
+            self._current_column += n_hyperparameters
+            self.indices['GPpars_start'] = istart
+            self.indices['GPpars_end'] = iend
+            self.indices['GPpars'] = slice(istart, iend)
 
-            self.indices['GPpars_start'] = start_hyperpars
-            self.indices['GPpars_end'] = start_hyperpars + n_hyperparameters
-            self.indices['GPpars'] = slice(start_hyperpars,
-                                           start_hyperpars + n_hyperparameters)
+            if self.model == 'RVmodel':
+                GPs = {
+                    0: GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
+                    1: GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
+                }
+                self.GP = GPs[self.GPkernel]
+            elif self.model == 'MOmodel':
+                GPs = {
+                    0: GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
+                    1: GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
+                }
+                self.GP1 = GPs[self.GPkernel]
+                self.GP2 = GPs[self.GPkernel]
         else:
             n_hyperparameters = 0
 
-        # find MA in the compiled model
+    def _read_MA(self):
         try:
-            self.MAmodel = setup['kima']['MA'] == 'true'
+            self.MAmodel = self.setup['kima']['MA'] == 'true'
         except KeyError:
             self.MAmodel = False
 
-        if debug:
-            print('MA model:', self.MAmodel)
-
         if self.MAmodel:
             n_MAparameters = 2
-            start_hyperpars = start_parameters + n_trend + n_inst_offsets + n_hyperparameters + 1
-            self.MA = self.posterior_sample[:, start_hyperpars:
-                                            start_hyperpars + n_MAparameters]
+            istart = self._current_column
+            iend = istart + n_MAparameters
+            self.MA = self.posterior_sample[:, istart:iend]
+            self._current_column += n_MAparameters
         else:
             n_MAparameters = 0
 
-        # find KO in the compiled model
+    def _read_KO(self):
         try:
-            self.KO = setup['kima']['known_object'] == 'true'
-            self.nKO = int(setup['kima']['n_known_object'])
+            self.KO = self.setup['kima']['known_object'] == 'true'
+            self.nKO = int(self.setup['kima']['n_known_object'])
         except KeyError:
             self.KO = False
             self.nKO = 0
 
         if self.KO:
             n_KOparameters = 5 * self.nKO
-            start = start_parameters + n_trend + n_inst_offsets + n_hyperparameters + n_MAparameters + 1
+            start = self._current_column
             koinds = slice(start, start + n_KOparameters)
             self.KOpars = self.posterior_sample[:, koinds]
+            self._current_column += n_KOparameters
             self.indices['KOpars'] = koinds
         else:
             n_KOparameters = 0
 
-
-        start_objects_print = start_parameters + n_inst_offsets + \
-                              n_trend + n_act_ind + n_hyperparameters + \
-                              n_MAparameters + n_KOparameters + 1
-
-        # how many parameters per component
-        self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
-        # maximum number of components
-        self.max_components = int(
-            self.posterior_sample[0, start_objects_print + 1])
-
-        # find hyperpriors in the compiled model
-        if hyperpriors is None:
-            self.hyperpriors = setup['kima']['hyperpriors'] == 'true'
-        else:
-            self.hyperpriors = hyperpriors
-
-        # number of hyperparameters (muP, wP, muK)
-        n_dist_print = 3 if self.hyperpriors else 0
-        # if hyperpriors, then the period is sampled in log
-        self.log_period = self.hyperpriors
-
-        # the column with the number of planets in each sample
-        self.index_component = start_objects_print + 1 + n_dist_print + 1
-        self.indices['np'] = self.index_component
-
-        # student-t likelihood?
-        self.studentT = self.setup['kima']['studentt'] == 'true'
-        if self.studentT:
-            self.nu = self.posterior_sample[:, -2]
-            self.indices['nu'] = -2
-
-        self.vsys = self.posterior_sample[:, -1]
-        self.indices['vsys'] = -1
-
-        # indices of the planet parameters
-        self.indices['planets'] = slice(self.index_component + 1,
-                                        -3 if self.studentT else -2)
-
-        # build the marginal posteriors for planet parameters
-        self.get_marginals()
-
-        # make the plots, if requested
-        self.make_plots(options, self.save_plots)
 
     @classmethod
     def load(cls, filename, diagnostic=False):
@@ -677,7 +758,7 @@ class KimaResults(object):
 
         return pars
 
-    def model(self, sample, t=None):
+    def eval_model(self, sample, t=None, include_planets=True):
         """
         Evaluate the deterministic part of the model at one posterior sample.
         If `t` is None, use the observed times. Instrument offsets are only
@@ -696,51 +777,59 @@ class KimaResults(object):
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
             n2 = self.posterior_sample.shape[1]
-            msg = '`sample` has wrong dimensions, '\
-                  'should be %d got %d' % (n2, n1)
+            msg = '`sample` has wrong dimensions, expected %d got %d' % (n2, n1)
             raise ValueError(msg)
 
         data_t = False
         if t is None or t is self.t:
-            t = self.data[:, 0].copy()
+            t = self.t.copy()
             data_t = True
 
-        v = np.zeros_like(t)
+        if self.model == 'MOmodel':
+            v = np.zeros((2, t.size))
+        elif self.model == 'RVmodel':
+            v = np.zeros_like(t)
 
-        # get the planet parameters for this sample
-        pars = sample[self.indices['planets']].copy()
+        if include_planets:
+            # get the planet parameters for this sample
+            pars = sample[self.indices['planets']].copy()
 
-        # how many planets in this sample?
-        # nplanets = pars.size / self.n_dimensions
-        nplanets = (pars[:self.max_components] != 0).sum()
+            # how many planets in this sample?
+            # nplanets = pars.size / self.n_dimensions
+            nplanets = (pars[:self.max_components] != 0).sum()
 
-        # add the Keplerians for each of the planets
-        for j in range(int(nplanets)):
-            P = pars[j + 0 * self.max_components]
-            if P == 0.0:
-                continue
-            K = pars[j + 1 * self.max_components]
-            phi = pars[j + 2 * self.max_components]
-            t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
-            ecc = pars[j + 3 * self.max_components]
-            w = pars[j + 4 * self.max_components]
-            v += keplerian(t, P, K, ecc, w, t0, 0.)
+            # add the Keplerians for each of the planets
+            for j in range(int(nplanets)):
+                P = pars[j + 0 * self.max_components]
+                if P == 0.0:
+                    continue
+                K = pars[j + 1 * self.max_components]
+                phi = pars[j + 2 * self.max_components]
+                t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
+                ecc = pars[j + 3 * self.max_components]
+                w = pars[j + 4 * self.max_components]
+                if self.model == 'MOmodel':
+                    v[0, :] += keplerian(t, P, K, ecc, w, t0, 0.)
+                elif self.model == 'RVmodel':
+                    v += keplerian(t, P, K, ecc, w, t0, 0.)
 
-        # systemic velocity for this sample
-        vsys = sample[-1]
-        v += vsys
+        # systemic velocity (and C2) for this sample
+        if self.model == 'MOmodel':
+            C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']]]
+            v += C.reshape(-1, 1)
+        elif self.model == 'RVmodel':
+            v += sample[self.indices['vsys']]
 
         # if evaluating at the same times as the data, add instrument offsets
-        if data_t and self.multi and len(self.data_file) > 1:
+        if self.multi: # and len(self.data_file) > 1:
             offsets = sample[self.indices['inst_offsets']]
-            number_offsets = offsets.size
-            for j in range(number_offsets + 1):
-                if j == number_offsets:
-                    of = 0.
-                else:
-                    of = offsets[j]
-                instrument_mask = self.obs == j + 1
-                v[instrument_mask] += of
+            offsets = np.pad(offsets.reshape(-1, 1), ((0,0),(0,1)))
+            if data_t:
+                ii = self.obs.astype(int) - 1
+            else:
+                ii = np.digitize(t, np.r_[t[0], self._offset_times]) - 1
+
+            v += np.take(offsets, ii, axis=1)
 
         # add the trend, if present
         if self.trend:
@@ -752,13 +841,13 @@ class KimaResults(object):
 
         return v
 
-    def model_stochastic(self, sample, t=None, return_std=False):
+    def stochastic_model(self, sample, t=None, return_std=False):
         """
         Evaluate the stochastic part of the model (GP) at one posterior sample.
         If `t` is None, use the observed times. Instrument offsets are only
         added if `t` is None, but the systemic velocity is always added.
         To evaluate at all posterior samples, consider using
-            np.apply_along_axis(self.model_stochastic, 1, self.posterior_sample)
+            np.apply_along_axis(self.stochastic_model, 1, self.posterior_sample)
 
         Arguments
         ---------
@@ -778,13 +867,25 @@ class KimaResults(object):
             raise ValueError(msg)
 
         if t is None or t is self.t:
-            t = self.data[:, 0].copy()
+            t = self.t.copy()
 
         if not self.GPmodel:
             return np.zeros_like(t)
 
-        return self.GP.predict_with_hyperpars(self, sample, t=t,
-                                              return_std=return_std)
+        if self.model == 'MOmodel':
+            D = np.vstack((self.y, self.y2))
+            r = D - self.eval_model(sample)
+            sto_v = np.zeros((2, t.size))
+            GPpars = sample[self.indices['GPpars']]
+            self.GP1.kernel.setpars(*GPpars[[0, 2, 3, 4]])
+            self.GP2.kernel.setpars(*GPpars[[1, 2, 3, 4]])
+            sto_v[0] = self.GP1.predict(r[0], t)
+            sto_v[1] = self.GP2.predict(r[1], t)
+            return sto_v
+
+        elif self.model == 'RVmodel':
+            return self.GP.predict_with_hyperpars(self, sample, t=t,
+                                                  return_std=return_std)
 
     def full_model(self, sample, t=None):
         """
@@ -801,7 +902,7 @@ class KimaResults(object):
         t : ndarray (optional)
             Times at which to evaluate the model, or None to use observed times
         """
-        deterministic = self.model(sample, t)
+        deterministic = self.eval_model(sample, t)
 
         if self.GPmodel:
             GPpredictive = self.GP.predict_with_hyperpars(self, sample, t)
@@ -814,7 +915,7 @@ class KimaResults(object):
         if full:
             return self.y - self.full_model(sample)
         else:
-            return self.y - self.model(sample)
+            return self.y - self.eval_model(sample)
 
     @property
     def instruments(self):
@@ -838,6 +939,15 @@ class KimaResults(object):
         except FloatingPointError:
             np.seterr(**oldset)
             return n[n != 0]
+
+
+    @property
+    def _offset_times(self):
+        if not self.multi:
+            raise ValueError('Model is not multi_instrument, no offset times')
+        _1 = self.t[np.ediff1d(self.obs, 0, None) > 0]
+        _2 = self.t[np.ediff1d(self.obs, None, 0) > 0]
+        return np.mean((_1, _2), axis=0)
 
     # most of the following methods just dispatch to display
 
@@ -1027,6 +1137,19 @@ class KimaResults(object):
         If the model has a GP component, the prediction is calculated using the
         GP hyperparameters for each of the random samples.
         """
+        if self.model == 'MOmodel':
+            display.plot_random_samples_mo(self,
+                                           ncurves=ncurves,
+                                           over=over,
+                                           pmin=pmin,
+                                           pmax=pmax,
+                                           show_vsys=show_vsys,
+                                           show_trend=show_trend,
+                                           Np=Np,
+                                           return_residuals=return_residuals,
+                                           ntt=ntt,
+                                           **kwargs)
+            return
         colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
 
         samples = self.get_sorted_planet_samples()
@@ -1654,11 +1777,11 @@ class KimaResults(object):
         args.pop('kwargs')
         return display.hist_vsys(self, **args, **kwargs)
 
-    def hist_extra_sigma(self, show_prior=False, **kwargs):
+    def hist_jitter(self, show_prior=False, **kwargs):
         """ 
         Plot the histogram of the posterior for the additional white noise 
         """
-        return display.hist_extra_sigma(self, show_prior, **kwargs)
+        return display.hist_jitter(self, show_prior, **kwargs)
 
     def hist_correlations(self):
         """ 
