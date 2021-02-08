@@ -49,11 +49,11 @@ void MOmodel::setPriors()  // BUG: should be done by only one thread!
             throw std::logic_error("trend=true but degree=0, what gives?");
         if (degree > 3)
             throw std::range_error("can't go higher than 3rd degree trends");
-        if (degree >= 1 & !slope_prior)
+        if (degree >= 1 && !slope_prior)
             slope_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(1)) );
-        if (degree >= 2 & !quadr_prior)
+        if (degree >= 2 && !quadr_prior)
             quadr_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2)) );
-        if (degree == 3 & !cubic_prior)
+        if (degree == 3 && !cubic_prior)
             cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
     }
 
@@ -777,9 +777,11 @@ double MOmodel::perturb(RNG& rng)
                     offsets2_prior->perturb(offsets[j], rng);
             }
 
-            // propose new slope
+            // propose new trend
             if(trend) {
-                slope_prior->perturb(slope, rng);
+                if (degree >= 1) slope_prior->perturb(slope, rng);
+                if (degree >= 2) quadr_prior->perturb(quadr, rng);
+                if (degree == 3) cubic_prior->perturb(cubic, rng);
             }
 
             for(size_t i=0; i<mu.size(); i++)
@@ -856,9 +858,11 @@ double MOmodel::perturb(RNG& rng)
                     offsets_prior->perturb(offsets[j], rng);
             }
 
-            // propose new slope
+            // propose new trend
             if(trend) {
-                slope_prior->perturb(slope, rng);
+                if (degree >= 1) slope_prior->perturb(slope, rng);
+                if (degree >= 2) quadr_prior->perturb(quadr, rng);
+                if (degree == 3) cubic_prior->perturb(cubic, rng);
             }
 
             for(size_t i=0; i<mu.size(); i++)
@@ -949,7 +953,7 @@ double MOmodel::perturb(RNG& rng)
                     offsets2_prior->perturb(offsets[j], rng);
             }
 
-            // propose new slope
+            // propose new trend
             if(trend) {
                 if (degree >= 1) slope_prior->perturb(slope, rng);
                 if (degree >= 2) quadr_prior->perturb(quadr, rng);
