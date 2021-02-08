@@ -20,6 +20,8 @@ import time
 from collections import namedtuple
 from matplotlib.pyplot import show
 
+interactive_or_script = not hasattr(__main__, 'load_entry_point')
+
 numbered_args_help = """optional numbered arguments:
   1    - plot the posterior for Np;
   2    - plot the posterior for the orbital periods;
@@ -192,7 +194,7 @@ def _parse_args(options):
 
 
 def showresults(options='', force_return=False, verbose=True, show_plots=True,
-                kima_tips=True):
+                kima_tips=True, numResampleLogX=1, moreSamples=1):
     """
     Generate and plot results from a kima run. The argument `options` should be 
     a string with the same options as for the kima-showresults script.
@@ -235,10 +237,11 @@ def showresults(options='', force_return=False, verbose=True, show_plots=True,
             evidence, H, logx_samples = postprocess(
                 plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
     except IOError as e:
-        sys.tracebacklimit = 0
-        raise e from None
-        # print(e)
-        # sys.exit(1)
+        if interactive_or_script:
+            raise e from None
+        else:
+            print(str(e))
+            return
 
     # sometimes an IndexError is raised when the levels.txt file is being
     # updated too quickly, and the read operation is not atomic... we try one
@@ -249,9 +252,12 @@ def showresults(options='', force_return=False, verbose=True, show_plots=True,
                 evidence, H, logx_samples = postprocess(
                     plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
         except IndexError:
-            sys.tracebacklimit = 0
-            raise IOError('something went wrong reading levels.txt') from None
-
+            msg = 'Something went wrong reading "levels.txt". Try again.'
+            if interactive_or_script:
+                raise IOError(msg) from None
+            else:
+                print(msg)
+                return
 
     # show kima tips
     if verbose and kima_tips:
@@ -409,7 +415,7 @@ def _parse_args2(options):
     return args
 
 def showresults2(options='', force_return=False, verbose=True, show_plots=True,
-                kima_tips=True):
+                 kima_tips=True, numResampleLogX=1):
     """
     Generate and plot results from a kima run. The argument `options` should be 
     a string with the same options as for the kima-showresults script.
@@ -428,6 +434,8 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
         v = open(version_file).read().strip()  # same as kima
         print('kima (kima-showresults script)', v)
         return
+
+    args.diagnostic = 'diagnostic' in args.commands
 
     plots = []
     if 'rv' in args.commands:
@@ -451,7 +459,7 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
             plots.append(cmd)
         except ValueError:
             pass
-    
+
     if '6p' in args.commands:
         plots.append('6p')
 
@@ -465,8 +473,6 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
     if 'all' in args.commands:
         plots = '1 2 3 4 5 6 7 8'.split()
 
-    diagnostic = 'diagnostic' in args.commands
-
     hidden = StringIO()
     stdout = sys.stdout if verbose else hidden
 
@@ -476,10 +482,11 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
                                                     numResampleLogX=1,
                                                     moreSamples=1)
     except IOError as e:
-        sys.tracebacklimit = 0
-        raise e from None
-        # print(e)
-        # sys.exit(1)
+        if interactive_or_script:
+            raise e from None
+        else:
+            print(str(e))
+            return
 
     # sometimes an IndexError is raised when the levels.txt file is being
     # updated too quickly, and the read operation is not atomic... we try one
@@ -491,9 +498,12 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
                                                         numResampleLogX=1,
                                                         moreSamples=1)
         except IndexError:
-            sys.tracebacklimit = 0
-            raise IOError('something went wrong reading levels.txt') from None
-
+            msg = 'Something went wrong reading "levels.txt". Try again.'
+            if interactive_or_script:
+                raise IOError(msg) from None
+            else:
+                print(msg)
+                return
 
     # show kima tips
     if verbose and kima_tips:

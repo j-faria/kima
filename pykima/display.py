@@ -71,10 +71,10 @@ def make_plots(res, options, save_plots=False):
                 methods(**kwargs)
 
 
-def make_plot1(res):
+def make_plot1(res, ax=None):
     """ Plot the histogram of the posterior for Np """
-
-    fig, ax = plt.subplots(1, 1)
+    if ax is None:
+        fig, ax = plt.subplots(1, 1)
 
     bins = np.arange(res.max_components + 2)
     nplanets = res.posterior_sample[:, res.index_component]
@@ -107,11 +107,12 @@ def make_plot1(res):
         fig.savefig(filename)
 
     if res.return_figs:
-        return fig
+        return ax.figure
 
 
 def make_plot2(res, nbins=100, bins=None, plims=None, logx=True, density=False,
-               kde=False, kde_bw=None, show_peaks=False, show_prior=False):
+               kde=False, kde_bw=None, show_peaks=False, show_prior=False,
+               show_year=True, show_timespan=True):
     """
     Plot the histogram (or the kde) of the posterior for the orbital period(s).
     Optionally provide the number of histogram bins, the bins themselves, the
@@ -131,15 +132,14 @@ def make_plot2(res, nbins=100, bins=None, plims=None, logx=True, density=False,
 
     fig, ax = plt.subplots(1, 1)
 
-    kwargs = {'ls': '--', 'lw': 2, 'alpha': 0.5, 'zorder': -1}
-    # mark 1 year
-    year = 365.25
-    ax.axvline(x=year, color='r', label='1 year', **kwargs)
-    # ax.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
-    # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
-
-    # mark the timespan of the data
-    ax.axvline(x=res.t.ptp(), color='b', label='timespan', **kwargs)
+    kwargs = {'ls': '--', 'lw': 1.5, 'alpha': 0.3, 'zorder': -1}
+    if show_year:  # mark 1 year
+        year = 365.25
+        ax.axvline(x=year, color='r', label='1 year', **kwargs)
+        # ax.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
+        # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
+    if show_timespan:  # mark the timespan of the data
+        ax.axvline(x=res.t.ptp(), color='k', label='time span', **kwargs)
 
     if kde:
         NN = 3000
@@ -333,10 +333,10 @@ def make_plot3(res, points=True, gridsize=50):
         return fig
 
 
-def make_plot4(res, Np=None, ranges=None):
+def make_plot4(res, Np=None, ranges=None, show_prior=False, **hist_kwargs):
     """
     Plot histograms for the GP hyperparameters. If Np is not None, highlight
-    the samples with Np Keplerians. 
+    the samples with Np Keplerians.
     """
     if not res.GPmodel:
         print('Model does not have GP! make_plot4() doing nothing...')
@@ -354,11 +354,25 @@ def make_plot4(res, Np=None, ranges=None):
     if Np is not None:
         m = res.posterior_sample[:, res.index_component] == Np
 
-    fig, axes = plt.subplots(2, int(np.ceil(n / 2)))
-    axes = np.ravel(axes)
-    for i, eta in enumerate(res.etas.T):
-        ax = axes[i]
-        ax.hist(eta, bins=40, range=ranges[i])
+    nplots = int(np.ceil(len(available_etas) / 2))
+    fig, axes = plt.subplots(2, nplots)
+
+    for i, eta in enumerate(available_etas):
+        ax = np.ravel(axes)[i]
+        ax.hist(getattr(res, eta), bins=40, range=ranges[i], **hist_kwargs)
+
+        if show_prior:
+            try:
+                prior = res.priors[eta + '_prior']
+                logprior = False
+            except KeyError:
+                prior = res.priors['log_' + eta + '_prior']
+                logprior = True
+
+            if logprior:
+                ax.hist(np.exp(prior.rvs(res.ESS)), bins=40, color='k', alpha=0.2)
+            else:
+                ax.hist(prior.rvs(res.ESS), bins=40, color='k', alpha=0.2)
 
         if Np is not None:
             ax.hist(eta[m],
@@ -371,10 +385,18 @@ def make_plot4(res, Np=None, ranges=None):
 
         ax.set(xlabel=labels[i], ylabel='posterior samples')
 
-    for ii in range(i+1, len(fig.axes)):
-        axes[ii].axis('off')
+    for j in range(i + 1, 2 * nplots):
+        np.ravel(axes)[j].axis('off')
 
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    if show_prior:
+        axes[0, 0].legend(
+            ['posterior', 'prior'],
+            bbox_to_anchor=(-0.1, 1.25), ncol=2,
+            loc='upper left',
+        )
+
+    # fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    fig.tight_layout()
 
     if res.save_plots:
         filename = 'kima-showresults-fig4.png'
@@ -909,7 +931,8 @@ def hist_nu(res, show_prior=False, **kwargs):
             print(str(e))
 
 
-def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
+def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
+               add_titles=True, highlight_points=None):
     """ Plot the phase curves given the solution in `sample` """
     # this is probably the most complicated function in the whole file!!
 
@@ -919,8 +942,10 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
 
     # make copies to not change attributes
     t, y, e = res.t.copy(), res.y.copy(), res.e.copy()
+    M0_epoch = res.M0_epoch
     if t[0] > 24e5:
         t -= 24e5
+        M0_epoch -= 24e5
 
     def kima_pars_to_keplerian_pars(p):
         # transforms kima planet pars (P,K,phi,ecc,w)
@@ -928,8 +953,13 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
         # assert p.size == res.n_dimensions
         P = p[0]
         phi = p[2]
-        t0 = res.M0_epoch - (P * phi) / (2. * np.pi)
+        t0 = M0_epoch - (P * phi) / (2. * np.pi)
         return np.array([P, p[1], p[3], p[4], t0, 0.0])
+
+    if highlight_points is not None:
+        hlkw = dict(fmt='*', ms=6, color='y', zorder=2)
+        hl = highlight_points
+        highlight_points = True
 
     mc = res.max_components
     if res.KO:
@@ -955,7 +985,7 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
     # extract periods, phases and calculate times of periastron
     P = pars[0 * mc:1 * mc]
     phi = pars[2 * mc:3 * mc]
-    T0 = res.M0_epoch - (P * phi) / (2. * np.pi)
+    T0 = M0_epoch - (P * phi) / (2. * np.pi)
 
     # how many planets in this sample?
     nplanets = (pars[:mc] != 0).sum()
@@ -1044,7 +1074,10 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
         if phase_axs is None:
             ax = fig.add_subplot(gs[gs_indices[i]])
         else:
-            ax = phase_axs[i]
+            try:
+                ax = phase_axs[i]
+            except IndexError:
+                continue
 
         p = P[i]
         t0 = T0[i]
@@ -1078,18 +1111,26 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
                 color = ax._get_lines.prop_cycler.__next__()['color']
 
                 for j in (-1, 0, 1):
+                    alpha = 0.2 if j in (-1, 1) else 1
                     if highlight:
-                        if highlight in res.data_file[k - 1]:
-                            alpha = 1
-                        else:
+                        if highlight not in res.data_file[k - 1]:
                             alpha = 0.2
-                    else:
-                        alpha = 0.3 if j in (-1, 1) else 1
+                    elif only:
+                        if only not in res.data_file[k - 1]:
+                            alpha = 0
 
                     ax.errorbar(
                         np.sort(phase) + j, yy[np.argsort(phase)],
                         ee[np.argsort(phase)], color=color, alpha=alpha,
                         **ekwargs)
+
+                    if highlight_points:
+                        hlm = (m & hl)[m]
+                        ax.errorbar(np.sort(phase[hlm]) + j, 
+                                    yy[np.argsort(phase[hlm])],
+                                    ee[np.argsort(phase[hlm])], 
+                                    alpha=alpha, **hlkw)
+
 
         else:
             phase = ((t - t0) / p) % 1.0
@@ -1109,14 +1150,15 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
         ax.set_xlim(-0.2, 1.2)
         ax.set(xlabel="phase", ylabel="RV [m/s]")
         if add_titles:
-            ax.set_title('%s' % letter, loc='left')
+            title_kwargs = dict(fontsize=12)
+            ax.set_title('%s' % letter, loc='left', **title_kwargs)
             if nplanets == 1:
                 k = parsi(i)[1]
                 ecc = parsi(i)[2]
                 title = f'P={p:.2f} days\n K={k:.2f} m/s  ecc={ecc:.2f}'
-                ax.set_title(title, loc='right')
+                ax.set_title(title, loc='right', **title_kwargs)
             else:
-                ax.set_title('P=%.2f days' % p, loc='right')
+                ax.set_title('P=%.2f days' % p, loc='right', **title_kwargs)
 
     if res.GPmodel:
         axGP = fig.add_subplot(gs[1, :])
@@ -1130,10 +1172,18 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
 
                 GPy = res.y[m] - sample[-1] - of
                 axGP.errorbar(t[m], GPy, e[m], **ekwargs)
+
+                if highlight_points:
+                    GPy = res.y - sample[-1] - of
+                    axGP.errorbar(t[hl], GPy[hl], e[hl], **hlkw)
         else:
             axGP.errorbar(t, res.y - res.model(sample), e, **ekwargs)
 
-        axGP.set(xlabel="Time [days]", ylabel="GP prediction [m/s]")
+            if highlight_points:
+                GPy = res.y - res.model(sample)
+                axGP.errorbar(t[hl], GPy[hl], e[hl], **hlkw)
+
+        axGP.set(xlabel="Time [days]", ylabel="GP [m/s]")
 
         # axGP.plot(t, GPvel, 'o-')
         # jitters = sample[res.indices['jitter']]
@@ -1151,40 +1201,57 @@ def phase_plot(res, sample, highlight=None, phase_axs=None, add_titles=True):
 
     ax = fig.add_subplot(gs[-1, :])
     residuals = np.zeros_like(t)
+    mask = np.ones_like(t, dtype=bool)
 
     if res.multi:
         jitters = sample[res.indices['jitter']]
         print('residual rms per instrument')
         for k in range(1, res.n_instruments + 1):
             m = res.obs == k
-            # label = res.data_file[k - 1]
+            residuals[m] = res.y[m] - v[m] - KOvel[m] - GPvel[m]
+
+            alpha = 1
+            if highlight:
+                if highlight not in res.data_file[k - 1]:
+                    alpha = 0.2
+            elif only:
+                if only not in res.data_file[k - 1]:
+                    mask[m] = False
+                    continue
+
             ax.errorbar(t[m], res.y[m] - v[m] - KOvel[m] - GPvel[m], e[m],
-                        **ekwargs)
-            ax.fill_between(t[m], -jitters[k - 1], jitters[k - 1], alpha=0.2)
+                        alpha=alpha, color=f'C{k-1}', **ekwargs)
+
+            ax.fill_between(t[m], -jitters[k - 1], jitters[k - 1], alpha=0.2,
+                            color=f'C{k-1}')
             print(res.instruments[k - 1], end=': ')
             print(wrms(res.y[m] - v[m] - KOvel[m] - GPvel[m], 1 / e[m]**2))
-            residuals[m] = res.y[m] - v[m] - KOvel[m] - GPvel[m]
 
     else:
         ax.errorbar(t, res.y - v - KOvel - GPvel, e, **ekwargs)
         residuals = res.y - v - KOvel - GPvel
 
+    if highlight_points:
+        ax.errorbar(t[hl], residuals[hl], e[hl], **hlkw)
+
     if res.studentT:
         outliers = find_outliers(res, sample)
-        ax.errorbar(t[outliers], residuals[outliers], e[outliers], fmt='or',
-                    ms=5)
+        ax.errorbar(t[outliers], residuals[outliers], e[outliers], fmt='xr',
+                    ms=7, lw=3)
 
     # ax.legend()
     ax.axhline(y=0, ls='--', alpha=0.5, color='k')
     ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
-    ax.set(xlabel='Time [days]', ylabel='residuals [m/s]')
+    ax.set(xlabel='Time [BJD]', ylabel='residuals [m/s]')
+    title_kwargs = dict(loc='right', fontsize=12)
+
     if res.studentT:
-        rms1 = wrms(residuals, 1 / e**2)
+        rms1 = wrms(residuals[mask], 1 / e[mask]**2)
         rms2 = wrms(residuals[~outliers], 1 / e[~outliers]**2)
-        ax.set_title(f'rms={rms2:.2f} ({rms1:.2f}) m/s', loc='right')
+        ax.set_title(f'rms: {rms2:.2f} ({rms1:.2f}) m/s', **title_kwargs)
     else:
-        rms = wrms(residuals, 1 / e**2)
-        ax.set_title(f'rms={rms:.2f} m/s', loc='right')
+        rms = wrms(residuals[mask], 1 / e[mask]**2)
+        ax.set_title(f'rms: {rms:.2f} m/s', **title_kwargs)
 
     if res.save_plots:
         filename = 'kima-showresults-fig6.1.png'

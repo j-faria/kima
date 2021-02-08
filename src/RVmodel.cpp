@@ -46,11 +46,11 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             throw std::logic_error("trend=true but degree=0, what gives?");
         if (degree > 3)
             throw std::range_error("can't go higher than 3rd degree trends");
-        if (degree >= 1 & !slope_prior)
+        if (degree >= 1 && !slope_prior)
             slope_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(1)) );
-        if (degree >= 2 & !quadr_prior)
+        if (degree >= 2 && !quadr_prior)
             quadr_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(2)) );
-        if (degree == 3 & !cubic_prior)
+        if (degree == 3 && !cubic_prior)
             cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
     }
 
@@ -64,8 +64,10 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             eta2_prior = make_prior<LogUniform>(1, 100);
         if (!eta3_prior)
             eta3_prior = make_prior<Uniform>(10, 40);
-        if (!log_eta4_prior & kernel==standard)
+        if (!log_eta4_prior && kernel != celerite)
             log_eta4_prior = make_prior<Uniform>(-1, 1);
+        if (!alpha_prior && kernel == perrq)
+            alpha_prior = make_prior<LogUniform>(0.5, 10);
     }
 
     if (known_object) { // KO mode!
@@ -117,12 +119,23 @@ void RVmodel::from_prior(RNG& rng)
     {
         eta1 = exp(log_eta1_prior->generate(rng)); // m/s
 
-        eta2 = eta2_prior->generate(rng); // days
+        if (kernel == sqexp)
+        {
+            eta2 = eta2_prior->generate(rng); // days
+        }
+        else
+        {
+            // generate eta3 first because eta2 might depend on it
+            eta3 = eta3_prior->generate(rng); // days
+            eta2 = eta2_prior->generate(rng); // days
 
-        eta3 = eta3_prior->generate(rng); // days
+            if (kernel != celerite)
+                eta4 = exp(log_eta4_prior->generate(rng));
+            
+            if (kernel == perrq)
+                alpha = alpha_prior->generate(rng);
 
-        if (kernel == standard)
-            eta4 = exp(log_eta4_prior->generate(rng));
+        }
     }
 
     if(MA)
@@ -216,6 +229,115 @@ void RVmodel::calculate_C()
             break;
         }
 
+    case permatern32:
+        {
+            // This implements a quasi-periodic kernel built from the 
+            // Matern 3/2 kernel, see R&W2006
+            for(size_t i=0; i<N; i++)
+            {
+                for(size_t j=i; j<N; j++)
+                {
+                    double r = t[i] - t[j];
+                    double s = 2 * abs(sin(M_PI * r / eta3));
+
+                    C(i, j) = eta1 * eta1 * exp(-0.5*pow(r/eta2, 2)) * (1 + sqrt(3)*s/eta4) * exp(-sqrt(3)*s/eta4);
+
+                    if(i==j)
+                    {
+                        if (multi_instrument)
+                        {
+                            jit = jitters[obsi[i]-1];
+                            C(i, j) += sig[i]*sig[i] + jit*jit;
+                        }
+                        else
+                        {
+                            C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                        }
+                    }
+                    else
+                    {
+                        C(j, i) = C(i, j);
+                    }
+                }
+            }
+
+            break;
+        }
+
+    case permatern52:
+        {
+            // This implements a quasi-periodic kernel built from the 
+            // Matern 5/2 kernel, see R&W2006
+            for(size_t i=0; i<N; i++)
+            {
+                for(size_t j=i; j<N; j++)
+                {
+                    double r = t[i] - t[j];
+                    double s = 2 * abs(sin(M_PI * r / eta3));
+
+                    C(i, j) = eta1 * eta1 \
+                              * exp(-0.5*pow(r/eta2, 2)) \
+                              * ( 1 + sqrt(5)*s/eta4 + 5*s*s/(3*eta4*eta4) ) * exp(-sqrt(5)*s/eta4);
+
+                    if(i==j)
+                    {
+                        if (multi_instrument)
+                        {
+                            jit = jitters[obsi[i]-1];
+                            C(i, j) += sig[i]*sig[i] + jit*jit;
+                        }
+                        else
+                        {
+                            C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                        }
+                    }
+                    else
+                    {
+                        C(j, i) = C(i, j);
+                    }
+                }
+            }
+
+            break;
+        }
+
+    case perrq:
+        {
+            // This implements a quasi-periodic kernel built from the 
+            // Rational Quadratic kernel, see R&W2006
+            for(size_t i=0; i<N; i++)
+            {
+                for(size_t j=i; j<N; j++)
+                {
+                    double r = t[i] - t[j];
+                    double s = abs(sin(M_PI * r / eta3));
+
+                    C(i, j) = eta1 * eta1 \
+                              * exp(-0.5*pow(r/eta2, 2)) \
+                              * pow(1 + 2*s*s/(alpha*eta4*eta4), -alpha);
+
+                    if(i==j)
+                    {
+                        if (multi_instrument)
+                        {
+                            jit = jitters[obsi[i]-1];
+                            C(i, j) += sig[i]*sig[i] + jit*jit;
+                        }
+                        else
+                        {
+                            C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                        }
+                    }
+                    else
+                    {
+                        C(j, i) = C(i, j);
+                    }
+                }
+            }
+
+            break;
+        }
+
     case celerite:
         {
             /*
@@ -266,8 +388,45 @@ void RVmodel::calculate_C()
             break;
         }
 
+    case sqexp:
+        {
+            /* This implements the squared exponential kernel, see R&W2006 */
+            for(size_t i=0; i<N; i++)
+            {
+                for(size_t j=i; j<N; j++)
+                {
+                    C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2));
+
+                    if(i==j)
+                    {
+                        if (multi_instrument)
+                        {
+                            jit = jitters[obsi[i]-1];
+                            C(i, j) += sig[i]*sig[i] + jit*jit;
+                        }
+                        else
+                        {
+                            C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                        }
+                    }
+                    else
+                    {
+                        C(j, i) = C(i, j);
+                    }
+                }
+            }
+
+            break;
+        }
+
     default:
-        cout << "error: `kernel` should be 'standard' or 'celerite'" << endl;
+        cout << "error: `kernel` should be one of" << endl;
+        cout << "'standard', ";
+        cout << "'permatern32', ";
+        cout << "'permatern52', ";
+        cout << "'perrq', ";
+        cout << "'celerite', ";
+        cout << "or 'sqexp'" << endl;
         std::abort();
         break;
     }
@@ -459,6 +618,9 @@ double RVmodel::perturb(RNG& rng)
             switch (kernel)
             {
                 case standard:
+                case permatern32:
+                case permatern52:
+                case perrq:
                 {
                     if(rng.rand() <= 0.25)
                     {
@@ -468,20 +630,20 @@ double RVmodel::perturb(RNG& rng)
                     }
                     else if(rng.rand() <= 0.33330)
                     {
-                        // log_eta2 = log(eta2);
-                        // log_eta2_prior->perturb(log_eta2, rng);
-                        // eta2 = exp(log_eta2);
-                        eta2_prior->perturb(eta2, rng);
+                        eta3_prior->perturb(eta3, rng);
                     }
                     else if(rng.rand() <= 0.5)
                     {
-                        eta3_prior->perturb(eta3, rng);
+                        eta2_prior->perturb(eta2, rng);
                     }
                     else
                     {
                         log_eta4 = log(eta4);
                         log_eta4_prior->perturb(log_eta4, rng);
                         eta4 = exp(log_eta4);
+
+                        if (kernel == perrq)
+                            alpha_prior->perturb(alpha, rng);
                     }
 
                     break;
@@ -497,9 +659,6 @@ double RVmodel::perturb(RNG& rng)
                     }
                     else if(rng.rand() <= 0.5)
                     {
-                        // log_eta2 = log(eta2);
-                        // log_eta2_prior->perturb(log_eta2, rng);
-                        // eta2 = exp(log_eta2);
                         eta2_prior->perturb(eta2, rng);
                     }
                     else
@@ -508,6 +667,21 @@ double RVmodel::perturb(RNG& rng)
                     }
                     break;
                 }
+                
+                case sqexp:
+                {
+                    if(rng.rand() <= 0.5)
+                    {
+                        log_eta1 = log(eta1);
+                        log_eta1_prior->perturb(log_eta1, rng);
+                        eta1 = exp(log_eta1);
+                    }
+                    else
+                    {
+                        eta2_prior->perturb(eta2, rng);
+                    }
+                }
+                
                 default:
                     break;
             }
@@ -830,6 +1004,10 @@ double RVmodel::log_likelihood() const
         switch (kernel)
         {
             case standard:
+            case permatern32:
+            case permatern52:
+            case perrq:
+            case sqexp:
             {
                 // perform the cholesky decomposition of C
                 Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
@@ -962,10 +1140,15 @@ void RVmodel::print(std::ostream& out) const
 
     if(GP)
     {
-        if (kernel == standard)
+        if (kernel == sqexp)
+            out << eta1 << '\t' << eta2 << '\t';
+        else if (kernel != celerite)
             out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t' << eta4 << '\t';
         else
             out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t';
+
+        if (kernel == perrq)
+            out << alpha << '\t';
     }
     
     if(MA)
@@ -1025,10 +1208,15 @@ string RVmodel::description() const
 
     if(GP)
     {
-        if(kernel == standard)
+        if (kernel == sqexp)
+            desc += "eta1" + sep + "eta2" + sep;
+        else if (kernel != celerite)
             desc += "eta1" + sep + "eta2" + sep + "eta3" + sep + "eta4" + sep;
         else
             desc += "eta1" + sep + "eta2" + sep + "eta3" + sep;
+
+        if (kernel == perrq)
+            desc += "alpha" + sep;
     }
     
     if(MA)
@@ -1087,6 +1275,8 @@ void RVmodel::save_setup() {
     fout << "[kima]" << endl;
 
     fout << "model: " << "RVmodel" << endl << endl;
+    fout << "fix: " << fix << endl;
+    fout << "npmax: " << npmax << endl << endl;
 
     fout << "GP: " << GP << endl;
     if (GP)
@@ -1114,7 +1304,9 @@ void RVmodel::save_setup() {
         fout << f << ",";
     fout << endl;
 
+    fout.precision(15);
     fout << "M0_epoch: " << data.M0_epoch << endl;
+    fout.precision(6);
 
     fout << endl;
 
@@ -1137,8 +1329,10 @@ void RVmodel::save_setup() {
         // fout << "log_eta2_prior: " << *log_eta2_prior << endl;
         fout << "eta2_prior: " << *eta2_prior << endl;
         fout << "eta3_prior: " << *eta3_prior << endl;
-        if (kernel == standard)
+        if (kernel != celerite)
             fout << "log_eta4_prior: " << *log_eta4_prior << endl;
+        if (kernel == perrq)
+            fout << "alpha_prior: " << *alpha_prior << endl;
     }
 
 

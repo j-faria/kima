@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from numpy import exp, sin, sqrt
 from scipy.spatial.distance import squareform, pdist, cdist
 from scipy.linalg import cholesky, cho_solve, solve_triangular
 
@@ -9,6 +10,16 @@ try:
 except ImportError:
     print('Please install celerite: https://celerite.readthedocs.io/en/stable/python/install')
     sys.exit(1)
+
+
+available_kernels = {
+    0: 'standard',
+    1: 'celerite',
+    2: 'permatern32',
+    3: 'permatern52',
+    4: 'perrq',
+    5: 'sqexp',
+}
 
 
 class QPkernel():
@@ -33,18 +44,152 @@ class QPkernel():
             dists = squareform(pdist(x1, metric='euclidean'))
             argexp = dists / self.eta2
             argsin = np.pi * dists / self.eta3
-            K = self.eta1**2 * np.exp(-0.5 * argexp**2
-                                      -2 * (np.sin(argsin) / self.eta4) ** 2
-                                     )
+            K = self.eta1**2 * np.exp(-0.5 * argexp**2 - 2 *
+                                      (np.sin(argsin) / self.eta4)**2)
         else:
             if x2.ndim == 1:
                 x2 = x2.reshape(-1,1)
             dists = cdist(x1, x2, metric='euclidean')
             argexp = dists / self.eta2
             argsin = np.pi * dists / self.eta3
-            K = self.eta1**2 * np.exp(-0.5 * argexp**2
-                                      -2 * (np.sin(argsin) / self.eta4)**2
-                                     )
+            K = self.eta1**2 * np.exp(-0.5 * argexp**2 - 2 *
+                                      (np.sin(argsin) / self.eta4)**2)
+
+        return K
+
+
+class QPMatern32kernel():
+    """ The quasi-periodic kernel based on the Matern 3/2 """
+    def __init__(self, eta1, eta2, eta3, eta4):
+        self.eta1 = eta1
+        self.eta2 = eta2
+        self.eta3 = eta3
+        self.eta4 = eta4
+
+    def setpars(self, eta1=None, eta2=None, eta3=None, eta4=None):
+        self.eta1 = eta1 if eta1 else self.eta1
+        self.eta2 = eta2 if eta2 else self.eta2
+        self.eta3 = eta3 if eta3 else self.eta3
+        self.eta4 = eta4 if eta4 else self.eta4
+
+    def __call__(self, x1, x2=None):
+        if x1.ndim == 1:
+            x1 = x1.reshape(-1, 1)
+
+        if x2 is None:
+            dists = squareform(pdist(x1, metric='euclidean'))
+        else:
+            if x2.ndim == 1:
+                x2 = x2.reshape(-1, 1)
+            dists = cdist(x1, x2, metric='euclidean')
+
+        argexp = dists / self.eta2
+        argsin = np.pi * dists / self.eta3
+        K = self.eta1**2 \
+            * exp(-0.5 * argexp**2) \
+            * (1 + sqrt(3) * 2 * np.abs(sin(argsin) / self.eta4)) \
+            * exp(-sqrt(3) * 2 * np.abs(sin(argsin) / self.eta4))
+
+        return K
+
+
+class QPMatern52kernel():
+    """ The quasi-periodic kernel based on the Matern 5/2 """
+    def __init__(self, eta1, eta2, eta3, eta4):
+        self.eta1 = eta1
+        self.eta2 = eta2
+        self.eta3 = eta3
+        self.eta4 = eta4
+
+    def setpars(self, eta1=None, eta2=None, eta3=None, eta4=None):
+        self.eta1 = eta1 if eta1 else self.eta1
+        self.eta2 = eta2 if eta2 else self.eta2
+        self.eta3 = eta3 if eta3 else self.eta3
+        self.eta4 = eta4 if eta4 else self.eta4
+
+    def __call__(self, x1, x2=None):
+        if x1.ndim == 1:
+            x1 = x1.reshape(-1, 1)
+
+        if x2 is None:
+            dists = squareform(pdist(x1, metric='euclidean'))
+        else:
+            if x2.ndim == 1:
+                x2 = x2.reshape(-1, 1)
+            dists = cdist(x1, x2, metric='euclidean')
+
+        argexp = dists / self.eta2
+        argsin = np.pi * dists / self.eta3
+        s = 2 * np.abs(sin(argsin))
+
+        K = self.eta1**2 \
+            * exp(-0.5 * argexp**2) \
+            * (1 + sqrt(5) * s / self.eta4 + 5 * s**2 / (3 * self.eta4**2)) \
+            * exp(-sqrt(5) * s / self.eta4)
+
+        return K
+
+
+class QPRQkernel():
+    """ The quasi-periodic kernel based on the Rational Quadratic """
+    def __init__(self, eta1, eta2, eta3, eta4, alpha):
+        self.eta1 = eta1
+        self.eta2 = eta2
+        self.eta3 = eta3
+        self.eta4 = eta4
+        self.alpha = alpha
+
+    def setpars(self, eta1=None, eta2=None, eta3=None, eta4=None, alpha=None):
+        self.eta1 = eta1 if eta1 else self.eta1
+        self.eta2 = eta2 if eta2 else self.eta2
+        self.eta3 = eta3 if eta3 else self.eta3
+        self.eta4 = eta4 if eta4 else self.eta4
+        self.alpha = alpha if alpha else self.alpha
+
+    def __call__(self, x1, x2=None):
+        if x1.ndim == 1:
+            x1 = x1.reshape(-1, 1)
+
+        if x2 is None:
+            dists = squareform(pdist(x1, metric='euclidean'))
+        else:
+            if x2.ndim == 1:
+                x2 = x2.reshape(-1, 1)
+            dists = cdist(x1, x2, metric='euclidean')
+
+        argexp = dists / self.eta2
+        s = np.abs(sin(np.pi * dists / self.eta3))
+
+        K = self.eta1**2 * exp(-0.5 * argexp**2) \
+                * (1 + 2*s**2/(self.alpha*self.eta4**2))**(-self.alpha)
+
+        return K
+
+
+class SqExpkernel():
+    """ The quasi-periodic kernel """
+    def __init__(self, eta1, eta2):
+        self.eta1 = eta1
+        self.eta2 = eta2
+
+    def setpars(self, eta1=None, eta2=None):
+        self.eta1 = eta1 if eta1 else self.eta1
+        self.eta2 = eta2 if eta2 else self.eta2
+
+    def __call__(self, x1, x2=None):
+        if x1.ndim == 1:
+            x1 = x1.reshape(-1, 1)
+
+        if x2 is None:
+            dists = squareform(pdist(x1, metric='euclidean'))
+            argexp = dists / self.eta2
+            K = self.eta1**2 * np.exp(-0.5 * argexp**2)
+        else:
+            if x2.ndim == 1:
+                x2 = x2.reshape(-1, 1)
+            dists = cdist(x1, x2, metric='euclidean')
+            argexp = dists / self.eta2
+            K = self.eta1**2 * np.exp(-0.5 * argexp**2)
 
         return K
 
@@ -58,8 +203,8 @@ class GP():
         (opt) yerr : array of observational uncertainties
         (opt) white_noise : value/array added to the diagonal of the kernel matrix
         """
-        assert isinstance(kernel, QPkernel), \
-                                "kernel should be instance of QPkernel."
+        # assert isinstance(kernel, QPkernel), \
+        #                         "kernel should be instance of QPkernel."
         self.kernel = kernel
         self.t = t
         self.yerr = yerr
@@ -154,7 +299,8 @@ class GP():
             pred = self.predict(y, t, return_cov=False, return_std=return_std)
             return pred
 
-        mu = self.predict(y, results.t, return_cov=False)
+        mu = self.predict(y, results.t, return_cov=False,
+                          return_std=return_std)
 
         if add_parts:
             # add the trend back

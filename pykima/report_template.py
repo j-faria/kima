@@ -71,11 +71,7 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
         ax.set(title='', )
         leg = ax.legend(loc="upper left", bbox_to_anchor=(0, 1.25), ncol=4,
                         fontsize=8)
-        names = [
-            d.replace(star, '').replace('_', '').replace('bin',
-                                                        '').replace('.rdb', '')
-            for d in res.data_file
-        ]
+        names = res.instruments
         for label, name in zip(leg.get_texts(), names):
             label.set_text(name)
         # print(len(leg.legendHandles))
@@ -150,9 +146,9 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
 
         ax = plt.subplot(gs[4, 2:4])
         if res.multi:
-            labels = [os.path.splitext(d)[0] for d in res.data_file]
-            subs = long_substr(labels)
-            labels = [l.replace(subs, '') for l in labels]
+            labels = res.instruments
+            # subs = long_substr(labels)
+            # labels = [l.replace(subs, '') for l in labels]
 
             for i, s in enumerate(res.extra_sigma.T):
                 ax.hist(s, alpha=0.9, histtype='step', label=labels[i], lw=2)
@@ -173,9 +169,7 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
             ax = plt.subplot(gs[4, 4:])
             n_inst_offsets = res.inst_offsets.shape[1]
 
-            labels = [os.path.splitext(d)[0] for d in res.data_file]
-            subs = long_substr(labels)
-            labels = [l.replace(subs, '') for l in labels]
+            labels = res.instruments
 
             for i in range(n_inst_offsets):
                 # label = '%s wrt %s' % (labels[-1], labels[i])
@@ -194,7 +188,7 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
         NP = pk.analysis.passes_threshold_np(res)
         if NP >= 1:
             phase_axs = []
-            p = res.maximum_likelihood_sample(printit=False)
+            p = res.maximum_likelihood_sample(Np=NP, printit=False)
             for ipl in range(NP):
                 phase_axs.append(plt.subplot(gs[2 + ipl, 4:]))
             plt.ioff()
@@ -215,7 +209,7 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
         #          zlib.decompress(s).decode(), fontsize=10, color='gray',
         #          ha='right', va='bottom', alpha=0.5, rotation=90)
 
-        if save is not None:
+        if save:
             if save is True:
                 save = f'report_{"".join(star.split())}.pdf'
 
