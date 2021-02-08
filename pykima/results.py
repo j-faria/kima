@@ -934,7 +934,10 @@ class KimaResults(object):
             # polyval wants coefficients in reverse order, and vsys was already
             # added so the last coefficient is 0
             trend_par = np.r_[trend_par[::-1], 0.0]
-            v += np.polyval(trend_par, t - self.tmiddle)
+            if self.model == 'MOmodel':
+                v[0, :] += np.polyval(trend_par, t - self.tmiddle)
+            elif self.model == 'RVmodel':
+                v += np.polyval(trend_par, t - self.tmiddle)
 
         return v
 
