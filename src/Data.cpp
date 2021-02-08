@@ -74,8 +74,8 @@ istream& operator >> ( istream& ins, data_t& data )
  *
  * Read a tab/space separated file with columns  
  * ```
- *   time  vrad  error  
- *   ...   ...   ...
+ *   time  vrad  error  quant  error
+ *   ...   ...   ...    ...    ...
  * ```
  * 
  * @param filename   the name of the file
@@ -93,23 +93,9 @@ void Data::load(const std::string filename, const std::string units,
   t.clear();
   y.clear();
   sig.clear();
+  y2.clear();
+  sig2.clear();
   
-  // check for indicator correlations and store stuff
-  int nempty = count(indicators.begin(), indicators.end(), "");
-  number_indicators = indicators.size() - nempty;
-  indicator_correlations = number_indicators > 0;
-  indicator_names = indicators;
-  indicator_names.erase(
-    std::remove( indicator_names.begin(), indicator_names.end(), "" ), 
-    indicator_names.end() );
-
-
-  // Empty the indicator vectors as well
-  actind.clear();
-  actind.resize(number_indicators);
-  for (int n = 0; n < number_indicators; n++)
-    actind[n].clear();
-
   // Read the file into the data container
   ifstream infile( filename );
   infile >> data;
@@ -129,7 +115,6 @@ void Data::load(const std::string filename, const std::string units,
   datamulti = false;
   number_instruments = 1;
 
-
   double factor = 1.;
   if(units == "kms") factor = 1E3;
   int j;
@@ -140,52 +125,17 @@ void Data::load(const std::string filename, const std::string units,
       t.push_back(data[n][0]);
       y.push_back(data[n][1] * factor);
       sig.push_back(data[n][2] * factor);
-  
-      if (indicator_correlations)
-      {
-        j = 0;
-        for (size_t i = 0; i < number_indicators + nempty; i++)
-        {
-          if (indicators[i] == "")
-            continue; // skip column
-          else
-          {
-            actind[j].push_back(data[n][3+i] * factor);
-            j++;
-          }
-        }
-      }
-  
+      y2.push_back(data[n][3] * factor);
+      sig2.push_back(data[n][4] * factor);
     }
   
   // epoch for the mean anomaly, by default the time of the first observation
   M0_epoch = t[0];
 
 
-  // subtract means from activity indicators
-  if (indicator_correlations)
-  {
-    double mean;
-    for (auto& i: actind){ // use auto& instead of auto to modify i
-      mean = std::accumulate(i.begin(), i.end(), 0.0) / y.size();
-      std::for_each(i.begin(), i.end(), [mean](double& d) { d -= mean;});
-    }
-  }
-
   // How many points did we read?
   printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
-  // Did we read activity indicators? how many?
-  if(indicator_correlations){
-    printf("# Loaded %zu observations of %zu activity indicators: ", 
-           actind[0].size(), actind.size());
-    for (const auto i: indicators){
-      if (i != ""){
-        printf("'%s'", i.c_str());
-        (i != indicators.back()) ? cout << ", " : cout << " ";
-      }
-    }
-    cout << endl;
-  }
+
   // What are the units?
   if(units == "kms")
     printf("# Multiplied all RVs by 1000; units are now m/s.\n");
@@ -307,23 +257,9 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
   t.clear();
   y.clear();
   sig.clear();
+  y2.clear();
+  sig2.clear();
   obsi.clear();
-
-  // check for indicator correlations and store stuff
-  int nempty = count(indicators.begin(), indicators.end(), "");
-  number_indicators = indicators.size() - nempty;
-  indicator_correlations = number_indicators > 0;
-  indicator_names = indicators;
-  indicator_names.erase(
-    std::remove( indicator_names.begin(), indicator_names.end(), "" ), 
-    indicator_names.end() );
-
-  // Empty the indicator vectors as well
-  actind.clear();
-  actind.resize(number_indicators);
-  for (unsigned n = 0; n < number_indicators; n++)
-    actind[n].clear();
-
 
   std::string dump; // to dump the first skip lines of each file
   int filecount = 1;
@@ -364,29 +300,15 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
   double factor = 1.;
   if(units == "kms") factor = 1E3;
 
-  for (unsigned n=0; n<data.size(); n++)
-    {
-      // if (n<skip) continue;
-      t.push_back(data[n][0]);
-      y.push_back(data[n][1] * factor);
-      sig.push_back(data[n][2] * factor);
-
-      if (indicator_correlations)
-      {
-        int j = 0;
-        for (unsigned i = 0; i < number_indicators + nempty; i++)
-        {
-          if (indicators[i] == "")
-            continue; // skip column
-          else
-          {
-            actind[j].push_back(data[n][3+i] * factor);
-            j++;
-          }
-        }
-      }
-
-    }
+  for (unsigned n = 0; n < data.size(); n++)
+  {
+    // if (n<skip) continue;
+    t.push_back(data[n][0]);
+    y.push_back(data[n][1] * factor);
+    sig.push_back(data[n][2] * factor);
+    y2.push_back(data[n][3] * factor);
+    sig2.push_back(data[n][4] * factor);
+  }
 
   // How many points did we read?
   printf("# Loaded %zu data points from files\n", t.size());
@@ -396,18 +318,6 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
     (f != filenames.back()) ? cout << " | " : cout << " ";
   }
   cout << endl;
-
-  // Did we read activity indicators? how many?
-  if(indicator_correlations){
-    printf("# Loaded %d observations of %d activity indicators: ", actind[0].size(), actind.size());
-    for (const auto i: indicators){
-      if (i != ""){
-        cout << "'" << i << "'";
-        (i != indicators.back()) ? cout << ", " : cout << " ";
-      }
-    }
-    cout << endl;
-  }
 
   // Of how many instruments?
   std::set<int> s( obsi.begin(), obsi.end() );
@@ -423,59 +333,52 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
   {
     // We need to sort t because it comes from different instruments
     int N = t.size();
-    std::vector<double> tt(N), yy(N);
-    std::vector<double> sigsig(N), obsiobsi(N);
+    std::vector<double> tt(N), yy(N), yy2(N);
+    std::vector<double> sigsig(N), sig2sig2(N), obsiobsi(N);
     std::vector<int> order(N);
-    std::vector<std::vector<double>> actindactind(number_indicators, std::vector<double>(N));
 
     // order = argsort(t)
-    int x=0;
+    int x = 0;
     std::iota(order.begin(), order.end(), x++);
-    sort( order.begin(),order.end(), [&](int i,int j){return t[i] < t[j];} );
+    sort(order.begin(), order.end(), [&](int i, int j) { return t[i] < t[j]; });
 
-    for(unsigned i=0; i<N; i++){
+    for (unsigned i = 0; i < N; i++)
+    {
       tt[i] = t[order[i]];
       yy[i] = y[order[i]];
       sigsig[i] = sig[order[i]];
+      yy2[i] = y2[order[i]];
+      sig2sig2[i] = sig2[order[i]];
       obsiobsi[i] = obsi[order[i]];
-      for(unsigned j=0; j<number_indicators; j++)
-        actindactind[j][i] = actind[j][order[i]];
     }
 
-    for(unsigned i=0; i<N; i++){
+    for (unsigned i = 0; i < N; i++)
+    {
       t[i] = tt[i];
       y[i] = yy[i];
       sig[i] = sigsig[i];
+      y2[i] = yy2[i];
+      sig2[i] = sig2sig2[i];
       obsi[i] = obsiobsi[i];
-      for(unsigned j=0; j<number_indicators; j++)
-        actind[j][i] = actindactind[j][i];
     }
-
-    // debug
-    // for(std::vector<int>::size_type i = 0; i != t.size(); i++)
-    //     cout << t[i] << "\t" << y[i] << "\t" << sig[i] << "\t" << obsi[i] <<  endl;
   }
 
   // epoch for the mean anomaly, by default the time of the first observation
   M0_epoch = t[0];
-
-  }
-
+}
 
 
 double Data::get_RV_var() const
 {
-    double sum = std::accumulate(std::begin(y), std::end(y), 0.0);
-    double mean =  sum / y.size();
+  double sum = std::accumulate(std::begin(y), std::end(y), 0.0);
+  double mean = sum / y.size();
 
-    double accum = 0.0;
-    std::for_each (std::begin(y), std::end(y), [&](const double d) {
-        accum += (d - mean) * (d - mean);
-    });
-    return accum / (y.size()-1);
+  double accum = 0.0;
+  std::for_each(std::begin(y), std::end(y), [&](const double d) {
+    accum += (d - mean) * (d - mean);
+  });
+  return accum / (y.size() - 1);
 }
-
-
 
 /**
  * @brief Calculate the maximum slope "allowed" by the data

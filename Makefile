@@ -18,8 +18,10 @@ SRCDIR = ./src
 SRCS =\
 $(wildcard $(SRCDIR)/distributions/*.cpp) \
 $(SRCDIR)/Data.cpp \
+$(SRCDIR)/kepler.cpp \
 $(SRCDIR)/RVConditionalPrior.cpp \
 $(SRCDIR)/RVmodel.cpp \
+$(SRCDIR)/MOmodel.cpp \
 $(SRCDIR)/main.cpp
 
 OBJS=$(subst .cpp,.o,$(SRCS))

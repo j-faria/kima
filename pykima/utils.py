@@ -98,6 +98,32 @@ def read_datafile(datafile, skip):
         return data, obs
 
 
+def read_datafile_mo(datafile, skip):
+    """
+    Read data from `datafile` for multiple instruments and multi outputs.
+    Can be str, in which case the 4th column is assumed to contain an integer
+    identifier of the instrument.
+    Or list, in which case each element will be one different filename
+    containing three columns each.
+    """
+    if isinstance(datafile, list):
+        data = np.empty((0, 5))
+        obs = np.empty((0, ))
+        for i, df in enumerate(datafile):
+            d = np.loadtxt(df, usecols=range(5), skiprows=skip, ndmin=2)
+            data = np.append(data, d, axis=0)
+            obs = np.append(obs, (i + 1) * np.ones((d.shape[0])))
+        return data, obs
+    else:
+        raise NotImplementedError
+        # data = np.loadtxt(datafile, usecols=range(5), skiprows=skip)
+        # obs = np.loadtxt(datafile, usecols=(3, ), skiprows=skip, dtype=int)
+        # uobs = np.unique(obs)
+        # if uobs.min() > 0:
+        #     uobs -= uobs.min()
+        # return data
+
+
 def show_tips():
     """ Show a few tips on how to use kima """
     tips = (

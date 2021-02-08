@@ -18,7 +18,7 @@ std::vector<std::string> glob(const std::string& pattern);
 class Data
 {
 	private:
-		std::vector<double> t, y, sig;
+		std::vector<double> t, y, sig, y2, sig2;
 		std::vector<int> obsi;
 		std::vector<std::vector<double>> actind;
 
@@ -62,8 +62,10 @@ class Data
 		const std::vector<double>& get_t() const { return t; }
 		/// @brief Get the array of RVs @return const std::vector<double>&
 		const std::vector<double>& get_y() const { return y; }
-		/// @brief Get the array of errors @return const std::vector<double>&
+		const std::vector<double>& get_y2() const { return y2; }
+		/// Get the array of errors @return const std::vector<double>&
 		const std::vector<double>& get_sig() const { return sig; }
+		const std::vector<double>& get_sig2() const { return sig2; }
 
 		/// @brief Get the mininum (starting) time @return double
 		double get_t_min() const { return *std::min_element(t.begin(), t.end()); }
@@ -71,6 +73,7 @@ class Data
 		double get_t_max() const { return *std::max_element(t.begin(), t.end()); }
 		/// @brief Get the timespan @return double
 		double get_timespan() const { return get_t_max() - get_t_min(); }
+		double get_t_span() const { return get_t_max() - get_t_min(); }
 		/// @brief Get the middle time @return double
 		double get_t_middle() const { return get_t_min() + 0.5*get_timespan(); }
 
@@ -86,7 +89,14 @@ class Data
 		double get_RV_var() const;
 		/// @brief Get the standard deviation of the RVs @return double
 		double get_RV_std() const { return std::sqrt(get_RV_var()); }
-		
+
+		/// @brief Get the mininum y2 @return double
+		double get_y2_min() const { return *std::min_element(y2.begin(), y2.end()); }
+		/// @brief Get the maximum y2 @return double
+		double get_y2_max() const { return *std::max_element(y2.begin(), y2.end()); }
+		/// @brief Get the y2 span @return double
+		double get_y2_span() const { return get_y2_max() - get_y2_min(); }
+
 		/// @brief Get the RV span, adjusted for multiple instruments @return double
 		double get_adjusted_RV_span() const;
 		/// @brief Get the RV variance, adjusted for multiple instruments @return double

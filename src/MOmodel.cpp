@@ -1,20 +1,19 @@
-#include "RVmodel.h"
-// #include "RVConditionalPrior.h"
-// #include "DNest4.h"
-// #include "RNG.h"
-// #include "Utils.h"
-// #include "Data.h"
-// #include <cmath>
-// #include <limits>
-// #include <fstream>
-// #include <chrono>
-// #include <cmath>
-// #include <time.h>
+#include "MOmodel.h"
+#include "RVConditionalPrior.h"
+#include "DNest4.h"
+#include "RNG.h"
+#include "Utils.h"
+#include "Data.h"
+#include <cmath>
+#include <limits>
+#include <fstream>
+#include <chrono>
+#include <cmath>
+#include <time.h>
 
 using namespace std;
 using namespace Eigen;
 using namespace DNest4;
-using namespace kepler;
 
 #define TIMING false
 
@@ -22,7 +21,7 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 
 /* set default priors if the user didn't change them */
-void RVmodel::setPriors()  // BUG: should be done by only one thread!
+void MOmodel::setPriors()  // BUG: should be done by only one thread!
 {
     auto data = Data::get_instance();
 
@@ -32,14 +31,18 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     sigmaMA_prior = make_prior<Uniform>(-1, 1);
     tauMA_prior = make_prior<LogUniform>(1, 100);
     
-    if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+    if (!Vprior)
+        Vprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+    if (!C2prior)
+        C2prior = make_prior<Uniform>(data.get_y2_min(), data.get_y2_max());
 
     if (!Jprior)
         Jprior = make_prior<ModifiedLogUniform>(min(1.0, 0.1*data.get_max_RV_span()), data.get_max_RV_span());
+    if (!J2prior)
+        J2prior = make_prior<ModifiedLogUniform>(1.0, data.get_y2_span());
 
-    // if (!slope_prior)
-    //     slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
+    if (!slope_prior)
+        slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
 
     if (trend){
         if (degree == 0)
@@ -56,16 +59,42 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
 
     if (!offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+    if (!offsets2_prior)
+        offsets2_prior = make_prior<Uniform>( -data.get_y2_span(), data.get_y2_span() );
 
     if (GP) { /* GP parameters */
-        if (!log_eta1_prior)
-            log_eta1_prior = make_prior<Uniform>(-5, 5);
-        if (!eta2_prior)
-            eta2_prior = make_prior<LogUniform>(1, 100);
-        if (!eta3_prior)
-            eta3_prior = make_prior<Uniform>(10, 40);
-        if (!log_eta4_prior & kernel==standard)
-            log_eta4_prior = make_prior<Uniform>(-1, 1);
+        // η1
+        if (!eta1_1_prior)
+            eta1_1_prior = make_prior<ModifiedLogUniform>(1, data.get_RV_span());
+        if (!eta1_2_prior)
+            eta1_2_prior = make_prior<ModifiedLogUniform>(1, data.get_RV_span());
+
+        // η2
+        if (!eta2_1_prior)
+            eta2_1_prior = make_prior<LogUniform>(1, data.get_timespan());
+        if (!share_eta2){
+            if (!eta2_2_prior)
+                eta2_2_prior = make_prior<LogUniform>(1, data.get_timespan());
+        }
+
+        // η3
+        if (!eta3_1_prior)
+            eta3_1_prior = make_prior<Uniform>(10, 40);
+        if (!share_eta3){
+            if (!eta3_2_prior)
+                eta3_2_prior = make_prior<Uniform>(10, 40);
+        }
+
+        // η4
+        if (kernel == standard){
+            if (!eta4_1_prior)
+                eta4_1_prior = make_prior<LogUniform>(0.1, 10);
+            if (!share_eta4){
+                if (!eta4_2_prior)
+                    eta4_2_prior = make_prior<LogUniform>(0.1, 10);
+            }   
+
+        }
     }
 
     if (known_object) { // KO mode!
@@ -82,7 +111,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
 }
 
 
-void RVmodel::from_prior(RNG& rng)
+void MOmodel::from_prior(RNG& rng)
 {
     // preliminaries
     setPriors();
@@ -91,18 +120,29 @@ void RVmodel::from_prior(RNG& rng)
     planets.from_prior(rng);
     planets.consolidate_diff();
 
-    background = Cprior->generate(rng);
+    bkg = Vprior->generate(rng);
+    bkg2 = C2prior->generate(rng);
 
-    if(multi_instrument)
+    if (multi_instrument)
     {
-        for(int i=0; i<offsets.size(); i++)
+        // draw instrument offsets for 1st output
+        for (size_t i = 0; i < offsets.size() / 2; i++)
             offsets[i] = offsets_prior->generate(rng);
-        for(int i=0; i<jitters.size(); i++)
+        // and 2nd output
+        for (size_t i = offsets.size() / 2; i < offsets.size(); i++)
+            offsets[i] = offsets2_prior->generate(rng);
+
+        // draw jitters for 1st output
+        for (size_t i = 0; i < jitters.size() / 2; i++)
             jitters[i] = Jprior->generate(rng);
+        // and 2nd output
+        for (size_t i = jitters.size() / 2; i < jitters.size(); i++)
+            jitters[i] = J2prior->generate(rng);
     }
     else
     {
-        extra_sigma = Jprior->generate(rng);
+        jitter1 = Jprior->generate(rng);
+        jitter2 = J2prior->generate(rng);
     }
 
 
@@ -115,14 +155,22 @@ void RVmodel::from_prior(RNG& rng)
 
     if(GP)
     {
-        eta1 = exp(log_eta1_prior->generate(rng)); // m/s
+        eta1_1 = eta1_1_prior->generate(rng); // m/s
+        eta1_2 = eta1_2_prior->generate(rng); // [2nd output units]
 
-        eta2 = eta2_prior->generate(rng); // days
+        eta2_1 = eta2_1_prior->generate(rng); // days
+        if (!share_eta2)
+            eta2_2 = eta2_2_prior->generate(rng); // days
 
-        eta3 = eta3_prior->generate(rng); // days
+        eta3_1 = eta3_1_prior->generate(rng); // days
+        if (!share_eta3)
+            eta3_2 = eta3_2_prior->generate(rng); // days
 
-        if (kernel == standard)
-            eta4 = exp(log_eta4_prior->generate(rng));
+        if (kernel == standard){
+            eta4_1 = exp(eta4_1_prior->generate(rng));
+            if (!share_eta4)
+                eta4_2 = eta4_2_prior->generate(rng); // days
+        }
     }
 
     if(MA)
@@ -132,11 +180,6 @@ void RVmodel::from_prior(RNG& rng)
     }
 
     auto data = Data::get_instance();
-    if (data.indicator_correlations)
-    {
-        for (unsigned i=0; i<data.number_indicators; i++)
-            betas[i] = betaprior->generate(rng);
-    }
 
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
@@ -159,8 +202,12 @@ void RVmodel::from_prior(RNG& rng)
 
 
     calculate_mu();
+    calculate_mu_2();
 
-    if(GP) calculate_C();
+    if(GP){
+        calculate_C_1();
+        calculate_C_2();
+    } 
 
 }
 
@@ -168,7 +215,7 @@ void RVmodel::from_prior(RNG& rng)
  * @brief Fill the GP covariance matrix.
  * 
 */
-void RVmodel::calculate_C()
+void MOmodel::calculate_C_1()
 {
     // Get the data
     auto data = Data::get_instance();
@@ -191,24 +238,25 @@ void RVmodel::calculate_C()
             {
                 for(size_t j=i; j<N; j++)
                 {
-                    C(i, j) = eta1*eta1*exp(-0.5*pow((t[i] - t[j])/eta2, 2)
-                                -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3)/eta4, 2) );
+                    C_1(i, j) = eta1_1*eta1_1 * \
+                              exp(-0.5*pow((t[i] - t[j])/eta2_1, 2) 
+                                  -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3_1)/eta4_1, 2) );
 
                     if(i==j)
                     {
                         if (multi_instrument)
                         {
                             jit = jitters[obsi[i]-1];
-                            C(i, j) += sig[i]*sig[i] + jit*jit;
+                            C_1(i, j) += sig[i]*sig[i] + jit*jit;
                         }
                         else
                         {
-                            C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                            C_1(i, j) += sig[i]*sig[i] + jitter1*jitter1;
                         }
                     }
                     else
                     {
-                        C(j, i) = C(i, j);
+                        C_1(j, i) = C_1(i, j);
                     }
                 }
             }
@@ -216,55 +264,55 @@ void RVmodel::calculate_C()
             break;
         }
 
-    case celerite:
-        {
-            /*
-            This implements a celerite quasi-periodic kernel devised by Andrew Collier Cameron,
-            which satisfies k(tau=0)=amp and k'(tau=0)=0
-            The kernel defined in the celerite paper (Eq 56 in Foreman-Mackey et al. 2017)
-            does not satisfy k'(tau=0)=0
-            This new kernel has only 3 parameters, eta1, eta2, eta3
-            corresponding to an amplitude, decay timescale and period.
-            It approximates the standard kernel with eta4=0.5
-            */
+    // case celerite:
+    //     {
+    //         /*
+    //         This implements a celerite quasi-periodic kernel devised by Andrew Collier Cameron,
+    //         which satisfies k(tau=0)=amp and k'(tau=0)=0
+    //         The kernel defined in the celerite paper (Eq 56 in Foreman-Mackey et al. 2017)
+    //         does not satisfy k'(tau=0)=0
+    //         This new kernel has only 3 parameters, eta1, eta2, eta3
+    //         corresponding to an amplitude, decay timescale and period.
+    //         It approximates the standard kernel with eta4=0.5
+    //         */
 
-            double wbeat, wrot, amp, c, d, x, a, b, e, f, g;
-            wbeat = 1 / eta2;
-            wrot = 2*M_PI/ eta3;
-            amp = eta1*eta1;
-            c = wbeat; d = wrot; x = c/d;
-            a = amp/2; b = amp*x/2;
-            e = amp/8; f = amp*x/4;
-            g = amp*(3./8. + 0.001);
+    //         double wbeat, wrot, amp, c, d, x, a, b, e, f, g;
+    //         wbeat = 1 / eta2;
+    //         wrot = 2*M_PI/ eta3;
+    //         amp = eta1*eta1;
+    //         c = wbeat; d = wrot; x = c/d;
+    //         a = amp/2; b = amp*x/2;
+    //         e = amp/8; f = amp*x/4;
+    //         g = amp*(3./8. + 0.001);
 
-            VectorXd a_real, c_real, 
-                    a_comp(3),
-                    b_comp(3),
-                    c_comp(3),
-                    d_comp(3);
+    //         VectorXd a_real, c_real, 
+    //                 a_comp(3),
+    //                 b_comp(3),
+    //                 c_comp(3),
+    //                 d_comp(3);
         
-            // a_real is empty
-            // c_real is empty
-            a_comp << a, e, g;
-            b_comp << b, f, 0.0;
-            c_comp << c, c, c;
-            d_comp << d, 2*d, 0.0;
+    //         // a_real is empty
+    //         // c_real is empty
+    //         a_comp << a, e, g;
+    //         b_comp << b, f, 0.0;
+    //         c_comp << c, c, c;
+    //         d_comp << d, 2*d, 0.0;
 
-            VectorXd yvar(t.size()), tt(t.size());
-            for (int i = 0; i < t.size(); ++i){
-                yvar(i) = sig[i] * sig[i];
-                tt(i) = t[i];
-            }
+    //         VectorXd yvar(t.size()), tt(t.size());
+    //         for (int i = 0; i < t.size(); ++i){
+    //             yvar(i) = sig[i] * sig[i];
+    //             tt(i) = t[i];
+    //         }
 
-            solver.compute(
-                extra_sigma*extra_sigma,
-                a_real, c_real,
-                a_comp, b_comp, c_comp, d_comp,
-                tt, yvar  // Note: this is the measurement _variance_
-            );
+    //         solver.compute(
+    //             jitter1*jitter1,
+    //             a_real, c_real,
+    //             a_comp, b_comp, c_comp, d_comp,
+    //             tt, yvar  // Note: this is the measurement _variance_
+    //         );
 
-            break;
-        }
+    //         break;
+    //     }
 
     default:
         cout << "error: `kernel` should be 'standard' or 'celerite'" << endl;
@@ -280,11 +328,132 @@ void RVmodel::calculate_C()
     #endif
 }
 
+
+/**
+ * @brief Fill the GP covariance matrix.
+ * 
+*/
+void MOmodel::calculate_C_2()
+{
+    // Get the data
+    auto data = Data::get_instance();
+    const vector<double>& t = data.get_t();
+    const vector<double>& sig = data.get_sig2();
+    const vector<int>& obsi = data.get_obsi();
+    size_t N = data.N();
+    int Ni = data.Ninstruments();
+    double jit;
+
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
+
+    switch (kernel)
+    {
+    case standard:
+        {
+            /* This implements the "standard" quasi-periodic kernel, see R&W2006 */
+            for(size_t i=0; i<N; i++)
+            {
+                for(size_t j=i; j<N; j++)
+                {
+                    C_2(i, j) = eta1_2*eta1_2 * \
+                              exp(-0.5*pow((t[i] - t[j])/eta2_2, 2) 
+                                  -2.0*pow(sin(M_PI*(t[i] - t[j])/eta3_2)/eta4_2, 2) );
+
+                    if(i==j)
+                    {
+                        if (multi_instrument)
+                        {
+                            jit = jitters[Ni + obsi[i] - 1];
+                            C_2(i, j) += sig[i] * sig[i] + jit*jit;
+                        }
+                        else
+                        {
+                            C_2(i, j) += sig[i]*sig[i] + jitter2*jitter2;
+                        }
+                    }
+                    else
+                    {
+                        C_2(j, i) = C_2(i, j);
+                    }
+                }
+            }
+
+            break;
+        }
+
+    // case celerite:
+    //     {
+    //         /*
+    //         This implements a celerite quasi-periodic kernel devised by Andrew Collier Cameron,
+    //         which satisfies k(tau=0)=amp and k'(tau=0)=0
+    //         The kernel defined in the celerite paper (Eq 56 in Foreman-Mackey et al. 2017)
+    //         does not satisfy k'(tau=0)=0
+    //         This new kernel has only 3 parameters, eta1, eta2, eta3
+    //         corresponding to an amplitude, decay timescale and period.
+    //         It approximates the standard kernel with eta4=0.5
+    //         */
+
+    //         double wbeat, wrot, amp, c, d, x, a, b, e, f, g;
+    //         wbeat = 1 / eta2;
+    //         wrot = 2*M_PI/ eta3;
+    //         amp = eta1*eta1;
+    //         c = wbeat; d = wrot; x = c/d;
+    //         a = amp/2; b = amp*x/2;
+    //         e = amp/8; f = amp*x/4;
+    //         g = amp*(3./8. + 0.001);
+
+    //         VectorXd a_real, c_real, 
+    //                 a_comp(3),
+    //                 b_comp(3),
+    //                 c_comp(3),
+    //                 d_comp(3);
+        
+    //         // a_real is empty
+    //         // c_real is empty
+    //         a_comp << a, e, g;
+    //         b_comp << b, f, 0.0;
+    //         c_comp << c, c, c;
+    //         d_comp << d, 2*d, 0.0;
+
+    //         VectorXd yvar(t.size()), tt(t.size());
+    //         for (int i = 0; i < t.size(); ++i){
+    //             yvar(i) = sig[i] * sig[i];
+    //             tt(i) = t[i];
+    //         }
+
+    //         solver.compute(
+    //             jitter1*jitter1,
+    //             a_real, c_real,
+    //             a_comp, b_comp, c_comp, d_comp,
+    //             tt, yvar  // Note: this is the measurement _variance_
+    //         );
+
+    //         break;
+    //     }
+
+    default:
+        cout << "error: `kernel` should be 'standard' or 'celerite'" << endl;
+        std::abort();
+        break;
+    }
+
+    #if TIMING
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "GP build matrix: ";
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    cout << " ns" << "\t"; // << std::endl;
+    #endif
+}
+
+
+
 /**
  * @brief Calculate the full RV model
  * 
 */
-void RVmodel::calculate_mu()
+void MOmodel::calculate_mu()
 {
     auto data = Data::get_instance();
     // Get the times from the data
@@ -307,7 +476,7 @@ void RVmodel::calculate_mu()
     // Zero the signal
     if(!update) // not updating, means recalculate everything
     {
-        mu.assign(mu.size(), background);
+        mu.assign(mu.size(), bkg);
         staleness = 0;
         if(trend)
         {
@@ -320,22 +489,13 @@ void RVmodel::calculate_mu()
 
         if(multi_instrument)
         {
-            for(size_t j=0; j<offsets.size(); j++)
+            for(size_t j=0; j<offsets.size() / 2; j++)
             {
                 for(size_t i=0; i<t.size(); i++)
                 {
                     if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
             }
-        }
-
-        if(data.indicator_correlations)
-        {
-            for(size_t i=0; i<t.size(); i++)
-            {
-                for(size_t j = 0; j < data.number_indicators; j++)
-                   mu[i] += betas[j] * actind[j][i];
-            }   
         }
 
         if (known_object) { // KO mode!
@@ -395,7 +555,38 @@ void RVmodel::calculate_mu()
 
 }
 
-void RVmodel::remove_known_object()
+/**
+ * @brief Calculate the FWHM model
+ * 
+*/
+void MOmodel::calculate_mu_2()
+{
+    auto data = Data::get_instance();
+    size_t N = data.N();
+    int Ni = data.Ninstruments();
+    // only really needed if multi_instrument
+    auto obsi = data.get_obsi();
+
+    mu_2.assign(mu_2.size(), bkg2);
+
+    if(multi_instrument)
+    {
+        for (size_t j = offsets.size() / 2; j < offsets.size(); j++)
+        {
+            for (size_t i = 0; i < N; i++)
+            {
+                if (obsi[i] == j + 2 - Ni)
+                {
+                    mu_2[i] += offsets[j];
+                }
+            }
+        }
+    }
+
+}
+
+
+void MOmodel::remove_known_object()
 {
     auto data = Data::get_instance();
     auto t = data.get_t();
@@ -414,7 +605,7 @@ void RVmodel::remove_known_object()
     }
 }
 
-void RVmodel::add_known_object()
+void MOmodel::add_known_object()
 {
     auto data = Data::get_instance();
     auto t = data.get_t();
@@ -433,7 +624,7 @@ void RVmodel::add_known_object()
 }
 
 
-double RVmodel::perturb(RNG& rng)
+double MOmodel::perturb(RNG& rng)
 {
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
@@ -462,71 +653,82 @@ double RVmodel::perturb(RNG& rng)
                 {
                     if(rng.rand() <= 0.25)
                     {
-                        log_eta1 = log(eta1);
-                        log_eta1_prior->perturb(log_eta1, rng);
-                        eta1 = exp(log_eta1);
+                        eta1_1_prior->perturb(eta1_1, rng);
+                        eta1_2_prior->perturb(eta1_2, rng);
                     }
                     else if(rng.rand() <= 0.33330)
                     {
-                        // log_eta2 = log(eta2);
-                        // log_eta2_prior->perturb(log_eta2, rng);
-                        // eta2 = exp(log_eta2);
-                        eta2_prior->perturb(eta2, rng);
+                        eta2_1_prior->perturb(eta2_1, rng);
+                        if (share_eta2)
+                            eta2_2 = eta2_1;
+                        else
+                            eta2_2_prior->perturb(eta2_2, rng);
                     }
                     else if(rng.rand() <= 0.5)
                     {
-                        eta3_prior->perturb(eta3, rng);
+                        eta3_1_prior->perturb(eta3_1, rng);
+                        if (share_eta3)
+                            eta3_2 = eta3_1;
+                        else
+                            eta3_2_prior->perturb(eta3_2, rng);
                     }
                     else
                     {
-                        log_eta4 = log(eta4);
-                        log_eta4_prior->perturb(log_eta4, rng);
-                        eta4 = exp(log_eta4);
+                        eta4_1_prior->perturb(eta4_1, rng);
+                        if (share_eta4)
+                            eta4_2 = eta4_1;
+                        else
+                            eta4_2_prior->perturb(eta4_2, rng);
                     }
 
                     break;
                 }
 
-                case celerite:
-                {
-                    if(rng.rand() <= 0.33330)
-                    {
-                        log_eta1 = log(eta1);
-                        log_eta1_prior->perturb(log_eta1, rng);
-                        eta1 = exp(log_eta1);
-                    }
-                    else if(rng.rand() <= 0.5)
-                    {
-                        // log_eta2 = log(eta2);
-                        // log_eta2_prior->perturb(log_eta2, rng);
-                        // eta2 = exp(log_eta2);
-                        eta2_prior->perturb(eta2, rng);
-                    }
-                    else
-                    {
-                        eta3_prior->perturb(eta3, rng);
-                    }
-                    break;
-                }
+                // case celerite:
+                // {
+                //     if(rng.rand() <= 0.33330)
+                //     {
+                //         log_eta1 = log(eta1);
+                //         log_eta1_prior->perturb(log_eta1, rng);
+                //         eta1 = exp(log_eta1);
+                //     }
+                //     else if(rng.rand() <= 0.5)
+                //     {
+                //         // log_eta2 = log(eta2);
+                //         // log_eta2_prior->perturb(log_eta2, rng);
+                //         // eta2 = exp(log_eta2);
+                //         eta2_prior->perturb(eta2, rng);
+                //     }
+                //     else
+                //     {
+                //         eta3_prior->perturb(eta3, rng);
+                //     }
+                //     break;
+                // }
                 default:
                     break;
             }
 
-            calculate_C();
+            calculate_C_1();
+            calculate_C_2();
         }
         else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
         {
             if(multi_instrument)
             {
-                for(int i=0; i<jitters.size(); i++)
+                for (int i = 0; i < jitters.size()/2; i++)
                     Jprior->perturb(jitters[i], rng);
+                for (int i = jitters.size()/2; i < jitters.size(); i++)
+                    J2prior->perturb(jitters[i], rng);
             }
             else
             {
-                Jprior->perturb(extra_sigma, rng);
+                Jprior->perturb(jitter1, rng);
+                J2prior->perturb(jitter2, rng);
             }
 
-            calculate_C(); // recalculate covariance matrix
+            calculate_C_1(); // recalculate covariance matrix
+            calculate_C_2();
 
             if (known_object)
             {
@@ -546,25 +748,33 @@ double RVmodel::perturb(RNG& rng)
         }
         else // perturb other parameters: vsys, slope, offsets
         {
+
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] -= background;
+                mu[i] -= bkg;
                 if(trend) {
                     mu[i] -= slope*(t[i]-data.get_t_middle());
                 }
                 if(multi_instrument) {
-                    for(size_t j=0; j<offsets.size(); j++){
-                        if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
+                    for (size_t j = 0; j < offsets.size() / 2; j++)
+                    {
+                        if (obsi[i] == j + 1)
+                        {
+                            mu[i] -= offsets[j];
+                        }
                     }
                 }
             }
 
-            Cprior->perturb(background, rng);
+            Vprior->perturb(bkg, rng);
+            C2prior->perturb(bkg2, rng);
 
             // propose new instrument offsets
             if (multi_instrument){
-                for(unsigned j=0; j<offsets.size(); j++)
+                for (size_t j = 0; j < offsets.size() / 2; j++)
                     offsets_prior->perturb(offsets[j], rng);
+                for (size_t j = offsets.size() / 2; j < offsets.size(); j++)
+                    offsets2_prior->perturb(offsets[j], rng);
             }
 
             // propose new slope
@@ -574,20 +784,22 @@ double RVmodel::perturb(RNG& rng)
 
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] += background;
+                mu[i] += bkg;
                 if(trend) {
                     mu[i] += slope*(t[i]-data.get_t_middle());
                 }
                 if(multi_instrument) {
-                    for(size_t j=0; j<offsets.size(); j++){
+                    for(size_t j=0; j<offsets.size() / 2; j++){
                         if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                     }
                 }
             }
+
+            calculate_mu_2();
+
         }
 
     }
-
 
     else if(MA)
     {
@@ -615,15 +827,16 @@ double RVmodel::perturb(RNG& rng)
             }
             else
             {
-                Jprior->perturb(extra_sigma, rng);
+                Jprior->perturb(jitter1, rng);
             }
-            calculate_C();
+            calculate_C_1();
+            // calculate_C_2();
         }
         else // perturb other parameters: vsys, slope, offsets
         {
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] -= background;
+                mu[i] -= bkg;
                 if(trend) {
                     mu[i] -= slope*(t[i]-data.get_t_middle());
                 }
@@ -633,15 +846,9 @@ double RVmodel::perturb(RNG& rng)
                     }
                 }
 
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu[i] -= betas[j] * actind[j][i];
-                    }
-                }
-
             }
 
-            Cprior->perturb(background, rng);
+            Vprior->perturb(bkg, rng);
 
             // propose new instrument offsets
             if (multi_instrument){
@@ -654,15 +861,9 @@ double RVmodel::perturb(RNG& rng)
                 slope_prior->perturb(slope, rng);
             }
 
-            if(data.indicator_correlations){
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    betaprior->perturb(betas[j], rng);
-                }
-            }
-
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] += background;
+                mu[i] += bkg;
                 if(trend) {
                     mu[i] += slope*(t[i]-data.get_t_middle());
                 }
@@ -672,12 +873,6 @@ double RVmodel::perturb(RNG& rng)
                     }
                 }
 
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu[i] += betas[j]*actind[j][i];
-                    }
-                }
-                
             }
         }
 
@@ -695,12 +890,15 @@ double RVmodel::perturb(RNG& rng)
         {
             if(multi_instrument)
             {
-                for(int i=0; i<jitters.size(); i++)
+                for (int i = 0; i < jitters.size() / 2; i++)
                     Jprior->perturb(jitters[i], rng);
+                for (int i = jitters.size() / 2; i < jitters.size(); i++)
+                    J2prior->perturb(jitters[i], rng);
             }
             else
             {
-                Jprior->perturb(extra_sigma, rng);
+                Jprior->perturb(jitter1, rng);
+                J2prior->perturb(jitter2, rng);
             }
 
             if (studentt)
@@ -727,7 +925,7 @@ double RVmodel::perturb(RNG& rng)
         {
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] -= background;
+                mu[i] -= bkg;
                 if(trend) {
                     mu[i] -= slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
                 }
@@ -737,21 +935,18 @@ double RVmodel::perturb(RNG& rng)
                     }
                 }
 
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu[i] -= betas[j] * actind[j][i];
-                    }
-                }
             }
 
             // propose new vsys
-            Cprior->perturb(background, rng);
+            Vprior->perturb(bkg, rng);
+            C2prior->perturb(bkg2, rng);
 
             // propose new instrument offsets
             if (multi_instrument){
-                for(unsigned j=0; j<offsets.size(); j++){
+                for (unsigned j = 0; j < offsets.size() / 2; j++)
                     offsets_prior->perturb(offsets[j], rng);
-                }
+                for (unsigned j = offsets.size() / 2; j < offsets.size(); j++)
+                    offsets2_prior->perturb(offsets[j], rng);
             }
 
             // propose new slope
@@ -761,16 +956,9 @@ double RVmodel::perturb(RNG& rng)
                 if (degree == 3) cubic_prior->perturb(cubic, rng);
             }
 
-            // propose new indicator correlations
-            if(data.indicator_correlations){
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    betaprior->perturb(betas[j], rng);
-                }
-            }
-
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] += background;
+                mu[i] += bkg;
                 if(trend) {
                     mu[i] += slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
                 }
@@ -779,13 +967,10 @@ double RVmodel::perturb(RNG& rng)
                         if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                     }
                 }
-
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu[i] += betas[j]*actind[j][i];
-                    }
-                }
             }
+
+            calculate_mu_2();
+
         }
     }
 
@@ -805,11 +990,12 @@ double RVmodel::perturb(RNG& rng)
  * 
  * @return double the log-likelihood
 */
-double RVmodel::log_likelihood() const
+double MOmodel::log_likelihood() const
 {
     auto data = Data::get_instance();
-    int N = data.N();
+    size_t N = data.N();
     auto y = data.get_y();
+    auto y2 = data.get_y2();
     auto sig = data.get_sig();
     auto obsi = data.get_obsi();
 
@@ -823,32 +1009,51 @@ double RVmodel::log_likelihood() const
     {
         /** The following code calculates the log likelihood in the case of a GP model */
         // residual vector (observed y minus model y)
-        VectorXd residual(y.size());
-        for(size_t i=0; i<y.size(); i++)
+        VectorXd residual(N);
+        for(size_t i=0; i<N; i++)
             residual(i) = y[i] - mu[i];
 
         switch (kernel)
         {
             case standard:
             {
-                // perform the cholesky decomposition of C
-                Eigen::LLT<Eigen::MatrixXd> cholesky = C.llt();
+                // perform the cholesky decomposition of the covariance matrix
+                Eigen::LLT<Eigen::MatrixXd> cholesky;
+                cholesky = C_1.llt();
+
                 // get the lower triangular matrix L
-                MatrixXd L = cholesky.matrixL();
+                MatrixXd L;
+                L = cholesky.matrixL();
 
                 double logDeterminant = 0.;
-                for(size_t i=0; i<y.size(); i++)
+                for(size_t i=0; i<N; i++)
                     logDeterminant += 2.*log(L(i,i));
 
-                VectorXd solution = cholesky.solve(residual);
+                VectorXd solution;
+                solution = cholesky.solve(residual);
 
                 // y*solution
                 double exponent = 0.;
-                for(size_t i=0; i<y.size(); i++)
+                for(size_t i=0; i<N; i++)
                     exponent += residual(i)*solution(i);
 
-                logL = -0.5*y.size()*log(2*M_PI)
-                        - 0.5*logDeterminant - 0.5*exponent;
+                logL = -0.5*N*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
+
+                // 2nd output
+                for (size_t i = 0; i < N; i++)
+                    residual(i) = y2[i] - mu_2[i];
+
+                cholesky = C_2.llt();
+                L = cholesky.matrixL();
+                logDeterminant = 0.;
+                for (size_t i = 0; i < N; i++)
+                    logDeterminant += 2.*log(L(i,i));
+                solution = cholesky.solve(residual);
+                exponent = 0.;
+                for (size_t i = 0; i < N; i++)
+                    exponent += residual(i) * solution(i);
+                logL += -0.5*N*log(2*M_PI) - 0.5*logDeterminant - 0.5*exponent;
+                // end 2nd output
 
                 break;
             }
@@ -881,7 +1086,7 @@ double RVmodel::log_likelihood() const
                     var = sig[i]*sig[i] + jit*jit;
                 }
                 else
-                    var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                    var = sig[i]*sig[i] + jitter1*jitter1;
 
                 logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
                         - 0.5*log(M_PI*nu) - 0.5*log(var)
@@ -902,7 +1107,7 @@ double RVmodel::log_likelihood() const
                     var = sig[i]*sig[i] + jit*jit;
                 }
                 else
-                    var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                    var = sig[i]*sig[i] + jitter1*jitter1;
 
                 logL += - halflog2pi - 0.5*log(var)
                         - 0.5*(pow(y[i] - mu[i], 2)/var);
@@ -924,7 +1129,7 @@ double RVmodel::log_likelihood() const
 }
 
 
-void RVmodel::print(std::ostream& out) const
+void MOmodel::print(std::ostream& out) const
 {
     // output precision
     out.setf(ios::fixed,ios::floatfield);
@@ -932,13 +1137,16 @@ void RVmodel::print(std::ostream& out) const
 
     if (multi_instrument)
     {
-        for(int j=0; j<jitters.size(); j++)
-            out<<jitters[j]<<'\t';
+        for (int j = 0; j < jitters.size(); j++)
+            out << jitters[j] << '\t';
     }
     else
-        out<<extra_sigma<<'\t';
+    {
+        out << jitter1 << '\t';
+        out << jitter2 << '\t';
+    }
 
-    if(trend)
+    if (trend)
     {
         out.precision(15);
         if (degree >= 1) out << slope << '\t';
@@ -947,25 +1155,29 @@ void RVmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (multi_instrument){
-        for(int j=0; j<offsets.size(); j++){
-            out<<offsets[j]<<'\t';
+    if (multi_instrument)
+    {
+        for (int j = 0; j < offsets.size(); j++)
+        {
+            out << offsets[j] << '\t';
         }
     }
 
     auto data = Data::get_instance();
-    if(data.indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            out<<betas[j]<<'\t';
-        }
-    }
 
     if(GP)
     {
-        if (kernel == standard)
-            out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t' << eta4 << '\t';
-        else
-            out << eta1 << '\t' << eta2 << '\t' << eta3 << '\t';
+        if (kernel == standard){
+            out << eta1_1 << '\t' << eta1_2 << '\t';
+            out << eta2_1 << '\t';
+            if (!share_eta2) out << eta2_2 << '\t';
+            out << eta3_1 << '\t';
+            if (!share_eta3) out << eta3_2 << '\t';
+            out << eta4_1 << '\t';
+            if (!share_eta4) out << eta4_2 << '\t';
+        }
+        // else
+        //     out << eta1_1 << '\t' << eta2_1 << '\t' << eta3_1 << '\t';
     }
     
     if(MA)
@@ -986,13 +1198,14 @@ void RVmodel::print(std::ostream& out) const
     if (studentt)
         out << '\t' << nu << '\t';
 
-    out << background;
+    out << bkg2 << '\t';
+    out << bkg;
 }
 
-string RVmodel::description() const
+string MOmodel::description() const
 {
     string desc;
-    string sep = "   ";
+    string sep = "  ";
 
     if (multi_instrument)
     {
@@ -1000,7 +1213,10 @@ string RVmodel::description() const
            desc += "jitter" + std::to_string(j+1) + sep;
     }
     else
-        desc += "extra_sigma   ";
+    {
+        desc += "jitter1" + sep;
+        desc += "jitter2" + sep;
+    }
 
     if(trend)
     {
@@ -1016,19 +1232,20 @@ string RVmodel::description() const
     }
 
     auto data = Data::get_instance();
-    if(data.indicator_correlations){
-        for(int j=0; j<data.number_indicators; j++){
-            desc += "beta" + std::to_string(j+1) + sep;
-        }
-    }
-
 
     if(GP)
     {
-        if(kernel == standard)
-            desc += "eta1" + sep + "eta2" + sep + "eta3" + sep + "eta4" + sep;
-        else
-            desc += "eta1" + sep + "eta2" + sep + "eta3" + sep;
+        if(kernel == standard){
+            desc += "eta1_1" + sep + "eta1_2" + sep;
+            desc += "eta2_1" + sep;
+            if (!share_eta2) desc += "eta2_2" + sep;
+            desc += "eta3_1" + sep;
+            if (!share_eta3) desc += "eta3_2" + sep;
+            desc += "eta4_1" + sep;
+            if (!share_eta4) desc += "eta4_2" + sep;
+        }
+        // else
+        //     desc += "eta1_1" + sep + "eta2_1" + sep + "eta3_1" + sep;
     }
     
     if(MA)
@@ -1075,7 +1292,7 @@ string RVmodel::description() const
  * Save the options of the current model in a INI file.
  * 
 */
-void RVmodel::save_setup() {
+void MOmodel::save_setup() {
     auto data = Data::get_instance();
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
@@ -1086,11 +1303,15 @@ void RVmodel::save_setup() {
 
     fout << "[kima]" << endl;
 
-    fout << "model: " << "RVmodel" << endl << endl;
+    fout << "model: " << "MOmodel" << endl << endl;
 
     fout << "GP: " << GP << endl;
-    if (GP)
+    if (GP){
         fout << "GP_kernel: " << kernel << endl;
+        fout << "share_eta2: " << share_eta2 << endl;
+        fout << "share_eta3: " << share_eta3 << endl;
+        fout << "share_eta4: " << share_eta4 << endl;
+    }
     fout << "MA: " << MA << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
@@ -1119,26 +1340,32 @@ void RVmodel::save_setup() {
     fout << endl;
 
     fout << "[priors.general]" << endl;
-    fout << "Cprior: " << *Cprior << endl;
+    fout << "Vprior: " << *Vprior << endl;
+    fout << "C2prior: " << *C2prior << endl;
     fout << "Jprior: " << *Jprior << endl;
+    fout << "J2prior: " << *J2prior << endl;
+
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
     if (multi_instrument)
+    {
         fout << "offsets_prior: " << *offsets_prior << endl;
+        fout << "offsets2_prior: " << *offsets2_prior << endl;
+    }
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
 
     if (GP){
         fout << endl << "[priors.GP]" << endl;
-        fout << "log_eta1_prior: " << *log_eta1_prior << endl;
-        // fout << "log_eta2_prior: " << *log_eta2_prior << endl;
-        fout << "eta2_prior: " << *eta2_prior << endl;
-        fout << "eta3_prior: " << *eta3_prior << endl;
+        fout << "eta1_1_prior: " << *eta1_1_prior << endl;
+        // fout << "log_eta2_1_prior: " << *log_eta2_1_prior << endl;
+        fout << "eta2_1_prior: " << *eta2_1_prior << endl;
+        fout << "eta3_1_prior: " << *eta3_1_prior << endl;
         if (kernel == standard)
-            fout << "log_eta4_prior: " << *log_eta4_prior << endl;
+            fout << "eta4_1_prior: " << *eta4_1_prior << endl;
     }
 
 
