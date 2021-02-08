@@ -757,59 +757,12 @@ class KimaResults(object):
                   'of the full posterior distribution\n'
             print(msg)
 
-            print('extra_sigma: ', pars[0])
-            npl = int(pars[self.index_component])
-            if npl > 0:
-                print('number of planets: ', npl)
-                print('orbital parameters: ', end='')
-                # s = 20 * ' '
-                s = (self.n_dimensions * ' {:>10s} ').format(
-                    'P', 'K', 'phi', 'e', 'lam')
-                print(s)
-                # print()
-                for i in range(0, npl):
-                    s = (self.n_dimensions *
-                         ' {:10.5f} ').format(*pars[self.index_component + 1 +
-                                                    i:-2:self.max_components])
-                    # if i>0:
-                    s = 20 * ' ' + s
-                    print(s)
-
-            if self.GPmodel:
-                if self.GPkernel == 0:
-                    eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
-                    print('GP parameters: ', eta1, eta2, eta3, eta4)
-                elif self.GPkernel == 1:
-                    eta1, eta2, eta3 = pars[self.indices['GPpars']]
-                    print('GP parameters: ', eta1, eta2, eta3)
-
-            if self.trend:
-                names = ('slope', 'quad', 'cubic')
-                for name, trend_par in zip(names, pars[self.indices['trend']]):
-                    print(name + ':', trend_par)
-
-            if self.multi:
-                instruments = self.instruments
-                ni = self.n_instruments - 1
-                print('instrument offsets: ', end=' ')
-                # print('(relative to %s) ' % self.data_file[-1])
-                print('(relative to %s) ' % instruments[-1])
-                s = 20 * ' '
-                s += (ni * ' {:20s} ').format(*instruments)
-                print(s)
-
-                i = self.indices['inst_offsets']
-                s = 20 * ' '
-                s += (
-                    ni * ' {:<20.3f} ').format(*pars[i])
-                print(s)
-
-            print('vsys: ', pars[-1])
+            self.print_sample(pars)
 
         return pars
 
     def median_sample(self, Np=None, printit=True):
-        """ 
+        """
         Get the median posterior sample. If `Np` is given, select only from
         posterior samples with that number of planets.
         """
@@ -828,32 +781,81 @@ class KimaResults(object):
                 '-> might not be representative of the full posterior distribution\n'
             )
 
-            print('extra_sigma: ', pars[0])
-            npl = int(pars[self.index_component])
-            if npl > 0:
-                print('number of planets: ', npl)
-                print('orbital parameters: ', end='')
-                # s = 20 * ' '
-                s = (self.n_dimensions * ' {:>10s} ').format(
-                    'P', 'K', 'phi', 'e', 'lam')
-                print(s)
-                # print()
-                for i in range(0, npl):
-                    s = (self.n_dimensions *
-                         ' {:10.5f} ').format(*pars[self.index_component + 1 +
-                                                    i:-2:self.max_components])
-                    # if i>0:
-                    s = 20 * ' ' + s
-                    print(s)
-
-            if self.GPmodel:
-                print('GP parameters: ', pars[self.indices['GPpars']])
-            if self.trend:
-                print('slope: ', pars[self.indices['trend']])
-
-            print('vsys: ', pars[-1])
+            self.print_sample(pars)
 
         return pars
+
+    def print_sample(self, p):
+        print('extra_sigma: ', p[self.indices['jitter']])
+        npl = int(p[self.index_component])
+        if npl > 0:
+            print('number of planets: ', npl)
+            print('orbital parameters: ', end='')
+
+            pars = ('P', 'K', 'ϕ', 'e', 'M0')
+            print((self.n_dimensions * ' {:>10s} ').format(*pars))
+
+            # for i in range(0, npl):
+            #     s = (self.n_dimensions *
+            #             ' {:10.5f} ').format(*p[self.index_component + 1 +
+            #                                     i:-2:self.max_components])
+            #     s = 20 * ' ' + s
+            #     print(s)
+
+            for i in range(0, npl):
+                formatter = {'all': lambda v: f'{v:11.5f}'}
+                with np.printoptions(formatter=formatter):
+                    s = str(p[self.indices['planets']][i::self.max_components])
+                    s = s.replace('[', '').replace(']', '')
+                s = s.rjust(20 + len(s))
+                print(s)
+
+
+        if self.KO:
+            print('number of known objects: ', self.nKO)
+            print('orbital parameters: ', end='')
+
+            pars = ('P', 'K', 'ϕ', 'e', 'M0')
+            print((self.n_dimensions * ' {:>10s} ').format(*pars))
+
+            for i in range(0, self.nKO):
+                formatter = {'all': lambda v: f'{v:11.5f}'}
+                with np.printoptions(formatter=formatter):
+                    s = str(p[self.indices['KOpars']][i::self.nKO])
+                    s = s.replace('[', '').replace(']', '')
+                s = s.rjust(20 + len(s))
+                print(s)
+
+        if self.GPmodel:
+            print('GP parameters: ', *p[self.indices['GPpars']])
+            # if self.GPkernel in (0, 2, 3):
+            #     eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
+            #     print('GP parameters: ', eta1, eta2, eta3, eta4)
+            # elif self.GPkernel == 1:
+            #     eta1, eta2, eta3 = pars[self.indices['GPpars']]
+            #     print('GP parameters: ', eta1, eta2, eta3)
+
+        if self.trend:
+            names = ('slope', 'quad', 'cubic')
+            for name, trend_par in zip(names, p[self.indices['trend']]):
+                print(name + ':', trend_par)
+
+        if self.multi:
+            instruments = self.instruments
+            ni = self.n_instruments - 1
+            print('instrument offsets: ', end=' ')
+            # print('(relative to %s) ' % self.data_file[-1])
+            print('(relative to %s) ' % instruments[-1])
+            s = 20 * ' '
+            s += (ni * ' {:20s} ').format(*instruments)
+            print(s)
+
+            i = self.indices['inst_offsets']
+            s = 20 * ' '
+            s += (ni * ' {:<20.3f} ').format(*p[i])
+            print(s)
+
+        print('vsys: ', p[-1])
 
     def eval_model(self, sample, t=None, include_planets=True):
         """
@@ -888,6 +890,19 @@ class KimaResults(object):
             v = np.zeros_like(t)
 
         if include_planets:
+
+            # known_object ?
+            if self.KO:
+                pars = sample[self.indices['KOpars']].copy()
+                for j in range(self.nKO):
+                    P = pars[j + 0 * self.nKO]
+                    K = pars[j + 1 * self.nKO]
+                    phi = pars[j + 2 * self.nKO]
+                    t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
+                    ecc = pars[j + 3 * self.nKO]
+                    w = pars[j + 4 * self.nKO]
+                    v += keplerian(t, P, K, ecc, w, t0, 0.)
+
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
 
