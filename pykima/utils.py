@@ -521,7 +521,8 @@ def get_instrument_name(data_file):
     bn = os.path.basename(data_file)
     try:
         pattern = '|'.join([
-            'ESPRESSO',
+            # 'ESPRESSO',
+            'ESPRESSO*[\d+]*',
             'HARPS[^\W_]*[\d+]*',
             'HIRES',
             'APF',
@@ -537,8 +538,11 @@ def get_instrument_name(data_file):
     except IndexError:
         try:
             return re.findall(pattern, bn.upper())[0]
-        except IndexError:  # didn't find
-            return data_file
+        except IndexError:
+            try:  # at the very least, try removing the file type
+                return os.path.splitext(data_file)[0]
+            except IndexError:  # couldn't do anything, give up
+                return data_file
 
 
 # covert dates to/from Julian days and MJD
