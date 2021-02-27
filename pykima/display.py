@@ -12,7 +12,7 @@ from corner import corner
 
 from .analysis import passes_threshold_np, find_outliers
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
-                    wrms, lighten_color)
+                    wrms, lighten_color, get_instrument_name)
 
 from .keplerian import keplerian
 # from .results import KimaResults
@@ -71,7 +71,7 @@ def make_plots(res, options, save_plots=False):
                 methods(**kwargs)
 
 
-def make_plot1(res, ax=None):
+def make_plot1(res, ax=None, errors=False):
     """ Plot the histogram of the posterior for Np """
     if ax is None:
         fig, ax = plt.subplots(1, 1)
@@ -80,6 +80,13 @@ def make_plot1(res, ax=None):
     nplanets = res.posterior_sample[:, res.index_component]
     n, _ = np.histogram(nplanets, bins=bins)
     ax.bar(bins[:-1], n, zorder=2)
+
+    if errors:
+        # from scipy.stats import multinomial
+        prob = n / res.ESS
+        # errors = multinomial(res.ESS, prob).rvs(1000).std(axis=0)
+        errors = np.sqrt(res.ESS * prob * (1 - prob))
+        ax.errorbar(bins[:-1], n, errors, fmt='.', ms=0, capsize=3, color='k')
 
     if res.removed_crossing:
         ic = res.index_component
@@ -112,7 +119,7 @@ def make_plot1(res, ax=None):
 
 def make_plot2(res, nbins=100, bins=None, plims=None, logx=True, density=False,
                kde=False, kde_bw=None, show_peaks=False, show_prior=False,
-               show_year=True, show_timespan=True):
+               show_year=True, show_timespan=True, **kwargs):
     """
     Plot the histogram (or the kde) of the posterior for the orbital period(s).
     Optionally provide the number of histogram bins, the bins themselves, the
@@ -130,7 +137,11 @@ def make_plot2(res, nbins=100, bins=None, plims=None, logx=True, density=False,
     else:
         T = res.T
 
-    fig, ax = plt.subplots(1, 1)
+    if 'ax' in kwargs:
+        ax = kwargs.pop('ax')
+        fig = ax.figure
+    else:
+        fig, ax = plt.subplots(1, 1)
 
     kwargs = {'ls': '--', 'lw': 1.5, 'alpha': 0.3, 'zorder': -1}
     if show_year:  # mark 1 year
@@ -185,16 +196,12 @@ def make_plot2(res, nbins=100, bins=None, plims=None, logx=True, density=False,
     else:
         if bins is None:
             if plims is None:
-                # prior = res.priors['Pprior']
-                # if isinstance(prior.dist, uniform_gen):
-                #     a, b = prior.interval(1)
-                #     if logx:
-                #         bins = 10**np.linspace(np.log10(a), np.log10(b), nbins)
-                #     else:
-                #         bins = np.linspace(a, b, nbins)
-                # else:
-                # default, 100 bins in log between 0.1 and 1e7
-                bins = 10**np.linspace(np.log10(1e-1), np.log10(1e7), nbins)
+                prior_support = res.priors['Pprior'].support()
+                if not np.isinf(prior_support).any():
+                    start, end = prior_support
+                else:
+                    start, end = 1e-1, 1e7
+                bins = 10**np.linspace(np.log10(start), np.log10(end), nbins)
             else:
                 bins = 10**np.linspace(np.log10(plims[0]), np.log10(plims[1]),
                                        nbins)
@@ -222,7 +229,7 @@ def make_plot2(res, nbins=100, bins=None, plims=None, logx=True, density=False,
                     pass
 
     ax.legend()
-    ax.set(xscale='log' if logx else 'linear', xlabel=r'(Period/days)',
+    ax.set(xscale='log' if logx else 'linear', xlabel=r'Period [days]',
            ylabel='KDE density' if kde else 'Number of Posterior Samples',
            title='Posterior distribution for the orbital period(s)')
     ax.set_ylim(bottom=0)
@@ -239,7 +246,7 @@ def make_plot2(res, nbins=100, bins=None, plims=None, logx=True, density=False,
         return fig
 
 
-def make_plot3(res, points=True, gridsize=50):
+def make_plot3(res, points=True, gridsize=50, **kwargs):
     """
     Plot the 2d histograms of the posteriors for semi-amplitude and orbital
     period and eccentricity and orbital period. If `points` is True, plot
@@ -263,7 +270,11 @@ def make_plot3(res, points=True, gridsize=50):
 
     A, E = res.A, res.E
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+    if 'ax1' in kwargs and 'ax2' in kwargs:
+        ax1, ax2 = kwargs.pop('ax1'), kwargs.pop('ax2')
+        fig = ax1.figure
+    else:
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
     # the y scale in loglog looks bad if the semi-amplitude doesn't have
     # high dynamic range; the threshold of 30 is arbitrary
@@ -342,11 +353,12 @@ def make_plot4(res, Np=None, ranges=None, show_prior=False, **hist_kwargs):
         print('Model does not have GP! make_plot4() doing nothing...')
         return
 
-    if res.model == 'MOmodel':
+    if res.model == 'RVFWHMmodel':
         make_plot4_mo(res)
         return
 
     n = res.etas.shape[1]
+    available_etas = [f'eta{i}' for i in range(1, n + 1)]
     labels = [f'eta{i}' for i in range(1, n + 1)]
     if ranges is None:
         ranges = len(labels) * [None]
@@ -354,7 +366,7 @@ def make_plot4(res, Np=None, ranges=None, show_prior=False, **hist_kwargs):
     if Np is not None:
         m = res.posterior_sample[:, res.index_component] == Np
 
-    nplots = int(np.ceil(len(available_etas) / 2))
+    nplots = int(np.ceil(n / 2))
     fig, axes = plt.subplots(2, nplots)
 
     for i, eta in enumerate(available_etas):
@@ -473,98 +485,154 @@ def make_plot4_mo(res, Np=None, ranges=None):
     # if res.return_figs:
     #     return fig
 
-def make_plot5(res, show=True, ranges=None):
+
+def make_plot5(res, include_jitters=False, show=True, ranges=None):
     """ Corner plot for the GP hyperparameters """
 
     if not res.GPmodel:
         print('Model does not have GP! make_plot5() doing nothing...')
         return
 
-    # these are the limits of the default prior for eta3
-    res.pmin = 10.
-    res.pmax = 40.
-    # but we try to accomodate if the prior is changed
-    if res.eta3.min() < res.pmin:
-        res.pmin = np.floor(res.eta3.min())
-    if res.eta3.max() > res.pmax:
-        res.pmax = np.ceil(res.eta3.max())
+    data = []
+    labels = []
 
-    # available_etas = [v for v in dir(res) if v.startswith('eta')]
-    available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
-    labels = [r'$s$'] * res.n_jitters
-    labels += [r'$\eta_%d$' % (i + 1) for i, _ in enumerate(available_etas)]
-    units = ['m/s'] * res.n_jitters + ['m/s', 'days', 'days', None]
-    xlabels = []
-    if res.multi:
-        for i in range(res.n_jitters):
-            label = r'%s$_{{\rm %s}}}$' % (labels[i], res.instruments[i])
-            xlabels.append(label)
+    if include_jitters:
+        if res.multi:
+            instruments = [get_instrument_name(df) for df in res.data_file]
+            if res.model == 'RVFWHMmodel':
+                labels += [rf'$s_{{\rm {i}}}^{{\rm RV}}$' for i in instruments]
+                labels += [rf'$s_{{\rm {i}}}^{{\rm FWHM}}$' for i in instruments]
+            else:
+                labels += [rf'$s_{{\rm {i}}}$' for i in instruments]
+
+        data.append(res.jitter)
+
+    if res.model == 'RVFWHMmodel':
+        labels += [r'$\eta_1^{RV}$', r'$\eta_1^{FWHM}$']
+        labels += [f'$\eta_{i}$' for i in range(2, 5)]
     else:
-        xlabels.append(labels[0])
+        labels += [f'$\eta_{i}$' for i in range(1, 5)]
 
-    for label, unit in zip(labels[res.n_jitters:], units[res.n_jitters:]):
-        xlabels.append(label)
-        #    ' (%s)' % unit if unit is not None else label)
+    data.append(res.etas)
 
-    # all Np together
-    res.post_samples = np.c_[res.extra_sigma, res.etas]
+    data = np.hstack(data)
+
+    rc = {
+        'font.size': 6,
+    }
+    with plt.rc_context(rc):
+        fig = corner(data, show_titles=True, labels=labels, titles=labels,
+                     plot_datapoints=True, plot_contours=False,
+                     plot_density=False)
+
+    fig.subplots_adjust(top=0.95, bottom=0.1, wspace=0, hspace=0)
+    # for ax in fig.axes:
+    # ax.yaxis.set_label_coords(0.5, 0.5, fig.transFigure)
+
+    # available_etas = ['eta1', 'eta2', 'eta3', 'eta4']
+    # labels = [r'$s$'] * res.n_jitters
+    # labels += [r'$\eta_%d$' % (i + 1) for i, _ in enumerate(available_etas)]
+    # units = ['m/s'] * res.n_jitters + ['m/s', 'days', 'days', None]
+    # xlabels = []
     # if res.multi:
-    #     variables = list(res.extra_sigma.T)
+    #     for i in range(res.n_jitters):
+    #         label = r'%s$_{{\rm %s}}}$' % (labels[i], res.instruments[i])
+    #         xlabels.append(label)
     # else:
-    #     variables = [res.extra_sigma]
+    #     xlabels.append(labels[0])
 
-    # for eta in available_etas:
-    #     variables.append(getattr(res, eta))
+    # for label, unit in zip(labels[res.n_jitters:], units[res.n_jitters:]):
+    #     xlabels.append(label)
+    #     #    ' (%s)' % unit if unit is not None else label)
 
-    # res.post_samples = np.vstack(variables).T
-    # ranges = [1.]*(len(available_etas) + res.extra_sigma.shape[1])
+    # # all Np together
+    # res.post_samples = np.c_[res.extra_sigma, res.etas]
+    # # if res.multi:
+    # #     variables = list(res.extra_sigma.T)
+    # # else:
+    # #     variables = [res.extra_sigma]
 
-    if ranges is None:
-        ranges = [1.] * res.post_samples.shape[1]
-    # ranges[3] = (res.pmin, res.pmax)
+    # # for eta in available_etas:
+    # #     variables.append(getattr(res, eta))
 
-    try:
-        res.corner1 = corner(
-            res.post_samples,
-            labels=xlabels,
-            show_titles=True,
-            plot_contours=False,
-            plot_datapoints=False,
-            plot_density=True,
-            # fill_contours=True,
-            smooth=True,
-            contourf_kwargs={
-                'cmap': plt.get_cmap('afmhot'),
-                'colors': None
-            },
-            hexbin_kwargs={
-                'cmap': plt.get_cmap('afmhot_r'),
-                'bins': 'log'
-            },
-            hist_kwargs={'density': True},
-            range=ranges,
-            data_kwargs={'alpha': 1},
-        )
-    except AssertionError as exc:
-        print('AssertionError from corner in make_plot5()', end='')
-        if "I don't believe" in str(exc):
-            print(', you probably need to get more posterior samples')
-        return
+    # # res.post_samples = np.vstack(variables).T
+    # # ranges = [1.]*(len(available_etas) + res.extra_sigma.shape[1])
 
-    res.corner1.suptitle(
-        'Joint and marginal posteriors for GP hyperparameters')
+    # if ranges is None:
+    #     ranges = [1.] * res.post_samples.shape[1]
+    # # ranges[3] = (res.pmin, res.pmax)
 
-    if show:
-        res.corner1.tight_layout(rect=[0, 0.03, 1, 0.95])
+    # try:
+    #     res.corner1 = corner(
+    #         res.post_samples,
+    #         labels=xlabels,
+    #         show_titles=True,
+    #         plot_contours=False,
+    #         plot_datapoints=False,
+    #         plot_density=True,
+    #         # fill_contours=True,
+    #         smooth=True,
+    #         contourf_kwargs={
+    #             'cmap': plt.get_cmap('afmhot'),
+    #             'colors': None
+    #         },
+    #         hexbin_kwargs={
+    #             'cmap': plt.get_cmap('afmhot_r'),
+    #             'bins': 'log'
+    #         },
+    #         hist_kwargs={'density': True},
+    #         range=ranges,
+    #         data_kwargs={'alpha': 1},
+    #     )
+    # except AssertionError as exc:
+    #     print('AssertionError from corner in make_plot5()', end='')
+    #     if "I don't believe" in str(exc):
+    #         print(', you probably need to get more posterior samples')
+    #     return
 
-    if res.save_plots:
-        filename = 'kima-showresults-fig5.png'
-        print('saving in', filename)
-        res.corner1.savefig(filename)
+    # res.corner1.suptitle(
+    #     'Joint and marginal posteriors for GP hyperparameters')
 
-    if res.return_figs:
-        return res.corner1
+    # if show:
+    #     res.corner1.tight_layout(rect=[0, 0.03, 1, 0.95])
 
+    # if res.save_plots:
+    #     filename = 'kima-showresults-fig5.png'
+    #     print('saving in', filename)
+    #     res.corner1.savefig(filename)
+
+    # if res.return_figs:
+    #     return res.corner1
+
+
+def corner_all(res):
+    n = max(10000, res.ESS)
+
+    values = res.posterior_sample[:, res.indices['jitter']]
+    prior_rvs = []
+    for p in res.parameter_priors[res.indices['jitter']]:
+        prior_rvs.append(p.rvs(n))
+
+    for par in ('planets', 'vsys'):
+        values = np.c_[values, res.posterior_sample[:, res.indices[par]]]
+        prior = res.parameter_priors[res.indices[par]]
+        if isinstance(prior, list):
+            for p in prior:
+                prior_rvs.append(p.rvs(n))
+        else:
+            prior_rvs.append(prior.rvs(n))
+
+    hkw = dict(density=True)
+    fig = corner(values, color='C0', hist_kwargs=hkw,
+                 plot_density=False, plot_contours=False, plot_datapoints=True)
+    xlims = [ax.get_xlim() for ax in fig.axes]
+
+    hkw = dict(density=True, alpha=0.5)
+    fig = corner(np.array(prior_rvs).T, fig=fig, color='k', hist_kwargs=hkw,
+                 plot_density=False, plot_contours=False, plot_datapoints=False)
+
+    for xlim, ax in zip(xlims, fig.axes):
+        ax.set_xlim(xlim)
 
 def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
               **kwargs):
@@ -706,7 +774,7 @@ def hist_jitter(res, show_prior=False, **kwargs):
         units = ' (m/s)'  # if res.units == 'ms' else ' (km/s)'
 
     kw = dict(constrained_layout=True)
-    if res.model == 'MOmodel':
+    if res.model == 'RVFWHMmodel':
         fig, axs = plt.subplots(2, res.n_instruments, **kw)
     elif res.model == 'RVmodel':
         fig, axs = plt.subplots(1, res.n_instruments, **kw)
@@ -723,22 +791,23 @@ def hist_jitter(res, show_prior=False, **kwargs):
     for ax in axs:
         ax.set(yticks=[], ylabel='posterior')
 
-
-    if res.model == 'MOmodel':
-        labels = [f'RV jitter {i} [m/s]' for i in res.instruments]
-        labels += [f'FWHM jitter {i} [m/s]' for i in res.instruments]
+    insts = [get_instrument_name(i) for i in res.instruments]
+    if res.model == 'RVFWHMmodel':
+        labels = [f'RV jitter {i} [m/s]' for i in insts]
+        labels += [f'FWHM jitter {i} [m/s]' for i in insts]
     else:
-        labels = [f'jitter {i} [m/s]' for i in res.instruments]
+        labels = [f'jitter {i} [m/s]' for i in insts]
 
     for ax, label in zip(axs, labels):
         ax.set_xlabel(label)
 
     for row in axs_matrix:
         for ax in row[1:]:
-            ax.sharex(row[0])
+            pass
+            # ax.sharex(row[0])
 
 
-    return 
+    return
     if res.multi:  # there are n_instruments jitters
         # lambda substrs
         fig, axs = plt.subplots(1, res.n_instruments, sharey=True,
@@ -833,9 +902,9 @@ def hist_trend(res, per_year=True, show_prior=False):
     deg = res.trend_degree
     names = ['slope', 'quadr', 'cubic']
     if res.arbitrary_units:
-        units = [' (/yr)', ' (/yr²)', ' (/yr³)']
+        units = ['/yr', '/yr²', '/yr³']
     else:
-        units = [' (m/s/yr)', ' (m/s/yr²)', ' (m/s/yr³)']
+        units = ['m/s/yr', 'm/s/yr²', 'm/s/yr³']
 
     trend = res.trendpars.copy()
 
@@ -845,7 +914,7 @@ def hist_trend(res, per_year=True, show_prior=False):
     fig, ax = plt.subplots(deg, 1, constrained_layout=True, squeeze=False)
     fig.suptitle('Posterior distribution for trend coefficients')
     for i in range(deg):
-        estimate = percentile68_ranges_latex(trend[:, i]) + units[i]
+        estimate = percentile68_ranges_latex(trend[:, i]) + ' ' + units[i]
 
         ax[i, 0].hist(trend[:, i].ravel(), label='posterior')
         if show_prior:
@@ -855,11 +924,14 @@ def hist_trend(res, per_year=True, show_prior=False):
                 prior.rvs(res.ESS) * f, alpha=0.15, color='k', zorder=-1,
                 label='prior')
 
-        ax[i, 0].set(xlabel=f'{names[i]}{units[i]}',
-                     title=f'{names[i]} = {estimate}')
+        ax[i, 0].set(xlabel=f'{names[i]} ({units[i]})')
 
         if show_prior:
-            ax[i, 0].legend()
+            ax[i, 0].legend(title=estimate)
+        else:
+            leg = ax[i, 0].legend([], [], title=estimate)
+            leg._legend_box.sep = 0
+
 
     fig.set_constrained_layout_pads(w_pad=0.3)
     fig.text(0.01, 0.5, 'posterior samples', rotation=90, va='center')
@@ -997,12 +1069,15 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
 
     # get the model for this sample
     # (this adds in the instrument offsets and the systemic velocity)
-    v = res.eval_model(sample)
+    v = res.eval_model(sample)[0]
 
     # put all data around zero
     if res.GPmodel:
-        # subtract the GP (already removes vsys, trend and instrument offsets)
-        GPvel = res.GP.predict_with_hyperpars(res, sample, add_parts=False)
+        # subtract the GP
+        if res.model == 'RVFWHMmodel':
+            GPvel = res.stochastic_model(sample)[0]
+        else:
+            GPvel = res.stochastic_model(sample)
         y -= GPvel
     else:
         GPvel = np.zeros_like(t)
@@ -1126,9 +1201,9 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
 
                     if highlight_points:
                         hlm = (m & hl)[m]
-                        ax.errorbar(np.sort(phase[hlm]) + j, 
+                        ax.errorbar(np.sort(phase[hlm]) + j,
                                     yy[np.argsort(phase[hlm])],
-                                    ee[np.argsort(phase[hlm])], 
+                                    ee[np.argsort(phase[hlm])],
                                     alpha=alpha, **hlkw)
 
 
@@ -1165,39 +1240,38 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
         if res.multi:
             for k in range(1, res.n_instruments + 1):
                 m = res.obs == k
-                if k < res.n_instruments:
-                    of = sample[res.indices['inst_offsets']][k - 1]
-                else:
-                    of = 0.
-
-                GPy = res.y[m] - sample[-1] - of
-                axGP.errorbar(t[m], GPy, e[m], **ekwargs)
-
                 if highlight_points:
-                    GPy = res.y - sample[-1] - of
-                    axGP.errorbar(t[hl], GPy[hl], e[hl], **hlkw)
+                    axGP.errorbar(t[m & ~hl], res.y[m & ~hl], e[m & ~hl], **ekwargs)
+                    axGP.errorbar(t[hl], res.y[hl], e[hl], **hlkw)
+                else:
+                    axGP.errorbar(t[m], res.y[m], e[m], **ekwargs)
+
+                # if highlight_points:
+                #     GPy = res.y - sample[-1] - of
+                #     axGP.errorbar(t[hl], GPy[hl], e[hl], **hlkw)
         else:
-            axGP.errorbar(t, res.y - res.model(sample), e, **ekwargs)
+            axGP.errorbar(t, res.y, e, **ekwargs)
 
             if highlight_points:
-                GPy = res.y - res.model(sample)
-                axGP.errorbar(t[hl], GPy[hl], e[hl], **hlkw)
+                axGP.errorbar(t[hl], res.y[hl], e[hl], **hlkw)
 
         axGP.set(xlabel="Time [days]", ylabel="GP [m/s]")
 
         # axGP.plot(t, GPvel, 'o-')
         # jitters = sample[res.indices['jitter']]
-        tt = np.linspace(t[0], t[-1], 5000)
-        pred, std = res.GP.predict_with_hyperpars(res, sample, tt,
-                                                  return_std=True)
+        tt = np.linspace(t[0], t[-1], 3000)
+        no_planets_model = res.eval_model(sample, tt, include_planets=False)
+
+        if res.model == 'RVmodel':
+            pred, std = res.stochastic_model(sample, tt, return_std=True)
+        elif res.model == 'RVFWHMmodel':
+            (pred, _), (std, _) = res.stochastic_model(sample, tt,
+                                                       return_std=True)
+            no_planets_model = no_planets_model[0]                                                    
+
+        pred += no_planets_model
         axGP.plot(tt, pred, 'k')
         axGP.fill_between(tt, pred-2*std, pred+2*std, color='m', alpha=0.2)
-
-        # names = ['GP'] + [get_instrument_name(d) for d in res.data_file]
-        # leg = axGP.legend(names, loc="upper left", handletextpad=0.4,
-        #                   bbox_to_anchor=(0, 1.17), ncol=6, fontsize=10)
-        # for label, name in zip(leg.get_texts(), names):
-        #     label.set_text(name)
 
     ax = fig.add_subplot(gs[-1, :])
     residuals = np.zeros_like(t)
@@ -1208,6 +1282,7 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
         print('residual rms per instrument')
         for k in range(1, res.n_instruments + 1):
             m = res.obs == k
+            print(v)
             residuals[m] = res.y[m] - v[m] - KOvel[m] - GPvel[m]
 
             alpha = 1
@@ -1242,7 +1317,7 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
     # ax.legend()
     ax.axhline(y=0, ls='--', alpha=0.5, color='k')
     ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
-    ax.set(xlabel='Time [BJD]', ylabel='residuals [m/s]')
+    ax.set(xlabel='Time [BJD]', ylabel='r [m/s]')
     title_kwargs = dict(loc='right', fontsize=12)
 
     if res.studentT:
@@ -1266,6 +1341,7 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
 
 def plot_random_samples_mo(res,
                            ncurves=50,
+                           samples=None,
                            over=0.1,
                            pmin=None,
                            pmax=None,
@@ -1284,7 +1360,11 @@ def plot_random_samples_mo(res,
     """
     colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
 
-    samples = res.get_sorted_planet_samples()
+    if samples is None:
+        samples = res.get_sorted_planet_samples()
+    else:
+        samples = np.atleast_2d(samples)
+
     if res.max_components > 0:
         samples, mask = \
             res.apply_cuts_period(samples, pmin, pmax, return_mask=True)
@@ -1292,8 +1372,10 @@ def plot_random_samples_mo(res,
         mask = np.ones(samples.shape[0], dtype=bool)
 
     t = res.t.copy()
+    M0_epoch = res.M0_epoch
     if t[0] > 24e5:
         t -= 24e5
+        M0_epoch -= 24e5
 
     tt = np.linspace(t.min() - over * t.ptp(), t.max() + over * t.ptp(),
                      ntt + int(100 * over))
@@ -1316,6 +1398,12 @@ def plot_random_samples_mo(res,
     y = res.y.copy()
     yerr = res.e.copy()
 
+    y2 = res.y2.copy()
+    y2err = res.e2.copy()
+    
+    y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
+    y2_offset = round(y2.mean(), 0) if abs(y2.mean()) > 100 else 0
+
     ncurves = min(ncurves, samples.shape[0])
 
     if samples.shape[0] == 1:
@@ -1333,15 +1421,19 @@ def plot_random_samples_mo(res,
         mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
         ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
 
-    if res.KO:
-        fig, (ax, ax1) = plt.subplots(1, 2, figsize=[2 * 6.4, 4.8],
-                                        constrained_layout=True)
-        ax1.set_title('Keplerian curve(s) from known object(s) removed')
+    if 'ax1' in kwargs and 'ax2' in kwargs:
+        ax1, ax2 = kwargs.pop('ax1'), kwargs.pop('ax2')
+        fig = ax1.figure
     else:
-        fig, (ax, ax2) = plt.subplots(2, 1, sharex=True,
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True,
                                       constrained_layout=True)
+    # if res.KO:
+    #     fig, (ax, ax1) = plt.subplots(1, 2, figsize=[2 * 6.4, 4.8],
+    #                                     constrained_layout=True)
+    #     ax1.set_title('Keplerian curve(s) from known object(s) removed')
+    # else:
 
-    ax.set_title('Posterior samples in data space')
+    ax1.set_title('Posterior samples in data space')
 
     ## plot the Keplerian curves
 
@@ -1354,13 +1446,17 @@ def plot_random_samples_mo(res,
     for icurve, i in enumerate(ii):
         stoc_model = res.stochastic_model(res.posterior_sample[i], tt)
         model = res.eval_model(res.posterior_sample[i], tt)
-        ax.plot(tt, stoc_model[0] + model[0], 'k', alpha=alpha)
+
+        ax1.plot(tt, stoc_model[0] + model[0] - y_offset, 'k', alpha=alpha)
         # ax2.plot(tt, stoc_model[1] + model[1], 'k', alpha=alpha)
 
         offset_model = res.eval_model(res.posterior_sample[i], tt,
                                      include_planets=False)
-        ax.plot(tt, stoc_model[0] + offset_model[0], 'plum', alpha=alpha)
-        ax2.plot(tt, stoc_model[1] + offset_model[1], 'plum', alpha=alpha)
+
+        if res.GPmodel:
+            kw = dict(color='plum', alpha=alpha)
+            ax1.plot(tt, stoc_model[0] + offset_model[0] - y_offset, **kw)
+            ax2.plot(tt, stoc_model[1] + offset_model[1] - y2_offset, **kw)
 
         if show_vsys:
             kw = dict(alpha=0.1, color='r', ls='--')
@@ -1370,11 +1466,12 @@ def plot_random_samples_mo(res,
                     start = t[instrument_mask].min()
                     end = t[instrument_mask].max()
                     m = np.where( (tt > start) & (tt < end) )
-                    ax.plot(tt[m], offset_model[0][m], **kw)
-                    ax2.plot(tt[m], offset_model[1][m], **kw)
+                    ax1.plot(tt[m], offset_model[0][m] - y_offset, **kw)
+                    ax2.plot(tt[m], offset_model[1][m] - y2_offset, **kw)
             else:
-                ax.plot(tt, offset_model[0], **kw)
-                ax2.plot(tt, offset_model[1], **kw)
+                ax1.plot(tt, offset_model[0] - y_offset, **kw)
+                ax2.plot(tt, offset_model[1] - y2_offset, **kw)
+
         continue
 
         if res.KO:  # known object
@@ -1404,8 +1501,8 @@ def plot_random_samples_mo(res,
             v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
             v_KO_at_t[icurve] = v_at_t  # first KO curve, at t
 
-            # ax.plot(tt, v_KO[icurve], alpha=0.4, color='g', ls='-')
-            # ax.add_line(plt.Line2D(tt, v_KO[icurve]))
+            # ax1.plot(tt, v_KO[icurve], alpha=0.4, color='g', ls='-')
+            # ax1.add_line(plt.Line2D(tt, v_KO[icurve]))
 
 
         # plot the MA "prediction"
@@ -1415,10 +1512,10 @@ def plot_random_samples_mo(res,
         #     sigmaMA, tauMA = res.MA.mean(axis=0)
         #     vMA[1:] += sigmaMA * np.exp(np.abs(dt) / tauMA) * (res.y[:-1] - v_at_t[:-1])
         #     vMA[np.abs(vMA) > 1e6] = np.nan
-        #     ax.plot(t, vMA, 'o-', alpha=1, color='m')
+        #     ax1.plot(t, vMA, 'o-', alpha=1, color='m')
 
         # v only has the Keplerian components, not the GP predictions
-        # ax.plot(tt, v, alpha=0.2, color='k')
+        # ax1.plot(tt, v, alpha=0.2, color='k')
 
 
     residuals = y.copy()
@@ -1431,49 +1528,63 @@ def plot_random_samples_mo(res,
             kw = dict(fmt='o', ms=3, color=colors[j], label=inst)
             kw.update(**kwargs)
 
-            ax.errorbar(t[m], y[m], yerr[m], **kw)
-            ax2.errorbar(t[m], res.y2[m], res.e2[m], **kw)
+            ax1.errorbar(t[m], y[m] - y_offset, yerr[m], **kw)
+            ax2.errorbar(t[m], res.y2[m] - y2_offset, res.e2[m], **kw)
 
-            if res.KO:
-                mod = v_KO_at_t.mean(axis=0)[m]
-                ax1.errorbar(t[m], y[m] - mod, yerr[m], **kw)
+            # if res.KO:
+            #     mod = v_KO_at_t.mean(axis=0)[m]
+            #     ax2.errorbar(t[m], y[m] - mod, yerr[m], **kw)
 
             # calculate residuals
             # residuals[m] -= v_at_t[m]
 
-        ax.legend(loc='upper left', fontsize=8)
+        ax1.legend(loc='upper left', fontsize=8)
 
     else:
-        ax.errorbar(t, y, yerr, fmt='o')
-        ax2.errorbar(t, res.y2, res.e2, fmt='o')
+        ax1.errorbar(t, y - y_offset, yerr, fmt='o')
+        ax2.errorbar(t, y2 - y2_offset, res.e2, fmt='o')
 
-        if res.KO:
-            ax1.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
+        # if res.KO:
+        #     ax2.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
 
         residuals -= v_at_t
+
+    if res.multi:
+        kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
+        ax1.vlines(res._offset_times, *ax1.get_ylim(), **kw)
+        ax2.vlines(res._offset_times, *ax2.get_ylim(), **kw)
+
+    if y_offset != 0:
+        sign_symbol = {1.0: '+', -1.0: '-'}
+        offset = sign_symbol[np.sign(y_offset)] + str(int(abs(y_offset)))
+        ax1.set_title(offset, loc='left', fontsize=9)
+    if y2_offset != 0:
+        sign_symbol = {1.0: '+', -1.0: '-'}
+        offset = sign_symbol[np.sign(y2_offset)] + str(int(abs(y2_offset)))
+        ax2.set_title(offset, loc='left', fontsize=9)
 
     if res.arbitrary_units:
         ylabel = 'Q [arbitrary]'
     else:
         ylabel = 'RV [m/s]'
 
-    ax.set_ylabel(ylabel)
+    ax1.set_ylabel(ylabel)
     ax2.set(xlabel='Time [days]', ylabel=f'FWHM [m/s]')
 
-    if res.KO:
-        ax1.set(**lab)
+    # if res.KO:
+    #     ax2.set(**lab)
 
-        from matplotlib.patches import Patch
-        from matplotlib.lines import Line2D
+    #     from matplotlib.patches import Patch
+    #     from matplotlib.lines import Line2D
 
-        legend_elements = [
-            Line2D([0], [0], marker='o', color='w', label='Data', markerfacecolor='C0', markersize=6),
-            Line2D([0], [0], color='k', lw=1, label='Known object(s) samples'),
-            Line2D([0], [0], color='g', lw=1, label='Full model samples'),
-            # Patch(facecolor='orange', edgecolor='r', label='Color Patch')
-        ]
+    #     legend_elements = [
+    #         Line2D([0], [0], marker='o', color='w', label='Data', markerfacecolor='C0', markersize=6),
+    #         Line2D([0], [0], color='k', lw=1, label='Known object(s) samples'),
+    #         Line2D([0], [0], color='g', lw=1, label='Full model samples'),
+    #         # Patch(facecolor='orange', edgecolor='r', label='Color Patch')
+    #     ]
 
-        ax.legend(handles=legend_elements, loc='best')
+    #     ax1.legend(handles=legend_elements, loc='best')
 
 
     if res.save_plots:

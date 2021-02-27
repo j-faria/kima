@@ -1,4 +1,4 @@
-#include "MOmodel.h"
+#include "RVFWHMmodel.h"
 #include "RVConditionalPrior.h"
 #include "DNest4.h"
 #include "RNG.h"
@@ -21,9 +21,9 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 
 /* set default priors if the user didn't change them */
-void MOmodel::setPriors()  // BUG: should be done by only one thread!
+void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
 
     betaprior = make_prior<Gaussian>(0, 1);
     // sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 10.);
@@ -67,7 +67,7 @@ void MOmodel::setPriors()  // BUG: should be done by only one thread!
         if (!eta1_1_prior)
             eta1_1_prior = make_prior<ModifiedLogUniform>(1, data.get_RV_span());
         if (!eta1_2_prior)
-            eta1_2_prior = make_prior<ModifiedLogUniform>(1, data.get_RV_span());
+            eta1_2_prior = make_prior<ModifiedLogUniform>(1, data.get_y2_span());
 
         // η2
         if (!eta2_1_prior)
@@ -111,7 +111,7 @@ void MOmodel::setPriors()  // BUG: should be done by only one thread!
 }
 
 
-void MOmodel::from_prior(RNG& rng)
+void RVFWHMmodel::from_prior(RNG& rng)
 {
     // preliminaries
     setPriors();
@@ -179,7 +179,7 @@ void MOmodel::from_prior(RNG& rng)
         tauMA = tauMA_prior->generate(rng);
     }
 
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
 
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
@@ -215,10 +215,10 @@ void MOmodel::from_prior(RNG& rng)
  * @brief Fill the GP covariance matrix.
  * 
 */
-void MOmodel::calculate_C_1()
+void RVFWHMmodel::calculate_C_1()
 {
     // Get the data
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
     const vector<double>& t = data.get_t();
     const vector<double>& sig = data.get_sig();
     const vector<int>& obsi = data.get_obsi();
@@ -333,10 +333,10 @@ void MOmodel::calculate_C_1()
  * @brief Fill the GP covariance matrix.
  * 
 */
-void MOmodel::calculate_C_2()
+void RVFWHMmodel::calculate_C_2()
 {
     // Get the data
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
     const vector<double>& t = data.get_t();
     const vector<double>& sig = data.get_sig2();
     const vector<int>& obsi = data.get_obsi();
@@ -453,9 +453,9 @@ void MOmodel::calculate_C_2()
  * @brief Calculate the full RV model
  * 
 */
-void MOmodel::calculate_mu()
+void RVFWHMmodel::calculate_mu()
 {
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
     // Get the times from the data
     const vector<double>& t = data.get_t();
     // only really needed if multi_instrument
@@ -559,9 +559,9 @@ void MOmodel::calculate_mu()
  * @brief Calculate the FWHM model
  * 
 */
-void MOmodel::calculate_mu_2()
+void RVFWHMmodel::calculate_mu_2()
 {
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
     size_t N = data.N();
     int Ni = data.Ninstruments();
     // only really needed if multi_instrument
@@ -586,9 +586,9 @@ void MOmodel::calculate_mu_2()
 }
 
 
-void MOmodel::remove_known_object()
+void RVFWHMmodel::remove_known_object()
 {
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
     auto t = data.get_t();
     double f, v, ti, Tp;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
@@ -605,9 +605,9 @@ void MOmodel::remove_known_object()
     }
 }
 
-void MOmodel::add_known_object()
+void RVFWHMmodel::add_known_object()
 {
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
     auto t = data.get_t();
     double f, v, ti, Tp;
     for(int j=0; j<n_known_object; j++)
@@ -624,13 +624,13 @@ void MOmodel::add_known_object()
 }
 
 
-double MOmodel::perturb(RNG& rng)
+double RVFWHMmodel::perturb(RNG& rng)
 {
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
     const vector<double>& t = data.get_t();
     const vector<int>& obsi = data.get_obsi();
     auto actind = data.get_actind();
@@ -994,9 +994,9 @@ double MOmodel::perturb(RNG& rng)
  * 
  * @return double the log-likelihood
 */
-double MOmodel::log_likelihood() const
+double RVFWHMmodel::log_likelihood() const
 {
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
     size_t N = data.N();
     auto y = data.get_y();
     auto y2 = data.get_y2();
@@ -1133,7 +1133,7 @@ double MOmodel::log_likelihood() const
 }
 
 
-void MOmodel::print(std::ostream& out) const
+void RVFWHMmodel::print(std::ostream& out) const
 {
     // output precision
     out.setf(ios::fixed,ios::floatfield);
@@ -1167,7 +1167,7 @@ void MOmodel::print(std::ostream& out) const
         }
     }
 
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
 
     if(GP)
     {
@@ -1206,7 +1206,7 @@ void MOmodel::print(std::ostream& out) const
     out << bkg;
 }
 
-string MOmodel::description() const
+string RVFWHMmodel::description() const
 {
     string desc;
     string sep = "  ";
@@ -1235,7 +1235,7 @@ string MOmodel::description() const
             desc += "offset" + std::to_string(j+1) + sep;
     }
 
-    auto data = Data::get_instance();
+    auto data = RVData::get_instance();
 
     if(GP)
     {
@@ -1296,8 +1296,8 @@ string MOmodel::description() const
  * Save the options of the current model in a INI file.
  * 
 */
-void MOmodel::save_setup() {
-    auto data = Data::get_instance();
+void RVFWHMmodel::save_setup() {
+    auto data = RVData::get_instance();
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
@@ -1307,7 +1307,7 @@ void MOmodel::save_setup() {
 
     fout << "[kima]" << endl;
 
-    fout << "model: " << "MOmodel" << endl << endl;
+    fout << "model: " << "RVFWHMmodel" << endl << endl;
 
     fout << "GP: " << GP << endl;
     if (GP){

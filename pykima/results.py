@@ -2,6 +2,7 @@ import os, sys
 import pickle
 import zipfile
 import tempfile
+from copy import copy, deepcopy
 
 from .keplerian import keplerian
 
@@ -96,7 +97,7 @@ class KimaResults(object):
         except KeyError:
             self.model = 'RVmodel'
 
-        if self.model not in ('RVmodel', 'MOmodel'):
+        if self.model not in ('RVmodel', 'RVFWHMmodel'):
             raise NotImplementedError(self.model)
 
         try:
@@ -139,7 +140,7 @@ class KimaResults(object):
         self.indices = {}
         self.total_parameters = 0
 
-        # if model == 'MOmodel':
+        # if model == 'RVFWHMmodel':
         #     self._read_parameters()
 
         self._current_column = 0
@@ -205,7 +206,7 @@ class KimaResults(object):
             self.indices['nu'] = self._current_column
             self._current_column += 1
 
-        if self.model == 'MOmodel':
+        if self.model == 'RVFWHMmodel':
             self.C2 = self.posterior_sample[:, self._current_column]
             self.indices['C2'] = self._current_column
             self._current_column += 1
@@ -263,7 +264,7 @@ class KimaResults(object):
         self.M0_epoch = float(setup[section]['M0_epoch'])
 
         if self.multi:
-            if self.model == 'MOmodel':
+            if self.model == 'RVFWHMmodel':
                 self.data, self.obs = read_datafile_mo(self.data_file,
                                                        self.data_skip)
             elif self.model == 'RVmodel':
@@ -274,13 +275,13 @@ class KimaResults(object):
             self.data = self.data[ind]
             self.obs = self.obs[ind]
             self.n_instruments = np.unique(self.obs).size
-            if self.model == 'MOmodel':
+            if self.model == 'RVFWHMmodel':
                 self.n_jitters = 2 * self.n_instruments
             elif self.model == 'RVmodel':
                 self.n_jitters = self.n_instruments
 
         else:
-            if self.model == 'MOmodel':
+            if self.model == 'RVFWHMmodel':
                 cols = range(5)
                 self.n_jitters = 2
             elif self.model == 'RVmodel':
@@ -296,8 +297,9 @@ class KimaResults(object):
         if self.units == 'kms':
             self.data[:, 1] *= 1e3
             self.data[:, 2] *= 1e3
-            self.data[:, 3] *= 1e3
-            self.data[:, 4] *= 1e3
+            if self.model == 'RVFWHMmodel':
+                self.data[:, 3] *= 1e3
+                self.data[:, 4] *= 1e3
 
         try:
             self.M0_epoch = float(setup['kima']['M0_epoch'])
@@ -314,7 +316,7 @@ class KimaResults(object):
         self.t = self.data[:, 0].copy()
         self.y = self.data[:, 1].copy()
         self.e = self.data[:, 2].copy()
-        if self.model == 'MOmodel':
+        if self.model == 'RVFWHMmodel':
             self.y2 = self.data[:, 3].copy()
             self.e2 = self.data[:, 4].copy()
 
@@ -346,7 +348,7 @@ class KimaResults(object):
     def _read_multiple_instruments(self):
         if self.multi:
             # there are n instruments and n-1 offsets per output
-            if self.model == 'MOmodel':
+            if self.model == 'RVFWHMmodel':
                 n_inst_offsets = 2 * (self.n_instruments - 1)
             elif self.model == 'RVmodel':
                 n_inst_offsets = self.n_instruments - 1
@@ -399,7 +401,7 @@ class KimaResults(object):
                 except KeyError:
                     raise ValueError(
                         f'GP kernel = {self.GPkernel} not recognized')
-            elif self.model == 'MOmodel':
+            elif self.model == 'RVFWHMmodel':
                 self.share_eta2 = self.setup['kima']['share_eta2'] == 'true'
                 self.share_eta3 = self.setup['kima']['share_eta3'] == 'true'
                 self.share_eta4 = self.setup['kima']['share_eta4'] == 'true'
@@ -407,17 +409,16 @@ class KimaResults(object):
                 n_hyperparameters += 1 if self.share_eta2 else 2
                 n_hyperparameters += 1 if self.share_eta3 else 2
                 n_hyperparameters += 1 if self.share_eta4 else 2
-            else:
-                raise ValueError
 
             istart = self._current_column
             iend = istart + n_hyperparameters
             self.etas = self.posterior_sample[:, istart:iend]
 
-            # for i in range(n_hyperparameters):
-            #     name = 'eta' + str(i + 1)
-            #     ind = istart + i
-            #     setattr(self, name, self.posterior_sample[:, ind])
+            if self.model == 'RVmodel':
+                for i in range(n_hyperparameters):
+                    name = 'eta' + str(i + 1)
+                    ind = istart + i
+                    setattr(self, name, self.posterior_sample[:, ind])
 
             self._current_column += n_hyperparameters
             self.indices['GPpars_start'] = istart
@@ -430,13 +431,13 @@ class KimaResults(object):
                     1: GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
                 }
                 self.GP = GPs[self.GPkernel]
-            elif self.model == 'MOmodel':
+            elif self.model == 'RVFWHMmodel':
                 GPs = {
                     0: GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
                     1: GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
                 }
                 self.GP1 = GPs[self.GPkernel]
-                self.GP2 = GPs[self.GPkernel]
+                self.GP2 = deepcopy(GPs[self.GPkernel])
         else:
             n_hyperparameters = 0
 
@@ -536,6 +537,29 @@ class KimaResults(object):
         else:
             n_KOparameters = 0
         self.total_parameters += n_KOparameters
+
+    @property
+    def parameter_priors(self):
+        """ A list of priors which can be indexed using self.indices """
+        n = self.posterior_sample.shape[1]
+        priors = n * [None]
+
+        for i in range(n)[self.indices['jitter']]:
+            priors[i] = self.priors['Jprior']
+
+        if self.max_components > 0:
+            planet_priors = self.max_components * [
+                self.priors['Pprior'],
+                self.priors['Kprior'],
+                self.priors['phiprior'],
+                self.priors['eprior'],
+                self.priors['wprior']
+            ]
+            priors[self.indices['planets']] = planet_priors
+
+        priors[self.indices['vsys']] = self.priors['Cprior']
+        return priors
+
 
     @classmethod
     def load(cls, filename, diagnostic=False):
@@ -836,7 +860,7 @@ class KimaResults(object):
             #     print('GP parameters: ', eta1, eta2, eta3)
 
         if self.trend:
-            names = ('slope', 'quad', 'cubic')
+            names = ('slope', 'quadr', 'cubic')
             for name, trend_par in zip(names, p[self.indices['trend']]):
                 print(name + ':', trend_par)
 
@@ -884,7 +908,7 @@ class KimaResults(object):
             t = self.t.copy()
             data_t = True
 
-        if self.model == 'MOmodel':
+        if self.model == 'RVFWHMmodel':
             v = np.zeros((2, t.size))
         elif self.model == 'RVmodel':
             v = np.zeros_like(t)
@@ -920,13 +944,13 @@ class KimaResults(object):
                 t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
-                if self.model == 'MOmodel':
+                if self.model == 'RVFWHMmodel':
                     v[0, :] += keplerian(t, P, K, ecc, w, t0, 0.)
                 elif self.model == 'RVmodel':
                     v += keplerian(t, P, K, ecc, w, t0, 0.)
 
         # systemic velocity (and C2) for this sample
-        if self.model == 'MOmodel':
+        if self.model == 'RVFWHMmodel':
             C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']]]
             v += C.reshape(-1, 1)
         elif self.model == 'RVmodel':
@@ -935,13 +959,18 @@ class KimaResults(object):
         # if evaluating at the same times as the data, add instrument offsets
         if self.multi: # and len(self.data_file) > 1:
             offsets = sample[self.indices['inst_offsets']]
-            offsets = np.pad(offsets.reshape(-1, 1), ((0,0),(0,1)))
             if data_t:
                 ii = self.obs.astype(int) - 1
             else:
-                ii = np.digitize(t, np.r_[t[0], self._offset_times]) - 1
+                time_bins = np.sort(np.r_[t[0], self._offset_times])
+                ii = np.digitize(t, time_bins) - 1
 
-            v += np.take(offsets, ii, axis=1)
+            if self.model == 'RVFWHMmodel':
+                offsets = np.pad(offsets.reshape(-1, 1), ((0,0),(0,1)))
+                v += np.take(offsets, ii, axis=1)
+            else:
+                offsets = np.pad(offsets, (0, 1))
+                v += np.take(offsets, ii)
 
         # add the trend, if present
         if self.trend:
@@ -949,7 +978,7 @@ class KimaResults(object):
             # polyval wants coefficients in reverse order, and vsys was already
             # added so the last coefficient is 0
             trend_par = np.r_[trend_par[::-1], 0.0]
-            if self.model == 'MOmodel':
+            if self.model == 'RVFWHMmodel':
                 v[0, :] += np.polyval(trend_par, t - self.tmiddle)
             elif self.model == 'RVmodel':
                 v += np.polyval(trend_par, t - self.tmiddle)
@@ -987,20 +1016,25 @@ class KimaResults(object):
         if not self.GPmodel:
             return np.zeros_like(t)
 
-        if self.model == 'MOmodel':
+        if self.model == 'RVFWHMmodel':
             D = np.vstack((self.y, self.y2))
             r = D - self.eval_model(sample)
-            sto_v = np.zeros((2, t.size))
             GPpars = sample[self.indices['GPpars']]
             self.GP1.kernel.setpars(*GPpars[[0, 2, 3, 4]])
             self.GP2.kernel.setpars(*GPpars[[1, 2, 3, 4]])
-            sto_v[0] = self.GP1.predict(r[0], t)
-            sto_v[1] = self.GP2.predict(r[1], t)
-            return sto_v
+            out0 = self.GP1.predict(r[0], t, return_std=return_std)
+            out1 = self.GP2.predict(r[1], t, return_std=return_std)
+            if return_std:
+                return np.vstack([out0[0], out1[0]]), \
+                       np.vstack([out0[1], out1[1]])
+            else:
+                return np.vstack([out0, out1])
 
         elif self.model == 'RVmodel':
-            return self.GP.predict_with_hyperpars(self, sample, t=t,
-                                                  return_std=return_std)
+            r = self.y - self.eval_model(sample)
+            GPpars = sample[self.indices['GPpars']]
+            self.GP.kernel.setpars(*GPpars)
+            return self.GP.predict(r, t, return_std=return_std)
 
     def full_model(self, sample, t=None):
         """
@@ -1018,19 +1052,19 @@ class KimaResults(object):
             Times at which to evaluate the model, or None to use observed times
         """
         deterministic = self.eval_model(sample, t)
-
-        if self.GPmodel:
-            GPpredictive = self.GP.predict_with_hyperpars(self, sample, t)
-        else:
-            GPpredictive = np.zeros_like(deterministic)
-
-        return deterministic + GPpredictive
+        stochastic = self.stochastic_model(sample, t)
+        return deterministic + stochastic
 
     def residuals(self, sample, full=False):
-        if full:
-            return self.y - self.full_model(sample)
+        if self.model == 'RVFWHMmodel':
+            D = np.vstack([self.y, self.y2])
         else:
-            return self.y - self.eval_model(sample)
+            D = self.y
+
+        if full:
+            return D - self.full_model(sample)
+        else:
+            return D - self.eval_model(sample)
 
     @property
     def instruments(self):
@@ -1043,18 +1077,18 @@ class KimaResults(object):
             return []
 
     @property
+    def _NP(self):
+        return self.posterior_sample[:, self.index_component]
+
+    @property
     def ratios(self):
         bins = np.arange(self.max_components + 2)
-        nplanets = self.posterior_sample[:, self.index_component]
-        n, _ = np.histogram(nplanets, bins=bins)
-        oldset = np.geterr()
-        np.seterr(divide='raise')
-        try:
-            return n.flat[1:] / n.flat[:-1]
-        except FloatingPointError:
-            np.seterr(**oldset)
-            return n[n != 0]
-
+        n, _ = np.histogram(self._NP, bins=bins)
+        n = n.astype(np.float)
+        n[n == 0] = np.nan
+        r = n.flat[1:] / n.flat[:-1]
+        r[np.isnan(r)] = np.inf
+        return r
 
     @property
     def _offset_times(self):
@@ -1079,7 +1113,8 @@ class KimaResults(object):
 
     def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
                    density=False, kde=False, kde_bw=None, show_peaks=False,
-                   show_prior=False, show_year=True, show_timespan=True):
+                   show_prior=False, show_year=True, show_timespan=True, 
+                   **kwargs):
         """
         Plot the histogram (or the kde) of the posterior for the orbital period(s).
         Optionally provide the number of histogram bins, the bins themselves, the
@@ -1089,17 +1124,17 @@ class KimaResults(object):
         """
         args = locals().copy()
         args.pop('self')
-        return display.make_plot2(self, **args)
+        return display.make_plot2(self, **args, **kwargs)
 
-    def make_plot3(self, points=True, gridsize=50):
+    def make_plot3(self, points=True, gridsize=50, **kwargs):
         """
         Plot the 2d histograms of the posteriors for semi-amplitude and orbital
         period and eccentricity and orbital period. If `points` is True, plot
         each posterior sample, else plot hexbins
         """
-        return display.make_plot3(self, points, gridsize)
+        return display.make_plot3(self, points, gridsize, **kwargs)
 
-    def make_plot4(self, Np=None, ranges=None, show_prior=False, 
+    def make_plot4(self, Np=None, ranges=None, show_prior=False,
                    **hist_kwargs):
         """
         Plot histograms for the GP hyperparameters. If Np is not None,
@@ -1107,9 +1142,9 @@ class KimaResults(object):
         """
         return display.make_plot4(self, Np, ranges, show_prior, **hist_kwargs)
 
-    def make_plot5(self, show=True, ranges=None):
+    def make_plot5(self, include_jitters=False, show=True, ranges=None):
         """ Corner plot for the GP hyperparameters """
-        return display.make_plot5(self, show, ranges)
+        return display.make_plot5(self, include_jitters, show, ranges)
 
     def get_sorted_planet_samples(self):
         # all posterior samples for the planet parameters
@@ -1253,7 +1288,7 @@ class KimaResults(object):
         If the model has a GP component, the prediction is calculated using the
         GP hyperparameters for each of the random samples.
         """
-        if self.model == 'MOmodel':
+        if self.model == 'RVFWHMmodel':
             display.plot_random_samples_mo(self,
                                            ncurves=ncurves,
                                            over=over,
@@ -1340,12 +1375,30 @@ class KimaResults(object):
         v_KO_at_t = np.zeros((ncurves, t.size))
 
         for icurve, i in enumerate(ii):
-            # Np planets, calculated at tt and at t, individual for each curve
-            v = np.zeros_like(tt)
-            v_at_t = np.zeros_like(t)
+            stoc_model = self.stochastic_model(self.posterior_sample[i], tt)
+            model = self.eval_model(self.posterior_sample[i], tt)
+            ax.plot(tt, stoc_model + model, 'k', alpha=0.1)
+
+            offset_model = self.eval_model(self.posterior_sample[i], tt,
+                                           include_planets=False)
 
             if self.GPmodel:
-                v_at_ttGP = np.zeros_like(ttGP)
+                ax.plot(tt, stoc_model + offset_model, 'plum', alpha=0.1)
+
+            if show_vsys:
+                kw = dict(alpha=0.1, color='r', ls='--')
+                if self.multi:
+                    for j in range(self.n_instruments):
+                        instrument_mask = self.obs == j + 1
+                        start = t[instrument_mask].min()
+                        end = t[instrument_mask].max()
+                        m = np.where( (tt > start) & (tt < end) )
+                        ax.plot(tt[m], offset_model[m], **kw)
+                else:
+                    ax.plot(tt, offset_model, **kw)
+
+
+            continue
 
             if self.KO:  # known object
                 pars = self.KOpars[i]
@@ -1374,60 +1427,6 @@ class KimaResults(object):
                 v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
                 v_KO_at_t[icurve] = v_at_t  # first KO curve, at t
 
-                # ax.plot(tt, v_KO[icurve], alpha=0.4, color='g', ls='-')
-                # ax.add_line(plt.Line2D(tt, v_KO[icurve]))
-
-            # get the planet parameters for the current (ith) sample
-            pars = samples[i, :].copy()
-
-            # how many planets in this sample?
-            nplanets = pars.size / self.n_dimensions
-            if Np is not None and nplanets != Np:
-                continue
-
-            # add the Keplerians for each of the planets
-            for j in range(int(nplanets)):
-                P = pars[j + 0 * self.max_components]
-                if P == 0.0 or np.isnan(P):
-                    continue
-                K = pars[j + 1 * self.max_components]
-                phi = pars[j + 2 * self.max_components]
-                t0 = M0_epoch - (P * phi) / (2. * np.pi)
-                ecc = pars[j + 3 * self.max_components]
-                w = pars[j + 4 * self.max_components]
-
-                # add to v and v_at_t, evaluated at t and tt, respectively
-                # (note vsys=0)
-                v += keplerian(tt, P, K, ecc, w, t0, 0.)
-                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
-
-                if self.GPmodel:
-                    v_at_ttGP += keplerian(ttGP, P, K, ecc, w, t0, 0.)
-
-            # systemic velocity for the current (ith) sample
-            vsys = self.posterior_sample[mask][i, -1]
-
-            # add to v and v_at_t, but not v_KO
-            v += vsys
-            v_at_t += vsys
-            if self.GPmodel:
-                v_at_ttGP += vsys
-
-            # add the trend, if present
-            if self.trend:
-                trend_par = np.r_[self.trendpars[i][::-1], 0.0]
-                v += np.polyval(trend_par, tt - self.tmiddle)
-                # if self.GPmodel:
-                #     v_at_ttGP += self.trendpars[i] * (ttGP - self.tmiddle)
-
-                # show a "line" for the trend of this ith sample
-                if show_trend:
-                    kw = dict(alpha=0.2, color='m', ls=':')
-                    trend_par = np.r_[self.trendpars[i][::-1], vsys]
-                    ax.plot(tt, np.polyval(trend_par, tt - self.tmiddle), **kw)
-                    if self.KO:
-                        ax1.plot(tt, np.polyval(trend_par, tt - self.tmiddle))
-
             # plot the MA "prediction"
             # if self.MAmodel:
             #     vMA = v_at_t.copy()
@@ -1436,112 +1435,6 @@ class KimaResults(object):
             #     vMA[1:] += sigmaMA * np.exp(np.abs(dt) / tauMA) * (self.y[:-1] - v_at_t[:-1])
             #     vMA[np.abs(vMA) > 1e6] = np.nan
             #     ax.plot(t, vMA, 'o-', alpha=1, color='m')
-
-            # v only has the Keplerian components, not the GP predictions
-            # ax.plot(tt, v, alpha=0.2, color='k')
-
-            # add the instrument offsets, if present
-            if self.multi and len(self.data_file) > 1:
-                number_offsets = self.inst_offsets.shape[1]
-
-                for j in range(number_offsets + 1):
-                    if j == number_offsets:
-                        # the last dataset defines the systemic velocity,
-                        # so the offset is zero
-                        of = 0.
-                    else:
-                        of = self.inst_offsets[i, j]
-
-                    instrument_mask = self.obs == j + 1
-                    # start and end of this instrument's time
-                    start = t[instrument_mask].min()
-                    end = t[instrument_mask].max()
-                    # time span
-                    ptp = t[instrument_mask].ptp()
-                    # mask the tt array around the times of this instrument
-                    time_mask = (tt > start - over * ptp)
-                    time_mask &= (tt < end + over * ptp)
-
-                    # copy v and plot it in a similar color to the data points
-                    # of this instrument
-                    v_i = v.copy()
-                    v_i[time_mask] += of
-
-                    ax.plot(tt[time_mask], v_i[time_mask], alpha=0.1,
-                            color=lighten_color(colors[j], 1.5))
-
-                    if self.KO:
-                        v_KO_i = v_KO[icurve].copy()
-                        v_KO_i[time_mask] += of
-                        ax1.plot(tt[time_mask],
-                                 v_i[time_mask] - v_KO_i[time_mask], alpha=0.1,
-                                 color=lighten_color(colors[j], 1.5))
-
-
-                    #! probable bug, this mask seems incorrect when instruments
-                    #! overlap in time
-                    # time_mask = (t >= start) & (t <= end)
-                    #? should use instrument_mask here, right?
-                    v_at_t[instrument_mask] += of
-                    if self.KO:
-                        v_KO_at_t[icurve, instrument_mask] += of
-
-                    if self.GPmodel:
-                        time_mask = (ttGP >= start) & (ttGP <= end)
-                        v_at_ttGP[time_mask] += of
-            else:
-                # if not self.GPmodel:
-                color = 'g' if self.KO else 'k'
-                ax.plot(tt, v, alpha=0.1, color=color)
-                if self.KO:
-                    ax1.plot(tt, v - v_KO[icurve], alpha=0.1, color='k')
-
-            # plot the GP prediction
-            if self.GPmodel:
-                pars = self.etas[i]
-                self.GP.kernel.setpars(*pars)
-
-                mu = self.GP.predict(y - v_at_t, ttGP, return_std=False)
-                ax.plot(ttGP, mu + v_at_ttGP, alpha=0.2, color='plum')
-
-            if show_vsys:
-                kw = dict(alpha=0.1, color='r', ls='--')
-                ax.plot(t, np.full_like(t, vsys), **kw)
-
-                if self.KO:
-                    ax1.plot(t, np.full_like(t, vsys), **kw)
-
-                if self.multi:
-                    for j in range(self.inst_offsets.shape[1]):
-                        instrument_mask = self.obs == j + 1
-                        start = t[instrument_mask].min()
-                        end = t[instrument_mask].max()
-
-                        of = self.inst_offsets[i, j]
-
-                        ax.hlines(vsys + of, xmin=start, xmax=end, alpha=0.2,
-                                  color=colors[j])
-
-        ## we could also choose to plot the GP prediction using the median of
-        ## the hyperparameters posterior distributions
-        # if self.GPmodel:
-        #     # set the GP parameters to the median (or mean?) of their posteriors
-        #     eta1, eta2, eta3, eta4 = np.median(self.etas, axis=0)
-        #     # eta1, eta2, eta3, eta4 = np.mean(self.etas, axis=0)
-        #     self.GP.kernel.setpars(eta1, eta2, eta3, eta4)
-        #
-        #     # set the orbital parameters to the median of their posteriors
-        #     P,K,phi,ecc,w = np.median(samples, axis=0)
-        #     t0 = t[0] - (P*phi)/(2.*np.pi)
-        #     mu_orbital = keplerian(t, P, K, ecc, w, t0, 0.)
-        #
-        #     # calculate the mean and std prediction from the GP model
-        #     mu, std = self.GP.predict(y - mu_orbital, ttGP, return_std=True)
-        #     mu_orbital = keplerian(ttGP, P, K, ecc, w, t0, 0.)
-        #
-        #     # 2-sigma region around the predictive mean
-        #     ax.fill_between(ttGP, y1=mu+mu_orbital-2*std, y2=mu+mu_orbital+2*std,
-        #                     alpha=0.3, color='m')
 
         ## plot the data
         residuals = y.copy()
@@ -1560,7 +1453,7 @@ class KimaResults(object):
                     ax1.errorbar(t[m], y[m] - mod, yerr[m], **kw)
 
                 # calculate residuals
-                residuals[m] -= v_at_t[m]
+                # residuals[m] -= v_at_t[m]
 
             ax.legend(loc='upper left', fontsize=8)
 
@@ -1568,7 +1461,11 @@ class KimaResults(object):
             ax.errorbar(t, y, yerr, fmt='o')
             if self.KO:
                 ax1.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
-            residuals -= v_at_t
+            # residuals -= v_at_t
+
+        if self.multi:
+            kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
+            ax.vlines(self._offset_times, *ax.get_ylim(), **kw)
 
         if self.arbitrary_units:
             lab = dict(xlabel='Time [days]', ylabel='Q [arbitrary]')

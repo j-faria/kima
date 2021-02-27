@@ -34,7 +34,7 @@ extern const int n_known_object;
 /// use a Student-t distribution for the likelihood (instead of Gaussian)
 extern const bool studentt;
 
-class MOmodel
+class RVFWHMmodel
 {
     private:
         /// Fix the number of planets? (by default, yes)
@@ -48,12 +48,12 @@ class MOmodel
         double bkg, bkg2;
 
         std::vector<double> offsets = // between instruments
-              std::vector<double>(2*Data::get_instance().number_instruments - 2);
+              std::vector<double>(2*RVData::get_instance().number_instruments - 2);
         std::vector<double> jitters = // for each instrument
-              std::vector<double>(2*Data::get_instance().number_instruments);
+              std::vector<double>(2*RVData::get_instance().number_instruments);
 
         std::vector<double> betas = // "slopes" for each indicator
-              std::vector<double>(Data::get_instance().number_indicators);
+              std::vector<double>(RVData::get_instance().number_indicators);
 
         double slope, quadr=0.0, cubic=0.0;
         double sigmaMA, tauMA;
@@ -87,9 +87,9 @@ class MOmodel
 
         // The signals
         std::vector<long double> mu = // the RV model
-                            std::vector<long double>(Data::get_instance().N());
+                            std::vector<long double>(RVData::get_instance().N());
         std::vector<long double> mu_2 = // the 2nd output model
-                            std::vector<long double>(Data::get_instance().N());
+                            std::vector<long double>(RVData::get_instance().N());
 
         void calculate_mu();
         void calculate_mu_2();
@@ -103,8 +103,8 @@ class MOmodel
         double true_anomaly(double time, double prd, double ecc, double peri_pass);
 
         // The covariance matrices for the data
-        Eigen::MatrixXd C_1 {Data::get_instance().N(), Data::get_instance().N()};
-        Eigen::MatrixXd C_2 {Data::get_instance().N(), Data::get_instance().N()};
+        Eigen::MatrixXd C_1 {RVData::get_instance().N(), RVData::get_instance().N()};
+        Eigen::MatrixXd C_2 {RVData::get_instance().N(), RVData::get_instance().N()};
         void calculate_C_1();
         void calculate_C_2();
 
@@ -114,7 +114,7 @@ class MOmodel
         void save_setup();
 
     public:
-        MOmodel();
+        RVFWHMmodel();
 
         // priors for parameters *not* belonging to the planets
         /// Prior for the systemic velocity.
@@ -189,7 +189,7 @@ class MOmodel
         std::shared_ptr<T> make_prior( Args&&... args ) { return std::make_shared<T>(args...); }
 
         // create an alias for Data::get_instance()
-        Data& get_data() { return Data::get_instance(); }
+        RVData& get_data() { return RVData::get_instance(); }
 
         /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);

@@ -36,6 +36,8 @@ class KimaModel:
         self._levels_hash = ''
         self._loaded = False
 
+        self._model_type = 'RVmodel'
+
         self.GP = False
         self.MA = False
         self.hyperpriors = False
@@ -47,6 +49,8 @@ class KimaModel:
 
         self.fix_Np = True
         self.max_Np = 1
+
+        self.thinning = 50
 
         self.set_priors('default')
         self._planet_priors = ('Pprior', 'Kprior', 'eprior', 'wprior', 'phiprior')
@@ -74,6 +78,16 @@ class KimaModel:
 
     def __str__(self):
         return f'kima model in {self.directory}'
+
+    @property
+    def model_type(self):
+        return self._model_type
+    @model_type.setter
+    def model_type(self, t):
+        options = ('RVmodel', 'RVFWHMmodel')
+        if t not in options:
+            raise ValueError(f'Must be one of {options}')
+        self._model_type = t
 
     @property
     def multi_instrument(self):
@@ -473,13 +487,14 @@ class KimaModel:
         file.write('\n')
 
     def _write_constructor(self, file):
-        """ fill in the beginning of the RVmodel constructor """
+        """ fill in the beginning of the constructor """
         def r(val): return 'true' if val else 'false'
+        mt = self.model_type
         file.write(
-            f'RVmodel::RVmodel():fix({r(self.fix_Np)}),npmax({self.max_Np})\n')
+            f'{mt}::{mt}():fix({r(self.fix_Np)}),npmax({self.max_Np})\n')
 
     def _inside_constructor(self, file):
-        """ fill in inside the RVmodel constructor """
+        """ fill in inside the constructor """
         file.write('{\n')
 
         if self.priors_need_data:
@@ -533,8 +548,9 @@ class KimaModel:
         file.write('\n')
 
     def _write_sampler(self, file):
-        file.write('\tSampler<RVmodel> sampler = setup<RVmodel>(argc, argv);\n')
-        file.write('\tsampler.run(50);\n')
+        mt = self.model_type
+        file.write(f'\tSampler<{mt}> sampler = setup<{mt}>(argc, argv);\n')
+        file.write(f'\tsampler.run({self.thinning});\n')
 
     def _set_data(self, file):
         if self.filename is None:

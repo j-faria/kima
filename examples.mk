@@ -16,9 +16,11 @@ LIBS = -ldnest4 -L/usr/local/lib
 
 KIMA_SRCS =\
 $(wildcard $(SRC_DIR)/distributions/*.cpp) \
-$(SRC_DIR)/RVConditionalPrior.cpp \
 $(SRC_DIR)/Data.cpp \
+$(SRC_DIR)/kepler.cpp \
+$(SRC_DIR)/RVConditionalPrior.cpp \
 $(SRC_DIR)/RVmodel.cpp \
+$(SRC_DIR)/RVFWHMmodel.cpp \
 kima_setup.cpp
 
 KIMA_OBJS = $(subst .cpp,.o,$(KIMA_SRCS))
