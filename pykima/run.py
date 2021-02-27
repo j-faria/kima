@@ -51,6 +51,9 @@ def _parse_args1():
     # parser.add_argument('-id', type=str, default='',
     #                     help='job ID, added to sample.txt, levels.txt, etc')
 
+    parser.add_argument('--data-file', type=str, default='',
+                        help="Supply data file as first argument to kima")
+
     parser.add_argument('--save', nargs='?', type=str, const='',
                         help='Save output of run to a directory')
 
@@ -218,7 +221,9 @@ def run_local():
         else:
             cmd = ''
 
-        cmd += './kima -t %d' % args.threads
+
+        cmd += './kima %s -t %d' % (args.data_file, args.threads)
+
         if args.seed:
             cmd += ' -s %d' % args.seed
 

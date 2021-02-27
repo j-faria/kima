@@ -607,14 +607,19 @@ class KimaModel:
                 print('include $(KIMA_DIR)/examples.mk', file=f)
 
 
-    def run(self, ncores=4, verbose=True, skip_save=False):
+    def run(self, ncores=4, verbose=True, skip_save=False, data_file=None):
         if self.data is None:
             raise ValueError('Must set .filename before running')
 
         if not skip_save:
             self.save()
 
-        cmd = f'kima-run -t {ncores} {self.directory}'
+        if data_file is None:
+            df = ''
+        else:
+            df = f'--data-file {data_file}'
+
+        cmd = f'kima-run {self.directory} -t {ncores} {df}'
         if not verbose:
             cmd += ' -q'
 
