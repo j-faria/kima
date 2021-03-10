@@ -61,10 +61,13 @@ class RVmodel
         double nu;
 
         // Parameters for the quasi-periodic extra noise
-        enum Kernel {standard, celerite, permatern32, permatern52, perrq, sqexp};
+        enum Kernel {standard, qpc, celerite, permatern32, permatern52, perrq, sqexp};
+        std::vector<std::string> _kernels = {"standard", "qpc", "celerite", "permatern32", "permatern52", "perrq", "sqexp"};
+
         Kernel kernel = standard;
+
         double eta1, eta2, eta3, eta4, eta5, alpha;
-        double log_eta1, log_eta2, log_eta3, log_eta4, log_alpha;
+        double log_eta1, log_eta2, log_eta3, log_eta4, log_eta5, log_alpha;
         double a,b,c,P;
         celerite::solver::CholeskySolver<double> solver;
 
@@ -134,6 +137,8 @@ class RVmodel
         std::shared_ptr<DNest4::ContinuousDistribution> log_eta4_prior;
         /// @brief Prior for the Rational Quadratic shape parameters.
         std::shared_ptr<DNest4::ContinuousDistribution> alpha_prior;
+        /// @brief Prior for the ...
+        std::shared_ptr<DNest4::ContinuousDistribution> eta5_prior;
 
 
         // priors for KO mode!

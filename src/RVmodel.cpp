@@ -68,6 +68,8 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             log_eta4_prior = make_prior<Uniform>(-1, 1);
         if (!alpha_prior && kernel == perrq)
             alpha_prior = make_prior<LogUniform>(0.5, 10);
+        if (!eta5_prior && kernel == qpc)
+            eta5_prior = make_prior<Uniform>(0, 10);
     }
 
     if (known_object) { // KO mode!
@@ -134,6 +136,9 @@ void RVmodel::from_prior(RNG& rng)
             
             if (kernel == perrq)
                 alpha = alpha_prior->generate(rng);
+
+            if (kernel == qpc)
+                eta5 = eta5_prior->generate(rng);
 
         }
     }
@@ -419,9 +424,43 @@ void RVmodel::calculate_C()
             break;
         }
 
+    case qpc:
+        {
+            /* This implements the quasi-periodic-cosine kernel from Perger+2020 */
+            for(size_t i=0; i<N; i++)
+            {
+                for(size_t j=i; j<N; j++)
+                {
+                    double tau = t[i] - t[j];
+                    C(i, j) = exp(-0.5*pow(tau/eta2, 2)) * 
+                                (eta1*eta1*exp(-2.0*pow(sin(M_PI*tau/eta3)/eta4, 2)) + eta5*eta5*cos(4*M_PI*tau/eta3) );
+
+                    if(i==j)
+                    {
+                        if (multi_instrument)
+                        {
+                            jit = jitters[obsi[i]-1];
+                            C(i, j) += sig[i]*sig[i] + jit*jit;
+                        }
+                        else
+                        {
+                            C(i, j) += sig[i]*sig[i] + extra_sigma*extra_sigma;
+                        }
+                    }
+                    else
+                    {
+                        C(j, i) = C(i, j);
+                    }
+                }
+            }
+
+            break;
+        }
+
     default:
         cout << "error: `kernel` should be one of" << endl;
         cout << "'standard', ";
+        cout << "'qpc', ";
         cout << "'permatern32', ";
         cout << "'permatern52', ";
         cout << "'perrq', ";
@@ -618,6 +657,7 @@ double RVmodel::perturb(RNG& rng)
             switch (kernel)
             {
                 case standard:
+                case qpc:
                 case permatern32:
                 case permatern52:
                 case perrq:
@@ -627,6 +667,9 @@ double RVmodel::perturb(RNG& rng)
                         log_eta1 = log(eta1);
                         log_eta1_prior->perturb(log_eta1, rng);
                         eta1 = exp(log_eta1);
+
+                        if (kernel == qpc)
+                            eta5_prior->perturb(eta5, rng);
                     }
                     else if(rng.rand() <= 0.33330)
                     {
@@ -1004,6 +1047,7 @@ double RVmodel::log_likelihood() const
         switch (kernel)
         {
             case standard:
+            case qpc:
             case permatern32:
             case permatern52:
             case perrq:
@@ -1149,6 +1193,10 @@ void RVmodel::print(std::ostream& out) const
 
         if (kernel == perrq)
             out << alpha << '\t';
+        
+        if (kernel == qpc)
+            out << eta5 << '\t';
+        
     }
     
     if(MA)
@@ -1217,6 +1265,9 @@ string RVmodel::description() const
 
         if (kernel == perrq)
             desc += "alpha" + sep;
+        
+        if (kernel == qpc)
+            desc += "eta5" + sep;
     }
     
     if(MA)
@@ -1280,7 +1331,7 @@ void RVmodel::save_setup() {
 
     fout << "GP: " << GP << endl;
     if (GP)
-        fout << "GP_kernel: " << kernel << endl;
+        fout << "GP_kernel: " << _kernels[kernel] << endl;
     fout << "MA: " << MA << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
@@ -1333,6 +1384,8 @@ void RVmodel::save_setup() {
             fout << "log_eta4_prior: " << *log_eta4_prior << endl;
         if (kernel == perrq)
             fout << "alpha_prior: " << *alpha_prior << endl;
+        if (kernel == qpc)
+            fout << "eta5_prior: " << *eta5_prior << endl;
     }
 
 
