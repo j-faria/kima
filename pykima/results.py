@@ -9,11 +9,12 @@ from numpy.lib.function_base import append
 from .keplerian import keplerian
 from .GP import *
 
-from .utils import (need_model_setup, read_model_setup, get_planet_mass,
-                    get_planet_semimajor_axis, percentile68_ranges,
-                    percentile68_ranges_latex, read_datafile, read_datafile_mo,
-                    lighten_color, wrms, get_prior, hyperprior_samples,
-                    get_star_name, get_instrument_name)
+from .utils import (need_model_setup, read_datafile_rvfwhm, read_model_setup,
+                    get_planet_mass, get_planet_semimajor_axis,
+                    percentile68_ranges, percentile68_ranges_latex,
+                    read_datafile, read_datafile_rvfwhm, lighten_color, wrms,
+                    get_prior, hyperprior_samples, get_star_name,
+                    get_instrument_name)
 
 from . import display
 
@@ -269,8 +270,8 @@ class KimaResults(object):
 
         if self.multi:
             if self.model == 'RVFWHMmodel':
-                self.data, self.obs = read_datafile_mo(self.data_file,
-                                                       self.data_skip)
+                self.data, self.obs = read_datafile_rvfwhm(
+                    self.data_file, self.data_skip)
             elif self.model == 'RVmodel':
                 self.data, self.obs = read_datafile(self.data_file,
                                                     self.data_skip)
@@ -1115,7 +1116,7 @@ class KimaResults(object):
                 er1 = np.random.uniform(self.e.min(), self.e.max(), times.size)
                 er2 = np.random.uniform(self.e2.min(), self.e2.max(), times.size)
                 e += np.c_[er1, er2].T
-            
+
             elif self.model == 'RVmodel':
                 er = np.random.uniform(self.e.min(), self.e.max(), times.size)
                 e += er
@@ -1364,17 +1365,18 @@ class KimaResults(object):
         GP hyperparameters for each of the random samples.
         """
         if self.model == 'RVFWHMmodel':
-            return display.plot_random_samples_mo(self,
-                                           ncurves=ncurves,
-                                           over=over,
-                                           pmin=pmin,
-                                           pmax=pmax,
-                                           show_vsys=show_vsys,
-                                           show_trend=show_trend,
-                                           Np=Np,
-                                           return_residuals=return_residuals,
-                                           ntt=ntt,
-                                           **kwargs)
+            return display.plot_random_samples_rvfwhm(
+                self,
+                ncurves=ncurves,
+                over=over,
+                pmin=pmin,
+                pmax=pmax,
+                show_vsys=show_vsys,
+                show_trend=show_trend,
+                Np=Np,
+                return_residuals=return_residuals,
+                ntt=ntt,
+                **kwargs)
 
         colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
 

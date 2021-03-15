@@ -354,8 +354,7 @@ def make_plot4(res, Np=None, ranges=None, show_prior=False, **hist_kwargs):
         return
 
     if res.model == 'RVFWHMmodel':
-        make_plot4_mo(res)
-        return
+        return make_plot4_rvfwhm(res)
 
     n = res.etas.shape[1]
     available_etas = [f'eta{i}' for i in range(1, n + 1)]
@@ -419,7 +418,7 @@ def make_plot4(res, Np=None, ranges=None, show_prior=False, **hist_kwargs):
         return fig
 
 
-def make_plot4_mo(res, Np=None, ranges=None):
+def make_plot4_rvfwhm(res, Np=None, ranges=None):
     """
     Plot histograms for the GP hyperparameters. If Np is not None, highlight
     the samples with Np Keplerians. 
@@ -437,7 +436,7 @@ def make_plot4_mo(res, Np=None, ranges=None):
         m = res.posterior_sample[:, res.index_component] == Np
 
     fig = plt.figure(constrained_layout=True)
-    
+
     if res.GPkernel == 'standard':
         gs = fig.add_gridspec(6, 2)
     elif res.GPkernel == 'qpc':
@@ -546,6 +545,10 @@ def make_plot5(res, include_jitters=False, show=True, ranges=None):
     data.append(res.etas)
 
     data = np.hstack(data)
+
+    if data.shape[0] < data.shape[1]:
+        print('Not enough samples to make the corner plot')
+        return 
 
     rc = {
         'font.size': 6,
@@ -809,7 +812,6 @@ def hist_jitter(res, show_prior=False, **kwargs):
     elif res.model == 'RVmodel':
         fig, axs = plt.subplots(1, res.n_instruments, **kw)
     fig.suptitle('Posterior distribution for extra white noise')
-    axs_matrix = axs.copy()
     axs = np.ravel(axs)
 
     for i, ax in enumerate(axs):
@@ -830,12 +832,6 @@ def hist_jitter(res, show_prior=False, **kwargs):
 
     for ax, label in zip(axs, labels):
         ax.set_xlabel(label)
-
-    for row in axs_matrix:
-        for ax in row[1:]:
-            pass
-            # ax.sharex(row[0])
-
 
     return
     if res.multi:  # there are n_instruments jitters
@@ -1297,7 +1293,7 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
         elif res.model == 'RVFWHMmodel':
             (pred, _), (std, _) = res.stochastic_model(sample, tt,
                                                        return_std=True)
-            no_planets_model = no_planets_model[0]                                                    
+            no_planets_model = no_planets_model[0]
 
         pred += no_planets_model
         axGP.plot(tt, pred, 'k')
@@ -1369,18 +1365,18 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
     return residuals
 
 
-def plot_random_samples_mo(res,
-                           ncurves=50,
-                           samples=None,
-                           over=0.1,
-                           pmin=None,
-                           pmax=None,
-                           show_vsys=False,
-                           show_trend=False,
-                           Np=None,
-                           return_residuals=False,
-                           ntt=10000,
-                           **kwargs):
+def plot_random_samples_rvfwhm(res,
+                               ncurves=50,
+                               samples=None,
+                               over=0.1,
+                               pmin=None,
+                               pmax=None,
+                               show_vsys=False,
+                               show_trend=False,
+                               Np=None,
+                               return_residuals=False,
+                               ntt=10000,
+                               **kwargs):
     """
     Display the RV data together with curves from the posterior predictive.
     A total of `ncurves` random samples are chosen, and the Keplerian 
@@ -1432,7 +1428,7 @@ def plot_random_samples_mo(res,
 
     y2 = res.y2.copy()
     y2err = res.e2.copy()
-    
+
     y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
     y2_offset = round(y2.mean(), 0) if abs(y2.mean()) > 100 else 0
 

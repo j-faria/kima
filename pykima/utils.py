@@ -99,9 +99,9 @@ def read_datafile(datafile, skip):
         return data, obs
 
 
-def read_datafile_mo(datafile, skip):
+def read_datafile_rvfwhm(datafile, skip):
     """
-    Read data from `datafile` for multiple instruments and multi outputs.
+    Read data from `datafile` for multiple instruments and RV-FWHM data.
     Can be str, in which case the 4th column is assumed to contain an integer
     identifier of the instrument.
     Or list, in which case each element will be one different filename
