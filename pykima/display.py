@@ -437,22 +437,52 @@ def make_plot4_mo(res, Np=None, ranges=None):
         m = res.posterior_sample[:, res.index_component] == Np
 
     fig = plt.figure(constrained_layout=True)
-    gs = fig.add_gridspec(6, 2)
+    
+    if res.GPkernel == 'standard':
+        gs = fig.add_gridspec(6, 2)
+    elif res.GPkernel == 'qpc':
+        gs = fig.add_gridspec(6, 3)
 
-    histkw = dict(density=True)
+    histkw = dict(density=True, color='C0')
     allkw = dict(yticks=[])
 
-    ax = fig.add_subplot(gs[0:3, 0])
-    ax.hist(res.etas[:, 0], **histkw)
-    ax.set(xlabel=r'$\eta_1$ RV [m/s]', ylabel='posterior', **allkw)
+    if res.GPkernel == 'qpc':
+        ax1 = fig.add_subplot(gs[0:3, 0])
+        ax1.hist(res.etas[:, 0], **histkw)
+        ax1.set(xlabel=r'$\eta_1$ RV [m/s]', ylabel='posterior', **allkw)
+        ax1.set_xlim((0, None))
 
-    ax = fig.add_subplot(gs[3:6, 0])
-    ax.hist(res.etas[:, 1], **histkw)
-    ax.set(xlabel=r'$\eta_1$ FWHM [m/s]', ylabel='posterior', **allkw)
+        ax2 = fig.add_subplot(gs[0:3, 1])
+        ax2.hist(res.etas[:, 1], **histkw)
+        ax2.set(xlabel=r'$\eta_1$ FWHM [m/s]', ylabel='posterior', **allkw)
+        ax2.set_xlim((0, None))
+
+        ax = fig.add_subplot(gs[3:6, 0], sharex=ax1)
+        ax.hist(res.etas[:, -2], **histkw)
+        ax.set(xlabel=r'$\eta_5$ RV [m/s]', ylabel='posterior', **allkw)
+
+        ax = fig.add_subplot(gs[3:6, 1], sharex=ax2)
+        ax.hist(res.etas[:, -1], **histkw)
+        ax.set(xlabel=r'$\eta_5$ FWHM [m/s]', ylabel='posterior', **allkw)
+
+        col = 2
+
+    else:
+        ax1 = fig.add_subplot(gs[0:3, 0])
+        ax1.hist(res.etas[:, 0], **histkw)
+        ax1.set(xlabel=r'$\eta_1$ RV [m/s]', ylabel='posterior', **allkw)
+        ax1.set_xlim((0, None))
+
+        ax2 = fig.add_subplot(gs[3:6, 0])
+        ax2.hist(res.etas[:, 1], **histkw)
+        ax2.set(xlabel=r'$\eta_1$ FWHM [m/s]', ylabel='posterior', **allkw)
+        ax2.set_xlim((0, None))
+
+        col = 1
 
     units = [' [days]', ' [days]', '']
     for i in range(3):
-        ax = fig.add_subplot(gs[2*i:2*(i+1), 1])
+        ax = fig.add_subplot(gs[2*i:2*(i+1), col])
         ax.hist(res.etas[:, 2+i], **histkw)
         ax.set(xlabel=fr'$\eta_{2+i}$' + units[i], ylabel='posterior', **allkw)
     # fig, axes = plt.subplots(2, int(np.ceil(n / 2)))
@@ -1361,15 +1391,17 @@ def plot_random_samples_mo(res,
     colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
 
     if samples is None:
-        samples = res.get_sorted_planet_samples()
+        samples = res.posterior_sample
+        # samples = res.get_sorted_planet_samples()
+        # print(samples.shape)
+        # if res.max_components > 0:
+        #     samples, mask = \
+        #         res.apply_cuts_period(samples, pmin, pmax, return_mask=True)
+        # else:
+        mask = np.ones(samples.shape[0], dtype=bool)
     else:
         samples = np.atleast_2d(samples)
 
-    if res.max_components > 0:
-        samples, mask = \
-            res.apply_cuts_period(samples, pmin, pmax, return_mask=True)
-    else:
-        mask = np.ones(samples.shape[0], dtype=bool)
 
     t = res.t.copy()
     M0_epoch = res.M0_epoch
@@ -1444,14 +1476,13 @@ def plot_random_samples_mo(res,
     alpha = 0.1 if ncurves > 1 else 1
 
     for icurve, i in enumerate(ii):
-        stoc_model = res.stochastic_model(res.posterior_sample[i], tt)
-        model = res.eval_model(res.posterior_sample[i], tt)
+        stoc_model = res.stochastic_model(samples[i], tt)
+        model = res.eval_model(samples[i], tt)
 
         ax1.plot(tt, stoc_model[0] + model[0] - y_offset, 'k', alpha=alpha)
         # ax2.plot(tt, stoc_model[1] + model[1], 'k', alpha=alpha)
 
-        offset_model = res.eval_model(res.posterior_sample[i], tt,
-                                     include_planets=False)
+        offset_model = res.eval_model(samples[i], tt, include_planets=False)
 
         if res.GPmodel:
             kw = dict(color='plum', alpha=alpha)
@@ -1597,3 +1628,5 @@ def plot_random_samples_mo(res,
 
     if return_residuals:
         return residuals
+
+    return fig, ax1, ax2
