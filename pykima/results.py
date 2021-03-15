@@ -4,11 +4,10 @@ import zipfile
 import tempfile
 from copy import copy, deepcopy
 
-from .keplerian import keplerian
+from numpy.lib.function_base import append
 
-from .GP import (available_kernels, GP, QPkernel, QPMatern32kernel,
-                 SqExpkernel, QPMatern52kernel, QPRQkernel, GP_celerite,
-                 QPkernel_celerite)
+from .keplerian import keplerian
+from .GP import *
 
 from .utils import (need_model_setup, read_model_setup, get_planet_mass,
                     get_planet_semimajor_axis, percentile68_ranges,
@@ -127,6 +126,11 @@ class KimaResults(object):
         try:
             self.sample = np.loadtxt('sample.txt')
             self.sample_info = np.loadtxt('sample_info.txt')
+            with open('sample.txt', 'r') as fs:
+                header = fs.readline()
+                header = header.replace('#', '').replace('  ', ' ').strip()
+                self.parameters = header.split(' ')
+
             # different sizes can happen when running the model and sample_info
             # was updated while reading sample.txt
             if self.sample.shape[0] != self.sample_info.shape[0]:
@@ -390,25 +394,33 @@ class KimaResults(object):
     def _read_GP(self):
         try:
             self.GPmodel = self.setup['kima']['GP'] == 'true'
-            self.GPkernel = int(self.setup['kima']['GP_kernel'])
+            self.GPkernel = self.setup['kima']['GP_kernel']
         except KeyError:
             self.GPmodel = False
 
         if self.GPmodel:
             if self.model == 'RVmodel':
                 try:
-                    n_hyperparameters = {0: 4, 1: 3}[self.GPkernel]
+                    n_hyperparameters = {
+                        'standard': 4,
+                        'qpc': 5,
+                        'celerite': 3}
+                    n_hyperparameters = n_hyperparameters[self.GPkernel]
                 except KeyError:
                     raise ValueError(
                         f'GP kernel = {self.GPkernel} not recognized')
+
             elif self.model == 'RVFWHMmodel':
                 self.share_eta2 = self.setup['kima']['share_eta2'] == 'true'
                 self.share_eta3 = self.setup['kima']['share_eta3'] == 'true'
                 self.share_eta4 = self.setup['kima']['share_eta4'] == 'true'
+                self.share_eta5 = self.setup['kima']['share_eta5'] == 'true'
                 n_hyperparameters = 2  # at least 2 x eta1
                 n_hyperparameters += 1 if self.share_eta2 else 2
                 n_hyperparameters += 1 if self.share_eta3 else 2
                 n_hyperparameters += 1 if self.share_eta4 else 2
+                if self.GPkernel == 'qpc':
+                    n_hyperparameters += 1 if self.share_eta5 else 2
 
             istart = self._current_column
             iend = istart + n_hyperparameters
@@ -427,17 +439,21 @@ class KimaResults(object):
 
             if self.model == 'RVmodel':
                 GPs = {
-                    0: GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
-                    1: GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
+                    'standard': GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
+                    'qpc': GP(QPCkernel(1, 1, 1, 1, 1), self.t, self.e, white_noise=0),
+                    'celerite': GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
                 }
                 self.GP = GPs[self.GPkernel]
+
             elif self.model == 'RVFWHMmodel':
                 GPs = {
-                    0: GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
-                    1: GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
+                    'standard': GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
+                    'qpc': GP(QPCkernel(1, 1, 1, 1, 1), self.t, self.e, white_noise=0),
+                    'celerite': GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
                 }
                 self.GP1 = GPs[self.GPkernel]
                 self.GP2 = deepcopy(GPs[self.GPkernel])
+
         else:
             n_hyperparameters = 0
 
@@ -730,7 +746,7 @@ class KimaResults(object):
         return self.medians, self.means
 
     def maximum_likelihood_sample(self, from_posterior=False, Np=None,
-                                  printit=True):
+                                  printit=True, mask=None):
         """
         Get the maximum likelihood sample. By default, this is the highest
         likelihood sample found by DNest4. If `from_posterior` is True, this
@@ -744,7 +760,11 @@ class KimaResults(object):
                   'maximum_likelihood_sample() doing nothing...')
             return
 
+
         if from_posterior:
+            if mask is None:
+                mask = np.ones(self.ESS, dtype=bool)
+
             if Np is None:
                 ind = np.argmax(self.posterior_lnlike[:, 1])
                 maxlike = self.posterior_lnlike[ind, 1]
@@ -755,10 +775,13 @@ class KimaResults(object):
                 maxlike = self.posterior_lnlike[mask][ind, 1]
                 pars = self.posterior_sample[mask][ind]
         else:
+            if mask is None:
+                mask = np.ones(self.sample.shape[0], dtype=bool)
+
             if Np is None:
-                ind = np.argmax(self.sample_info[:, 1])
-                maxlike = self.sample_info[ind, 1]
-                pars = self.sample[ind]
+                ind = np.argmax(self.sample_info[mask, 1])
+                maxlike = self.sample_info[mask][ind, 1]
+                pars = self.sample[mask][ind]
             else:
                 mask = self.sample[:, self.index_component] == Np
                 ind = np.argmax(self.sample_info[mask, 1])
@@ -1020,8 +1043,15 @@ class KimaResults(object):
             D = np.vstack((self.y, self.y2))
             r = D - self.eval_model(sample)
             GPpars = sample[self.indices['GPpars']]
-            self.GP1.kernel.setpars(*GPpars[[0, 2, 3, 4]])
-            self.GP2.kernel.setpars(*GPpars[[1, 2, 3, 4]])
+
+            eta234 = [2, 3, 4]
+            if self.GPkernel == 'standard':
+                self.GP1.kernel.setpars(*GPpars[[0] + eta234])
+                self.GP2.kernel.setpars(*GPpars[[1] + eta234])
+            elif self.GPkernel == 'qpc':
+                self.GP1.kernel.setpars(*GPpars[[0] + eta234 + [5]])
+                self.GP2.kernel.setpars(*GPpars[[1] + eta234 + [6]])
+
             out0 = self.GP1.predict(r[0], t, return_std=return_std)
             out1 = self.GP2.predict(r[1], t, return_std=return_std)
             if return_std:
@@ -1065,6 +1095,51 @@ class KimaResults(object):
             return D - self.full_model(sample)
         else:
             return D - self.eval_model(sample)
+
+    def simulate_from_sample(self, sample, times, add_noise=True, errors=True,
+                             append_to_file=False):
+        y = self.full_model(sample, times)
+        e = np.zeros_like(y)
+
+        if add_noise:
+            if self.model == 'RVFWHMmodel':
+                n1 = np.random.normal(0, self.e.mean(), times.size)
+                n2 = np.random.normal(0, self.e2.mean(), times.size)
+                y += np.c_[n1, n2].T
+            elif self.model == 'RVmodel':
+                n = np.random.normal(0, self.e.mean(), times.size)
+                y += n
+
+        if errors:
+            if self.model == 'RVFWHMmodel':
+                er1 = np.random.uniform(self.e.min(), self.e.max(), times.size)
+                er2 = np.random.uniform(self.e2.min(), self.e2.max(), times.size)
+                e += np.c_[er1, er2].T
+            
+            elif self.model == 'RVmodel':
+                er = np.random.uniform(self.e.min(), self.e.max(), times.size)
+                e += er
+
+        if append_to_file:
+            last_file = self.data_file[-1]
+            name, ext = os.path.splitext(last_file)
+            n = times.size
+            file = f'{name}_+{n}sim{ext}'
+            print(file)
+
+            with open(file, 'w') as out:
+                out.writelines(open(last_file).readlines())
+                if self.model == 'RVFWHMmodel':
+                    kw = dict(delimiter='\t', fmt=['%.5f'] + 4*['%.9f'])
+                    np.savetxt(out, np.c_[times, y[0], e[0], y[1], e[1]], **kw)
+                elif self.model == 'RVmodel':
+                    kw = dict(delimiter='\t', fmt=['%.5f'] + 2*['%.9f'])
+                    np.savetxt(out, np.c_[times, y, e], **kw)
+
+        if errors:
+            return y, e
+        else:
+            return y
 
     @property
     def instruments(self):
@@ -1113,7 +1188,7 @@ class KimaResults(object):
 
     def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
                    density=False, kde=False, kde_bw=None, show_peaks=False,
-                   show_prior=False, show_year=True, show_timespan=True, 
+                   show_prior=False, show_year=True, show_timespan=True,
                    **kwargs):
         """
         Plot the histogram (or the kde) of the posterior for the orbital period(s).
@@ -1289,7 +1364,7 @@ class KimaResults(object):
         GP hyperparameters for each of the random samples.
         """
         if self.model == 'RVFWHMmodel':
-            display.plot_random_samples_mo(self,
+            return display.plot_random_samples_mo(self,
                                            ncurves=ncurves,
                                            over=over,
                                            pmin=pmin,
@@ -1300,7 +1375,7 @@ class KimaResults(object):
                                            return_residuals=return_residuals,
                                            ntt=ntt,
                                            **kwargs)
-            return
+
         colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
 
         samples = self.get_sorted_planet_samples()

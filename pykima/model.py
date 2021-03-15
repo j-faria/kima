@@ -39,6 +39,7 @@ class KimaModel:
         self._model_type = 'RVmodel'
 
         self.GP = False
+        self.kernel = None
         self.MA = False
         self.hyperpriors = False
         self._trend = False
@@ -211,9 +212,16 @@ class KimaModel:
         if f is None:
             return
         if isinstance(f, list):
-            self._filename = f
+            files = f
         else:
-            self._filename = [f, ]
+            files = [f, ]
+        
+        for i, file in enumerate(files):
+            if os.path.dirname(file) != self.directory:
+                files[i] = os.path.abspath(file)
+
+        self._filename = files
+        self._filename_full_path = [os.path.abspath(f) for f in self._filename]
         self.data
 
 
@@ -446,6 +454,9 @@ class KimaModel:
 
     def save(self):
         """ Save this model to the OPTIONS file and the kima_setup file """
+        if not os.path.exists(self.directory):
+            os.makedirs(self.directory)
+
         self._save_OPTIONS()
         self._check_makefile()
 
@@ -499,6 +510,9 @@ class KimaModel:
 
         if self.priors_need_data:
             file.write('\t' + 'auto data = get_data();\n\n')
+
+        if self.GP and self.kernel is not None:
+            file.write('\t' + f'kernel = {self.kernel};\n')
 
         def write_prior_n(name, sets, add_conditional=False):
             s = 'c->' if add_conditional else ''

@@ -23,7 +23,7 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 /* set default priors if the user didn't change them */
 void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
 
     betaprior = make_prior<Gaussian>(0, 1);
     // sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 10.);
@@ -86,7 +86,7 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
         }
 
         // η4
-        if (kernel == standard){
+        if (kernel == standard || kernel == qpc){
             if (!eta4_1_prior)
                 eta4_1_prior = make_prior<LogUniform>(0.1, 10);
             if (!share_eta4){
@@ -95,6 +95,17 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
             }   
 
         }
+
+        // η5
+        if (kernel == qpc){
+            if (!eta5_1_prior)
+                eta5_1_prior = make_prior<ModifiedLogUniform>(1, data.get_RV_span());
+            if (!share_eta5){
+                if (!eta5_2_prior)
+                    eta5_2_prior = make_prior<ModifiedLogUniform>(1, data.get_y2_span());
+            }   
+        }
+
     }
 
     if (known_object) { // KO mode!
@@ -171,6 +182,13 @@ void RVFWHMmodel::from_prior(RNG& rng)
             if (!share_eta4)
                 eta4_2 = eta4_2_prior->generate(rng); // days
         }
+
+        if (kernel == qpc){
+            eta5_1 = exp(eta5_1_prior->generate(rng));
+            if (!share_eta5)
+                eta5_2 = eta5_2_prior->generate(rng); // days
+        }
+
     }
 
     if(MA)
@@ -179,7 +197,7 @@ void RVFWHMmodel::from_prior(RNG& rng)
         tauMA = tauMA_prior->generate(rng);
     }
 
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
 
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
@@ -218,7 +236,7 @@ void RVFWHMmodel::from_prior(RNG& rng)
 void RVFWHMmodel::calculate_C_1()
 {
     // Get the data
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
     const vector<double>& sig = data.get_sig();
     const vector<int>& obsi = data.get_obsi();
@@ -263,6 +281,42 @@ void RVFWHMmodel::calculate_C_1()
 
             break;
         }
+
+    case qpc:
+        {
+            /* This implements the quasi-periodic-cosine kernel from Perger+2020 */
+            for(size_t i=0; i<N; i++)
+            {
+                for(size_t j=i; j<N; j++)
+                {
+                    double tau = t[i] - t[j];
+                    C_1(i, j) = exp(-0.5*pow(tau/eta2_1, 2)) * 
+                                ( eta1_1*eta1_1*exp(-2.0*pow(sin(M_PI*tau/eta3_1)/eta4_1, 2)) +
+                                  eta5_1*eta5_1*cos(4*M_PI*tau/eta3_1) 
+                                );
+
+                    if(i==j)
+                    {
+                        if (multi_instrument)
+                        {
+                            jit = jitters[obsi[i]-1];
+                            C_1(i, j) += sig[i]*sig[i] + jit*jit;
+                        }
+                        else
+                        {
+                            C_1(i, j) += sig[i]*sig[i] + jitter1*jitter1;
+                        }
+                    }
+                    else
+                    {
+                        C_1(j, i) = C_1(i, j);
+                    }
+                }
+            }
+
+            break;
+        }
+
 
     // case celerite:
     //     {
@@ -336,7 +390,7 @@ void RVFWHMmodel::calculate_C_1()
 void RVFWHMmodel::calculate_C_2()
 {
     // Get the data
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
     const vector<double>& sig = data.get_sig2();
     const vector<int>& obsi = data.get_obsi();
@@ -367,6 +421,41 @@ void RVFWHMmodel::calculate_C_2()
                         {
                             jit = jitters[Ni + obsi[i] - 1];
                             C_2(i, j) += sig[i] * sig[i] + jit*jit;
+                        }
+                        else
+                        {
+                            C_2(i, j) += sig[i]*sig[i] + jitter2*jitter2;
+                        }
+                    }
+                    else
+                    {
+                        C_2(j, i) = C_2(i, j);
+                    }
+                }
+            }
+
+            break;
+        }
+
+    case qpc:
+        {
+            /* This implements the quasi-periodic-cosine kernel from Perger+2020 */
+            for(size_t i=0; i<N; i++)
+            {
+                for(size_t j=i; j<N; j++)
+                {
+                    double tau = t[i] - t[j];
+                    C_2(i, j) = exp(-0.5*pow(tau/eta2_2, 2)) * 
+                                ( eta1_2*eta1_2*exp(-2.0*pow(sin(M_PI*tau/eta3_2)/eta4_2, 2)) +
+                                  eta5_2*eta5_2*cos(4*M_PI*tau/eta3_2) 
+                                );
+
+                    if(i==j)
+                    {
+                        if (multi_instrument)
+                        {
+                            jit = jitters[Ni + obsi[i] - 1];
+                            C_2(i, j) += sig[i]*sig[i] + jit*jit;
                         }
                         else
                         {
@@ -455,7 +544,7 @@ void RVFWHMmodel::calculate_C_2()
 */
 void RVFWHMmodel::calculate_mu()
 {
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
     // Get the times from the data
     const vector<double>& t = data.get_t();
     // only really needed if multi_instrument
@@ -561,7 +650,7 @@ void RVFWHMmodel::calculate_mu()
 */
 void RVFWHMmodel::calculate_mu_2()
 {
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
     size_t N = data.N();
     int Ni = data.Ninstruments();
     // only really needed if multi_instrument
@@ -588,7 +677,7 @@ void RVFWHMmodel::calculate_mu_2()
 
 void RVFWHMmodel::remove_known_object()
 {
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
     auto t = data.get_t();
     double f, v, ti, Tp;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
@@ -607,7 +696,7 @@ void RVFWHMmodel::remove_known_object()
 
 void RVFWHMmodel::add_known_object()
 {
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
     auto t = data.get_t();
     double f, v, ti, Tp;
     for(int j=0; j<n_known_object; j++)
@@ -630,7 +719,7 @@ double RVFWHMmodel::perturb(RNG& rng)
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
     const vector<double>& t = data.get_t();
     const vector<int>& obsi = data.get_obsi();
     auto actind = data.get_actind();
@@ -683,6 +772,50 @@ double RVFWHMmodel::perturb(RNG& rng)
 
                     break;
                 }
+
+                case qpc:
+                {
+                    if(rng.rand() <= 0.2)
+                    {
+                        eta1_1_prior->perturb(eta1_1, rng);
+                        eta1_2_prior->perturb(eta1_2, rng);
+                    }
+                    else if(rng.rand() <= 0.25)
+                    {
+                        eta5_1_prior->perturb(eta5_1, rng);
+                        if (share_eta5)
+                            eta5_2 = eta5_1;
+                        else
+                            eta5_2_prior->perturb(eta5_2, rng);
+                    }
+                    else if(rng.rand() <= 0.33330)
+                    {
+                        eta2_1_prior->perturb(eta2_1, rng);
+                        if (share_eta2)
+                            eta2_2 = eta2_1;
+                        else
+                            eta2_2_prior->perturb(eta2_2, rng);
+                    }
+                    else if(rng.rand() <= 0.5)
+                    {
+                        eta3_1_prior->perturb(eta3_1, rng);
+                        if (share_eta3)
+                            eta3_2 = eta3_1;
+                        else
+                            eta3_2_prior->perturb(eta3_2, rng);
+                    }
+                    else
+                    {
+                        eta4_1_prior->perturb(eta4_1, rng);
+                        if (share_eta4)
+                            eta4_2 = eta4_1;
+                        else
+                            eta4_2_prior->perturb(eta4_2, rng);
+                    }
+
+                    break;
+                }
+
 
                 // case celerite:
                 // {
@@ -996,7 +1129,7 @@ double RVFWHMmodel::perturb(RNG& rng)
 */
 double RVFWHMmodel::log_likelihood() const
 {
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
     size_t N = data.N();
     auto y = data.get_y();
     auto y2 = data.get_y2();
@@ -1020,6 +1153,7 @@ double RVFWHMmodel::log_likelihood() const
         switch (kernel)
         {
             case standard:
+            case qpc:
             {
                 // perform the cholesky decomposition of the covariance matrix
                 Eigen::LLT<Eigen::MatrixXd> cholesky;
@@ -1167,18 +1301,26 @@ void RVFWHMmodel::print(std::ostream& out) const
         }
     }
 
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
 
     if(GP)
     {
-        if (kernel == standard){
+        if (kernel == standard || kernel == qpc){
             out << eta1_1 << '\t' << eta1_2 << '\t';
+            
             out << eta2_1 << '\t';
             if (!share_eta2) out << eta2_2 << '\t';
+            
             out << eta3_1 << '\t';
             if (!share_eta3) out << eta3_2 << '\t';
+            
             out << eta4_1 << '\t';
             if (!share_eta4) out << eta4_2 << '\t';
+        }
+
+        if (kernel == qpc){
+            out << eta5_1 << '\t';
+            if (!share_eta5) out << eta5_2 << '\t';
         }
         // else
         //     out << eta1_1 << '\t' << eta2_1 << '\t' << eta3_1 << '\t';
@@ -1235,19 +1377,27 @@ string RVFWHMmodel::description() const
             desc += "offset" + std::to_string(j+1) + sep;
     }
 
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
 
     if(GP)
     {
-        if(kernel == standard){
+        if(kernel == standard || kernel == qpc){
             desc += "eta1_1" + sep + "eta1_2" + sep;
+
             desc += "eta2_1" + sep;
             if (!share_eta2) desc += "eta2_2" + sep;
+
             desc += "eta3_1" + sep;
             if (!share_eta3) desc += "eta3_2" + sep;
+
             desc += "eta4_1" + sep;
             if (!share_eta4) desc += "eta4_2" + sep;
         }
+        if (kernel == qpc){
+            desc += "eta5_1" + sep;
+            if (!share_eta5) desc += "eta5_2" + sep;
+        }
+
         // else
         //     desc += "eta1_1" + sep + "eta2_1" + sep + "eta3_1" + sep;
     }
@@ -1297,7 +1447,7 @@ string RVFWHMmodel::description() const
  * 
 */
 void RVFWHMmodel::save_setup() {
-    auto data = RVData::get_instance();
+    auto data = Data::get_instance();
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
@@ -1311,10 +1461,11 @@ void RVFWHMmodel::save_setup() {
 
     fout << "GP: " << GP << endl;
     if (GP){
-        fout << "GP_kernel: " << kernel << endl;
+        fout << "GP_kernel: " << _kernels[kernel] << endl;
         fout << "share_eta2: " << share_eta2 << endl;
         fout << "share_eta3: " << share_eta3 << endl;
         fout << "share_eta4: " << share_eta4 << endl;
+        fout << "share_eta5: " << share_eta5 << endl;
     }
     fout << "MA: " << MA << endl;
     fout << "hyperpriors: " << hyperpriors << endl;
@@ -1365,11 +1516,27 @@ void RVFWHMmodel::save_setup() {
     if (GP){
         fout << endl << "[priors.GP]" << endl;
         fout << "eta1_1_prior: " << *eta1_1_prior << endl;
-        // fout << "log_eta2_1_prior: " << *log_eta2_1_prior << endl;
+        fout << "eta1_2_prior: " << *eta1_2_prior << endl;
+
         fout << "eta2_1_prior: " << *eta2_1_prior << endl;
+        if (!share_eta2)
+            fout << "eta2_2_prior: " << *eta2_2_prior << endl;
+
         fout << "eta3_1_prior: " << *eta3_1_prior << endl;
-        if (kernel == standard)
+        if (!share_eta3)
+            fout << "eta3_2_prior: " << *eta3_2_prior << endl;
+
+        if (kernel == standard){
             fout << "eta4_1_prior: " << *eta4_1_prior << endl;
+            if (!share_eta4)
+                fout << "eta4_2_prior: " << *eta4_2_prior << endl;
+        }
+
+        if (kernel == qpc){
+            fout << "eta5_1_prior: " << *eta5_1_prior << endl;
+            if (!share_eta5)
+                fout << "eta5_2_prior: " << *eta5_2_prior << endl;
+        }
     }
 
 

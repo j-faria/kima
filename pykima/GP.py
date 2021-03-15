@@ -11,15 +11,26 @@ except ImportError:
     print('Please install celerite: https://celerite.readthedocs.io/en/stable/python/install')
     sys.exit(1)
 
+__all__ = [
+    'QPkernel',
+    'QPCkernel',
+    'QPMatern32kernel',
+    'QPMatern52kernel',
+    'QPRQkernel',
+    'SqExpkernel',
+    'QPkernel_celerite',
+    'GP',
+    'GP_celerite',
+]
 
-available_kernels = {
-    0: 'standard',
-    1: 'celerite',
-    2: 'permatern32',
-    3: 'permatern52',
-    4: 'perrq',
-    5: 'sqexp',
-}
+# available_kernels = {
+#     0: 'standard',
+#     1: 'celerite',
+#     2: 'permatern32',
+#     3: 'permatern52',
+#     4: 'perrq',
+#     5: 'sqexp',
+# }
 
 
 class QPkernel():
@@ -54,6 +65,45 @@ class QPkernel():
             argsin = np.pi * dists / self.eta3
             K = self.eta1**2 * np.exp(-0.5 * argexp**2 - 2 *
                                       (np.sin(argsin) / self.eta4)**2)
+
+        return K
+
+
+class QPCkernel():
+    """ The quasi-periodic-cosine kernel [Perger+2020]"""
+    def __init__(self, eta1, eta2, eta3, eta4, eta5):
+        self.eta1 = eta1
+        self.eta2 = eta2
+        self.eta3 = eta3
+        self.eta4 = eta4
+        self.eta5 = eta5
+
+    def setpars(self, eta1=None, eta2=None, eta3=None, eta4=None, eta5=None):
+        self.eta1 = eta1 if eta1 else self.eta1
+        self.eta2 = eta2 if eta2 else self.eta2
+        self.eta3 = eta3 if eta3 else self.eta3
+        self.eta4 = eta4 if eta4 else self.eta4
+        self.eta5 = eta5 if eta5 else self.eta5
+
+    def __call__(self, x1, x2=None):
+        if x1.ndim == 1:
+            x1 = x1.reshape(-1,1)
+
+        if x2 is None:
+            dists = squareform(pdist(x1, metric='euclidean'))
+        else:
+            if x2.ndim == 1:
+                x2 = x2.reshape(-1,1)
+            dists = cdist(x1, x2, metric='euclidean')
+
+        argexp = dists / self.eta2
+        argsin = np.pi * dists / self.eta3
+        eta1 = self.eta1**2
+        eta5 = self.eta5**2
+        K = np.exp(-0.5 * argexp**2) * (
+                    eta1*np.exp(-2*(np.sin(argsin) / self.eta4)**2) +
+                    eta5*np.cos(4*np.pi*dists/self.eta3)
+            )
 
         return K
 
