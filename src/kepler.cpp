@@ -190,7 +190,7 @@ namespace kepler
         double r = (3 * alphad * (d - ome) + M2) * M;
         double q = 2 * alphad * ome - M2;
         double q2 = q * q;
-        double w = pow(std::abs(r) + sqrt(q2 * q + r * r), 2.0 / 3);
+        double w = pow(abs(r) + sqrt(q2 * q + r * r), 2.0 / 3);
         return (2 * r * w / (w * w + w * q + q2) + M) / d;
     }
 
