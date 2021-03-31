@@ -630,6 +630,17 @@ void RVmodel::add_known_object()
     }
 }
 
+int RVmodel::is_stable() const
+{
+    // Get the components
+    const vector< vector<double> >& components = planets.get_components();
+    if (components.size() == 0)
+        return 0;
+    // cout << components[0].size() << endl;
+    // cout << AMD::AMD_stable(components) << endl;
+    return AMD::AMD_stable(components, star_mass);
+}
+
 
 double RVmodel::perturb(RNG& rng)
 {
@@ -1031,6 +1042,9 @@ double RVmodel::log_likelihood() const
     auto obsi = data.get_obsi();
 
     double logL = 0.;
+
+    if (is_stable() != 0)
+        return -std::numeric_limits<double>::infinity();
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing

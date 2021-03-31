@@ -8,6 +8,7 @@
 #include "DNest4.h"
 #include "Data.h"
 #include "kepler.h"
+#include "AMDstability.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
@@ -85,15 +86,9 @@ class RVmodel
         void calculate_mu();
         void add_known_object();
         void remove_known_object();
-
-        // eccentric and true anomalies
-        double ecc_anomaly(double time, double prd, double ecc, double peri_pass);
-        double eps3(double e, double M, double x);
-        double keplerstart3(double e, double M);
-        double true_anomaly(double time, double prd, double ecc, double peri_pass);
-
-        template <typename T> inline void sin_cos_reduc (T x, T* SnReduc, T* CsReduc);
-        template <typename T> inline T solve_kepler (T t, T period, T ecc, T time_peri);
+        int is_stable() const;
+        
+        double star_mass = 1.0;  // [Msun]
 
         // The covariance matrix for the data
         Eigen::MatrixXd C {Data::get_instance().N(), Data::get_instance().N()};

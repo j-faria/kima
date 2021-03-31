@@ -8,6 +8,7 @@
 #include "DNest4.h"
 #include "Data.h"
 #include "kepler.h"
+#include "AMDstability.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
@@ -98,6 +99,9 @@ class RVFWHMmodel
         void calculate_mu_2();
         void add_known_object();
         void remove_known_object();
+        int is_stable() const;
+
+        double star_mass = 1.0;  // [Msun]
 
         // eccentric and true anomalies
         double ecc_anomaly(double time, double prd, double ecc, double peri_pass);
