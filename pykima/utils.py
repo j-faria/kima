@@ -12,7 +12,8 @@ from loguniform import LogUniform, ModifiedLogUniform
 from kumaraswamy import kumaraswamy
 
 # CONSTANTS
-mjup2mearth = 317.8284065946748  # 1 Mjup in Mearth
+mjup2mearth = 317.8284065946748    # 1 Jupiter mass in Earth masses
+mjup2msun = 0.0009545942339693249  # 1 Jupiter mass in solar masses
 
 template_setup = """
 [kima]
@@ -242,8 +243,7 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
             star_mass = np.random.normal(star_mass[0], star_mass[1], 5000)
             uncertainty_star_mass = True
 
-        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 -
-                                                                          e**2)
+        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
         m_me = m_mj * mjup2mearth
         if uncertainty_star_mass:
             return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
