@@ -14,6 +14,7 @@ from kumaraswamy import kumaraswamy
 # CONSTANTS
 mjup2mearth = 317.8284065946748    # 1 Jupiter mass in Earth masses
 mjup2msun = 0.0009545942339693249  # 1 Jupiter mass in solar masses
+mearth2msun = 3.0034893488507934e-06  # 1 Earth mass in solar masses
 
 template_setup = """
 [kima]
@@ -377,6 +378,14 @@ def lighten_color(color, amount=0.5):
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
 
 
+class Fixed:
+    def __init__(self, val):
+        self.val = val
+    def rvs(self):
+        return self.val
+    def pdf(self, x):
+        return 1.0 if x == self.val else 0.0
+
 def _prior_to_dist():
     """ Convert a prior name to a prior object """
     d = {
@@ -389,6 +398,7 @@ def _prior_to_dist():
         'Kumaraswamy': kumaraswamy,
         'Laplace': stats.laplace,
         'Cauchy': stats.cauchy,
+        'Fixed': Fixed,
     }
     return d
 
