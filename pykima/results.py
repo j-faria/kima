@@ -21,7 +21,7 @@ from . import display
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import gaussian_kde, uniform
+from scipy.stats import gaussian_kde, uniform, randint as discrete_uniform
 try:  # only available in scipy 1.1.0
     from scipy.signal import find_peaks
 except ImportError:
@@ -191,6 +191,15 @@ class KimaResults(object):
 
         # the column with the number of planets in each sample
         self.index_component = self._current_column
+        # # try to correct fix and npmax
+        uni = np.unique(self.posterior_sample[:, self.index_component])
+        if uni.size > 1:
+            self.fix = False
+        self.npmax = int(uni.max())
+
+        if not self.fix:
+            self.priors['np_prior'] = discrete_uniform(0, self.npmax+1)
+
         self.indices['np'] = self.index_component
         self._current_column += 1
 
@@ -218,19 +227,6 @@ class KimaResults(object):
 
         self.vsys = self.posterior_sample[:, -1]
         self.indices['vsys'] = -1
-
-        # # check again if Np is not changing
-        # if self.npmax == 0:
-        #     n = np.unique(self.posterior_sample[:, self.index_component]).size
-        #     if n > 1:
-        #         print('warning: Np is changing even though fix=True !')
-        #         print('--> check if .fix and .npmax are correct')
-        #         self.npmax = n - 1
-        #         self.fix = False
-
-        # if not self.fix:
-        #     self.total_parameters += 1  # Np
-        #     self.priors['np_prior'] = uniform(0, self.npmax)
 
         # build the marginal posteriors for planet parameters
         self.get_marginals()
@@ -564,17 +560,34 @@ class KimaResults(object):
         for i in range(n)[self.indices['jitter']]:
             priors[i] = self.priors['Jprior']
 
+        if self.fix:
+            from .utils import Fixed
+            priors[self.indices['np']] = Fixed(self.npmax)
+        else:
+            try:
+                priors[self.indices['np']] = self.priors['np_prior']
+            except KeyError:
+                priors[self.indices['np']] = discrete_uniform(0, self.npmax + 1)
+
         if self.max_components > 0:
-            planet_priors = self.max_components * [
-                self.priors['Pprior'],
-                self.priors['Kprior'],
-                self.priors['phiprior'],
-                self.priors['eprior'],
-                self.priors['wprior']
-            ]
+            planet_priors = []
+            for i in range(self.max_components):
+                planet_priors.append(self.priors['Pprior'])
+            for i in range(self.max_components):
+                planet_priors.append(self.priors['Kprior'])
+            for i in range(self.max_components):
+                planet_priors.append(self.priors['phiprior'])
+            for i in range(self.max_components):
+                planet_priors.append(self.priors['eprior'])
+            for i in range(self.max_components):
+                planet_priors.append(self.priors['wprior'])
             priors[self.indices['planets']] = planet_priors
 
-        priors[self.indices['vsys']] = self.priors['Cprior']
+        try:
+            priors[self.indices['vsys']] = self.priors['Cprior']
+        except KeyError:
+            priors[self.indices['vsys']] = self.priors['Vprior']
+
         return priors
 
 
@@ -905,7 +918,8 @@ class KimaResults(object):
 
         print('vsys: ', p[-1])
 
-    def eval_model(self, sample, t=None, include_planets=True):
+    def eval_model(self, sample, t=None, include_planets=True,
+                   single_planet=None):
         """
         Evaluate the deterministic part of the model at one posterior sample.
         If `t` is None, use the observed times. Instrument offsets are only
@@ -960,6 +974,11 @@ class KimaResults(object):
 
             # add the Keplerians for each of the planets
             for j in range(int(nplanets)):
+
+                if single_planet is not None:
+                    if j+1 != single_planet:
+                        continue
+
                 P = pars[j + 0 * self.max_components]
                 if P == 0.0:
                     continue
@@ -1097,6 +1116,19 @@ class KimaResults(object):
         else:
             return D - self.eval_model(sample)
 
+    def from_prior(self, n=1):
+        prior_samples = []
+        for i in range(n):
+            prior = []
+            for p in self.parameter_priors:
+                if p is None:
+                    prior.append(None)
+                else:
+                    prior.append(p.rvs())
+            prior_samples.append(np.array(prior))
+        return np.array(prior_samples)
+
+
     def simulate_from_sample(self, sample, times, add_noise=True, errors=True,
                              append_to_file=False):
         y = self.full_model(sample, times)
@@ -1167,11 +1199,23 @@ class KimaResults(object):
         return r
 
     @property
+    def _error_ratios(self):
+        # self if a KimaResults instance
+        from scipy.stats import multinomial
+        bins = np.arange(self.max_components + 2)
+        n, _ = np.histogram(self._NP, bins=bins)
+        prob = n / self.ESS
+        r = multinomial(self.ESS, prob).rvs(10000)
+        r = r.astype(np.float)
+        r[r == 0] = np.nan
+        return (r[:, 1:] / r[:, :-1]).std(axis=0)
+
+    @property
     def _offset_times(self):
         if not self.multi:
             raise ValueError('Model is not multi_instrument, no offset times')
-        _1 = self.t[np.ediff1d(self.obs, 0, None) > 0]
-        _2 = self.t[np.ediff1d(self.obs, None, 0) > 0]
+        _1 = self.t[np.ediff1d(self.obs, 0, None) != 0]
+        _2 = self.t[np.ediff1d(self.obs, None, 0) != 0]
         return np.mean((_1, _2), axis=0)
 
     # most of the following methods just dispatch to display
@@ -1354,9 +1398,10 @@ class KimaResults(object):
             cfig.set_figwidth(10)
             cfig.set_figheight(8)
 
-    def plot_random_planets(self, ncurves=50, over=0.1, pmin=None, pmax=None,
+    def plot_random_planets(self, ncurves=50, samples=None, over=0.1, pmin=None, pmax=None,
                             show_vsys=False, show_trend=False, Np=None,
-                            return_residuals=False, ntt=10000, **kwargs):
+                            return_residuals=False, ntt=10000, full_plot=False,
+                            **kwargs):
         """
         Display the RV data together with curves from the posterior predictive.
         A total of `ncurves` random samples are chosen, and the Keplerian 
