@@ -48,6 +48,9 @@ class KimaModel:
         self._n_known_object = 0
         self.studentt = False
 
+        self.star_mass = 1.0
+        self.enforce_stability = False
+
         self.fix_Np = True
         self.max_Np = 1
 
@@ -508,11 +511,17 @@ class KimaModel:
         """ fill in inside the constructor """
         file.write('{\n')
 
+        if self.star_mass != 1.0:
+            file.write('\t' + f'star_mass = {self.star_mass};\n')
+
+        if self.enforce_stability:
+            file.write('\t' + f'enforce_stability = true;\n')
+
         if self.priors_need_data:
             file.write('\t' + 'auto data = get_data();\n\n')
 
         if self.GP and self.kernel is not None:
-            file.write('\t' + f'kernel = {self.kernel};\n')
+            file.write('\n\t' + f'kernel = {self.kernel};\n\n')
 
         def write_prior_n(name, sets, add_conditional=False):
             s = 'c->' if add_conditional else ''

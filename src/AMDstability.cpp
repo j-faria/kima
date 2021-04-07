@@ -3,10 +3,10 @@
 namespace AMD
 {
     /**
-     * Argsort(currently support ascending sort)
+     * Returns the indices that would sort an array.
      * @param array input array
      * @return indices w.r.t sorted array
-     */
+    */
     vector<size_t> argsort(const vd &array) {
         vector<size_t> indices(array.size());
         iota(indices.begin(), indices.end(), 0);
@@ -31,7 +31,6 @@ namespace AMD
 
         auto indices = argsort(periods);
         
-        // cout << endl;
         for (auto i : indices)
         {
             double P = components[i][0];
@@ -39,7 +38,8 @@ namespace AMD
             double ecc = components[i][3];
             double m; // [Mjup]
             m = 4.919e-3 * pow(star_mass, 2./3) * pow(P, 1./3) * K * sqrt(1 - ecc*ecc);
-            m = m * mjup2msun;
+            m = m * mjup2msun;  // [Msun]
+            m = m / star_mass;  // planet/star mass ratio
 
             double a; // [AU]
             a = G13 * pow(star_mass, 1./3) * pow(P / (2 * M_PI), 2./3);
@@ -64,14 +64,9 @@ namespace AMD
         for (size_t k = 1; k < NP; k++)
         {
             double Cx = AMD / Lambda[k];
-            is_stable = AMD_stability_pair(masses[k-1], masses[k], sma[k-1], sma[k], Cx);
+            is_stable = AMD_stability_pair(masses[k-1], masses[k], 
+                                           sma[k-1], sma[k], Cx);
         }
-
-        // cout << is_stable << endl;
-        // if (is_stable == 0)
-        //     cout << "STABLE!" << endl;
-        // else
-        //     cout << "NOT STABLE!" << endl;
 
         return is_stable;
     }

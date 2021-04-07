@@ -1149,7 +1149,7 @@ double RVFWHMmodel::log_likelihood() const
 
     double logL = 0.;
 
-    if (is_stable() != 0)
+    if (enforce_stability && is_stable() != 0)
         return -std::numeric_limits<double>::infinity();
 
 
@@ -1473,6 +1473,8 @@ void RVFWHMmodel::save_setup() {
     fout << "[kima]" << endl;
 
     fout << "model: " << "RVFWHMmodel" << endl << endl;
+    fout << "fix: " << fix << endl;
+    fout << "npmax: " << npmax << endl << endl;
 
     fout << "GP: " << GP << endl;
     if (GP){

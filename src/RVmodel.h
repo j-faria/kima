@@ -87,6 +87,7 @@ class RVmodel
         void add_known_object();
         void remove_known_object();
         int is_stable() const;
+        bool enforce_stability = false;
         
         double star_mass = 1.0;  // [Msun]
 

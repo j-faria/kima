@@ -1043,8 +1043,9 @@ double RVmodel::log_likelihood() const
 
     double logL = 0.;
 
-    if (is_stable() != 0)
+    if (enforce_stability && is_stable() != 0)
         return -std::numeric_limits<double>::infinity();
+
 
     #if TIMING
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
