@@ -18,7 +18,6 @@ from .utils import (need_model_setup, read_datafile_rvfwhm, read_model_setup,
 
 from . import display
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import gaussian_kde, uniform, randint as discrete_uniform
@@ -918,22 +917,35 @@ class KimaResults(object):
 
         print('vsys: ', p[-1])
 
-    def eval_model(self, sample, t=None, include_planets=True,
+    def eval_model(self,
+                   sample,
+                   t=None,
+                   include_planets=True,
+                   include_known_object=True,
                    single_planet=None):
         """
         Evaluate the deterministic part of the model at one posterior sample.
         If `t` is None, use the observed times. Instrument offsets are only
         added if `t` is None, but the systemic velocity is always added.
         To evaluate at all posterior samples, consider using
-            np.apply_along_axis(self.model, 1, self.posterior_sample)
+            np.apply_along_axis(self.eval_model, 1, self.posterior_sample)
+        
         Note: this function does *not* evaluate the GP component of the model.
 
         Arguments
         ---------
         sample : ndarray
             One posterior sample, with shape (npar,)
-        t : ndarray (optional)
+        t : ndarray
             Times at which to evaluate the model, or None to use observed times
+        include_planets : bool, default True
+            Whether to include the contribution from the planets
+        include_known_object : bool, default True
+            Whether to include the contribution from the known object planets
+        single_planet : int
+            Index of a single planet to include in the model, starting at 1.
+            Use positive values (1, 2, ...) for the Np planets and negative
+            values (-1, -2, ...) for the known object planets.
         """
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
@@ -954,9 +966,13 @@ class KimaResults(object):
         if include_planets:
 
             # known_object ?
-            if self.KO:
+            if self.KO and include_known_object:
                 pars = sample[self.indices['KOpars']].copy()
                 for j in range(self.nKO):
+                    if single_planet is not None:
+                        if j + 1 != -single_planet:
+                            continue
+
                     P = pars[j + 0 * self.nKO]
                     K = pars[j + 1 * self.nKO]
                     phi = pars[j + 2 * self.nKO]
@@ -976,7 +992,7 @@ class KimaResults(object):
             for j in range(int(nplanets)):
 
                 if single_planet is not None:
-                    if j+1 != single_planet:
+                    if j + 1 != single_planet:
                         continue
 
                 P = pars[j + 0 * self.max_components]
@@ -1000,7 +1016,7 @@ class KimaResults(object):
             v += sample[self.indices['vsys']]
 
         # if evaluating at the same times as the data, add instrument offsets
-        if self.multi: # and len(self.data_file) > 1:
+        if self.multi:  # and len(self.data_file) > 1:
             offsets = sample[self.indices['inst_offsets']]
             if data_t:
                 ii = self.obs.astype(int) - 1
