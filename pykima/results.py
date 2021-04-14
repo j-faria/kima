@@ -1471,7 +1471,8 @@ class KimaResults(object):
                 ntt=ntt,
                 **kwargs)
 
-
+    """
+    This is probably a bad idea...
     def plot_random_planets_pyqt(self, ncurves=50, over=0.2, pmin=None,
                                  pmax=None, show_vsys=False, show_trend=False,
                                  Np=None):
@@ -1745,6 +1746,7 @@ class KimaResults(object):
             filename = 'kima-showresults-fig6.png'
             print('saving in', filename)
             fig.savefig(filename)
+    """
 
     def hist_vsys(self, show_offsets=True, specific=None, show_prior=False,
                   **kwargs):
