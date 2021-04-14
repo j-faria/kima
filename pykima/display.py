@@ -548,7 +548,7 @@ def make_plot5(res, include_jitters=False, show=True, ranges=None):
 
     if data.shape[0] < data.shape[1]:
         print('Not enough samples to make the corner plot')
-        return 
+        return
 
     rc = {
         'font.size': 6,
@@ -666,6 +666,7 @@ def corner_all(res):
 
     for xlim, ax in zip(xlims, fig.axes):
         ax.set_xlim(xlim)
+
 
 def hist_vsys(res, show_offsets=True, specific=None, show_prior=False,
               **kwargs):
@@ -1029,6 +1030,37 @@ def hist_nu(res, show_prior=False, **kwargs):
             print(str(e))
 
 
+def plot_data(res, ax=None, **kwargs):
+    colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
+    if ax is None:
+        fig, ax = plt.subplots(1, 1)
+
+    if res.multi:
+        for j in range(res.inst_offsets.shape[1] + 1):
+            inst = res.instruments[j]
+            m = res.obs == j + 1
+            kw = dict(fmt='o', color=colors[j], label=inst)
+            kw.update(**kwargs)
+            ax.errorbar(res.t[m], res.y[m], res.e[m], **kw)
+
+        ax.legend(loc='upper left', fontsize=8)
+
+    else:
+        ax.errorbar(res.t, res.y, res.e, fmt='o')
+
+    if res.multi:
+        kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
+        ax.vlines(res._offset_times, *ax.get_ylim(), **kw)
+
+    if res.arbitrary_units:
+        lab = dict(xlabel='Time [days]', ylabel='Q [arbitrary]')
+    else:
+        lab = dict(xlabel='Time [days]', ylabel='RV [m/s]')
+    ax.set(**lab)
+
+    return ax
+
+
 def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
                add_titles=True, highlight_points=None):
     """ Plot the phase curves given the solution in `sample` """
@@ -1365,16 +1397,99 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
     return residuals
 
 
+def plot_random_samples(res,
+                        ncurves=50,
+                        samples=None,
+                        over=0.1,
+                        show_vsys=False,
+                        ntt=5000,
+                        isolate_known_object=True,
+                        full_plot=False,
+                        **kwargs):
+
+    if samples is None:
+        samples = res.posterior_sample
+        mask = np.ones(samples.shape[0], dtype=bool)
+    else:
+        samples = np.atleast_2d(samples)
+
+    t = res.t.copy()
+    M0_epoch = res.M0_epoch
+    if t[0] > 24e5:
+        t -= 24e5
+        M0_epoch -= 24e5
+
+    tt = res._get_tt(ntt, over)
+    if res.GPmodel:
+        ttGP = res._get_ttGP()
+
+    if t.size > 100:
+        ncurves = 10
+
+    ncurves = min(ncurves, samples.shape[0])
+
+    if samples.shape[0] == 1:
+        ii = np.zeros(1, dtype=int)
+    elif ncurves == samples.shape[0]:
+        ii = np.arange(ncurves)
+    else:
+        # select `ncurves` indices from the 70% highest likelihood samples
+        lnlike = res.posterior_lnlike[:, 1]
+        sorted_lnlike = np.sort(lnlike)[::-1]
+        mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
+        ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
+
+    fig, ax = plt.subplots(1, 1)
+    
+    ## plot the Keplerian curves
+    alpha = 0.1 if ncurves > 1 else 1
+    for icurve, i in enumerate(ii):
+        stoc_model = res.stochastic_model(res.posterior_sample[i], tt)
+        model = res.eval_model(res.posterior_sample[i], tt)
+        ax.plot(tt, stoc_model + model, 'k', alpha=alpha)
+
+        offset_model = res.eval_model(res.posterior_sample[i], tt,
+                                      include_planets=False)
+
+        if res.GPmodel:
+            ax.plot(tt, stoc_model + offset_model, 'plum', alpha=alpha)
+
+        if show_vsys:
+            kw = dict(alpha=alpha, color='r', ls='--')
+            if res.multi:
+                for j in range(res.n_instruments):
+                    instrument_mask = res.obs == j + 1
+                    start = t[instrument_mask].min()
+                    end = t[instrument_mask].max()
+                    m = np.where( (tt > start) & (tt < end) )
+                    ax.plot(tt[m], offset_model[m], **kw)
+            else:
+                ax.plot(tt, offset_model, **kw)
+
+        if res.KO and isolate_known_object:
+            for k in range(1, res.nKO + 1):
+                kepKO = res.eval_model(res.posterior_sample[i], tt,
+                                       single_planet=-k)
+                ax.plot(tt, kepKO, 'g-', alpha=alpha)
+
+    plot_data(res, ax)
+
+    if res.save_plots:
+        filename = 'kima-showresults-fig6.png'
+        print('saving in', filename)
+        fig.savefig(filename)
+
+    if res.return_figs:
+        return fig
+
+
+
 def plot_random_samples_rvfwhm(res,
                                ncurves=50,
                                samples=None,
                                over=0.1,
-                               pmin=None,
-                               pmax=None,
                                show_vsys=False,
-                               show_trend=False,
                                Np=None,
-                               return_residuals=False,
                                ntt=10000,
                                **kwargs):
     """
@@ -1388,16 +1503,9 @@ def plot_random_samples_rvfwhm(res,
 
     if samples is None:
         samples = res.posterior_sample
-        # samples = res.get_sorted_planet_samples()
-        # print(samples.shape)
-        # if res.max_components > 0:
-        #     samples, mask = \
-        #         res.apply_cuts_period(samples, pmin, pmax, return_mask=True)
-        # else:
         mask = np.ones(samples.shape[0], dtype=bool)
     else:
         samples = np.atleast_2d(samples)
-
 
     t = res.t.copy()
     M0_epoch = res.M0_epoch
@@ -1410,12 +1518,12 @@ def plot_random_samples_rvfwhm(res,
 
     if res.GPmodel:
         # let's be more reasonable for the number of GP prediction points
-        ## OLD: linearly spaced points (lots of useless points within gaps)
-        # ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
-        ## NEW: have more points near where there is data
+        #! OLD: linearly spaced points (lots of useless points within gaps)
+        #! ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
+        #! NEW: have more points near where there is data
         kde = gaussian_kde(t)
         ttGP = kde.resample(25000 + t.size * 3).reshape(-1)
-        # constrain ttGP within observed times, to not waste (this could go...)
+        # constrain ttGP within observed times, to not waste
         ttGP = (ttGP + t[0]) % t.ptp() + t[0]
         ttGP = np.r_[ttGP, t]
         ttGP.sort()  # in-place
@@ -1439,12 +1547,8 @@ def plot_random_samples_rvfwhm(res,
     elif ncurves == samples.shape[0]:
         ii = np.arange(ncurves)
     else:
-        # select random `ncurves` indices
-        # from the (sorted, period-cut) posterior samples
-        # ii = np.random.randint(samples.shape[0], size=ncurves)
-
         # select `ncurves` indices from the 70% highest likelihood samples
-        lnlike = res.posterior_lnlike[:,1]
+        lnlike = res.posterior_lnlike[:, 1]
         sorted_lnlike = np.sort(lnlike)[::-1]
         mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
         ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
@@ -1454,21 +1558,11 @@ def plot_random_samples_rvfwhm(res,
         fig = ax1.figure
     else:
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True,
-                                      constrained_layout=True)
-    # if res.KO:
-    #     fig, (ax, ax1) = plt.subplots(1, 2, figsize=[2 * 6.4, 4.8],
-    #                                     constrained_layout=True)
-    #     ax1.set_title('Keplerian curve(s) from known object(s) removed')
-    # else:
+                                       constrained_layout=True)
 
     ax1.set_title('Posterior samples in data space')
 
     ## plot the Keplerian curves
-
-    # known_object, calculated at tt and at t, all curves in one array
-    v_KO = np.zeros((ncurves, tt.size))
-    v_KO_at_t = np.zeros((ncurves, t.size))
-
     alpha = 0.1 if ncurves > 1 else 1
 
     for icurve, i in enumerate(ii):
@@ -1501,80 +1595,22 @@ def plot_random_samples_rvfwhm(res,
 
         continue
 
-        if res.KO:  # known object
-            pars = res.KOpars[i]
-            for iKO in range(res.nKO):
-                P = pars[iKO::res.nKO][0]
-                K = pars[iKO::res.nKO][1]
-                phi = pars[iKO::res.nKO][2]
-                t0 = res.M0_epoch - (P * phi) / (2. * np.pi)
-                ecc = pars[iKO::res.nKO][3]
-                w = pars[iKO::res.nKO][4]
-                # P = pars[5*iKO + 0]
-                # K = pars[5*iKO + 1]
-                # phi = pars[5*iKO + 2]
-                # t0 = t[0] - (P * phi) / (2. * np.pi)
-                # ecc = pars[5*iKO + 3]
-                # w = pars[5*iKO + 4]
-
-                v += keplerian(tt, P, K, ecc, w, t0, 0.)
-                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
-
-            # add to v, evaluated at tt, has everything (note vsys=0)
-            v += keplerian(tt, P, K, ecc, w, t0, 0.)
-            v_KO[icurve] = v  # first KO curve, at tt
-
-            # add to v_at_t, evaluated at t, has everything (note vsys=0)
-            v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
-            v_KO_at_t[icurve] = v_at_t  # first KO curve, at t
-
-            # ax1.plot(tt, v_KO[icurve], alpha=0.4, color='g', ls='-')
-            # ax1.add_line(plt.Line2D(tt, v_KO[icurve]))
-
-
-        # plot the MA "prediction"
-        # if res.MAmodel:
-        #     vMA = v_at_t.copy()
-        #     dt = np.ediff1d(res.t)
-        #     sigmaMA, tauMA = res.MA.mean(axis=0)
-        #     vMA[1:] += sigmaMA * np.exp(np.abs(dt) / tauMA) * (res.y[:-1] - v_at_t[:-1])
-        #     vMA[np.abs(vMA) > 1e6] = np.nan
-        #     ax1.plot(t, vMA, 'o-', alpha=1, color='m')
-
-        # v only has the Keplerian components, not the GP predictions
-        # ax1.plot(tt, v, alpha=0.2, color='k')
-
-
-    residuals = y.copy()
-
     ## plot the data
     if res.multi:
-        for j in range(res.inst_offsets.shape[1]//2 + 1):
+        for j in range(res.inst_offsets.shape[1] // 2 + 1):
             inst = res.instruments[j]
             m = res.obs == j + 1
+
             kw = dict(fmt='o', ms=3, color=colors[j], label=inst)
             kw.update(**kwargs)
-
             ax1.errorbar(t[m], y[m] - y_offset, yerr[m], **kw)
             ax2.errorbar(t[m], res.y2[m] - y2_offset, res.e2[m], **kw)
-
-            # if res.KO:
-            #     mod = v_KO_at_t.mean(axis=0)[m]
-            #     ax2.errorbar(t[m], y[m] - mod, yerr[m], **kw)
-
-            # calculate residuals
-            # residuals[m] -= v_at_t[m]
 
         ax1.legend(loc='upper left', fontsize=8)
 
     else:
         ax1.errorbar(t, y - y_offset, yerr, fmt='o')
         ax2.errorbar(t, y2 - y2_offset, res.e2, fmt='o')
-
-        # if res.KO:
-        #     ax2.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
-
-        residuals -= v_at_t
 
     if res.multi:
         kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
@@ -1598,22 +1634,6 @@ def plot_random_samples_rvfwhm(res,
     ax1.set_ylabel(ylabel)
     ax2.set(xlabel='Time [days]', ylabel=f'FWHM [m/s]')
 
-    # if res.KO:
-    #     ax2.set(**lab)
-
-    #     from matplotlib.patches import Patch
-    #     from matplotlib.lines import Line2D
-
-    #     legend_elements = [
-    #         Line2D([0], [0], marker='o', color='w', label='Data', markerfacecolor='C0', markersize=6),
-    #         Line2D([0], [0], color='k', lw=1, label='Known object(s) samples'),
-    #         Line2D([0], [0], color='g', lw=1, label='Full model samples'),
-    #         # Patch(facecolor='orange', edgecolor='r', label='Color Patch')
-    #     ]
-
-    #     ax1.legend(handles=legend_elements, loc='best')
-
-
     if res.save_plots:
         filename = 'kima-showresults-fig6.png'
         print('saving in', filename)
@@ -1621,8 +1641,5 @@ def plot_random_samples_rvfwhm(res,
 
     if res.return_figs:
         return fig
-
-    if return_residuals:
-        return residuals
 
     return fig, ax1, ax2
