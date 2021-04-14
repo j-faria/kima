@@ -75,6 +75,8 @@ def make_plot1(res, ax=None, errors=False):
     """ Plot the histogram of the posterior for Np """
     if ax is None:
         fig, ax = plt.subplots(1, 1)
+    else:
+        fig = ax.figure
 
     bins = np.arange(res.max_components + 2)
     nplanets = res.posterior_sample[:, res.index_component]
@@ -97,8 +99,6 @@ def make_plot1(res, ax=None, errors=False):
     else:
         pt_Np = passes_threshold_np(res)
         ax.bar(pt_Np, n[pt_Np], color='C3', zorder=2)
-        # top = np.mean(ax.get_ylim())
-        # ax.arrow(pt_Np, top, 0, -.4*top, lw=2, head_length=1, fc='k', ec='k')
 
     xlim = (-0.5, res.max_components + 0.5)
     xticks = np.arange(res.max_components + 1)
@@ -1481,7 +1481,6 @@ def plot_random_samples(res,
 
     if res.return_figs:
         return fig
-
 
 
 def plot_random_samples_rvfwhm(res,

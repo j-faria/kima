@@ -1266,6 +1266,9 @@ class KimaResults(object):
         """ Plot the histogram of the posterior for Np """
         return display.make_plot1(self, **kwargs)
 
+    plot1 = make_plot1
+    plot_posterior_np = make_plot1
+
     def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
                    density=False, kde=False, kde_bw=None, show_peaks=False,
                    show_prior=False, show_year=True, show_timespan=True,
@@ -1281,6 +1284,8 @@ class KimaResults(object):
         args.pop('self')
         return display.make_plot2(self, **args, **kwargs)
 
+    plot2 = make_plot2
+
     def make_plot3(self, points=True, gridsize=50, **kwargs):
         """
         Plot the 2d histograms of the posteriors for semi-amplitude and orbital
@@ -1288,6 +1293,8 @@ class KimaResults(object):
         each posterior sample, else plot hexbins
         """
         return display.make_plot3(self, points, gridsize, **kwargs)
+
+    plot3 = make_plot3
 
     def make_plot4(self, Np=None, ranges=None, show_prior=False,
                    **hist_kwargs):
@@ -1297,9 +1304,13 @@ class KimaResults(object):
         """
         return display.make_plot4(self, Np, ranges, show_prior, **hist_kwargs)
 
+    plot4 = make_plot4
+
     def make_plot5(self, include_jitters=False, show=True, ranges=None):
         """ Corner plot for the GP hyperparameters """
         return display.make_plot5(self, include_jitters, show, ranges)
+
+    plot5 = make_plot5
 
     def get_sorted_planet_samples(self):
         # all posterior samples for the planet parameters
@@ -1471,14 +1482,15 @@ class KimaResults(object):
                 ntt=ntt,
                 **kwargs)
 
+    plot6 = plot_random_planets
+
     """
     This is probably a bad idea...
     def plot_random_planets_pyqt(self, ncurves=50, over=0.2, pmin=None,
                                  pmax=None, show_vsys=False, show_trend=False,
                                  Np=None):
-        """
-        Same as plot_random_planets but using pyqtgraph.
-        """
+        #Same as plot_random_planets but using pyqtgraph.
+
         import pyqtgraph as pg
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
