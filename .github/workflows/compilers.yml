@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, ubuntu-18.04]
-        compiler: [gcc-4.8, gcc-5, gcc-6, gcc-7, clang-3.9, clang]
+        compiler: [g++-4.8, g++-5, g++-6, g++-7, clang-3.9, clang]
 
     steps:
       - uses: actions/checkout@v1
