@@ -23,15 +23,7 @@ jobs:
 
       - name: Setup compiler
         run: |
-          if ["$RUNNER_OS" == "Linux"]; then
-                apt install ${{ matrix.cpp-version }}
-          elif ["$RUNNER_OS" == "macOS"]; then
-                port install ${{ matrix.python-version }}
-          else
-                echo "$RUNNER_OS not supported"
-                exit 1
-          fi
-        shell: bash
+          apt install ${{ matrix.compiler }}
 
 
       - name: Check compiler
