@@ -23,7 +23,7 @@ jobs:
 
       - name: Setup compiler
         run: |
-          apt install ${{ matrix.compiler }}
+          sudo apt install ${{ matrix.compiler }}
 
 
       - name: Check compiler
