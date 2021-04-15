@@ -14,7 +14,7 @@ from .utils import (need_model_setup, read_datafile_rvfwhm, read_model_setup,
                     percentile68_ranges, percentile68_ranges_latex,
                     read_datafile, read_datafile_rvfwhm, lighten_color, wrms,
                     get_prior, hyperprior_samples, get_star_name,
-                    get_instrument_name)
+                    get_instrument_name, _show_kima_setup)
 
 from . import display
 
@@ -654,6 +654,9 @@ class KimaResults(object):
         except Exception:
             # print('Unable to load data from ', filename, ':', e)
             raise
+
+    def show_kima_setup(self):
+        return _show_kima_setup()
 
     def save_pickle(self, filename, verbose=True):
         """Pickle this KimaResults object into a file."""
