@@ -27,7 +27,7 @@ jobs:
 
       - name: Check compiler
         run: |
-          ${{matrix.compiler}} --version
+          ${{ matrix.compiler }} --version
 
       - uses: actions/checkout@v2
       - name: Checkout submodules
@@ -39,4 +39,4 @@ jobs:
     
       - name: Install kima
         run: |
-          CXX={{ matrix.compiler }} make -j 4
+          CXX=${{ matrix.compiler }} make -j 4
