@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, ubuntu-18.04, ubuntu-20.04]
-        compiler: [g++-4.8, g++-5, g++-6, g++-7, g++-8, g++-9, g++-10] #, clang-3.9, clang]
+        compiler: [g++-4.8, g++-5, g++-6, g++-7, g++-8, g++-9, g++-10, clang-3.9, clang]
 
     steps:
       - name: Setup compiler
