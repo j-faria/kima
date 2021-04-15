@@ -14,10 +14,9 @@ from .utils import (need_model_setup, read_datafile_rvfwhm, read_model_setup,
                     percentile68_ranges, percentile68_ranges_latex,
                     read_datafile, read_datafile_rvfwhm, lighten_color, wrms,
                     get_prior, hyperprior_samples, get_star_name,
-                    get_instrument_name)
+                    get_instrument_name, _show_kima_setup)
 
 from . import display
-
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -656,6 +655,9 @@ class KimaResults(object):
             # print('Unable to load data from ', filename, ':', e)
             raise
 
+    def show_kima_setup(self):
+        return _show_kima_setup()
+
     def save_pickle(self, filename, verbose=True):
         """Pickle this KimaResults object into a file."""
         with open(filename, 'wb') as f:
@@ -918,22 +920,55 @@ class KimaResults(object):
 
         print('vsys: ', p[-1])
 
-    def eval_model(self, sample, t=None, include_planets=True,
+    def _get_tt(self, N=1000, over=0.1):
+        """
+        Create array for model prediction plots. This simply returns N
+        linearly-spaced times from t[0]-over*Tspan to t[-1]+over*Tspan.
+        """
+        start = self.t.min() - over * self.t.ptp()
+        end = self.t.max() + over * self.t.ptp()
+        return np.linspace(start, end, N)
+
+    def _get_ttGP(self, N=1000, over=0.1):
+        """ Create array of times for GP prediction plots. """
+        kde = gaussian_kde(self.t)
+        ttGP = kde.resample(N - self.t.size).reshape(-1)
+        # constrain ttGP within observed times, to not waste
+        ttGP = (ttGP + self.t[0]) % self.t.ptp() + self.t[0]
+        # add the observed times as well
+        ttGP = np.r_[ttGP, self.t]
+        ttGP.sort()  # in-place
+        return ttGP
+
+    def eval_model(self,
+                   sample,
+                   t=None,
+                   include_planets=True,
+                   include_known_object=True,
                    single_planet=None):
         """
         Evaluate the deterministic part of the model at one posterior sample.
         If `t` is None, use the observed times. Instrument offsets are only
         added if `t` is None, but the systemic velocity is always added.
         To evaluate at all posterior samples, consider using
-            np.apply_along_axis(self.model, 1, self.posterior_sample)
+            np.apply_along_axis(self.eval_model, 1, self.posterior_sample)
+        
         Note: this function does *not* evaluate the GP component of the model.
 
         Arguments
         ---------
         sample : ndarray
             One posterior sample, with shape (npar,)
-        t : ndarray (optional)
+        t : ndarray
             Times at which to evaluate the model, or None to use observed times
+        include_planets : bool, default True
+            Whether to include the contribution from the planets
+        include_known_object : bool, default True
+            Whether to include the contribution from the known object planets
+        single_planet : int
+            Index of a single planet to include in the model, starting at 1.
+            Use positive values (1, 2, ...) for the Np planets and negative
+            values (-1, -2, ...) for the known object planets.
         """
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
@@ -954,9 +989,13 @@ class KimaResults(object):
         if include_planets:
 
             # known_object ?
-            if self.KO:
+            if self.KO and include_known_object:
                 pars = sample[self.indices['KOpars']].copy()
                 for j in range(self.nKO):
+                    if single_planet is not None:
+                        if j + 1 != -single_planet:
+                            continue
+
                     P = pars[j + 0 * self.nKO]
                     K = pars[j + 1 * self.nKO]
                     phi = pars[j + 2 * self.nKO]
@@ -976,7 +1015,7 @@ class KimaResults(object):
             for j in range(int(nplanets)):
 
                 if single_planet is not None:
-                    if j+1 != single_planet:
+                    if j + 1 != single_planet:
                         continue
 
                 P = pars[j + 0 * self.max_components]
@@ -1000,7 +1039,7 @@ class KimaResults(object):
             v += sample[self.indices['vsys']]
 
         # if evaluating at the same times as the data, add instrument offsets
-        if self.multi: # and len(self.data_file) > 1:
+        if self.multi:  # and len(self.data_file) > 1:
             offsets = sample[self.indices['inst_offsets']]
             if data_t:
                 ii = self.obs.astype(int) - 1
@@ -1128,7 +1167,6 @@ class KimaResults(object):
             prior_samples.append(np.array(prior))
         return np.array(prior_samples)
 
-
     def simulate_from_sample(self, sample, times, add_noise=True, errors=True,
                              append_to_file=False):
         y = self.full_model(sample, times)
@@ -1231,6 +1269,9 @@ class KimaResults(object):
         """ Plot the histogram of the posterior for Np """
         return display.make_plot1(self, **kwargs)
 
+    plot1 = make_plot1
+    plot_posterior_np = make_plot1
+
     def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
                    density=False, kde=False, kde_bw=None, show_peaks=False,
                    show_prior=False, show_year=True, show_timespan=True,
@@ -1246,6 +1287,8 @@ class KimaResults(object):
         args.pop('self')
         return display.make_plot2(self, **args, **kwargs)
 
+    plot2 = make_plot2
+
     def make_plot3(self, points=True, gridsize=50, **kwargs):
         """
         Plot the 2d histograms of the posteriors for semi-amplitude and orbital
@@ -1253,6 +1296,8 @@ class KimaResults(object):
         each posterior sample, else plot hexbins
         """
         return display.make_plot3(self, points, gridsize, **kwargs)
+
+    plot3 = make_plot3
 
     def make_plot4(self, Np=None, ranges=None, show_prior=False,
                    **hist_kwargs):
@@ -1262,9 +1307,13 @@ class KimaResults(object):
         """
         return display.make_plot4(self, Np, ranges, show_prior, **hist_kwargs)
 
+    plot4 = make_plot4
+
     def make_plot5(self, include_jitters=False, show=True, ranges=None):
         """ Corner plot for the GP hyperparameters """
         return display.make_plot5(self, include_jitters, show, ranges)
+
+    plot5 = make_plot5
 
     def get_sorted_planet_samples(self):
         # all posterior samples for the planet parameters
@@ -1422,212 +1471,29 @@ class KimaResults(object):
                 return_residuals=return_residuals,
                 ntt=ntt,
                 **kwargs)
-
-        colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
-
-        samples = self.get_sorted_planet_samples()
-        if self.max_components > 0:
-            samples, mask = \
-                self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
         else:
-            mask = np.ones(samples.shape[0], dtype=bool)
+            return display.plot_random_samples(
+                self,
+                ncurves=ncurves,
+                over=over,
+                pmin=pmin,
+                pmax=pmax,
+                show_vsys=show_vsys,
+                show_trend=show_trend,
+                Np=Np,
+                return_residuals=return_residuals,
+                ntt=ntt,
+                **kwargs)
 
-        t = self.data[:, 0].copy()
-        M0_epoch = self.M0_epoch
-        if t[0] > 24e5:
-            t -= 24e5
-            M0_epoch -= 24e5
+    plot6 = plot_random_planets
 
-        tt = np.linspace(t.min() - over * t.ptp(),
-                         t.max() + over * t.ptp(), ntt + int(100 * over))
-
-        if self.GPmodel:
-            # let's be more reasonable for the number of GP prediction points
-            ## OLD: linearly spaced points (lots of useless points within gaps)
-            # ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
-            ## NEW: have more points near where there is data
-            kde = gaussian_kde(t)
-            ttGP = kde.resample(25000 + t.size * 3).reshape(-1)
-            # constrain ttGP within observed times, to not waste (this could go...)
-            ttGP = (ttGP + t[0]) % t.ptp() + t[0]
-            ttGP = np.r_[ttGP, t]
-            ttGP.sort()  # in-place
-
-            if t.size > 100:
-                ncurves = 10
-
-        y = self.data[:, 1].copy()
-        yerr = self.data[:, 2].copy()
-
-        ncurves = min(ncurves, samples.shape[0])
-
-        if samples.shape[0] == 1:
-            ii = np.zeros(1, dtype=int)
-        elif ncurves == samples.shape[0]:
-            ii = np.arange(ncurves)
-        else:
-            # select random `ncurves` indices
-            # from the (sorted, period-cut) posterior samples
-            # ii = np.random.randint(samples.shape[0], size=ncurves)
-
-            # select `ncurves` indices from the 70% highest likelihood samples
-            lnlike = self.posterior_lnlike[:,1]
-            sorted_lnlike = np.sort(lnlike)[::-1]
-            mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
-            ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
-
-        if self.KO:
-            fig, (ax, ax1) = plt.subplots(1, 2, figsize=[2 * 6.4, 4.8],
-                                          constrained_layout=True)
-            ax1.set_title('Keplerian curve(s) from known object(s) removed')
-        else:
-            fig, ax = plt.subplots(1, 1)
-
-        if self.arbitrary_units:
-            ax.set_title('Posterior samples in data space')
-        else:
-            ax.set_title('Posterior samples in RV data space')
-        # ax.autoscale(False)
-        # ax.use_sticky_edges = False
-
-        ## plot the Keplerian curves
-
-        # known_object, calculated at tt and at t, all curves in one array
-        v_KO = np.zeros((ncurves, tt.size))
-        v_KO_at_t = np.zeros((ncurves, t.size))
-
-        for icurve, i in enumerate(ii):
-            stoc_model = self.stochastic_model(self.posterior_sample[i], tt)
-            model = self.eval_model(self.posterior_sample[i], tt)
-            ax.plot(tt, stoc_model + model, 'k', alpha=0.1)
-
-            offset_model = self.eval_model(self.posterior_sample[i], tt,
-                                           include_planets=False)
-
-            if self.GPmodel:
-                ax.plot(tt, stoc_model + offset_model, 'plum', alpha=0.1)
-
-            if show_vsys:
-                kw = dict(alpha=0.1, color='r', ls='--')
-                if self.multi:
-                    for j in range(self.n_instruments):
-                        instrument_mask = self.obs == j + 1
-                        start = t[instrument_mask].min()
-                        end = t[instrument_mask].max()
-                        m = np.where( (tt > start) & (tt < end) )
-                        ax.plot(tt[m], offset_model[m], **kw)
-                else:
-                    ax.plot(tt, offset_model, **kw)
-
-
-            continue
-
-            if self.KO:  # known object
-                pars = self.KOpars[i]
-                for iKO in range(self.nKO):
-                    P = pars[iKO::self.nKO][0]
-                    K = pars[iKO::self.nKO][1]
-                    phi = pars[iKO::self.nKO][2]
-                    t0 = M0_epoch - (P * phi) / (2. * np.pi)
-                    ecc = pars[iKO::self.nKO][3]
-                    w = pars[iKO::self.nKO][4]
-                    # P = pars[5*iKO + 0]
-                    # K = pars[5*iKO + 1]
-                    # phi = pars[5*iKO + 2]
-                    # t0 = t[0] - (P * phi) / (2. * np.pi)
-                    # ecc = pars[5*iKO + 3]
-                    # w = pars[5*iKO + 4]
-
-                    v += keplerian(tt, P, K, ecc, w, t0, 0.)
-                    v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
-
-                # add to v, evaluated at tt, has everything (note vsys=0)
-                v += keplerian(tt, P, K, ecc, w, t0, 0.)
-                v_KO[icurve] = v  # first KO curve, at tt
-
-                # add to v_at_t, evaluated at t, has everything (note vsys=0)
-                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
-                v_KO_at_t[icurve] = v_at_t  # first KO curve, at t
-
-            # plot the MA "prediction"
-            # if self.MAmodel:
-            #     vMA = v_at_t.copy()
-            #     dt = np.ediff1d(self.t)
-            #     sigmaMA, tauMA = self.MA.mean(axis=0)
-            #     vMA[1:] += sigmaMA * np.exp(np.abs(dt) / tauMA) * (self.y[:-1] - v_at_t[:-1])
-            #     vMA[np.abs(vMA) > 1e6] = np.nan
-            #     ax.plot(t, vMA, 'o-', alpha=1, color='m')
-
-        ## plot the data
-        residuals = y.copy()
-
-        if self.multi:
-            for j in range(self.inst_offsets.shape[1] + 1):
-                inst = self.instruments[j]
-                m = self.obs == j + 1
-                kw = dict(fmt='o', color=colors[j], label=inst)
-                kw.update(**kwargs)
-
-                ax.errorbar(t[m], y[m], yerr[m], **kw)
-
-                if self.KO:
-                    mod = v_KO_at_t.mean(axis=0)[m]
-                    ax1.errorbar(t[m], y[m] - mod, yerr[m], **kw)
-
-                # calculate residuals
-                # residuals[m] -= v_at_t[m]
-
-            ax.legend(loc='upper left', fontsize=8)
-
-        else:
-            ax.errorbar(t, y, yerr, fmt='o')
-            if self.KO:
-                ax1.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
-            # residuals -= v_at_t
-
-        if self.multi:
-            kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
-            ax.vlines(self._offset_times, *ax.get_ylim(), **kw)
-
-        if self.arbitrary_units:
-            lab = dict(xlabel='Time [days]', ylabel='Q [arbitrary]')
-        else:
-            lab = dict(xlabel='Time [days]', ylabel='RV [m/s]')
-
-        ax.set(**lab)
-        if self.KO:
-            ax1.set(**lab)
-
-            from matplotlib.patches import Patch
-            from matplotlib.lines import Line2D
-
-            legend_elements = [
-                Line2D([0], [0], marker='o', color='w', label='Data', markerfacecolor='C0', markersize=6),
-                Line2D([0], [0], color='k', lw=1, label='Known object(s) samples'),
-                Line2D([0], [0], color='g', lw=1, label='Full model samples'),
-                # Patch(facecolor='orange', edgecolor='r', label='Color Patch')
-            ]
-
-            ax.legend(handles=legend_elements, loc='best')
-
-
-        if self.save_plots:
-            filename = 'kima-showresults-fig6.png'
-            print('saving in', filename)
-            fig.savefig(filename)
-
-        if self.return_figs:
-            return fig
-
-        if return_residuals:
-            return residuals
-
+    """
+    This is probably a bad idea...
     def plot_random_planets_pyqt(self, ncurves=50, over=0.2, pmin=None,
                                  pmax=None, show_vsys=False, show_trend=False,
                                  Np=None):
-        """
-        Same as plot_random_planets but using pyqtgraph.
-        """
+        #Same as plot_random_planets but using pyqtgraph.
+
         import pyqtgraph as pg
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
@@ -1895,6 +1761,7 @@ class KimaResults(object):
             filename = 'kima-showresults-fig6.png'
             print('saving in', filename)
             fig.savefig(filename)
+    """
 
     def hist_vsys(self, show_offsets=True, specific=None, show_prior=False,
                   **kwargs):

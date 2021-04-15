@@ -138,6 +138,32 @@ def show_tips():
         print('[kima TIP] ' + tip)
 
 
+def _show_kima_setup():
+    def isnotebook():
+        try:
+            shell = get_ipython().__class__.__name__
+            return shell == 'ZMQInteractiveShell'  # notebook or qtconsole
+        except NameError:
+            return False
+    if isnotebook():
+        from pygments import highlight
+        from pygments.lexers import CppLexer
+        from pygments.formatters import HtmlFormatter
+        import IPython
+
+        with open('kima_setup.cpp') as f:
+            code = f.read()
+
+        formatter = HtmlFormatter()
+        return IPython.display.HTML(
+            '<style type="text/css">{}</style>{}'.format(
+                formatter.get_style_defs('.highlight'),
+                highlight(code, CppLexer(), formatter)))
+    else:
+        with open('kima_setup.cpp') as f:
+            print(f.read())
+
+
 def rms(array):
     """ Root mean square of array """
     return np.sqrt(np.sum(array**2) / array.size)
