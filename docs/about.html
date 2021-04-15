@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html lang="en" class="h-100">
+
+<head>
+
+  
+  
+
+  
+
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="About">
+  <meta property="og:description" content="A data analysis framework  for exoplanet detection">
+
+  <title>About</title>
+  <meta name="description" content="A data analysis framework  for exoplanet detection">
+
+  
+  <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico">
+
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.10.0/css/all.css">
+
+  <!-- Bootstrap CSS CDN -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+
+  <!-- Animate CSS CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.css" type="text/css"/>
+  
+  <!-- KaTeX CSS CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.2/dist/katex.min.css" integrity="sha384-Cqd8ihRLum0CCg8rz0hYKPoLZ3uw+gES2rXQXycqnL5pgVQIflxAUDS7ZSjITLb5" crossorigin="anonymous">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/assets/css/style.css" type="text/css">
+
+</head>
+
+
+<body class="d-flex flex-column h-100">
+
+  <main class="flex-shrink-0 container mt-5">
+  <nav class="navbar navbar-expand-md navbar-light">
+
+  <a class="navbar-brand" href="/"><b>kima</b></a>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+    <div class="navbar-nav ml-auto">
+<a class="nav-item nav-link active" href="/about">About</a>
+
+      
+
+    </div>
+  </div>
+
+</nav>
+  <div class="col-lg-10 mx-auto mt-5 post">
+  <p><strong>kima</strong> is the name of a really good <a href="https://azorieden.com/kima-a-drink-everyone-needs-to-try/">drink produced in
+Azores</a>
+<img class="emoji" title=":tropical_drink:" alt=":tropical_drink:" src="https://github.githubassets.com/images/icons/emoji/unicode/1f379.png" height="20" width="20"><br>
+And now, it’s also a package for the analysis of radial velocity (RV) data.</p>
+
+<figure class="figure w-100">
+  <img src="assets/img/joss_figure.png" class="figure-img img-fluid rounded" alt="" width="70%"></figure>
+
+<p>At its core, <strong>kima</strong> fits Keplerian curves to a set of RV measurements, using
+the Diffusive Nested Sampling algorithm<sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup> to sample the posterior distribution
+for the model parameters. Additionally, the code can calculate the fully
+marginalized likelihood (or evidence, <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi></mrow><annotation encoding="application/x-tex">Z</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathdefault" style="margin-right:0.07153em;">Z</span></span></span></span>) of a model with a given number of
+Keplerians and also <em>infer</em> the number (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mi>p</mi></msub></mrow><annotation encoding="application/x-tex">N_p</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.969438em;vertical-align:-0.286108em;"></span><span class="mord"><span class="mord mathdefault" style="margin-right:0.10903em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:-0.10903em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight">p</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span></span></span></span>) of Keplerian signals detected in
+a given dataset. In this case, <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mi>p</mi></msub></mrow><annotation encoding="application/x-tex">N_p</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.969438em;vertical-align:-0.286108em;"></span><span class="mord"><span class="mord mathdefault" style="margin-right:0.10903em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:-0.10903em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight">p</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span></span></span></span> is a <em>free</em> parameter in the fit and its
+posterior distribution is estimated<sup id="fnref:2" role="doc-noteref"><a href="#fn:2" class="footnote" rel="footnote">2</a></sup><sup>, </sup><sup id="fnref:3" role="doc-noteref"><a href="#fn:3" class="footnote" rel="footnote">3</a></sup>.</p>
+
+<p>The code is under active development at <a href="https://www.github.com/j-faria/kima">this
+<img class="emoji" title=":octocat:" alt=":octocat:" src="https://github.githubassets.com/images/icons/emoji/octocat.png" height="20" width="20"></a> GitHub repository.<br>
+<!--  -->
+This page hosts the <a href="/docs">documentation</a> and
+<a href="(/examples)">examples</a>, as well as the latest
+<a href="/news">news</a>.</p>
+
+<p>If you use <strong>kima</strong> for your work or research, we kindly ask that you include
+the following citation</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Faria et al., (2018). kima: Exoplanet detection in radial velocities.
+Journal of Open Source Software, 3(26), 487
+</code></pre></div></div>
+
+<p>Feel free to use the following BibTeX entry, or see the ADS entry
+2018JOSS….3..487F</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>@article{kima,
+      title = {kima: Exoplanet detection in radial velocities},
+      author = {Faria, J. P. and Santos, N. C. and Figueira, P. and Brewer, B. J.},
+      journal = {Journal of Open Source Software},
+      issn = {2475-9066},
+      number = {26},
+      volume = {3},
+      pages = {487},
+      date = {2018-06-19},
+      year = {2018},
+      month = {6},
+      day = {19},
+      publisher = {The Open Journal},
+      doi = {10.21105/joss.00487},
+      url = {http://dx.doi.org/10.21105/joss.00487},
+}
+</code></pre></div></div>
+
+<h6 id="references">References</h6>
+
+<!-- <div class="row">
+<div class="col-lg">
+  <h2 class="mb-3">Programming Skills</h2>
+    
+      <div class="skill">
+        <p>HTML5/CSS3</p>
+        <div class="skill-bar skill-bar-danger skill-90 wow animated slideInLeft" data-wow-delay="0.05">
+          <span>90%</span>
+        </div>
+      </div>
+    
+      <div class="skill">
+        <p>Go</p>
+        <div class="skill-bar skill-bar- skill-80 wow animated slideInLeft" data-wow-delay="0.1">
+          <span>80%</span>
+        </div>
+      </div>
+    
+      <div class="skill">
+        <p>Python</p>
+        <div class="skill-bar skill-bar-dark skill-70 wow animated slideInLeft" data-wow-delay="0.15">
+          <span>70%</span>
+        </div>
+      </div>
+    
+</div>
+<div class="col-lg">
+  <h2 class="mb-3">Other Skills</h2>
+    
+      <div class="skill">
+        <p>Adobe Photoshop</p>
+        <div class="skill-bar skill-bar-info skill-95 wow animated slideInLeft" data-wow-delay="0.05">
+          <span>95%</span>
+        </div>
+      </div>
+    
+      <div class="skill">
+        <p>Adobe Illustrator</p>
+        <div class="skill-bar skill-bar-success skill-90 wow animated slideInLeft" data-wow-delay="0.1">
+          <span>90%</span>
+        </div>
+      </div>
+    
+</div>
+</div> -->
+
+<!-- <div class="row">
+<div class="col mt-4">
+  <div class="timeline-body">
+    
+      <div class="timeline-item">
+        <div class="content">
+          <h2>Student, Harvard CS</h2>
+          <h6 class="date">2014 — 2018</h6>
+          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+        </div>
+      </div>
+    
+      <div class="timeline-item">
+        <div class="content">
+          <h2>Software Engineer, Google, UK</h2>
+          <h6 class="date">2018 — present</h6>
+          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+        </div>
+      </div>
+    
+  </div>
+</div>
+</div> -->
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>Brewer, B.J., Pártay, L.B. &amp; Csányi, G. <em>Diffusive Nested Sampling</em>. Stat 
+  Comput 21, 649–656 (2011)<br>
+  <a href="https://arxiv.org/abs/0912.2380">arXiv</a>,
+  <a href="https://doi.org/10.1007/s11222-010-9198-8">DOI</a> <a href="#fnref:1" class="reversefootnote" role="doc-backlink">↩</a></p>
+    </li>
+    <li id="fn:2" role="doc-endnote">
+      <p>Brewer, B.J., <em>Inference for Trans-dimensional Bayesian Models with
+  Diffusive Nested Sampling</em> (2015)<br>
+  <a href="https://arxiv.org/abs/1411.3921">arXiv</a> <a href="#fnref:2" class="reversefootnote" role="doc-backlink">↩</a></p>
+    </li>
+    <li id="fn:3" role="doc-endnote">
+      <p>Brewer, B.J. and Donovan, C.P., <em>Fast Bayesian inference for exoplanet
+  discovery in radial velocity data</em>, MNRAS 448, 4, 3206–3214 (2015)<br>
+  <a href="https://arxiv.org/abs/1501.06952">arXiv</a>,
+  <a href="https://doi.org/10.1093/mnras/stv199">DOI</a> <a href="#fnref:3" class="reversefootnote" role="doc-backlink">↩</a></p>
+    </li>
+  </ol>
+</div>
+
+</div>
+  </main>
+
+  <footer class="mt-auto py-3 text-center">
+
+  <small class="text-muted mb-2">
+    <!-- <i class="fas fa-code"></i> with <i class="fas fa-heart"></i> -->
+    by <strong>João Faria</strong>
+  </small>
+
+  <div class="container-fluid justify-content-center">
+<a class="social mx-1" href="mailto:joao.faria@astro.up.pt" style="color: #6c757d" onmouseover="this.style.color='#db4437'" onmouseout="this.style.color='#6c757d'">
+      <i class="fas fa-envelope fa-1x"></i>
+    </a>
+
+</div>
+<small id="attribution">
+    theme: <a href="https://github.com/YoussefRaafatNasry/portfolYOU">portfolYOU</a>
+  </small>
+  
+</footer>
+  
+  <!-- GitHub Buttons -->
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+
+<!-- jQuery CDN -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+<!-- Popper.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script>
+
+<!-- Bootstrap JS CDN -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+<!-- wow.js CDN & Activation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/wow/1.1.2/wow.js"></script>
+<script> new WOW().init(); </script>
+
+<!-- Initialize all tooltips -->
+<script>
+$(function () {
+    $('[data-toggle="tooltip"]').tooltip()
+})
+</script>
+
+</body>
+
+</html>

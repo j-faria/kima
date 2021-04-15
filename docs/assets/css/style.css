@@ -582,3 +582,12 @@ h5 { margin-top: 20px; }
 .toc__items a { transition: all .3s ease; margin-left: 0; margin-right: 0; text-decoration: none; color: black; }
 .toc__items a:after { transition: all 1s ease; }
 .toc__items:hover a:after { opacity: 1; }
+
+.api summary { font-size: larger; margin: 0; }
+.api h2 { margin-top: 1em; font-size: large; padding-top: 1em; }
+.api h3 { margin-top: 1em; font-size: large; padding-top: 0; padding-left: 1em; }
+.api p { padding-left: 2.5em; margin-bottom: 0.5em; }
+.api ul { list-style: none; }
+.api li { padding-left: 1em; }
+.api pre { background: #f8f9fa; color: #343a40; font-family: monospace; font-size: 16px; line-height: 1em; max-width: 100%; margin: 1em 0 0 2em; padding: 0.5em 0 0.5em 0.5em; display: block; page-break-inside: avoid; white-space: pre-wrap; /* css-3 */ white-space: -moz-pre-wrap; /* Mozilla, since 1999 */ white-space: -pre-wrap; /* Opera 4-6 */ white-space: -o-pre-wrap; /* Opera 7 */ word-wrap: break-word; /* Internet Explorer 5.5+ */ }
+.api code.highlighter-rouge { background-color: white; color: #343a40; border-radius: 3px; margin: 0; padding: 0.2em 0.65em; }
