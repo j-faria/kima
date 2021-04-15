@@ -19,10 +19,7 @@ jobs:
         compiler: [g++-4.8, g++-5, g++-6, g++-7, clang-3.9, clang]
 
     steps:
-      - uses: actions/checkout@v1
-
       - name: Setup compiler
-        continue-on-error: true
         run: |
           sudo apt install ${{ matrix.compiler }}
 
