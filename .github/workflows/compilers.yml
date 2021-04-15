@@ -27,11 +27,15 @@ jobs:
           sudo apt install ${{ matrix.compiler }}
 
       - name: Check compiler
+        if: ${{ success() }}
         run: |
           ${{ matrix.compiler }} --version
 
       - uses: actions/checkout@v2
+        if: ${{ success() }}
+
       - name: Checkout submodules
+        if: ${{ success() }}
         shell: bash
         run: |
           auth_header="$(git config --local --get http.https://github.com/.extraheader)"
@@ -39,5 +43,6 @@ jobs:
           git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
     
       - name: Install kima
+        if: ${{ success() }}
         run: |
           CXX=${{ matrix.compiler }} make -j 4
