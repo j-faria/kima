@@ -60,14 +60,10 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
         if res.KO:
             ax = plt.subplot(gs[0, :3])
             ax1 = plt.subplot(gs[0, 3:])
-
-            plt.subplots = lambda *args, figsize=None, constrained_layout=False: (
-                fig, (ax, ax1))
         else:
             ax = plt.subplot(gs[0, :4])
-            plt.subplots = lambda *args: (fig, ax)
 
-        res.plot_random_planets(ncurves=20, show_vsys=True, ms=2)
+        res.plot_random_planets(ax=ax, ncurves=20, show_vsys=True, ms=2)
         ax.set(title='', )
         leg = ax.legend(loc="upper left", bbox_to_anchor=(0, 1.25), ncol=4,
                         fontsize=8)
@@ -79,19 +75,17 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
         #     handle.set_visible(False)
 
         axnp = plt.subplot(gs[0, 4:6])
-        plt.subplots = lambda *args: (fig, axnp)
-        res.make_plot1()
+        res.make_plot1(ax=axnp)
         axnp.set(ylabel='', yticks=[])
         axnp.title.set_fontsize(10)
 
         # orbital period posterior
         axP = plt.subplot(gs[1, :4])
-        plt.subplots = lambda _1, _2: (fig, axP)
 
         if 'show_prior' not in plot2_kw:
             plot2_kw['show_prior'] = True
 
-        res.make_plot2(**plot2_kw)
+        res.make_plot2(ax=axP, **plot2_kw)
 
         if prot:
             kw = dict(color='c', alpha=0.5, lw=2, zorder=-1)
@@ -112,8 +106,7 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
 
         axPK = plt.subplot(gs[2, :4], sharex=axP)
         axPE = plt.subplot(gs[3, :4], sharex=axP)
-        plt.subplots = lambda _1, _2, sharex=False: (fig, (axPK, axPE))
-        res.make_plot3(points=True)
+        res.make_plot3(ax1=axPK, ax2=axPE, points=True)
         axPK.title.set_fontsize(10)
         axPE.title.set_fontsize(10)
         # Plim = list(res.priors['Pprior'].support())
@@ -150,20 +143,18 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
             # subs = long_substr(labels)
             # labels = [l.replace(subs, '') for l in labels]
 
-            for i, s in enumerate(res.extra_sigma.T):
+            for i, s in enumerate(res.jitter.T):
                 ax.hist(s, alpha=0.9, histtype='step', label=labels[i], lw=2)
-            ax.set_xlabel('extra sigma (m/s)')
+            ax.set_xlabel('jitter [m/s]')
             ax.legend(fontsize=6)
         else:
-            plt.subplots = lambda _1, _2: (fig, ax)
-            res.hist_extra_sigma()
+            res.hist_jiter()
         ax.set(title='', ylabel='posterior', yticks=[])
 
-        if res.trend:
+        if res.trend and res.trend_degree == 1:
             ax = plt.subplot(gs[4, 4:])
-            plt.subplots = lambda _1, _2: (fig, ax)
-            res.hist_trend()
-            ax.set(title='', ylabel='posterior', yticks=[])
+            res.hist_trend(ax=ax)
+            ax.set(title='slope [m/s/yr]', ylabel='posterior', yticks=[])
 
         elif res.multi:
             ax = plt.subplot(gs[4, 4:])
