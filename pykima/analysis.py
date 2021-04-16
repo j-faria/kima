@@ -1,3 +1,6 @@
+"""
+Helper functions for analysis of kima results.
+"""
 from collections import namedtuple
 
 import numpy as np
@@ -154,9 +157,9 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
         Whether to plot the detection limits
     sorted_samples : bool
         undoc
-    return_mask: bool
+    return_mask : bool
         undoc
-    
+
     Returns
     -------
     P, K, E, M : ndarray
