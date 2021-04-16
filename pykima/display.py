@@ -918,7 +918,7 @@ def hist_correlations(res):
         fig.savefig(filename)
 
 
-def hist_trend(res, per_year=True, show_prior=False):
+def hist_trend(res, per_year=True, show_prior=False, ax=None):
     """
     Plot the histogram of the posterior for the coefficients of the trend
     """
@@ -938,25 +938,32 @@ def hist_trend(res, per_year=True, show_prior=False):
     if per_year:  # transfrom from /day to /yr
         trend *= 365.25**np.arange(1, res.trend_degree + 1)
 
-    fig, ax = plt.subplots(deg, 1, constrained_layout=True, squeeze=False)
+    if ax is not None:
+        ax = np.atleast_1d(ax)
+        assert len(ax) == deg, f'wrong length, need {deg} axes'
+        fig = ax[0].figure
+    else:
+        fig, ax = plt.subplots(deg, 1, constrained_layout=True, squeeze=True)
+    print(ax.shape)
+
     fig.suptitle('Posterior distribution for trend coefficients')
     for i in range(deg):
         estimate = percentile68_ranges_latex(trend[:, i]) + ' ' + units[i]
 
-        ax[i, 0].hist(trend[:, i].ravel(), label='posterior')
+        ax[i].hist(trend[:, i].ravel(), label='posterior')
         if show_prior:
             prior = res.priors[names[i] + '_prior']
             f = 365.25**(i + 1) if per_year else 1.0
-            ax[i, 0].hist(
+            ax[i].hist(
                 prior.rvs(res.ESS) * f, alpha=0.15, color='k', zorder=-1,
                 label='prior')
 
-        ax[i, 0].set(xlabel=f'{names[i]} ({units[i]})')
+        ax[i].set(xlabel=f'{names[i]} ({units[i]})')
 
         if show_prior:
-            ax[i, 0].legend(title=estimate)
+            ax[i].legend(title=estimate)
         else:
-            leg = ax[i, 0].legend([], [], title=estimate)
+            leg = ax[i].legend([], [], title=estimate)
             leg._legend_box.sep = 0
 
 
@@ -1439,7 +1446,11 @@ def plot_random_samples(res,
         mask_lnlike = lnlike > np.percentile(sorted_lnlike, 70)
         ii = np.random.choice(np.where(mask & mask_lnlike)[0], ncurves)
 
-    fig, ax = plt.subplots(1, 1)
+    if 'ax' in kwargs:
+        ax = kwargs.pop('ax')
+        fig = ax.figure
+    else:
+        fig, ax = plt.subplots(1, 1)
     
     ## plot the Keplerian curves
     alpha = 0.1 if ncurves > 1 else 1

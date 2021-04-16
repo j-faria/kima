@@ -1790,11 +1790,11 @@ class KimaResults(object):
         """
         return display.hist_correlations(self)
 
-    def hist_trend(self, per_year=True, show_prior=False):
+    def hist_trend(self, per_year=True, show_prior=False, ax=None):
         """ 
         Plot the histogram of the posterior for the coefficients of the trend
         """
-        return display.hist_trend(self, per_year, show_prior)
+        return display.hist_trend(self, per_year, show_prior, ax)
 
     def hist_MA(self):
         """ Plot the histogram of the posterior for the MA parameters """
