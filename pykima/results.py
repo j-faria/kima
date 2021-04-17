@@ -1447,9 +1447,16 @@ class KimaResults(object):
             cfig.set_figwidth(10)
             cfig.set_figheight(8)
 
-    def plot_random_planets(self, ncurves=50, samples=None, over=0.1, pmin=None, pmax=None,
-                            show_vsys=False, show_trend=False, Np=None,
-                            return_residuals=False, ntt=10000, full_plot=False,
+    def plot_random_planets(self,
+                            ncurves=50,
+                            samples=None,
+                            over=0.1,
+                            pmin=None,
+                            pmax=None,
+                            show_vsys=False,
+                            Np=None,
+                            ntt=10000,
+                            full_plot=False,
                             **kwargs):
         """
         Display the RV data together with curves from the posterior predictive.
@@ -1466,9 +1473,7 @@ class KimaResults(object):
                 pmin=pmin,
                 pmax=pmax,
                 show_vsys=show_vsys,
-                show_trend=show_trend,
                 Np=Np,
-                return_residuals=return_residuals,
                 ntt=ntt,
                 **kwargs)
         else:
@@ -1479,9 +1484,7 @@ class KimaResults(object):
                 pmin=pmin,
                 pmax=pmax,
                 show_vsys=show_vsys,
-                show_trend=show_trend,
                 Np=Np,
-                return_residuals=return_residuals,
                 ntt=ntt,
                 **kwargs)
 

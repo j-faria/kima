@@ -38,15 +38,9 @@ def make_plots(res, options, save_plots=False):
         '3': [res.make_plot3, {}],
         '4': [res.make_plot4, {}],
         '5': [res.make_plot5, {}],
-        '6': [
-            res.plot_random_planets,
-            {
-                'show_vsys': True,
-                'show_trend': True
-            }
-        ],
+        '6': [res.plot_random_planets, {'show_vsys': True}],
         '6p': [
-            'res.plot_random_planets(show_vsys=True, show_trend=True);'\
+            'res.plot_random_planets(show_vsys=True);'\
             'res.phase_plot(res.maximum_likelihood_sample(Np=passes_threshold_np(res)))',
             {}
         ],
