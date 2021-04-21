@@ -1249,12 +1249,47 @@ class KimaResults(object):
         return (r[:, 1:] / r[:, :-1]).std(axis=0)
 
     @property
+    def _time_overlaps(self):
+        # check for overlaps in the time from different instruments
+        if not self.multi:
+            raise ValueError('Model is not multi_instrument')
+
+        def minmax(x):
+            return x.min(), x.max()
+
+        overlap = []
+        for i in range(1, self.n_instruments):
+            t1min, t1max = minmax(self.t[self.obs == i])
+            t2min, t2max = minmax(self.t[self.obs == i + 1])
+            if t2min < t1max:
+                overlap.append((i, i + 1))
+        return len(overlap) > 0, overlap
+
+    @property
     def _offset_times(self):
         if not self.multi:
             raise ValueError('Model is not multi_instrument, no offset times')
-        _1 = self.t[np.ediff1d(self.obs, 0, None) != 0]
-        _2 = self.t[np.ediff1d(self.obs, None, 0) != 0]
-        return np.mean((_1, _2), axis=0)
+
+        # check for overlaps
+        has_overlaps, overlap = self._time_overlaps
+        if has_overlaps:
+            _o = []
+            m = np.full_like(self.obs, True, dtype=bool)
+            for ov in overlap:
+                _o.append(self.t[self.obs == ov[0]].max())
+                _o.append(self.t[self.obs == ov[1]].min())
+                m &= self.obs != ov[0]
+
+            _1 = self.t[m][np.ediff1d(self.obs[m], 0, None) != 0]
+            _2 = self.t[m][np.ediff1d(self.obs[m], None, 0) != 0]
+            return np.r_[_o, np.mean((_1, _2), axis=0)]
+
+        # otherwise it's much easier
+        else:
+            _1 = self.t[np.ediff1d(self.obs, 0, None) != 0]
+            _2 = self.t[np.ediff1d(self.obs, None, 0) != 0]
+            return np.mean((_1, _2), axis=0)
+
 
     # most of the following methods just dispatch to display
 
