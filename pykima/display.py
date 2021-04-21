@@ -1031,23 +1031,34 @@ def hist_nu(res, show_prior=False, **kwargs):
             print(str(e))
 
 
-def plot_data(res, ax=None, **kwargs):
-    colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
+def plot_data(res, ax=None, y=None, extract_offset=True, leg=True,
+              show_rms=False, **kwargs):
+
     if ax is None:
         fig, ax = plt.subplots(1, 1)
 
+    if y is None:
+        y = res.y.copy()
+
+    assert y.size == res.t.size, 'wrong dimensions!'
+
+    if extract_offset:
+        y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
+    else:
+        y_offset = 0
+
     if res.multi:
-        for j in range(res.inst_offsets.shape[1] + 1):
+        for j in range(res.n_instruments):
             inst = res.instruments[j]
             m = res.obs == j + 1
-            kw = dict(fmt='o', color=colors[j], label=inst)
+            kw = dict(fmt='o', label=inst)
             kw.update(**kwargs)
-            ax.errorbar(res.t[m], res.y[m], res.e[m], **kw)
-
-        ax.legend(loc='upper left', fontsize=8)
-
+            ax.errorbar(res.t[m], y[m] - y_offset, res.e[m], **kw)
     else:
-        ax.errorbar(res.t, res.y, res.e, fmt='o')
+        ax.errorbar(res.t, y - y_offset, res.e, fmt='o')
+
+    if leg:
+        ax.legend(loc='upper left', fontsize=8)
 
     if res.multi:
         kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
@@ -1294,30 +1305,13 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
             else:
                 ax.set_title('P=%.2f days' % p, loc='right', **title_kwargs)
 
+    ## GP panel
+    ###########
     if res.GPmodel:
         axGP = fig.add_subplot(gs[1, :])
-        if res.multi:
-            for k in range(1, res.n_instruments + 1):
-                m = res.obs == k
-                if highlight_points:
-                    axGP.errorbar(t[m & ~hl], res.y[m & ~hl], e[m & ~hl], **ekwargs)
-                    axGP.errorbar(t[hl], res.y[hl], e[hl], **hlkw)
-                else:
-                    axGP.errorbar(t[m], res.y[m], e[m], **ekwargs)
-
-                # if highlight_points:
-                #     GPy = res.y - sample[-1] - of
-                #     axGP.errorbar(t[hl], GPy[hl], e[hl], **hlkw)
-        else:
-            axGP.errorbar(t, res.y, e, **ekwargs)
-
-            if highlight_points:
-                axGP.errorbar(t[hl], res.y[hl], e[hl], **hlkw)
-
+        _, y_offset = plot_data(res, ax=axGP)
         axGP.set(xlabel="Time [days]", ylabel="GP [m/s]")
 
-        # axGP.plot(t, GPvel, 'o-')
-        # jitters = sample[res.indices['jitter']]
         tt = np.linspace(t[0], t[-1], 3000)
         no_planets_model = res.eval_model(sample, tt, include_planets=False)
         no_planets_model = res.burst_model(sample, tt, no_planets_model)
@@ -1329,64 +1323,31 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
                                                        return_std=True)
             no_planets_model = no_planets_model[0]
 
-        pred += no_planets_model
+        pred += no_planets_model - y_offset
         axGP.plot(tt, pred, 'k')
-        axGP.fill_between(tt, pred-2*std, pred+2*std, color='m', alpha=0.2)
+        axGP.fill_between(tt,
+                          pred - 2 * std,
+                          pred + 2 * std,
+                          color='m',
+                          alpha=0.2)
 
     ax = fig.add_subplot(gs[-1, :])
-    residuals = np.zeros_like(t)
-    mask = np.ones_like(t, dtype=bool)
 
-    if res.multi:
-        jitters = sample[res.indices['jitter']]
-        print('residual rms per instrument')
-        for k in range(1, res.n_instruments + 1):
-            m = res.obs == k
-            print(v)
-            residuals[m] = res.y[m] - v[m] - KOvel[m] - GPvel[m]
+    residuals = res.residuals(sample, full=True)
+    plot_data(res, ax=ax, y=residuals, leg=False, show_rms=True)
 
-            alpha = 1
-            if highlight:
-                if highlight not in res.data_file[k - 1]:
-                    alpha = 0.2
-            elif only:
-                if only not in res.data_file[k - 1]:
-                    mask[m] = False
-                    continue
-
-            ax.errorbar(t[m], res.y[m] - v[m] - KOvel[m] - GPvel[m], e[m],
-                        alpha=alpha, color=f'C{k-1}', **ekwargs)
-
-            ax.fill_between(t[m], -jitters[k - 1], jitters[k - 1], alpha=0.2,
-                            color=f'C{k-1}')
-            print(res.instruments[k - 1], end=': ')
-            print(wrms(res.y[m] - v[m] - KOvel[m] - GPvel[m], 1 / e[m]**2))
-
-    else:
-        ax.errorbar(t, res.y - v - KOvel - GPvel, e, **ekwargs)
-        residuals = res.y - v - KOvel - GPvel
-
-    if highlight_points:
-        ax.errorbar(t[hl], residuals[hl], e[hl], **hlkw)
+    # if highlight_points:
+    #     ax.errorbar(t[hl], residuals[hl], e[hl], **hlkw)
 
     if res.studentT:
         outliers = find_outliers(res, sample)
-        ax.errorbar(t[outliers], residuals[outliers], e[outliers], fmt='xr',
-                    ms=7, lw=3)
+        ax.errorbar(res.t[outliers], residuals[outliers], res.e[outliers],
+                    fmt='xr', ms=7, lw=3)
 
-    # ax.legend()
     ax.axhline(y=0, ls='--', alpha=0.5, color='k')
     ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
     ax.set(xlabel='Time [BJD]', ylabel='r [m/s]')
     title_kwargs = dict(loc='right', fontsize=12)
-
-    if res.studentT:
-        rms1 = wrms(residuals[mask], 1 / e[mask]**2)
-        rms2 = wrms(residuals[~outliers], 1 / e[~outliers]**2)
-        ax.set_title(f'rms: {rms2:.2f} ({rms1:.2f}) m/s', **title_kwargs)
-    else:
-        rms = wrms(residuals[mask], 1 / e[mask]**2)
-        ax.set_title(f'rms: {rms:.2f} m/s', **title_kwargs)
 
     if res.save_plots:
         filename = 'kima-showresults-fig6.1.png'
