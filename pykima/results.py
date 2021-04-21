@@ -947,12 +947,12 @@ class KimaResults(object):
                    include_known_object=True,
                    single_planet=None):
         """
-        Evaluate the deterministic part of the model at one posterior sample.
+        Evaluate the deterministic part of the model at one posterior `sample`.
         If `t` is None, use the observed times. Instrument offsets are only
         added if `t` is None, but the systemic velocity is always added.
         To evaluate at all posterior samples, consider using
             np.apply_along_axis(self.eval_model, 1, self.posterior_sample)
-        
+
         Note: this function does *not* evaluate the GP component of the model.
 
         Arguments
@@ -1039,16 +1039,13 @@ class KimaResults(object):
             v += sample[self.indices['vsys']]
 
         # if evaluating at the same times as the data, add instrument offsets
-        if self.multi:  # and len(self.data_file) > 1:
+        # otherwise, don't
+        if self.multi and data_t:  # and len(self.data_file) > 1:
             offsets = sample[self.indices['inst_offsets']]
-            if data_t:
-                ii = self.obs.astype(int) - 1
-            else:
-                time_bins = np.sort(np.r_[t[0], self._offset_times])
-                ii = np.digitize(t, time_bins) - 1
+            ii = self.obs.astype(int) - 1
 
             if self.model == 'RVFWHMmodel':
-                offsets = np.pad(offsets.reshape(-1, 1), ((0,0),(0,1)))
+                offsets = np.pad(offsets.reshape(-1, 1), ((0, 0), (0, 1)))
                 v += np.take(offsets, ii, axis=1)
             else:
                 offsets = np.pad(offsets, (0, 1))
@@ -1144,6 +1141,53 @@ class KimaResults(object):
         stochastic = self.stochastic_model(sample, t)
         return deterministic + stochastic
 
+    def burst_model(self, sample, t, v=None):
+        """
+        For models with multiple instruments, this function "bursts" the
+        computed RV into `n_instruments` individual arrays. This is mostly
+        useful for plotting the RV model together with the original data.
+
+        Arguments
+        ---------
+        sample : ndarray
+            One posterior sample, with shape (npar,)
+        t : ndarray
+            Times at which to evaluate the model
+        v : ndarray
+            Pre-computed RVs, if None we call `self.eval_model`
+        """
+        if v is None:
+            v = self.eval_model(sample, t)
+
+        if not self.multi:
+            print('not multi_instrument, burst_model adds nothing')
+            return v
+
+        offsets = sample[self.indices['inst_offsets']]
+        if self.model == 'RVFWHMmodel':
+            offsets = np.pad(offsets.reshape(-1, 1), ((0, 0), (0, 1)))
+        else:
+            offsets = np.pad(offsets, (0, 1))
+
+        if self._time_overlaps[0]:
+            v = np.tile(v, (self.n_instruments, 1))
+            v = (v.T + offsets).T
+            # this constrains the RV to the times of each instrument
+            for i in range(self.n_instruments):
+                obst = self.t[self.obs == i + 1]
+                v[i, t < obst.min()] = np.nan
+                v[i, t > obst.max()] = np.nan
+        else:
+            time_bins = np.sort(np.r_[t[0], self._offset_times])
+            ii = np.digitize(t, time_bins) - 1
+
+            if self.model == 'RVFWHMmodel':
+                v += np.take(offsets, ii, axis=1)
+            else:
+                v += np.take(offsets, ii)
+
+        return v
+
     def residuals(self, sample, full=False):
         if self.model == 'RVFWHMmodel':
             D = np.vstack([self.y, self.y2])
@@ -1156,6 +1200,7 @@ class KimaResults(object):
             return D - self.eval_model(sample)
 
     def from_prior(self, n=1):
+        """ Generate `n` samples from the priors for all parameters. """
         prior_samples = []
         for i in range(n):
             prior = []

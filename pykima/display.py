@@ -1320,6 +1320,7 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
         # jitters = sample[res.indices['jitter']]
         tt = np.linspace(t[0], t[-1], 3000)
         no_planets_model = res.eval_model(sample, tt, include_planets=False)
+        no_planets_model = res.burst_model(sample, tt, no_planets_model)
 
         if res.model == 'RVmodel':
             pred, std = res.stochastic_model(sample, tt, return_std=True)
@@ -1445,19 +1446,24 @@ def plot_random_samples(res,
         fig = ax.figure
     else:
         fig, ax = plt.subplots(1, 1)
-    
+
     ## plot the Keplerian curves
     alpha = 0.1 if ncurves > 1 else 1
     for icurve, i in enumerate(ii):
-        stoc_model = res.stochastic_model(res.posterior_sample[i], tt)
-        model = res.eval_model(res.posterior_sample[i], tt)
-        ax.plot(tt, stoc_model + model, 'k', alpha=alpha)
+        stoc_model = np.atleast_2d(
+            res.stochastic_model(res.posterior_sample[i], tt))
+        model = np.atleast_2d(res.eval_model(res.posterior_sample[i], tt))
+
+        if res.multi:
+            model = res.burst_model(res.posterior_sample[i], tt, model)
+
+        ax.plot(tt, (stoc_model + model).T, 'k', alpha=alpha)
 
         offset_model = res.eval_model(res.posterior_sample[i], tt,
                                       include_planets=False)
 
-        if res.GPmodel:
-            ax.plot(tt, stoc_model + offset_model, 'plum', alpha=alpha)
+        # if res.GPmodel:
+        #     ax.plot(tt, stoc_model + offset_model, 'plum', alpha=alpha)
 
         if show_vsys:
             kw = dict(alpha=alpha, color='r', ls='--')
@@ -1573,10 +1579,15 @@ def plot_random_samples_rvfwhm(res,
         stoc_model = res.stochastic_model(samples[i], tt)
         model = res.eval_model(samples[i], tt)
 
+        if res.multi:
+            model = res.burst_model(samples[i], tt, model)
+
         ax1.plot(tt, stoc_model[0] + model[0] - y_offset, 'k', alpha=alpha)
         # ax2.plot(tt, stoc_model[1] + model[1], 'k', alpha=alpha)
 
         offset_model = res.eval_model(samples[i], tt, include_planets=False)
+        if res.multi:
+            model = res.burst_model(samples[i], tt, offset_model)
 
         if res.GPmodel:
             kw = dict(color='plum', alpha=alpha)
