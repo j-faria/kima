@@ -124,8 +124,8 @@ class KimaResults(object):
                   'log-likelihoods will not be available.')
 
         try:
-            self.sample = np.loadtxt('sample.txt')
-            self.sample_info = np.loadtxt('sample_info.txt')
+            self.sample = np.atleast_2d(np.loadtxt('sample.txt'))
+            self.sample_info = np.atleast_2d(np.loadtxt('sample_info.txt'))
             with open('sample.txt', 'r') as fs:
                 header = fs.readline()
                 header = header.replace('#', '').replace('  ', ' ').strip()
