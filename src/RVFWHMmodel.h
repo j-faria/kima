@@ -124,6 +124,8 @@ class RVFWHMmodel
     public:
         RVFWHMmodel();
 
+        void initialise() {};
+
         // priors for parameters *not* belonging to the planets
         /// Prior for the systemic velocity.
         std::shared_ptr<DNest4::ContinuousDistribution> Vprior;
