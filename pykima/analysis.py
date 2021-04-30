@@ -2,8 +2,10 @@ from collections import namedtuple
 
 import numpy as np
 from scipy.stats import norm, t as T, binned_statistic
+from scipy.cluster.vq import kmeans2
 
-from .utils import get_planet_mass, get_planet_semimajor_axis, mjup2mearth
+from .utils import (get_planet_mass, get_planet_semimajor_axis,
+                    get_planet_mass_and_semimajor_axis, mjup2mearth)
 
 
 def most_probable_np(results):
@@ -53,7 +55,7 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
     if sample is None:
         sample = results.maximum_likelihood_sample(printit=printit)
 
-    mass_errs = False 
+    mass_errs = False
     if isinstance(star_mass, (tuple, list)):
         mass_errs = True
 
@@ -99,7 +101,7 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
 
 
 def find_outliers(results, sample, threshold=10, verbose=False):
-    """ 
+    """
     Estimate which observations are outliers, for a model with a Student t
     likelihood. This function first calculates the residuals given the
     parameters in `sample`. Then it computes the relative probability of each
@@ -111,18 +113,24 @@ def find_outliers(results, sample, threshold=10, verbose=False):
     # the model must have studentt = true
     if not res.studentT:
         raise ValueError('studentt option is off, cannot estimate outliers')
-    
+
     # calculate residuals for this sample
     resid = res.y - res.model(sample)
-    
+
     # this sample's jitter and degrees of freedom
     J = sample[res.indices['jitter']]
+    if isinstance(J, float):
+        pass
+    elif J.shape[0] > 1:
+        # one jitter per instrument
+        J = J[(res.obs - 1).astype(int)]
+
     nu = sample[res.indices['nu']]
-    
+
     # probabilities within the Gaussian and Student-t likelihoods
     Gd = norm(loc=0, scale=np.hypot(res.e, J)).pdf(resid)
     Td = T(df=nu, loc=0, scale=np.hypot(res.e, J)).pdf(resid)
-    
+
     # if Td/Gd > threshold, the point is an outlier, in the sense that it is
     # more likely within the Student-t likelihood than it would have been within
     # the Gaussian likelihood
@@ -134,9 +142,23 @@ def find_outliers(results, sample, threshold=10, verbose=False):
     return outlier
 
 
-def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
-                     sorted_samples=True, return_mask=False):
-    """ 
+def detection_limits(results,
+                     star_mass=1.0,
+                     Np=None,
+                     bins=200,
+                     plot=True,
+                     semi_amplitude=False,
+                     semi_major_axis=False,
+                     logX=True,
+                     sorted_samples=True,
+                     return_mask=False,
+                     remove_nan=True,
+                     add_jitter=False,
+                     show_prior=False,
+                     show_eccentricity=False,
+                     smooth=False,
+                     smooth_degree=3):
+    """
     Calculate detection limits using samples with more than `Np` planets. By 
     default, this function uses the value of `Np` which passes the posterior
     probability threshold.
@@ -148,15 +170,31 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
     Np : int
         Consider only posterior samples with more than `Np` planets.
     bins : int
-        Number of bins at which to calculate the detection limits. The period 
+        Number of bins at which to calculate the detection limits. The period
         ranges from the minimum to the maximum orbital period in the posterior.
-    plot : bool
+    plot : bool (default True)
         Whether to plot the detection limits
+    semi_amplitude : bool (default False)
+        Show the detection limits for semi-amplitude, instead of planet mass
+    semi_major_axis : bool (default False)
+        Show semi-major axis in the x axis, instead of orbital period
+    logX : bool (default True)
+        Should X-axis bins be logarithmic ?
     sorted_samples : bool
         undoc
     return_mask: bool
         undoc
-    
+    remove_nan : bool
+        remove bins with no counts (no posterior samples)
+    add_jitter ...
+    show_prior ...
+    show_prior : bool (default False)
+        If true, color the posterior samples according to orbital eccentricity
+    smooth : bool (default False)
+        Smooth the binned maximum with a polynomial
+    smooth_degree : int (default 3)
+        Degree of the polynomial used for smoothing
+
     Returns
     -------
     P, K, E, M : ndarray
@@ -170,7 +208,9 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
     res = results
     if Np is None:
         Np = passes_threshold_np(res)
-    print(f'Using samples with Np > {Np}')
+
+    if res.verbose:
+        print(f'Using samples with Np > {Np}')
 
     mask = res.posterior_sample[:, res.index_component] > Np
     pars = res.posterior_sample[mask, res.indices['planets']]
@@ -192,12 +232,28 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
     P = P[inds]
     K = K[inds]
     E = E[inds]
-    M = get_planet_mass(P, K, E, star_mass=star_mass, full_output=True)[2]
+    # J = res.extra_sigma[mask]
 
-    if P.max() / P.min() > 100:
-        bins = 10**np.linspace(np.log10(P.min()), np.log10(P.max()), bins)
+    # if add_jitter:
+    #     # K = np.hypot(K, res.extra_sigma[mask])
+    #     K += res.extra_sigma[mask]
+
+    M, A = get_planet_mass_and_semimajor_axis(P, K, E, star_mass=star_mass,
+                                              full_output=True)
+    M = M[2]
+    A = A[2]
+
+    # Mjit = get_planet_mass(P, np.hypot(K, J), E, star_mass=star_mass,
+    #                        full_output=True)
+    # Mjit = Mjit[2]
+
+    if semi_major_axis:
+        start, end = A.min(), A.max()
     else:
-        bins = np.linspace(P.min(), P.max(), bins)
+        start, end = P.min(), P.max()
+
+    if logX:
+        bins = 10**np.linspace(np.log10(start), np.log10(end), bins)
 
     # bins_start = bins[:-1]# - np.ediff1d(bins)/2
     # bins_end = bins[1:]# + np.ediff1d(bins)/2
@@ -205,9 +261,49 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
     # bins_end = np.append(bins_end, P.max())
 
     DLresult = namedtuple('DLresult', ['max', 'bins'])
-    s = binned_statistic(P, M, statistic='max', bins=bins)
-    s = DLresult(max=s.statistic * mjup2mearth,
-                 bins=s.bin_edges[:-1] + np.ediff1d(s.bin_edges) / 2)
+
+    if semi_amplitude:
+        if semi_major_axis:
+            s = binned_statistic(A, K, statistic='max', bins=bins)
+            # sj = binned_statistic(A,
+            #                       np.hypot(K, J),
+            #                       statistic='max',
+            #                       bins=bins)
+        else:
+            s = binned_statistic(P, K, statistic='max', bins=bins)
+            # sj = binned_statistic(P,
+            #                       np.hypot(K, J),
+            #                       statistic='max',
+            #                       bins=bins)
+    else:
+        if semi_major_axis:
+            s = binned_statistic(A,
+                                 M * mjup2mearth,
+                                 statistic='max',
+                                 bins=bins)
+            # sj = binned_statistic(A,
+            #                       Mjit * mjup2mearth,
+            #                       statistic='max',
+            #                       bins=bins)
+        else:
+            s = binned_statistic(P,
+                                 M * mjup2mearth,
+                                 statistic='max',
+                                 bins=bins)
+            # sj = binned_statistic(P,
+            #                       Mjit * mjup2mearth,
+            #                       statistic='max',
+            #                       bins=bins)
+
+    if remove_nan:
+        w = ~np.isnan(s.statistic)
+    else:
+        w = np.full(s.statistic.size, True)
+
+    bins = s.bin_edges[:-1] + np.ediff1d(s.bin_edges) / 2
+
+    s = DLresult(max=s.statistic[w], bins=bins[w])
+    # sj = DLresult(max=sj.statistic[w], bins=bins[w])
 
     # s99 = binned_statistic(P, M, statistic=lambda x: np.percentile(x, 99),
     #                        bins=bins)
@@ -220,24 +316,79 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
         if isinstance(star_mass, tuple):
             star_mass = star_mass[0]
 
-        sP = np.sort(P)
-        one_ms = 4.919e-3 * star_mass**(2. / 3) * sP**(1. / 3) * 1
-        kw = dict(color='C0', alpha=1, zorder=3)
-        ax.loglog(sP, 5 * one_ms * mjup2mearth, ls=':', **kw)
-        ax.loglog(sP, 3 * one_ms * mjup2mearth, ls='--', **kw)
-        ax.loglog(sP, one_ms * mjup2mearth, ls='-', **kw)
+        if show_eccentricity:
+            plotf = ax.scatter
+        else:
+            plotf = ax.plot
 
-        ax.loglog(P, M * mjup2mearth, 'k.', ms=2, alpha=0.2, zorder=-1)
-        ax.loglog(s.bins, s.max, color='C3')
+        lege = []
+        kw_points = dict(color='k', ms=2, alpha=0.3, zorder=-1)
+        if semi_amplitude:  # K [m/s] in the y axis
+            if semi_major_axis:
+                plotf(A, K, '.', **kw_points)
+            else:
+                plotf(P, K, '.', **kw_points)
+
+        else:  # M [M⊕] in the y axis
+            if semi_major_axis:
+                sX = np.sort(A)
+            else:
+                sX = np.sort(P)
+
+            one_ms = 4.919e-3 * star_mass**(2. / 3) * sX**(1. / 3) * 1
+            kw_lines = dict(color='C0', alpha=1, zorder=3)
+            ls = (':', '--', '-')
+            for i, f in enumerate((5, 3, 1)):
+                ax.loglog(sX, f * one_ms * mjup2mearth, ls=ls[i], **kw_lines)
+                lege.append(f'{f} m/s')
+
+            if semi_major_axis:
+                plotf(A, M * mjup2mearth, '.', **kw_points)
+            else:
+                plotf(P, M * mjup2mearth, '.', **kw_points)
+
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+
+        if show_eccentricity:
+            ax.colorbar()
+
+        if smooth:
+            p = np.polyfit(np.log10(s.bins), np.log10(s.max), smooth_degree)
+            ax.loglog(s.bins, 10**np.polyval(p, np.log10(s.bins)), color='m')
+        else:
+            ax.loglog(s.bins, s.max, '-o', ms=3, color='m')
+
+        if not semi_major_axis:
+            kwargs = dict(ls='--', lw=2, alpha=0.5, zorder=-1, color='C5')
+            ax.axvline(res.t.ptp(), 0.5, 1, **kwargs)
+
         # ax.hlines(s.max, bins_start, bins_end, lw=2)
         # ax.loglog(s99.bins, s99.max * mjup2mearth)
 
-        lege = [f'{i} m/s' for i in (5, 3, 1)] 
-        lege += ['posterior samples', 'binned maximum']
+        lege += ['posterior samples', 'binned maximum', 'time span']
+        if smooth:
+            lege[-2] = '(smoothed) ' + lege[-2]
+
+        if add_jitter:
+            ax.fill_between(s.bins, s.max, s.max + sj.max,
+                            color='r', alpha=0.1, lw=0)
 
         ax.legend(lege, ncol=2, frameon=False)
-        ax.set(ylim=(0.5, None))
-        ax.set(xlabel='Orbital period [days]', ylabel='Planet mass [M$_\odot$]')
+        # ax.set(ylim=(0.5, None))
+
+        if semi_amplitude:
+            Ly = r'Semi-amplitude [m/s]'
+        else:
+            Ly = r'Planet mass [M$_\oplus$]'
+
+        if semi_major_axis:
+            Lx = 'Semi-major axis [AU]'
+        else:
+            Lx = 'Orbital period [days]'
+
+        ax.set(xlabel=Lx, ylabel=Ly)
+
         try:
             ax.set_title(res.star)
         except AttributeError:
@@ -248,6 +399,22 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
     else:
         return P, K, E, M, s
 
+
+def parameter_clusters_kmeans(results, n_clusters=None, include_ecc=True):
+    res = results
+
+    if include_ecc:
+        data = np.c_[res.T, res.A, res.E]
+    else:
+        data = np.c_[res.T, res.A]
+
+    if n_clusters is None:
+        k = res.max_components
+    else:
+        k = n_clusters
+
+    centroids, labels = kmeans2(data, k, minit='++')
+    return centroids, labels
 
 
 def column_dynamic_ranges(results):

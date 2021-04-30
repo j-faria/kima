@@ -124,6 +124,8 @@ class RVFWHMmodel
     public:
         RVFWHMmodel();
 
+        void initialise() {};
+
         // priors for parameters *not* belonging to the planets
         /// Prior for the systemic velocity.
         std::shared_ptr<DNest4::ContinuousDistribution> Vprior;
@@ -168,11 +170,11 @@ class RVFWHMmodel
 
 
         // priors for KO mode!
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Kprior {n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {(size_t) n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Kprior {(size_t) n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {(size_t) n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {(size_t) n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {(size_t) n_known_object};
 
 
 

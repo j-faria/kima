@@ -203,7 +203,7 @@ namespace AMD
             FR = F(eR, y, a);
         }
 
-        while (abs(ex - e0) > tol)
+        while (std::abs(ex - e0) > tol)
         {
             // Try a Newton step first
             ex = e0 - F0 / dFde(e0, y, a);

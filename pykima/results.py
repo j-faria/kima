@@ -9,8 +9,8 @@ from numpy.lib.function_base import append
 from .keplerian import keplerian
 from .GP import *
 
-from .utils import (need_model_setup, read_datafile_rvfwhm, read_model_setup,
-                    get_planet_mass, get_planet_semimajor_axis,
+from .utils import (get_planet_mass_and_semimajor_axis, need_model_setup, read_datafile_rvfwhm, read_model_setup,
+                    get_planet_mass, get_planet_semimajor_axis, mjup2mearth,
                     percentile68_ranges, percentile68_ranges_latex,
                     read_datafile, read_datafile_rvfwhm, lighten_color, wrms,
                     get_prior, hyperprior_samples, get_star_name,
@@ -124,8 +124,8 @@ class KimaResults(object):
                   'log-likelihoods will not be available.')
 
         try:
-            self.sample = np.loadtxt('sample.txt')
-            self.sample_info = np.loadtxt('sample_info.txt')
+            self.sample = np.atleast_2d(np.loadtxt('sample.txt'))
+            self.sample_info = np.atleast_2d(np.loadtxt('sample_info.txt'))
             with open('sample.txt', 'r') as fs:
                 header = fs.readline()
                 header = header.replace('#', '').replace('  ', ' ').strip()
@@ -848,27 +848,48 @@ class KimaResults(object):
 
         return pars
 
-    def print_sample(self, p):
-        print('extra_sigma: ', p[self.indices['jitter']])
+    def print_sample(self, p, star_mass=1.0, show_a=False, show_m=False,
+                     mass_units='mjup'):
+
+        if show_a or show_m:
+            print('considering stellar mass:', star_mass)
+
+        print('jitter: ', p[self.indices['jitter']])
+
         npl = int(p[self.index_component])
         if npl > 0:
             print('number of planets: ', npl)
             print('orbital parameters: ', end='')
 
-            pars = ('P', 'K', 'ϕ', 'e', 'M0')
-            print((self.n_dimensions * ' {:>10s} ').format(*pars))
+            pars = ['P', 'K', 'M0', 'e', 'ω']
+            n = self.n_dimensions
+            if show_a:
+                pars.append('a')
+                n += 1
+            if show_m:
+                pars.append('Mp')
+                n += 1
 
-            # for i in range(0, npl):
-            #     s = (self.n_dimensions *
-            #             ' {:10.5f} ').format(*p[self.index_component + 1 +
-            #                                     i:-2:self.max_components])
-            #     s = 20 * ' ' + s
-            #     print(s)
+            print((n * ' {:>10s} ').format(*pars))
 
             for i in range(0, npl):
                 formatter = {'all': lambda v: f'{v:11.5f}'}
-                with np.printoptions(formatter=formatter):
-                    s = str(p[self.indices['planets']][i::self.max_components])
+                with np.printoptions(formatter=formatter, linewidth=1000):
+                    planet_pars = p[self.indices['planets']][i::self.max_components]
+                    P, K, M0, ecc, ω = planet_pars
+
+                    if show_a or show_m:
+                        (m, _), a = get_planet_mass_and_semimajor_axis(
+                            P, K, ecc, star_mass)
+                    if show_a:
+                        planet_pars = np.append(planet_pars, a)
+                    if show_m:
+                        if mass_units != 'mjup':
+                            if mass_units.lower() == 'mearth':
+                                m *= mjup2mearth
+                        planet_pars = np.append(planet_pars, m)
+
+                    s = str(planet_pars)
                     s = s.replace('[', '').replace(']', '')
                 s = s.rjust(20 + len(s))
                 print(s)
@@ -890,7 +911,18 @@ class KimaResults(object):
                 print(s)
 
         if self.GPmodel:
-            print('GP parameters: ', *p[self.indices['GPpars']])
+            print('GP parameters: ', end='')
+            pars = ('η1', 'η2', 'η3', 'η4')
+            print((4 * ' {:>10s} ').format(*pars))
+
+            formatter = {'all': lambda v: f'{v:11.5f}'}
+            with np.printoptions(formatter=formatter):
+                s = str(p[self.indices['GPpars']])
+                s = s.replace('[', '').replace(']', '')
+            s = s.rjust(15 + len(s))
+            print(s)
+
+            # , *p[self.indices['GPpars']])
             # if self.GPkernel in (0, 2, 3):
             #     eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
             #     print('GP parameters: ', eta1, eta2, eta3, eta4)
@@ -900,11 +932,17 @@ class KimaResults(object):
 
         if self.trend:
             names = ('slope', 'quadr', 'cubic')
-            for name, trend_par in zip(names, p[self.indices['trend']]):
-                print(name + ':', trend_par)
+            units = ['m/s/yr', 'm/s/yr²', 'm/s/yr³']
+            trend = p[self.indices['trend']].copy()
+            # transfrom from /day to /yr
+            trend *= 365.25**np.arange(1, self.trend_degree + 1)
+
+            for name, unit, trend_par in zip(names, units, trend):
+                print(name + ':', '%-8.5f' % trend_par, unit)
 
         if self.multi:
             instruments = self.instruments
+            instruments = [os.path.splitext(inst)[0] for inst in instruments]
             ni = self.n_instruments - 1
             print('instrument offsets: ', end=' ')
             # print('(relative to %s) ' % self.data_file[-1])
@@ -947,12 +985,12 @@ class KimaResults(object):
                    include_known_object=True,
                    single_planet=None):
         """
-        Evaluate the deterministic part of the model at one posterior sample.
+        Evaluate the deterministic part of the model at one posterior `sample`.
         If `t` is None, use the observed times. Instrument offsets are only
         added if `t` is None, but the systemic velocity is always added.
         To evaluate at all posterior samples, consider using
             np.apply_along_axis(self.eval_model, 1, self.posterior_sample)
-        
+
         Note: this function does *not* evaluate the GP component of the model.
 
         Arguments
@@ -1039,16 +1077,13 @@ class KimaResults(object):
             v += sample[self.indices['vsys']]
 
         # if evaluating at the same times as the data, add instrument offsets
-        if self.multi:  # and len(self.data_file) > 1:
+        # otherwise, don't
+        if self.multi and data_t:  # and len(self.data_file) > 1:
             offsets = sample[self.indices['inst_offsets']]
-            if data_t:
-                ii = self.obs.astype(int) - 1
-            else:
-                time_bins = np.sort(np.r_[t[0], self._offset_times])
-                ii = np.digitize(t, time_bins) - 1
+            ii = self.obs.astype(int) - 1
 
             if self.model == 'RVFWHMmodel':
-                offsets = np.pad(offsets.reshape(-1, 1), ((0,0),(0,1)))
+                offsets = np.pad(offsets.reshape(-1, 1), ((0, 0), (0, 1)))
                 v += np.take(offsets, ii, axis=1)
             else:
                 offsets = np.pad(offsets, (0, 1))
@@ -1144,6 +1179,53 @@ class KimaResults(object):
         stochastic = self.stochastic_model(sample, t)
         return deterministic + stochastic
 
+    def burst_model(self, sample, t, v=None):
+        """
+        For models with multiple instruments, this function "bursts" the
+        computed RV into `n_instruments` individual arrays. This is mostly
+        useful for plotting the RV model together with the original data.
+
+        Arguments
+        ---------
+        sample : ndarray
+            One posterior sample, with shape (npar,)
+        t : ndarray
+            Times at which to evaluate the model
+        v : ndarray
+            Pre-computed RVs, if None we call `self.eval_model`
+        """
+        if v is None:
+            v = self.eval_model(sample, t)
+
+        if not self.multi:
+            print('not multi_instrument, burst_model adds nothing')
+            return v
+
+        offsets = sample[self.indices['inst_offsets']]
+        if self.model == 'RVFWHMmodel':
+            offsets = np.pad(offsets.reshape(-1, 1), ((0, 0), (0, 1)))
+        else:
+            offsets = np.pad(offsets, (0, 1))
+
+        if self._time_overlaps[0]:
+            v = np.tile(v, (self.n_instruments, 1))
+            v = (v.T + offsets).T
+            # this constrains the RV to the times of each instrument
+            for i in range(self.n_instruments):
+                obst = self.t[self.obs == i + 1]
+                v[i, t < obst.min()] = np.nan
+                v[i, t > obst.max()] = np.nan
+        else:
+            time_bins = np.sort(np.r_[t[0], self._offset_times])
+            ii = np.digitize(t, time_bins) - 1
+
+            if self.model == 'RVFWHMmodel':
+                v += np.take(offsets, ii, axis=1)
+            else:
+                v += np.take(offsets, ii)
+
+        return v
+
     def residuals(self, sample, full=False):
         if self.model == 'RVFWHMmodel':
             D = np.vstack([self.y, self.y2])
@@ -1156,6 +1238,7 @@ class KimaResults(object):
             return D - self.eval_model(sample)
 
     def from_prior(self, n=1):
+        """ Generate `n` samples from the priors for all parameters. """
         prior_samples = []
         for i in range(n):
             prior = []
@@ -1249,12 +1332,47 @@ class KimaResults(object):
         return (r[:, 1:] / r[:, :-1]).std(axis=0)
 
     @property
+    def _time_overlaps(self):
+        # check for overlaps in the time from different instruments
+        if not self.multi:
+            raise ValueError('Model is not multi_instrument')
+
+        def minmax(x):
+            return x.min(), x.max()
+
+        overlap = []
+        for i in range(1, self.n_instruments):
+            t1min, t1max = minmax(self.t[self.obs == i])
+            t2min, t2max = minmax(self.t[self.obs == i + 1])
+            if t2min < t1max:
+                overlap.append((i, i + 1))
+        return len(overlap) > 0, overlap
+
+    @property
     def _offset_times(self):
         if not self.multi:
             raise ValueError('Model is not multi_instrument, no offset times')
-        _1 = self.t[np.ediff1d(self.obs, 0, None) != 0]
-        _2 = self.t[np.ediff1d(self.obs, None, 0) != 0]
-        return np.mean((_1, _2), axis=0)
+
+        # check for overlaps
+        has_overlaps, overlap = self._time_overlaps
+        if has_overlaps:
+            _o = []
+            m = np.full_like(self.obs, True, dtype=bool)
+            for ov in overlap:
+                _o.append(self.t[self.obs == ov[0]].max())
+                _o.append(self.t[self.obs == ov[1]].min())
+                m &= self.obs != ov[0]
+
+            _1 = self.t[m][np.ediff1d(self.obs[m], 0, None) != 0]
+            _2 = self.t[m][np.ediff1d(self.obs[m], None, 0) != 0]
+            return np.r_[_o, np.mean((_1, _2), axis=0)]
+
+        # otherwise it's much easier
+        else:
+            _1 = self.t[np.ediff1d(self.obs, 0, None) != 0]
+            _2 = self.t[np.ediff1d(self.obs, None, 0) != 0]
+            return np.mean((_1, _2), axis=0)
+
 
     # most of the following methods just dispatch to display
 
@@ -1447,9 +1565,16 @@ class KimaResults(object):
             cfig.set_figwidth(10)
             cfig.set_figheight(8)
 
-    def plot_random_planets(self, ncurves=50, samples=None, over=0.1, pmin=None, pmax=None,
-                            show_vsys=False, show_trend=False, Np=None,
-                            return_residuals=False, ntt=10000, full_plot=False,
+    def plot_random_planets(self,
+                            ncurves=50,
+                            samples=None,
+                            over=0.1,
+                            pmin=None,
+                            pmax=None,
+                            show_vsys=False,
+                            Np=None,
+                            ntt=10000,
+                            full_plot=False,
                             **kwargs):
         """
         Display the RV data together with curves from the posterior predictive.
@@ -1466,9 +1591,7 @@ class KimaResults(object):
                 pmin=pmin,
                 pmax=pmax,
                 show_vsys=show_vsys,
-                show_trend=show_trend,
                 Np=Np,
-                return_residuals=return_residuals,
                 ntt=ntt,
                 **kwargs)
         else:
@@ -1479,9 +1602,7 @@ class KimaResults(object):
                 pmin=pmin,
                 pmax=pmax,
                 show_vsys=show_vsys,
-                show_trend=show_trend,
                 Np=Np,
-                return_residuals=return_residuals,
                 ntt=ntt,
                 **kwargs)
 
@@ -1790,11 +1911,11 @@ class KimaResults(object):
         """
         return display.hist_correlations(self)
 
-    def hist_trend(self, per_year=True, show_prior=False):
+    def hist_trend(self, per_year=True, show_prior=False, ax=None):
         """ 
         Plot the histogram of the posterior for the coefficients of the trend
         """
-        return display.hist_trend(self, per_year, show_prior)
+        return display.hist_trend(self, per_year, show_prior, ax)
 
     def hist_MA(self):
         """ Plot the histogram of the posterior for the MA parameters """
