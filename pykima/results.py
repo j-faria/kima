@@ -9,8 +9,8 @@ from numpy.lib.function_base import append
 from .keplerian import keplerian
 from .GP import *
 
-from .utils import (need_model_setup, read_datafile_rvfwhm, read_model_setup,
-                    get_planet_mass, get_planet_semimajor_axis,
+from .utils import (get_planet_mass_and_semimajor_axis, need_model_setup, read_datafile_rvfwhm, read_model_setup,
+                    get_planet_mass, get_planet_semimajor_axis, mjup2mearth,
                     percentile68_ranges, percentile68_ranges_latex,
                     read_datafile, read_datafile_rvfwhm, lighten_color, wrms,
                     get_prior, hyperprior_samples, get_star_name,
@@ -848,27 +848,48 @@ class KimaResults(object):
 
         return pars
 
-    def print_sample(self, p):
-        print('extra_sigma: ', p[self.indices['jitter']])
+    def print_sample(self, p, star_mass=1.0, show_a=False, show_m=False,
+                     mass_units='mjup'):
+
+        if show_a or show_m:
+            print('considering stellar mass:', star_mass)
+
+        print('jitter: ', p[self.indices['jitter']])
+
         npl = int(p[self.index_component])
         if npl > 0:
             print('number of planets: ', npl)
             print('orbital parameters: ', end='')
 
-            pars = ('P', 'K', 'ϕ', 'e', 'M0')
-            print((self.n_dimensions * ' {:>10s} ').format(*pars))
+            pars = ['P', 'K', 'M0', 'e', 'ω']
+            n = self.n_dimensions
+            if show_a:
+                pars.append('a')
+                n += 1
+            if show_m:
+                pars.append('Mp')
+                n += 1
 
-            # for i in range(0, npl):
-            #     s = (self.n_dimensions *
-            #             ' {:10.5f} ').format(*p[self.index_component + 1 +
-            #                                     i:-2:self.max_components])
-            #     s = 20 * ' ' + s
-            #     print(s)
+            print((n * ' {:>10s} ').format(*pars))
 
             for i in range(0, npl):
                 formatter = {'all': lambda v: f'{v:11.5f}'}
-                with np.printoptions(formatter=formatter):
-                    s = str(p[self.indices['planets']][i::self.max_components])
+                with np.printoptions(formatter=formatter, linewidth=1000):
+                    planet_pars = p[self.indices['planets']][i::self.max_components]
+                    P, K, M0, ecc, ω = planet_pars
+
+                    if show_a or show_m:
+                        (m, _), a = get_planet_mass_and_semimajor_axis(
+                            P, K, ecc, star_mass)
+                    if show_a:
+                        planet_pars = np.append(planet_pars, a)
+                    if show_m:
+                        if mass_units != 'mjup':
+                            if mass_units.lower() == 'mearth':
+                                m *= mjup2mearth
+                        planet_pars = np.append(planet_pars, m)
+
+                    s = str(planet_pars)
                     s = s.replace('[', '').replace(']', '')
                 s = s.rjust(20 + len(s))
                 print(s)
@@ -890,7 +911,18 @@ class KimaResults(object):
                 print(s)
 
         if self.GPmodel:
-            print('GP parameters: ', *p[self.indices['GPpars']])
+            print('GP parameters: ', end='')
+            pars = ('η1', 'η2', 'η3', 'η4')
+            print((4 * ' {:>10s} ').format(*pars))
+
+            formatter = {'all': lambda v: f'{v:11.5f}'}
+            with np.printoptions(formatter=formatter):
+                s = str(p[self.indices['GPpars']])
+                s = s.replace('[', '').replace(']', '')
+            s = s.rjust(15 + len(s))
+            print(s)
+
+            # , *p[self.indices['GPpars']])
             # if self.GPkernel in (0, 2, 3):
             #     eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
             #     print('GP parameters: ', eta1, eta2, eta3, eta4)
@@ -900,11 +932,17 @@ class KimaResults(object):
 
         if self.trend:
             names = ('slope', 'quadr', 'cubic')
-            for name, trend_par in zip(names, p[self.indices['trend']]):
-                print(name + ':', trend_par)
+            units = ['m/s/yr', 'm/s/yr²', 'm/s/yr³']
+            trend = p[self.indices['trend']].copy()
+            # transfrom from /day to /yr
+            trend *= 365.25**np.arange(1, self.trend_degree + 1)
+
+            for name, unit, trend_par in zip(names, units, trend):
+                print(name + ':', '%-8.5f' % trend_par, unit)
 
         if self.multi:
             instruments = self.instruments
+            instruments = [os.path.splitext(inst)[0] for inst in instruments]
             ni = self.n_instruments - 1
             print('instrument offsets: ', end=' ')
             # print('(relative to %s) ' % self.data_file[-1])
