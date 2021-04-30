@@ -119,15 +119,23 @@ def can_send_notifications():
 def notify(summary, body):
     can, platform = can_send_notifications()
     if can:
+        logodir = os.path.join(
+            # .../kima
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'logo'
+        )
+        logo = os.path.join(logodir, 'logo_transparent_small.png')
+
         if platform == 'linux':
             cmd = ['notify-send']
-            cmd += ['-a', 'kima', '-i', 'kima_small_tr', '-t', '3000']
+            cmd += ['-a', 'kima', '-i', f'{logo}', '-t', '3000']
             cmd += ['%s' % summary] + ['%s' % body]
             subprocess.check_call(cmd)
+
         elif platform == 'macos':
             cmd = ['osascript']
             cmd += ['-e', 'display notification']
-            cmd += ['\"%s\"' % summary, 'with title', '\"%s\"' % body]
+            cmd += ['\"%s\"' % body, 'with title', '\"%s\"' % summary]
             print(' '.join(cmd))
 
 
@@ -269,7 +277,7 @@ def run_local():
             if args.background:
                 stdout.write(msg1[1:].encode())
                 stdout.write(msg2.encode())
-                
+
             if not args.no_notify:
                 notify('kima job finished', 'took %.2f seconds' % took)
 
@@ -299,7 +307,7 @@ def run_local():
         else:
             end = time.time()
             took = end - start
-            
+
             msg1 = ' job finished, took %.2f seconds' % took
             if not args.quiet:
                 print(kimastr + msg1)
