@@ -137,14 +137,14 @@ def make_plot2(res, nbins=100, bins=None, plims=None, logx=True, density=False,
     else:
         fig, ax = plt.subplots(1, 1)
 
-    kwargs = {'ls': '--', 'lw': 1.5, 'alpha': 0.3, 'zorder': -1}
+    kwline = {'ls': '--', 'lw': 1.5, 'alpha': 0.3, 'zorder': -1}
     if show_year:  # mark 1 year
         year = 365.25
-        ax.axvline(x=year, color='r', label='1 year', **kwargs)
+        ax.axvline(x=year, color='r', label='1 year', **kwline)
         # ax.axvline(x=year/2., ls='--', color='r', lw=3, alpha=0.6)
         # plt.axvline(x=year/3., ls='--', color='r', lw=3, alpha=0.6)
     if show_timespan:  # mark the timespan of the data
-        ax.axvline(x=res.t.ptp(), color='k', label='time span', **kwargs)
+        ax.axvline(x=res.t.ptp(), color='k', label='time span', **kwline)
 
     if kde:
         NN = 3000
@@ -1475,23 +1475,28 @@ def plot_random_samples(res,
     else:
         fig, ax = plt.subplots(1, 1)
 
+    _, y_offset = plot_data(res, ax)
+
     ## plot the Keplerian curves
     alpha = 0.1 if ncurves > 1 else 1
+
+    cc = kwargs.get('curve_color', 'k')
+    gpc = kwargs.get('gp_color', 'plum')
+
     for icurve, i in enumerate(ii):
-        stoc_model = np.atleast_2d(
-            res.stochastic_model(res.posterior_sample[i], tt))
-        model = np.atleast_2d(res.eval_model(res.posterior_sample[i], tt))
+        sample = samples[i]
+        stoc_model = np.atleast_2d(res.stochastic_model(sample, tt))
+        model = np.atleast_2d(res.eval_model(sample, tt))
+        offset_model = res.eval_model(sample, tt, include_planets=False)
 
         if res.multi:
-            model = res.burst_model(res.posterior_sample[i], tt, model)
+            model = res.burst_model(sample, tt, model)
+            offset_model = res.burst_model(sample, tt, offset_model)
 
-        ax.plot(tt, (stoc_model + model).T, 'k', alpha=alpha)
-
-        offset_model = res.eval_model(res.posterior_sample[i], tt,
-                                      include_planets=False)
-
-        # if res.GPmodel:
-        #     ax.plot(tt, stoc_model + offset_model, 'plum', alpha=alpha)
+        ax.plot(tt, (stoc_model + model).T - y_offset, color=cc, alpha=alpha)
+        if res.GPmodel:
+            ax.plot(tt, (stoc_model + offset_model).T - y_offset, color=gpc,
+                    alpha=alpha)
 
         if show_vsys:
             kw = dict(alpha=alpha, color='r', ls='--')
@@ -1500,18 +1505,16 @@ def plot_random_samples(res,
                     instrument_mask = res.obs == j + 1
                     start = t[instrument_mask].min()
                     end = t[instrument_mask].max()
-                    m = np.where( (tt > start) & (tt < end) )
-                    ax.plot(tt[m], offset_model[m], **kw)
+                    m = np.where((tt > start) & (tt < end))
+                    ax.plot(tt[m], offset_model[m] - y_offset, **kw)
             else:
-                ax.plot(tt, offset_model, **kw)
+                ax.plot(tt, offset_model - y_offset, **kw)
 
         if res.KO and isolate_known_object:
             for k in range(1, res.nKO + 1):
                 kepKO = res.eval_model(res.posterior_sample[i], tt,
                                        single_planet=-k)
-                ax.plot(tt, kepKO, 'g-', alpha=alpha)
-
-    plot_data(res, ax)
+                ax.plot(tt, kepKO - y_offset, 'g-', alpha=alpha)
 
     if res.save_plots:
         filename = 'kima-showresults-fig6.png'
@@ -1686,3 +1689,46 @@ def plot_random_samples_rvfwhm(res,
         return fig
 
     return fig, ax1, ax2
+
+
+def orbit(res, star_mass=1.0):
+    from .analysis import get_planet_mass
+    from .utils import mjup2msun
+    import rebound
+
+    fig = plt.figure(constrained_layout=True)
+    ax = fig.add_subplot(111, aspect="equal")
+
+    for p in res.posterior_sample[:2]:
+        sim = rebound.Simulation()
+        sim.G = 0.00029591  # AU^3 / solMass / day^2
+        sim.add(m=star_mass)
+
+        nplanets = int(p[res.index_component])
+        pars = p[res.indices['planets']]
+        for i in range(nplanets):
+            P, K, φ, ecc, ω = pars[i::res.max_components]
+            # print(P, K, φ, ecc, ω)
+            m = get_planet_mass(P, K, ecc, star_mass=star_mass)[0]
+            m *= mjup2msun
+            sim.add(P=P, m=m, e=ecc, omega=ω, M=φ, inc=0)
+            # self.move_to_com()
+
+        if res.KO:
+            pars = p[res.indices['KOpars']]
+            for i in range(res.nKO):
+                P, K, φ, ecc, ω = pars[i::res.nKO]
+                # print(P, K, φ, ecc, ω)
+                m = get_planet_mass(P, K, ecc, star_mass=star_mass)[0]
+                m *= mjup2msun
+                sim.add(P=P, m=m, e=ecc, omega=ω, M=φ, inc=0)
+                # self.move_to_com()
+
+        kw = dict(
+            fig=fig,
+            color=True,
+            show_particles=False,
+        )
+        rebound.plotting.OrbitPlot(sim, **kw)
+
+    plt.show()
