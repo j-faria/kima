@@ -200,32 +200,52 @@ def make_plot2(res, nbins=100, bins=None, plims=None, logx=True, density=False,
                 bins = 10**np.linspace(np.log10(plims[0]), np.log10(plims[1]),
                                        nbins)
 
-        ax.hist(T, bins=bins, alpha=0.8, density=density)
+        counts, bin_edges = np.histogram(T, bins=bins)
+        ax.bar(x=bin_edges[:-1],
+               height=counts / res.ESS,
+               width=np.ediff1d(bin_edges),
+               align='edge',
+               alpha=0.8)
+        # ax.hist(T, bins=bins, alpha=0.8, density=density)
 
         if show_prior and T.size > 100:
-            kwargs = {
-                'bins': bins,
+            kwprior = {
                 'alpha': 0.15,
                 'color': 'k',
                 'zorder': -1,
                 'label': 'prior',
-                'density': density,
             }
 
             if res.hyperpriors:
                 P = hyperprior_samples(T.size)
-                ax.hist(P, **kwargs)
             else:
-                try:
-                    prior = get_prior(res.setup['priors.planets']['Pprior'])
-                    ax.hist(prior.rvs(T.size), **kwargs)
-                except (KeyError, AttributeError):
-                    pass
+                P = res.priors['Pprior'].rvs(T.size)
 
-    ax.legend()
-    ax.set(xscale='log' if logx else 'linear', xlabel=r'Period [days]',
-           ylabel='KDE density' if kde else 'Number of Posterior Samples',
-           title='Posterior distribution for the orbital period(s)')
+            counts, bin_edges = np.histogram(P, bins=bins)
+            ax.bar(x=bin_edges[:-1],
+                   height=counts / res.ESS,
+                   width=np.ediff1d(bin_edges),
+                   align='edge',
+                   **kwprior)
+
+    if kwargs.get('legend', True):
+        ax.legend()
+
+    if kde:
+        ylabel = 'KDE density'
+    else:
+        ylabel = 'Number of posterior samples / ESS'
+    ax.set(xscale='log' if logx else 'linear',
+           xlabel=r'Period [days]',
+           ylabel=ylabel)
+
+    title = kwargs.get('title', True)
+    if title:
+        if isinstance(title, str):
+            ax.set_title(title)
+        else:
+            ax.set_title('Posterior distribution for the orbital period(s)')
+
     ax.set_ylim(bottom=0)
 
     if plims is not None:
