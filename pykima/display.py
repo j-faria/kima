@@ -1031,7 +1031,7 @@ def hist_nu(res, show_prior=False, **kwargs):
             print(str(e))
 
 
-def plot_data(res, ax=None, y=None, extract_offset=True, leg=True,
+def plot_data(res, ax=None, y=None, extract_offset=True, legend=True,
               show_rms=False, **kwargs):
 
     if ax is None:
@@ -1057,12 +1057,13 @@ def plot_data(res, ax=None, y=None, extract_offset=True, leg=True,
     else:
         ax.errorbar(res.t, y - y_offset, res.e, fmt='o')
 
-    if leg:
-        ax.legend(loc='upper left', fontsize=8)
+    if legend:
+        ax.legend(loc='upper left')
 
     if res.multi:
         kw = dict(color='b', lw=2, alpha=0.1, zorder=-2)
-        ax.vlines(res._offset_times, *ax.get_ylim(), **kw)
+        for ot in res._offset_times:
+            ax.axvline(ot, **kw)
 
     if res.arbitrary_units:
         lab = dict(xlabel='Time [days]', ylabel='Q [arbitrary]')
@@ -1070,13 +1071,36 @@ def plot_data(res, ax=None, y=None, extract_offset=True, leg=True,
         lab = dict(xlabel='Time [days]', ylabel='RV [m/s]')
     ax.set(**lab)
 
-    return ax
+    if show_rms:
+        # if res.studentT:
+        #     outliers = find_outliers(res)
+        #     rms1 = wrms(y, 1 / res.e**2)
+        #     rms2 = wrms(y[~outliers], 1 / res.e[~outliers]**2)
+        #     ax.set_title(f'rms: {rms2:.2f} ({rms1:.2f}) m/s', loc='right')
+        # else:
+        rms = wrms(y, 1 / res.e**2)
+        ax.set_title(f'rms: {rms:.2f} m/s', loc='right')
+
+    if y_offset != 0:
+        sign_symbol = {1.0: '+', -1.0: '-'}
+        offset = sign_symbol[np.sign(y_offset)] + str(int(abs(y_offset)))
+        fs = ax.xaxis.get_label().get_fontsize()
+        ax.set_title(offset, loc='left', fontsize=fs)
+
+    return ax, y_offset
 
 
-def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
-               add_titles=True, highlight_points=None):
+def phase_plot(res,
+               sample,
+               highlight=None,
+               only=None,
+               phase_axs=None,
+               add_titles=True,
+               highlight_points=None,
+               sort_by_decreasing_K=True,
+               show_gls_residuals=False):
     """ Plot the phase curves given the solution in `sample` """
-    # this is probably the most complicated function in the whole file!!
+    # this is probably the most complicated function in the whole package!!
 
     if res.max_components == 0 and not res.KO:
         print('Model has no planets! phase_plot() doing nothing...')
@@ -1103,19 +1127,30 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
         hl = highlight_points
         highlight_points = True
 
+    nd = res.n_dimensions
     mc = res.max_components
     if res.KO:
         mc += res.nKO
 
     # get the planet parameters for this sample
     pars = sample[res.indices['planets']].copy()
-    if res.KO:
-        pars = np.r_[pars, sample[res.indices['KOpars']]]
 
-    # sort by decreasing amplitude (arbitrary)
-    ind = np.argsort(pars[1 * mc:2 * mc])[::-1]
-    for i in range(res.n_dimensions):
-        pars[i * mc:(i + 1) * mc] = pars[i * mc:(i + 1) * mc][ind]
+    if res.KO:
+        k = 0
+        for i in range(res.nKO):
+            KOpars = sample[res.indices['KOpars']][i::res.nKO]
+            if pars.size == 0:
+                pars = KOpars
+            else:
+                pars = np.insert(pars, range(1 + k, (1 + k) * 6, 1 + k),
+                                 KOpars)
+                k += 1
+
+    if sort_by_decreasing_K:
+        # sort by decreasing amplitude (arbitrary)
+        ind = np.argsort(pars[1 * mc:2 * mc])[::-1]
+        for i in range(nd):
+            pars[i * mc:(i + 1) * mc] = pars[i * mc:(i + 1) * mc][ind]
 
     # (functions to) get parameters for individual planets
     def this_planet_pars(i):
@@ -1139,7 +1174,7 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
 
     # get the model for this sample
     # (this adds in the instrument offsets and the systemic velocity)
-    v = res.eval_model(sample)[0]
+    # v = res.eval_model(sample)[0]
 
     # put all data around zero
     if res.GPmodel:
@@ -1173,7 +1208,7 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
     #         KOvel = keplerian(t, *KOpars)
     #         y -= KOvel
     # else:
-    KOvel = np.zeros_like(t)
+    # KOvel = np.zeros_like(t)
 
     ekwargs = {
         'fmt': 'o',
@@ -1210,6 +1245,11 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
         nrows += 1
 
     ncols = nplanets if nplanets <= 3 else 3
+
+    if show_gls_residuals:
+        ncols += 1
+        # fig.set_size_inches(fs[0], fs[1])
+
     gs = gridspec.GridSpec(nrows, ncols, figure=fig,
                            height_ratios=[2] * (nrows - 1) + [1])
     gs_indices = {i: (i // 3, i % 3) for i in range(50)}
@@ -1305,11 +1345,13 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
             else:
                 ax.set_title('P=%.2f days' % p, loc='right', **title_kwargs)
 
+    end = -1 if show_gls_residuals else None
+
     ## GP panel
     ###########
     if res.GPmodel:
-        axGP = fig.add_subplot(gs[1, :])
-        _, y_offset = plot_data(res, ax=axGP)
+        axGP = fig.add_subplot(gs[1, :end])
+        _, y_offset = plot_data(res, ax=axGP, legend=False, **ekwargs)
         axGP.set(xlabel="Time [days]", ylabel="GP [m/s]")
 
         tt = np.linspace(t[0], t[-1], 3000)
@@ -1331,10 +1373,11 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
                           color='m',
                           alpha=0.2)
 
-    ax = fig.add_subplot(gs[-1, :])
-
+    ## residuals
+    ############
+    ax = fig.add_subplot(gs[-1, :end])
     residuals = res.residuals(sample, full=True)
-    plot_data(res, ax=ax, y=residuals, leg=False, show_rms=True)
+    plot_data(res, ax=ax, y=residuals, legend=False, show_rms=True, **ekwargs)
 
     # if highlight_points:
     #     ax.errorbar(t[hl], residuals[hl], e[hl], **hlkw)
@@ -1348,6 +1391,30 @@ def phase_plot(res, sample, highlight=None, only=None, phase_axs=None,
     ax.set_ylim(np.tile(np.abs(ax.get_ylim()).max(), 2) * [-1, 1])
     ax.set(xlabel='Time [BJD]', ylabel='r [m/s]')
     title_kwargs = dict(loc='right', fontsize=12)
+
+
+    if show_gls_residuals:
+        axp = fig.add_subplot(gs[-2:, -1])
+        from astropy.timeseries import LombScargle
+        gls = LombScargle(res.t, residuals, res.e)
+        freq, power = gls.autopower()
+        axp.semilogy(power, 1/freq, 'k', alpha=0.6)
+
+        kwl = dict(color='k', alpha=0.2, ls='--')
+        kwt = dict(color='k', alpha=0.3, rotation=90, ha='left', va='top', fontsize=9)
+        fap001 = gls.false_alarm_level(0.01)
+        axp.axvline(fap001, **kwl)
+        axp.text(0.98*fap001, 1/freq.min(), '1%', **kwt)
+
+        fap01 = gls.false_alarm_level(0.1)
+        axp.axvline(fap01, **kwl)
+        axp.text(0.98*fap01, 1/freq.min(), '10%', **kwt)
+
+        axp.set(xlabel='residual power', ylabel='Period [days]')
+        axp.invert_xaxis()
+        axp.yaxis.tick_right()
+        axp.yaxis.set_label_position('right')
+
 
     if res.save_plots:
         filename = 'kima-showresults-fig6.1.png'
@@ -1387,7 +1454,7 @@ def plot_random_samples(res,
         ttGP = res._get_ttGP()
 
     if t.size > 100:
-        ncurves = 10
+        ncurves = min(10, ncurves)
 
     ncurves = min(ncurves, samples.shape[0])
 
