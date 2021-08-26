@@ -116,6 +116,9 @@ class RVmodel
         std::shared_ptr<DNest4::ContinuousDistribution> cubic_prior;
         /// (Common) prior for the between-instruments offsets.
         std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> individual_offset_prior {
+            (size_t) Data::get_instance().number_instruments - 1
+        };
         /// no doc.
         std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
         /// no doc.

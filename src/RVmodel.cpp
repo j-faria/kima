@@ -14,7 +14,7 @@
 using namespace std;
 using namespace Eigen;
 using namespace DNest4;
-using namespace kepler;
+using namespace nijenhuis;
 
 #define TIMING false
 
@@ -54,8 +54,16 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
     }
 
-    if (!offsets_prior)
+    // if offsets_prior is not (re)defined, assume a default
+    if (multi_instrument && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+
+    for (size_t j = 0; j < data.number_instruments - 1; j++)
+    {
+        // if individual_offset_prior is not (re)defined, assume a offsets_prior
+        if (!individual_offset_prior[j])
+            individual_offset_prior[j] = offsets_prior;
+    }
 
     if (GP) { /* GP parameters */
         if (!log_eta1_prior)
@@ -100,7 +108,7 @@ void RVmodel::from_prior(RNG& rng)
     if(multi_instrument)
     {
         for(int i=0; i<offsets.size(); i++)
-            offsets[i] = offsets_prior->generate(rng);
+            offsets[i] = individual_offset_prior[i]->generate(rng);
         for(int i=0; i<jitters.size(); i++)
             jitters[i] = Jprior->generate(rng);
     }
@@ -566,9 +574,10 @@ void RVmodel::calculate_mu()
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            Tp = data.M0_epoch-(P*phi)/(2.*M_PI);
-            f = kepler::true_anomaly(ti, P, ecc, Tp);
-            v = K*(cos(f+omega) + ecc*cos(omega));
+            Tp = data.M0_epoch - (P * phi) / (2. * M_PI);
+            f = nijenhuis::true_anomaly(ti, P, ecc, Tp);
+            // f = brandt::true_anomaly(ti, P, ecc, Tp);
+            v = K * (cos(f + omega) + ecc * cos(omega));
             mu[i] += v;
         }
     }
@@ -605,7 +614,7 @@ void RVmodel::remove_known_object()
         {
             ti = t[i];
             Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
-            f = kepler::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
+            f = nijenhuis::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
             v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
             mu[i] -= v;
         }
@@ -623,7 +632,7 @@ void RVmodel::add_known_object()
         {
             ti = t[i];
             Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
-            f = kepler::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
+            f = nijenhuis::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
             v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
             mu[i] += v;
         }
@@ -792,7 +801,7 @@ double RVmodel::perturb(RNG& rng)
             // propose new instrument offsets
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++)
-                    offsets_prior->perturb(offsets[j], rng);
+                    individual_offset_prior[j]->perturb(offsets[j], rng);
             }
 
             // propose new slope
@@ -874,7 +883,7 @@ double RVmodel::perturb(RNG& rng)
             // propose new instrument offsets
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++)
-                    offsets_prior->perturb(offsets[j], rng);
+                    individual_offset_prior[j]->perturb(offsets[j], rng);
             }
 
             // propose new slope
@@ -978,7 +987,7 @@ double RVmodel::perturb(RNG& rng)
             // propose new instrument offsets
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++){
-                    offsets_prior->perturb(offsets[j], rng);
+                    individual_offset_prior[j]->perturb(offsets[j], rng);
                 }
             }
 
@@ -1043,8 +1052,11 @@ double RVmodel::log_likelihood() const
 
     double logL = 0.;
 
-    if (enforce_stability && is_stable() != 0)
-        return -std::numeric_limits<double>::infinity();
+    if (enforce_stability){
+        int stable = is_stable();
+        if (stable != 0)
+            return -std::numeric_limits<double>::infinity();
+    }
 
 
     #if TIMING

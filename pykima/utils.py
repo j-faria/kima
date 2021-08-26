@@ -1,11 +1,17 @@
 import sys, os
 import re
+import contextlib
 import math
 import datetime as dt
 import configparser
 
 import numpy as np
 from scipy import stats
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 import urepr
 from loguniform import LogUniform, ModifiedLogUniform
@@ -125,6 +131,16 @@ def read_datafile_rvfwhm(datafile, skip):
         # if uobs.min() > 0:
         #     uobs -= uobs.min()
         # return data
+
+
+@contextlib.contextmanager
+def chdir(dir):
+    curdir = os.getcwd()
+    try:
+        os.chdir(dir)
+        yield
+    finally:
+        os.chdir(curdir)
 
 
 def show_tips():
@@ -383,6 +399,23 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     a = get_planet_semimajor_axis(P, K, star_mass, full_output, verbose=False)
     return mass, a
 
+from astropy.units import R_sun, AU, jupiterRad, km, second, Kelvin
+
+def get_planet_teq(Tstar=5777, Rstar=1.0, d=1.0, A=0, f=1):
+    """
+    Tstar = stellar effective temperature in kelvins (K)
+    Rstar = stellar radius in solar radii
+    d = distance from the star in AU (change to solRad)
+    A = bond albedo
+    f = redistribution factor
+    Returns equilibrium temperature in Kelvins
+    """
+    d = d * AU.to('km')
+    Rstar = 1 * R_sun.to('km')
+    # Tstar = Tstar * Kelvin
+    Teq = Tstar * (f * (1 - A))**(1 / 4) * (Rstar / (2 * d))**(1 / 2)
+    return Teq
+
 
 def lighten_color(color, amount=0.5):
     """
@@ -411,6 +444,21 @@ class Fixed:
         return self.val
     def pdf(self, x):
         return 1.0 if x == self.val else 0.0
+    def logpdf(self, x):
+        return 0.0 if x == self.val else -np.inf
+
+
+class ZeroDist:
+    """ A dummy probability distribution which always returns 0.0 """
+    def __init__(self):
+        pass
+    def rvs(self):
+        return 0.0
+    def pdf(self, x):
+        return 0.0
+    def logpdf(self, x):
+        return 0.0
+
 
 def _prior_to_dist():
     """ Convert a prior name to a prior object """
@@ -492,10 +540,8 @@ def find_prior_parameters(prior):
     elif name == 'Uniform':
         v1, v2 = inparens.split(';')
         r = [float(v1), float(v2) - float(v1)]
-    elif name == 'Exponential':
-        r = [
-            float(inparens),
-        ]
+    elif name in ('Exponential', 'Fixed'):
+        r = [float(inparens),]
     else:
         r = [
             np.nan,
@@ -536,18 +582,128 @@ def hyperprior_samples(size):
     return np.exp(P)
 
 
+def priors_latex(results, title='Priors', label='tab:1'):
+    priors = results.priors
+
+    tab1 = f"""\\begin{{table}}
+    \r\caption{{{title}}}
+    \r\label{{{label}}}
+    \r\centering
+    \r\\begin{{tabular}}{{l l c}}
+    \r  \hline\hline
+    \r  Parameter & Units & Prior \\\\
+    \r  \hline
+    """
+
+    tab2 = """  \hline
+    \r\end{tabular}
+    \r\end{table}
+    """
+
+    print(tab1)
+
+    parameter_names = dict(
+        Vprior=r'$v_{\rm sys}$',
+        C2prior=r'$$',
+        Jprior=r'$j^{\rm RV}$',
+        J2prior=r'$j^{\rm FWHM}$',
+        #
+        Pprior='$P$',
+        Kprior='$K$',
+        eprior='$e$',
+        wprior=r'$\omega$',
+        phiprior='$M_0$',
+        #
+        eta1_prior=r'$\eta_1$',
+        eta1_1_prior=r'$\eta_1$ RV',
+        eta1_2_prior=r'$\eta_1$ FWHM',
+        eta2_1_prior=r'$\eta_2$',
+        eta3_1_prior=r'$\eta_3$',
+        eta4_1_prior=r'$\eta_4$'
+    )
+
+    units = dict(
+        Vprior=r'\ms',
+        C2prior=r'\ms',
+        Jprior=r'\ms',
+        J2prior=r'\ms',
+        #
+        Pprior='days',
+        Kprior=r'\ms',
+        #
+        eta1_prior=r'\ms',
+        eta1_1_prior=r'\ms',
+        eta1_2_prior=r'\ms',
+        eta2_1_prior='days',
+        eta3_1_prior='days',
+        )
+
+    dist_symbols = {
+        'uniform': '$\mathcal{U}$',
+        'reciprocal': '$\mathcal{L}\mathcal{U}$',
+        'ModifiedLogUniform': '$\mathcal{M}\mathcal{L}\mathcal{U}$',
+    }
+    translation = {
+        np.pi: '$\pi$',
+        2 * np.pi: '$2\pi$',
+        results.y.min(): r'$\min v$',
+        results.y.max(): r'$\max v$',
+        results.t.ptp(): r'$\Delta t$',
+        results.y.ptp(): r'$\Delta RV$',
+        -results.y.ptp(): r'$-\Delta RV$'
+    }
+    if results.model == 'RVFWHMmodel':
+        translation.update({
+            results.y2.min(): r'$\min$ FWHM',
+            results.y2.max(): r'$\max$ FWHM',
+            results.y2.ptp(): r'$\Delta$ FWHM',
+            -results.y2.ptp(): r'$-\Delta$ FWHM'
+        })
+
+    def translate_value(value):
+        for v, name in translation.items():
+            if np.isclose(value, v):
+                return name
+        return str(value).replace('.0', '')
+
+    for k, prior in priors.items():
+        try:
+            name = prior.dist.name
+        except AttributeError:
+            name = prior.__class__.__name__
+
+        try:
+            v1, v2 = prior.support()
+            v1 = translate_value(v1)
+            v2 = translate_value(v2)
+            value = ', '.join([v1, v2])
+        except AttributeError:
+            v = translate_value(prior.val)
+            value = v + ' (fixed)'
+
+        s = '  '\
+            f'{parameter_names.get(k, k)} & ' \
+            f'{units.get(k, "")} & ' \
+            f'{dist_symbols.get(name, "")} ({value}) \\\\'
+        print(s)
+    print()
+
+    print(tab2)
+
+
 def get_star_name(data_file):
     """ Find star name (usually works for approx. standard filenames) """
     bn = os.path.basename(data_file)
     try:
         pattern = '|'.join([
             'HD\d+', 'HIP\d+', 'HR\d+', 'BD-\d+', 'CD-\d+', 'NGC\d+No\d+',
-            'GJ\d+', 'Gl\d+'
+            'GJ\d+', 'Gl\d+', 'Proxima', 'Barnard',
         ])
         return re.findall(pattern, bn)[0]
 
     except IndexError:  # didn't find correct name
-        if bn.endswith('_harps.rdb'): return bn[:-10]
+        if bn.endswith('_harps.rdb'):
+            return bn[:-10]
 
     return 'unknown'
 
@@ -558,7 +714,8 @@ def get_instrument_name(data_file):
     try:
         pattern = '|'.join([
             # 'ESPRESSO',
-            'ESPRESSO*[\d+]*',
+            # 'ESPRESSO*[\d+]*',
+            'ESPRESSO*[\d+_\w+]*',
             'HARPS[^\W_]*[\d+]*',
             'HIRES',
             'APF',
@@ -576,9 +733,29 @@ def get_instrument_name(data_file):
             return re.findall(pattern, bn.upper())[0]
         except IndexError:
             try:  # at the very least, try removing the file type
-                return os.path.splitext(data_file)[0]
-            except IndexError:  # couldn't do anything, give up
-                return data_file
+                return os.path.splitext(bn)[0]
+            except IndexError:  # couldn't do anything, just try basename
+                return bn
+
+
+def read_big_file(filename):
+    return np.genfromtxt(filename)
+    # if pd is None:  # no pandas, use np.genfromtxt
+    #     return np.genfromtxt(filename)
+    # else:
+    #     names = open(filename).readline().strip().replace('#', '').split()
+    #     data = pd.read_csv(filename,
+    #                        delim_whitespace=True,
+    #                        comment='#',
+    #                        names=names,
+    #                        dtype=np.float).values
+
+    #     # pandas.read_csv has problems with 1-line files
+    #     if data.shape[0] == 0:
+    #         data = np.genfromtxt(filename)
+
+    #     return data
+
 
 
 # covert dates to/from Julian days and MJD

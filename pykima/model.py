@@ -1,24 +1,17 @@
 import os, sys
 import re
 import io
+import tempfile
 import subprocess
 from pprint import pformat, pprint
 from hashlib import md5
-import contextlib
 import numpy as np
+
 from .showresults import showresults2 as pkshowresults
+from .utils import chdir
 
 thisdir = os.path.dirname(os.path.realpath(__file__))
 kimadir = os.path.dirname(thisdir)
-
-@contextlib.contextmanager
-def chdir(dir):
-    curdir = os.getcwd()
-    try:
-        os.chdir(dir)
-        yield
-    finally:
-        os.chdir(curdir)
 
 
 # class to interface with a kima model and a KimaResults instance
@@ -31,6 +24,7 @@ class KimaModel:
         self._filename = None
         self.skip = 0
         self.units = 'kms'
+        self._data = None
 
         self._warnings = True
         self._levels_hash = ''
@@ -103,6 +97,13 @@ class KimaModel:
             return True
 
     @property
+    def n_instruments(self):
+        if self.multi_instrument:
+            return len(self.filename)
+        return 1
+
+
+    @property
     def trend(self):
         return self._trend
     @trend.setter
@@ -147,33 +148,45 @@ class KimaModel:
 
     @property
     def _default_priors(self):
+        # name: (default, distribution, arg1, arg2)
         dp = {
-            # name: (default, distribution, arg1, arg2)
             'Cprior': (True, 'Uniform', self.ymin, self.ymax),
             'Jprior': (True, 'ModifiedLogUniform', 1.0, 100.0),
             'slope_prior':
                 (True, 'Uniform', -self.topslope if self.data else None, self.topslope),
             'offsets_prior':
                 (True, 'Uniform', -self.yspan if self.data else None, self.yspan),
-            #
-            'separator1': '',
-            #
+        }
+
+        if self.multi_instrument:
+            for i in range(self.n_instruments - 1):
+                dp.update({
+                    f'individual_offset_prior[{i}]':
+                    (True, 'Uniform', -self.yspan if self.data else None, self.yspan)
+                })
+
+
+        dp.update({'separator1': ''})
+
+        dp.update({
             'log_eta1_prior': (True, 'Uniform', -5.0, 5.0),
             'eta2_prior': (True, 'LogUniform', 1.0, 100.0),
             'eta3_prior': (True, 'Uniform', 10.0, 40.0),
             'log_eta4_prior': (True, 'Uniform', -1.0, 1.0),
-            #
-            'separator2': '',
-            #
+        })
+
+        dp.update({'separator2': ''})
+
+        dp.update({
             'Pprior': (True, 'LogUniform', 1.0, 100000.0),
             'Kprior': (True, 'ModifiedLogUniform', 1.0, 1000.0),
             'eprior': (True, 'Uniform', 0.0, 1.0),
             'wprior': (True, 'Uniform', -np.pi, np.pi),
             'phiprior': (True, 'Uniform', 0, np.pi),
-            #
-            'separator3': '',
-            #
-        }
+        })
+
+        dp.update({'separator3': ''})
+
         return dp
 
     @property
@@ -213,6 +226,7 @@ class KimaModel:
     @filename.setter
     def filename(self, f):
         if f is None:
+            self._filename = f
             return
         if isinstance(f, list):
             files = f
@@ -230,12 +244,16 @@ class KimaModel:
 
     @property
     def data(self):
+        if self._data is not None:
+            return self._data
+
         if self.filename is None:
             return None
 
-        d = dict(t=[], y=[], e=[])
+        self._data = dict(t=[], y=[], e=[])
         for f in self.filename:
-            f = os.path.join(self.directory, f)
+            if os.path.dirname(f) != self.directory:
+                f = os.path.join(self.directory, f)
             try:
                 t, y, e = np.loadtxt(f, skiprows=self.skip, unpack=True,
                                      usecols=range(3))
@@ -244,14 +262,33 @@ class KimaModel:
                 print(str(e))
                 return None
 
-            d['t'].append(t)
-            d['y'].append(y)
-            d['e'].append(e)
+            self._data['t'].append(t)
+            self._data['y'].append(y)
+            self._data['e'].append(e)
 
-        d['t'] = np.concatenate(d['t'])
-        d['y'] = np.concatenate(d['y'])
-        d['e'] = np.concatenate(d['e'])
-        return d
+        self._data['t'] = np.concatenate(self._data['t'])
+        self._data['y'] = np.concatenate(self._data['y'])
+        self._data['e'] = np.concatenate(self._data['e'])
+        return self._data
+
+    @data.setter
+    def data(self, tyeo):
+        err_msg = 'pass a tuple of numpy arrays: t, rv, erv'
+        assert isinstance(tyeo, tuple), err_msg
+        if len(tyeo) == 3:
+            t, y, e = tyeo
+            self._data = dict(t=t, y=y, e=e)
+            filename = 'datafile_for_kima.dat'
+            np.savetxt(filename, np.c_[t, y, e], fmt='%f')
+            self.filename = filename
+
+        elif len(tyeo) == 4:
+            raise NotImplementedError('providing obs is still not implemented')
+            t, y, e, obs = tyeo
+            self._data = dict(t=t, y=y, e=e)
+
+        else:
+            raise ValueError(err_msg)
 
     @property
     def ymin(self):
@@ -576,20 +613,21 @@ class KimaModel:
         file.write(f'\tsampler.run({self.thinning});\n')
 
     def _set_data(self, file):
+        T = '    '
         if self.filename is None:
-            file.write(f'\tdatafile = "";\n')
-            file.write(f'\tload(datafile, "{self.units}", {self.skip});\n')
+            file.write(f'{T}datafile = "";\n')
+            file.write(f'{T}load(datafile, "{self.units}", {self.skip});\n')
             return
 
         if self.multi_instrument:
-            files = [f'"{datafile}"' for datafile in self.filename]
-            files = ', '.join(files)
-            file.write(f'\tdatafiles = {{ {files} }};\n')
+            files = [f'{T}{T}"{datafile}"' for datafile in self.filename]
+            files = ',\n'.join(files)
+            file.write(f'{T}datafiles = {{\n{files}\n{T}}};\n')
             file.write(
-                f'\tload_multi(datafiles, "{self.units}", {self.skip});\n')
+                f'{T}load_multi(datafiles, "{self.units}", {self.skip});\n')
         else:
-            file.write(f'\tdatafile = "{self.filename[0]}";\n')
-            file.write(f'\tload(datafile, "{self.units}", {self.skip});\n')
+            file.write(f'{T}datafile = "{self.filename[0]}";\n')
+            file.write(f'{T}load(datafile, "{self.units}", {self.skip});\n')
 
     def _start_main(self, file):
         file.write('int main(int argc, char** argv)\n')
