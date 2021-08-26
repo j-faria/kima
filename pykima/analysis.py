@@ -9,10 +9,10 @@ from .utils import (get_planet_mass, get_planet_semimajor_axis,
 
 
 def most_probable_np(results):
-    """ 
+    """
     Return the value of Np with the highest posterior probability.
     Arguments:
-        results: a KimaResults instance. 
+        results: a KimaResults instance
     """
     Nplanets = results.posterior_sample[:, results.index_component].astype(int)
     values, counts = np.unique(Nplanets, return_counts=True)
@@ -20,11 +20,11 @@ def most_probable_np(results):
 
 
 def passes_threshold_np(results, threshold=150):
-    """ 
+    """
     Return the value of Np supported by the data, considering a posterior ratio
     threshold (default 150).
     Arguments:
-        results: a KimaResults instance. 
+        results: a KimaResults instance.
         threshold: posterior ratio threshold, default 150.
     """
     Nplanets = results.posterior_sample[:, results.index_component].astype(int)
@@ -115,7 +115,7 @@ def find_outliers(results, sample, threshold=10, verbose=False):
         raise ValueError('studentt option is off, cannot estimate outliers')
 
     # calculate residuals for this sample
-    resid = res.y - res.model(sample)
+    resid = res.residuals(sample)
 
     # this sample's jitter and degrees of freedom
     J = sample[res.indices['jitter']]
@@ -215,13 +215,13 @@ def detection_limits(results,
     mask = res.posterior_sample[:, res.index_component] > Np
     pars = res.posterior_sample[mask, res.indices['planets']]
 
-    if sorted_samples:
-        pars = sort_planet_samples(res, pars)
+    # if sorted_samples:
+    #     pars = sort_planet_samples(res, pars)
 
     mc = res.max_components
-    periods = slice(0 * mc, 1 * mc)
-    amplitudes = slice(1 * mc, 2 * mc)
-    eccentricities = slice(3 * mc, 4 * mc)
+    periods = slice(0 * mc + Np, 1 * mc)
+    amplitudes = slice(1 * mc + Np, 2 * mc)
+    eccentricities = slice(3 * mc + Np, 4 * mc)
 
     P = pars[:, periods]
     K = pars[:, amplitudes]
@@ -400,21 +400,191 @@ def detection_limits(results,
         return P, K, E, M, s
 
 
-def parameter_clusters_kmeans(results, n_clusters=None, include_ecc=True):
+def parameter_clusters(results,
+                       n_clusters=None,
+                       method='KMeans',
+                       include_ecc=True,
+                       scale=False,
+                       plot=True,
+                       **kwargs):
+    import sklearn.cluster
+    from sklearn import preprocessing
+    from sklearn.metrics import silhouette_samples, silhouette_score
+    from scipy.spatial.distance import cdist
+
     res = results
 
     if include_ecc:
-        data = np.c_[res.T, res.A, res.E]
+        data = np.c_[res.T, res.A, res.Omega, res.phi, res.E]
     else:
-        data = np.c_[res.T, res.A]
+        data = np.c_[res.T, res.A, res.Omega, res.phi]
+
+    if scale:
+        scaler = preprocessing.StandardScaler(copy=True,
+                                              with_mean=True,
+                                              with_std=True)
+        scaler.fit(data)
+        # print('  mean: ', scaler.mean_, 'n', 'variance: ', scaler.var_)
+        data = scaler.transform(data)
 
     if n_clusters is None:
         k = res.max_components
     else:
         k = n_clusters
 
-    centroids, labels = kmeans2(data, k, minit='++')
-    return centroids, labels
+    min_samples = res.ESS // 100
+
+
+    if method == 'KMeans':
+        clustering = sklearn.cluster.KMeans(n_clusters=k, **kwargs)
+
+    elif method == 'OPTICS':
+        kwargs.setdefault('min_samples', min_samples)
+        clustering = sklearn.cluster.OPTICS(**kwargs)
+
+    elif method == 'DBSCAN':
+        kwargs.setdefault('n_jobs', -1)
+        kwargs.setdefault('eps', 10)
+        kwargs.setdefault('min_samples', min_samples)
+        clustering = sklearn.cluster.DBSCAN(**kwargs)
+
+    elif method == 'ward':
+        clustering = sklearn.cluster.AgglomerativeClustering(linkage='ward',
+                                                             n_clusters=k,
+                                                             **kwargs)
+
+    pred = clustering.fit_predict(data)
+    # centroids, labels = kmeans2(data, k, minit='++')
+
+    if plot:
+        import matplotlib.pyplot as plt
+        import matplotlib.cm as cm
+        kw = dict(figsize=(6, 3),
+                  constrained_layout=True,
+                #   gridspec_kw={'sharex': True}
+        )
+        if include_ecc:
+            fig, axs = plt.subplot_mosaic('ab\ndc', **kw)
+        else:
+            fig, axs = plt.subplot_mosaic('ab', **kw)
+
+        ax = axs['b']
+        ax.scatter(res.T, res.A, c=pred, s=2, alpha=0.1)
+        ax.set(xscale='log', xlabel='P [days]', ylabel='K [m/s]')
+
+        if include_ecc:
+            ax = axs['a']
+            ax.scatter(res.T, res.Omega, c=pred, s=2, alpha=0.1)
+            ax.set(xscale='log', xlabel='P [days]', ylabel='$\omega$')
+
+            ax = axs['c']
+            ax.scatter(res.T, res.E, c=pred, s=2, alpha=0.1)
+            ax.set(xscale='log', xlabel='P [days]', ylabel='ecc')
+
+            ax = axs['d']
+            ax.scatter(res.T, res.phi, c=pred, s=2, alpha=0.1)
+            ax.set(xscale='log', xlabel='P [days]', ylabel='$\phi$')
+
+
+        if False and method == 'OPTICS':
+            space = np.arange(len(data))
+            reachability = clustering.reachability_[clustering.ordering_]
+            labels = clustering.labels_[clustering.ordering_]
+
+            # Reachability plot
+            ax1 = axs['a']
+            for klass in range(0, k):
+                Xk = space[labels == klass]
+                Rk = reachability[labels == klass]
+                ax1.plot(Xk, Rk, '.', ms=1, alpha=0.3)
+
+            ax1.plot(space[labels == -1], reachability[labels == -1], 'k.', alpha=0.3)
+            ax1.set_ylabel('Reachability (epsilon distance)')
+
+        if False and method == 'KMeans':
+            # k means determine k
+            distortions = []
+            K = range(1, 10)
+            for k in K:
+                kmeanModel = sklearn.cluster.KMeans(n_clusters=k).fit(data)
+                distortions.append(
+                    sum(
+                        np.min(cdist(data, kmeanModel.cluster_centers_,
+                                     'euclidean'),
+                               axis=1)) / data.shape[0])
+            ax1 = axs['a']
+            ax1.plot(K, distortions, '-o')
+
+        if False and method == 'KMeans':
+            # k means determine k
+            silhouettes = []
+            K = range(2, 10)
+            for k in K:
+                pred = sklearn.cluster.KMeans(n_clusters=k).fit_predict(data)
+                score = silhouette_score(data, pred)
+                silhouettes.append(score)
+                print("For k =", k, "the average silhouette_score is :", score)
+
+            ax1 = axs['a']
+            ax1.plot(K, silhouettes, '-o')
+
+        if False:
+            # silhouette plot
+            ax1 = axs['a']
+            # The silhouette coefficient can range from -1, 1 but in this example all
+            # lie within [-0.1, 1]
+            ax1.set_xlim([-0.1, 1])
+            # The (k+1)*10 is for inserting blank space between silhouette
+            # plots of individual clusters, to demarcate them clearly.
+            ax1.set_ylim([0, len(data) + (k + 1) * 10])
+
+            # The silhouette_score gives the average value for all the samples.
+            # This gives a perspective into the density and separation of the formed
+            # clusters
+            silhouette_avg = silhouette_score(data, pred)
+            print("For k =", k,
+                "The average silhouette_score is :", silhouette_avg)
+
+            # Compute the silhouette scores for each sample
+            sample_silhouette_values = silhouette_samples(data, pred)
+
+            y_lower = 10
+            for i in range(k):
+                # Aggregate the silhouette scores for samples belonging to
+                # cluster i, and sort them
+                ith_cluster_silhouette_values = \
+                    sample_silhouette_values[pred == i]
+
+                ith_cluster_silhouette_values.sort()
+
+                size_cluster_i = ith_cluster_silhouette_values.shape[0]
+                y_upper = y_lower + size_cluster_i
+
+                color = cm.nipy_spectral(float(i) / k)
+                ax1.fill_betweenx(np.arange(y_lower, y_upper),
+                                0,
+                                ith_cluster_silhouette_values,
+                                facecolor=color,
+                                edgecolor=color,
+                                alpha=0.7)
+
+                # Label the silhouette plots with their cluster numbers at the middle
+                ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+
+                # Compute the new y_lower for next plot
+                y_lower = y_upper + 10  # 10 for the 0 samples
+
+            ax1.set_xlabel("silhouette coefficients")
+            ax1.set_ylabel("cluster label")
+
+            # The vertical line for average silhouette score of all the values
+            ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
+
+            ax1.set_yticks([])  # Clear the yaxis labels / ticks
+            ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+
+
+    return clustering
 
 
 def column_dynamic_ranges(results):
