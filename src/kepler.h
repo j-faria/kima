@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace kepler
+namespace nijenhuis
 {
     inline double npy_mod(double a, double b);
     inline double get_markley_starter(double M, double ecc, double ome);

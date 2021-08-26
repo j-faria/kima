@@ -14,7 +14,7 @@
 using namespace std;
 using namespace Eigen;
 using namespace DNest4;
-using namespace kepler;
+using namespace nijenhuis;
 
 #define TIMING false
 
@@ -566,9 +566,10 @@ void RVmodel::calculate_mu()
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            Tp = data.M0_epoch-(P*phi)/(2.*M_PI);
-            f = kepler::true_anomaly(ti, P, ecc, Tp);
-            v = K*(cos(f+omega) + ecc*cos(omega));
+            Tp = data.M0_epoch - (P * phi) / (2. * M_PI);
+            f = nijenhuis::true_anomaly(ti, P, ecc, Tp);
+            // f = brandt::true_anomaly(ti, P, ecc, Tp);
+            v = K * (cos(f + omega) + ecc * cos(omega));
             mu[i] += v;
         }
     }
@@ -605,7 +606,7 @@ void RVmodel::remove_known_object()
         {
             ti = t[i];
             Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
-            f = kepler::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
+            f = nijenhuis::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
             v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
             mu[i] -= v;
         }
@@ -623,7 +624,7 @@ void RVmodel::add_known_object()
         {
             ti = t[i];
             Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
-            f = kepler::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
+            f = nijenhuis::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
             v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
             mu[i] += v;
         }
@@ -1043,8 +1044,11 @@ double RVmodel::log_likelihood() const
 
     double logL = 0.;
 
-    if (enforce_stability && is_stable() != 0)
-        return -std::numeric_limits<double>::infinity();
+    if (enforce_stability){
+        int stable = is_stable();
+        if (stable != 0)
+            return -std::numeric_limits<double>::infinity();
+    }
 
 
     #if TIMING

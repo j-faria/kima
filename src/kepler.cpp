@@ -1,19 +1,19 @@
 #include "kepler.h"
 
-
 namespace murison
 {
-    // A solver for Kepler's equation based on 
+    // A solver for Kepler's equation based on
     // "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
-
 
     double kepler(double M, double ecc)
     {
         double tol;
-        if (ecc < 0.8) tol = 1e-14;
-        else tol = 1e-13;
+        if (ecc < 0.8)
+            tol = 1e-14;
+        else
+            tol = 1e-13;
 
-        double Mnorm = fmod(M, 2.*M_PI);
+        double Mnorm = fmod(M, 2. * M_PI);
         double E0 = keplerstart3(ecc, Mnorm);
         double dE = tol + 1;
         double E = M;
@@ -21,16 +21,15 @@ namespace murison
         while (dE > tol)
         {
             E = E0 - eps3(ecc, Mnorm, E0);
-            dE = std::abs(E-E0);
+            dE = std::abs(E - E0);
             E0 = E;
             count++;
             // failed to converge, this only happens for nearly parabolic orbits
-            if (count == 100) break;
+            if (count == 100)
+                break;
         }
         return E;
-
     }
-
 
     /**
         Calculates the eccentric anomaly at time t by solving Kepler's equation.
@@ -45,12 +44,14 @@ namespace murison
     double ecc_anomaly(double t, double period, double ecc, double time_peri)
     {
         double tol;
-        if (ecc < 0.8) tol = 1e-14;
-        else tol = 1e-13;
+        if (ecc < 0.8)
+            tol = 1e-14;
+        else
+            tol = 1e-13;
 
-        double n = 2.*M_PI/period;  // mean motion
-        double M = n*(t - time_peri);  // mean anomaly
-        double Mnorm = fmod(M, 2.*M_PI);
+        double n = 2. * M_PI / period;  // mean motion
+        double M = n * (t - time_peri); // mean anomaly
+        double Mnorm = fmod(M, 2. * M_PI);
         double E0 = keplerstart3(ecc, Mnorm);
         double dE = tol + 1;
         double E = M;
@@ -58,15 +59,15 @@ namespace murison
         while (dE > tol)
         {
             E = E0 - eps3(ecc, Mnorm, E0);
-            dE = std::abs(E-E0);
+            dE = std::abs(E - E0);
             E0 = E;
             count++;
             // failed to converge, this only happens for nearly parabolic orbits
-            if (count == 100) break;
+            if (count == 100)
+                break;
         }
         return E;
     }
-
 
     /**
         Provides a starting value to solve Kepler's equation.
@@ -78,12 +79,11 @@ namespace murison
     */
     double keplerstart3(double e, double M)
     {
-        double t34 = e*e;
-        double t35 = e*t34;
+        double t34 = e * e;
+        double t35 = e * t34;
         double t33 = cos(M);
-        return M + (-0.5*t35 + e + (t34 + 1.5*t33*t35)*t33)*sin(M);
+        return M + (-0.5 * t35 + e + (t34 + 1.5 * t33 * t35) * t33) * sin(M);
     }
-
 
     /**
         An iteration (correction) method to solve Kepler's equation.
@@ -97,15 +97,14 @@ namespace murison
     double eps3(double e, double M, double x)
     {
         double t1 = cos(x);
-        double t2 = -1 + e*t1;
+        double t2 = -1 + e * t1;
         double t3 = sin(x);
-        double t4 = e*t3;
+        double t4 = e * t3;
         double t5 = -x + t4 + M;
-        double t6 = t5/(0.5*t5*t4/t2+t2);
+        double t6 = t5 / (0.5 * t5 * t4 / t2 + t2);
 
-        return t5/((0.5*t3 - 1/6*t1*t6)*e*t6+t2);
+        return t5 / ((0.5 * t3 - 1 / 6 * t1 * t6) * e * t6 + t2);
     }
-
 
     /**
         Calculates the true anomaly at time t.
@@ -122,11 +121,11 @@ namespace murison
         double E = ecc_anomaly(t, period, ecc, t_peri);
         // double E = solve_kepler(t, period, ecc, t_peri);
         double cosE = cos(E);
-        double f = acos( (cosE - ecc)/( 1 - ecc*cosE ) );
+        double f = acos((cosE - ecc) / (1 - ecc * cosE));
         // acos gives the principal values ie [0:PI]
         // when E goes above PI we need another condition
-        if(E > M_PI)
-        f = 2*M_PI - f;
+        if (E > M_PI)
+            f = 2 * M_PI - f;
 
         return f;
     }
@@ -134,9 +133,8 @@ namespace murison
 } // namespace murison
 
 
-
 // Code from https://github.com/dfm/kepler.py
-namespace kepler
+namespace nijenhuis
 {
     // A solver for Kepler's equation based on:
     //
@@ -147,7 +145,6 @@ namespace kepler
     //
     // Markley (1995)
     // http://adsabs.harvard.edu/abs/1995CeMDA..63..101M
-
 
     // Implementation from numpy
     inline double npy_mod(double a, double b)
@@ -165,7 +162,7 @@ namespace kepler
         {
             if ((b < 0) != (mod < 0))
             {
-            mod += b;
+                mod += b;
             }
         }
         else
@@ -207,7 +204,7 @@ namespace kepler
         double d_4 = -f_0 / (f_1 + 0.5 * d_3 * f_2 + (d_3 * d_3) * f_3 / 6);
         double d_42 = d_4 * d_4;
         double dE = -f_0 /
-                (f_1 + 0.5 * d_4 * f_2 + d_4 * d_4 * f_3 / 6 - d_42 * d_4 * f_2 / 24);
+                    (f_1 + 0.5 * d_4 * f_2 + d_4 * d_4 * f_3 / 6 - d_42 * d_4 * f_2 / 24);
 
         return E + dE;
     }
@@ -256,19 +253,19 @@ namespace kepler
     */
     double true_anomaly(double t, double period, double ecc, double t_peri)
     {
-        double n = 2.*M_PI/period;  // mean motion
-        double M = n*(t - t_peri);  // mean anomaly
+        double n = 2. * M_PI / period; // mean motion
+        double M = n * (t - t_peri);   // mean anomaly
 
         // Solve Kepler's equation
         double E = kepler(M, ecc);
 
         // Calculate true anomaly
         double cosE = cos(E);
-        double f = acos( (cosE - ecc)/( 1 - ecc*cosE ) );
+        double f = acos((cosE - ecc) / (1 - ecc * cosE));
         // acos gives the principal values ie [0:PI]
         // when E goes above PI we need another condition
-        if(E > M_PI)
-            f = 2*M_PI - f;
+        if (E > M_PI)
+            f = 2 * M_PI - f;
 
         return f;
 

@@ -14,10 +14,6 @@
 
 using namespace std;
 
-typedef vector <double> record_t;
-typedef vector <record_t> data_t;
-
-
 Data Data::instance;
 
 Data::Data(){}
@@ -106,6 +102,18 @@ void Data::load(const std::string filename, const std::string units,
     printf("Could not read data file (%s)!\n", filename.c_str());
     exit(1);
   }
+  if (data.size() - skip == 0)
+  {
+    printf("Data file (%s) seems to be empty!\n", filename.c_str());
+    exit(1);
+  }
+  // number of "columns" of data
+  int ncol = data[skip].size();
+  if (ncol < 3)
+  {
+    printf("Data file (%s) contains less than 3 columns!\n", filename.c_str());
+    exit(1);
+  }
 
   infile.close();
 
@@ -117,7 +125,6 @@ void Data::load(const std::string filename, const std::string units,
 
   double factor = 1.;
   if(units == "kms") factor = 1E3;
-  int j;
 
   for (size_t n = 0; n < data.size(); n++)
     {
@@ -125,8 +132,11 @@ void Data::load(const std::string filename, const std::string units,
       t.push_back(data[n][0]);
       y.push_back(data[n][1] * factor);
       sig.push_back(data[n][2] * factor);
-      y2.push_back(data[n][3] * factor);
-      sig2.push_back(data[n][4] * factor);
+      if (ncol > 3)
+      {
+        y2.push_back(data[n][3] * factor);
+        sig2.push_back(data[n][4] * factor);
+      }
     }
   
   // epoch for the mean anomaly, by default the time of the first observation
@@ -166,6 +176,8 @@ void Data::load_multi(const std::string filename, const std::string units, int s
   t.clear();
   y.clear();
   sig.clear();
+  y2.clear();
+  sig2.clear();
   obsi.clear();
 
   // Read the file into the data container
@@ -278,6 +290,12 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
       printf("Could not read data file (%s)!\n", filename.c_str());
       exit(1);
     }
+    if (data.size() == 0)
+    {
+      printf("Data file (%s) seems to be empty!\n", filename.c_str());
+      exit(1);
+    }
+
 
     infile.close();
 
@@ -288,6 +306,14 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
     
     last_file_size = data.size();
     filecount++;
+  }
+
+  // number of "columns" of data
+  int ncol = data[0].size();
+  if (ncol < 3)
+  {
+    printf("Data files contain less than 3 columns!\n");
+    exit(1);
   }
 
   datafile = "";
@@ -306,8 +332,11 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
     t.push_back(data[n][0]);
     y.push_back(data[n][1] * factor);
     sig.push_back(data[n][2] * factor);
-    y2.push_back(data[n][3] * factor);
-    sig2.push_back(data[n][4] * factor);
+    if (ncol > 3)
+    {
+      y2.push_back(data[n][3] * factor);
+      sig2.push_back(data[n][4] * factor);
+    }
   }
 
   // How many points did we read?
@@ -347,9 +376,11 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
       tt[i] = t[order[i]];
       yy[i] = y[order[i]];
       sigsig[i] = sig[order[i]];
-      yy2[i] = y2[order[i]];
-      sig2sig2[i] = sig2[order[i]];
       obsiobsi[i] = obsi[order[i]];
+      if (ncol > 3) {
+        yy2[i] = y2[order[i]];
+        sig2sig2[i] = sig2[order[i]];
+      }
     }
 
     for (unsigned i = 0; i < N; i++)
@@ -357,14 +388,17 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
       t[i] = tt[i];
       y[i] = yy[i];
       sig[i] = sigsig[i];
-      y2[i] = yy2[i];
-      sig2[i] = sig2sig2[i];
       obsi[i] = obsiobsi[i];
+      if (ncol > 3) {
+        y2[i] = yy2[i];
+        sig2[i] = sig2sig2[i];
+      }
     }
   }
 
   // epoch for the mean anomaly, by default the time of the first observation
   M0_epoch = t[0];
+
 }
 
 

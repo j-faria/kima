@@ -15,6 +15,10 @@
 // from https://stackoverflow.com/a/8615450
 std::vector<std::string> glob(const std::string& pattern);
 
+typedef std::vector <double> vd;
+typedef std::vector <double> record_t;
+typedef std::vector <record_t> data_t;
+
 class Data
 {
 	private:
