@@ -1,5 +1,7 @@
 #include "AMDstability.h"
 
+#define DEBUG false
+
 namespace AMD
 {
     /**
@@ -31,6 +33,7 @@ namespace AMD
 
         auto indices = argsort(periods);
         
+        int j = 0;
         for (auto i : indices)
         {
             double P = components[i][0];
@@ -44,18 +47,27 @@ namespace AMD
             double a; // [AU]
             a = G13 * pow(star_mass, 1./3) * pow(P / (2 * M_PI), 2./3);
 
-            // cout << "P: " << P << "\t" << "K: " << K << '\t';
-            // cout << "e: " << ecc << '\t' << "mass: " << m;
-            // cout << endl;
+            #if DEBUG
+            cout << "P: " << P << "\t" << "K: " << K << '\t';
+            cout << "e: " << ecc << "\t" << "a: " << a << '\t' << "mass: " << m;
+            cout << endl;
+            #endif
 
-            masses[i] = m;
-            sma[i] = a;
-            eccentricities[i] = ecc;
-            incs[i] = 0.0;
+            masses[j] = m;
+            sma[j] = a;
+            eccentricities[j] = ecc;
+            incs[j] = 0.0;
+            j += 1;
         }
 
         auto Lambda = am_circular(masses, sma);
         double AMD = total_AMD_system(masses, sma, eccentricities, incs);
+        #if DEBUG
+        cout << "total AMD: " << AMD << '\t' << "Lambda: ";
+        for (auto l: Lambda)
+            cout << l << '\t';
+        cout << endl;
+        #endif
 
         // Can planet 1 collide with the star?
         if (AMD > Lambda[0])
@@ -66,6 +78,8 @@ namespace AMD
             double Cx = AMD / Lambda[k];
             is_stable = AMD_stability_pair(masses[k-1], masses[k], 
                                            sma[k-1], sma[k], Cx);
+            if (is_stable != 0)
+                return is_stable;
         }
 
         return is_stable;
@@ -132,6 +146,10 @@ namespace AMD
         // Relative AMD from MMR overlap condition (Petit, Laskar, & Boue 2017)
         double C_mmr = relative_AMD_MMR_overlap(mu1, mu2, a1, a2);
 
+        #if DEBUG
+        cout << "C_coll: " << C_coll << '\t' << "C_mmr: " << C_mmr << endl;
+        #endif
+
         // Final result
         double C_crit = min(C_coll, C_mmr);
         double ratio = Cx / C_crit;
@@ -142,9 +160,6 @@ namespace AMD
         else
             return MMR_ECCENTRIC;
     }
-
-
-
 
 
     /*
