@@ -54,8 +54,16 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
             cubic_prior = make_prior<Gaussian>( 0.0, pow(10, data.get_trend_magnitude(3)) );
     }
 
-    if (!offsets_prior)
+    // if offsets_prior is not (re)defined, assume a default
+    if (multi_instrument && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+
+    for (size_t j = 0; j < data.number_instruments - 1; j++)
+    {
+        // if individual_offset_prior is not (re)defined, assume a offsets_prior
+        if (!individual_offset_prior[j])
+            individual_offset_prior[j] = offsets_prior;
+    }
 
     if (GP) { /* GP parameters */
         if (!log_eta1_prior)
@@ -100,7 +108,7 @@ void RVmodel::from_prior(RNG& rng)
     if(multi_instrument)
     {
         for(int i=0; i<offsets.size(); i++)
-            offsets[i] = offsets_prior->generate(rng);
+            offsets[i] = individual_offset_prior[i]->generate(rng);
         for(int i=0; i<jitters.size(); i++)
             jitters[i] = Jprior->generate(rng);
     }
@@ -793,7 +801,7 @@ double RVmodel::perturb(RNG& rng)
             // propose new instrument offsets
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++)
-                    offsets_prior->perturb(offsets[j], rng);
+                    individual_offset_prior[j]->perturb(offsets[j], rng);
             }
 
             // propose new slope
@@ -875,7 +883,7 @@ double RVmodel::perturb(RNG& rng)
             // propose new instrument offsets
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++)
-                    offsets_prior->perturb(offsets[j], rng);
+                    individual_offset_prior[j]->perturb(offsets[j], rng);
             }
 
             // propose new slope
@@ -979,7 +987,7 @@ double RVmodel::perturb(RNG& rng)
             // propose new instrument offsets
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++){
-                    offsets_prior->perturb(offsets[j], rng);
+                    individual_offset_prior[j]->perturb(offsets[j], rng);
                 }
             }
 
