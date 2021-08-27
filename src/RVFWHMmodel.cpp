@@ -41,8 +41,8 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
     if (!J2prior)
         J2prior = make_prior<ModifiedLogUniform>(1.0, data.get_y2_span());
 
-    if (!slope_prior)
-        slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
+    // if (!slope_prior)
+    //     slope_prior = make_prior<Uniform>( -data.topslope(), data.topslope() );
 
     if (trend){
         if (degree == 0)
@@ -618,7 +618,7 @@ void RVFWHMmodel::calculate_mu()
         {
             ti = t[i];
             Tp = data.M0_epoch-(P*phi)/(2.*M_PI);
-            f = kepler::true_anomaly(ti, P, ecc, Tp);
+            f = nijenhuis::true_anomaly(ti, P, ecc, Tp);
             v = K*(cos(f+omega) + ecc*cos(omega));
             mu[i] += v;
         }
@@ -687,7 +687,7 @@ void RVFWHMmodel::remove_known_object()
         {
             ti = t[i];
             Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
-            f = kepler::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
+            f = nijenhuis::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
             v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
             mu[i] -= v;
         }
@@ -705,7 +705,7 @@ void RVFWHMmodel::add_known_object()
         {
             ti = t[i];
             Tp = data.M0_epoch-(KO_P[j]*KO_phi[j])/(2.*M_PI);
-            f = kepler::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
+            f = nijenhuis::true_anomaly(ti, KO_P[j], KO_e[j], Tp);
             v = KO_K[j] * (cos(f+KO_w[j]) + KO_e[j]*cos(KO_w[j]));
             mu[i] += v;
         }
@@ -1452,6 +1452,7 @@ string RVFWHMmodel::description() const
     if (studentt)
         desc += "nu" + sep;
     
+    desc += "C2" + sep;
     desc += "vsys";
 
     return desc;
