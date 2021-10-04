@@ -2,8 +2,10 @@ SRC_DIR = $(KIMA_DIR)/src
 DNEST4_PATH = $(KIMA_DIR)/DNest4/code
 EIGEN_PATH = $(KIMA_DIR)/eigen
 CELERITE_PATH = $(KIMA_DIR)/celerite/cpp/include
+STATS_PATH = $(KIMA_DIR)/vendor/stats/include
+GCEM_PATH = $(KIMA_DIR)/vendor/gcem/include
 
-includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH)
+includes = -I$(SRC_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH) -I$(STATS_PATH) -I$(GCEM_PATH)
 
 CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
 
