@@ -9,7 +9,7 @@
 #include "Data.h"
 #include "RVmodel.h"
 #include "RVFWHMmodel.h"
-#include "RVConditionalPrior.h"
+#include "ConditionalPrior.h"
 
 const double PI = M_PI;
 

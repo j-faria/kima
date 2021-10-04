@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <memory>
-#include "RVConditionalPrior.h"
+#include "ConditionalPrior.h"
 #include "RJObject/RJObject.h"
 #include "RNG.h"
 #include "DNest4.h"

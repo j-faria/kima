@@ -1,5 +1,4 @@
 #include "RVFWHMmodel.h"
-#include "RVConditionalPrior.h"
 #include "DNest4.h"
 #include "RNG.h"
 #include "Utils.h"

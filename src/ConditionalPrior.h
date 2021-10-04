@@ -1,5 +1,3 @@
-// (c) 2019 João Faria
-// This file is part of kima, which is licensed under the MIT license (see LICENSE for details)
 #pragma once
 
 #include <memory>
@@ -7,18 +5,18 @@
 #include "RJObject/ConditionalPriors/ConditionalPrior.h"
 #include "DNest4.h"
 
-/// whether the model includes hyper-priors for the orbital period and semi-amplitude
+/// whether the model includes hyper-priors for the orbital period and
+/// semi-amplitude
 extern const bool hyperpriors;
+
 
 class RVConditionalPrior:public DNest4::ConditionalPrior
 {
 	private:
 		// Parameters of bi-exponential hyper-distribution for log-periods
 		double center, width;
-
 		// Mean of exponential hyper-distribution for semi-amplitudes
 		double muK;
-
 		double perturb_hyperparameters(DNest4::RNG& rng);
 
 	public:
