@@ -4,7 +4,7 @@ from .analysis import most_probable_np, passes_threshold_np
 from .results import KimaResults
 load = KimaResults.load
 from .model import KimaModel
-from .showresults import showresults
+from .showresults import showresults2 as showresults
 from .crossing_orbits import rem_crossing_orbits, rem_roche
 
 from os.path import dirname
