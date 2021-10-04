@@ -12,7 +12,9 @@
 #include <string>
 #include <set>
 
-using namespace std;
+#ifndef VERBOSE
+#define VERBOSE true
+#endif
 
 Data Data::instance;
 
@@ -79,8 +81,8 @@ istream& operator >> ( istream& ins, data_t& data )
  * @param skip       number of lines to skip in the beginning of the file (default = 2)
  * @param indicators
 */
-void Data::load(const std::string filename, const std::string units, 
-                int skip, const vector<string>& indicators)
+void Data::load(const string filename, const string units, int skip,
+                const vector<string> &indicators)
 {
 
   data_t data;
@@ -142,13 +144,14 @@ void Data::load(const std::string filename, const std::string units,
   // epoch for the mean anomaly, by default the time of the first observation
   M0_epoch = t[0];
 
-
+  #if VERBOSE
   // How many points did we read?
   printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
 
   // What are the units?
   if(units == "kms")
     printf("# Multiplied all RVs by 1000; units are now m/s.\n");
+  #endif
 
 }
 
@@ -167,8 +170,8 @@ void Data::load(const std::string filename, const std::string units,
  * @param units      units of the RVs and errors, either "kms" or "ms"
  * @param skip       number of lines to skip in the beginning of the file (default = 2)
 */
-void Data::load_multi(const std::string filename, const std::string units, int skip)
-  {
+void Data::load_multi(const string filename, const string units, int skip)
+{
 
   data_t data;
 
@@ -230,7 +233,7 @@ void Data::load_multi(const std::string filename, const std::string units, int s
   printf("# Loaded %zu data points from file %s\n", t.size(), filename.c_str());
 
   // Of how many instruments?
-  std::set<int> s( obsi.begin(), obsi.end() );
+  set<int> s( obsi.begin(), obsi.end() );
   printf("# RVs come from %zu different instruments.\n", s.size());
   number_instruments = s.size();
   
@@ -239,10 +242,7 @@ void Data::load_multi(const std::string filename, const std::string units, int s
 
   // epoch for the mean anomaly, by default the time of the first observation
   M0_epoch = t[0];
-
-  }
-
-
+}
 
 /**
  * @brief Load RV data from a multiple files.
@@ -259,8 +259,8 @@ void Data::load_multi(const std::string filename, const std::string units, int s
  * @param skip       number of lines to skip in the beginning of the file (default = 2)
  * @param indicators
 */
-void Data::load_multi(vector<std::string> filenames, const std::string units, 
-                      int skip, const vector<std::string>& indicators)
+void Data::load_multi(vector<string> filenames, const string units, int skip,
+                      const vector<string>& indicators)
 {
 
   data_t data;
@@ -273,7 +273,7 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
   sig2.clear();
   obsi.clear();
 
-  std::string dump; // to dump the first skip lines of each file
+  string dump; // to dump the first skip lines of each file
   int filecount = 1;
   int last_file_size = 0;
 
@@ -349,7 +349,7 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
   cout << endl;
 
   // Of how many instruments?
-  std::set<int> s( obsi.begin(), obsi.end() );
+  set<int> s( obsi.begin(), obsi.end() );
   // set<int>::iterator iter;
   // for(iter=s.begin(); iter!=s.end();++iter) {  cout << (*iter) << endl;}
   printf("# RVs come from %zu different instruments.\n", s.size());
@@ -362,13 +362,13 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
   {
     // We need to sort t because it comes from different instruments
     int N = t.size();
-    std::vector<double> tt(N), yy(N), yy2(N);
-    std::vector<double> sigsig(N), sig2sig2(N), obsiobsi(N);
-    std::vector<int> order(N);
+    vector<double> tt(N), yy(N), yy2(N);
+    vector<double> sigsig(N), sig2sig2(N), obsiobsi(N);
+    vector<int> order(N);
 
     // order = argsort(t)
     int x = 0;
-    std::iota(order.begin(), order.end(), x++);
+    iota(order.begin(), order.end(), x++);
     sort(order.begin(), order.end(), [&](int i, int j) { return t[i] < t[j]; });
 
     for (unsigned i = 0; i < N; i++)
@@ -404,11 +404,11 @@ void Data::load_multi(vector<std::string> filenames, const std::string units,
 
 double Data::get_RV_var() const
 {
-  double sum = std::accumulate(std::begin(y), std::end(y), 0.0);
+  double sum = accumulate(begin(y), end(y), 0.0);
   double mean = sum / y.size();
 
   double accum = 0.0;
-  std::for_each(std::begin(y), std::end(y), [&](const double d) {
+  for_each(begin(y), end(y), [&](const double d) {
     accum += (d - mean) * (d - mean);
   });
   return accum / (y.size() - 1);
@@ -435,10 +435,10 @@ double Data::topslope() const
           obst.push_back(t[i]);
         }
       }
-      const auto miny = std::min_element(obsy.begin(), obsy.end());
-      const auto maxy = std::max_element(obsy.begin(), obsy.end());
-      const auto mint = std::min_element(obst.begin(), obst.end());
-      const auto maxt = std::max_element(obst.begin(), obst.end());
+      const auto miny = min_element(obsy.begin(), obsy.end());
+      const auto maxy = max_element(obsy.begin(), obsy.end());
+      const auto mint = min_element(obst.begin(), obst.end());
+      const auto maxt = max_element(obst.begin(), obst.end());
       double this_obs_topslope = (*maxy - *miny) / (*maxt - *mint);
       if (this_obs_topslope > slope)
         slope = this_obs_topslope;
@@ -457,8 +457,8 @@ double Data::topslope() const
 */
 double Data::get_RV_span() const
 {
-  const auto min = std::min_element(y.begin(), y.end());
-  const auto max = std::max_element(y.begin(), y.end());
+  const auto min = min_element(y.begin(), y.end());
+  const auto max = max_element(y.begin(), y.end());
   return *max - *min;
 }
 
@@ -483,8 +483,8 @@ double Data::get_max_RV_span() const
           obsy.push_back(y[i]);
         }
       }
-      const auto min = std::min_element(obsy.begin(), obsy.end());
-      const auto max = std::max_element(obsy.begin(), obsy.end());
+      const auto min = min_element(obsy.begin(), obsy.end());
+      const auto max = max_element(obsy.begin(), obsy.end());
       double this_obs_span = *max - *min;
       if (this_obs_span > span)
         span = this_obs_span;
@@ -502,7 +502,7 @@ double Data::get_adjusted_RV_var() const
 {
     int ni;
     double sum, mean;
-    std::vector<double> rva(t.size());
+    vector<double> rva(t.size());
 
     for(size_t j=0; j<number_instruments; j++)
     {
@@ -517,9 +517,9 @@ double Data::get_adjusted_RV_var() const
         if(obsi[i] == j+1) rva[i] = y[i] - mean;
     }
 
-    mean = std::accumulate(rva.begin(), rva.end(), 0.0) / rva.size();
+    mean = accumulate(rva.begin(), rva.end(), 0.0) / rva.size();
     double accum = 0.0;
-    std::for_each (rva.begin(), rva.end(), [&](const double d) {
+    for_each (rva.begin(), rva.end(), [&](const double d) {
         accum += (d - mean) * (d - mean);
     });
     return accum / (y.size()-1);
@@ -542,7 +542,7 @@ int Data::get_trend_magnitude(int degree) const
  *
  * from https://stackoverflow.com/a/8615450
 */
-std::vector<std::string> glob(const std::string& pattern) {
+vector<string> glob(const string& pattern) {
     // glob struct resides on the stack
     glob_t glob_result;
     memset(&glob_result, 0, sizeof(glob_result));
@@ -553,7 +553,7 @@ std::vector<std::string> glob(const std::string& pattern) {
         globfree(&glob_result);
         stringstream ss;
         ss << "glob() failed with return_value " << return_value << endl;
-        throw std::runtime_error(ss.str());
+        throw runtime_error(ss.str());
     }
 
     // collect all the filenames into a vector<string>
