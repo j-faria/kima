@@ -1,7 +1,7 @@
 // (c) 2019 João Faria
 // This file is part of kima, which is licensed under the MIT license (see LICENSE for details)
 
-#include "RVConditionalPrior.h"
+#include "ConditionalPrior.h"
 #include "DNest4.h"
 #include "Utils.h"
 #include <cmath>
@@ -103,22 +103,8 @@ double RVConditionalPrior::log_pdf(const std::vector<double>& vec) const
 {
     if(hyperpriors)
     {
-        if(vec[2] < 0. || vec[2] > 2.*M_PI ||
-           vec[3] < 0. || vec[3] >= 1.0 ||
-           vec[4] < 0. || vec[4] > 2.*M_PI)
-             return -1E300;
-
         Pprior->setpars(center, width);
         Kprior->setpars(muK);
-    }
-    else
-    {
-        if(vec[0] < 1. || vec[0] > 1E4 ||
-           vec[1] < 0. ||
-           vec[2] < 0. || vec[2] > 2.*M_PI ||
-           vec[3] < 0. || vec[3] >= 1.0 ||
-           vec[4] < 0. || vec[4] > 2.*M_PI)
-             return -1E300;
     }
 
     return Pprior->log_pdf(vec[0]) + 

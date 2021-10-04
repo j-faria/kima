@@ -63,13 +63,17 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
         else:
             ax = plt.subplot(gs[0, :4])
 
-        res.plot_random_planets(ax=ax, ncurves=20, show_vsys=True, ms=2)
+        if res.model == 'RVFWHMmodel':
+            pk.display.plot_data(res, ax=ax, ignore_y2=True, ms=2)
+            ax.legend().remove()
+        else:
+            res.plot_random_planets(ax=ax, ncurves=20, show_vsys=True, ms=2)
+            leg = ax.legend(loc="upper left", bbox_to_anchor=(0, 1.25), ncol=4,
+                            fontsize=8)
+            names = res.instruments
+            for label, name in zip(leg.get_texts(), names):
+                label.set_text(name)
         ax.set(title='', )
-        leg = ax.legend(loc="upper left", bbox_to_anchor=(0, 1.25), ncol=4,
-                        fontsize=8)
-        names = res.instruments
-        for label, name in zip(leg.get_texts(), names):
-            label.set_text(name)
         # print(len(leg.legendHandles))
         # for handle in leg.legendHandles[len(names):]:
         #     handle.set_visible(False)
@@ -127,7 +131,7 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
             sign = '+' if m > 0 else ''
             ax.set_title(f'{sign} {m/1e3:.2f} km/s', loc='left', fontsize=8)
 
-        ax.hist(vsys)#, bins=50)
+        ax.hist(vsys) #, bins=50)
         # res.hist_vsys(show_offsets=False)
         # fmt = matplotlib.ticker.ScalarFormatter(useOffset=False)
         # fmt.set_scientific(False)
@@ -137,26 +141,26 @@ def make_report(results=None, star=None, save=None, verbose=True, prot=None,
         ax.set(xlabel='vsys [m/s]', ylabel='posterior', yticks=[])
         ax.minorticks_on()
 
-        ax = plt.subplot(gs[4, 2:4])
+        # ax = plt.subplot(gs[4, 2:4])
+        # if res.multi:
+        #     labels = res.instruments
+        #     # subs = long_substr(labels)
+        #     # labels = [l.replace(subs, '') for l in labels]
+
+        #     for i, s in enumerate(res.jitter.T):
+        #         ax.hist(s, alpha=0.9, histtype='step', label=labels[i], lw=2)
+        #     ax.set_xlabel('jitter [m/s]')
+        #     ax.legend(fontsize=6)
+        # else:
+        #     res.hist_jiter()
+        # ax.set(title='', ylabel='posterior', yticks=[])
+
+        # if res.trend and res.trend_degree == 1:
+        #     ax = plt.subplot(gs[4, 4:])
+        #     res.hist_trend(ax=ax)
+        #     ax.set(title='slope [m/s/yr]', ylabel='posterior', yticks=[])
+
         if res.multi:
-            labels = res.instruments
-            # subs = long_substr(labels)
-            # labels = [l.replace(subs, '') for l in labels]
-
-            for i, s in enumerate(res.jitter.T):
-                ax.hist(s, alpha=0.9, histtype='step', label=labels[i], lw=2)
-            ax.set_xlabel('jitter [m/s]')
-            ax.legend(fontsize=6)
-        else:
-            res.hist_jiter()
-        ax.set(title='', ylabel='posterior', yticks=[])
-
-        if res.trend and res.trend_degree == 1:
-            ax = plt.subplot(gs[4, 4:])
-            res.hist_trend(ax=ax)
-            ax.set(title='slope [m/s/yr]', ylabel='posterior', yticks=[])
-
-        elif res.multi:
             ax = plt.subplot(gs[4, 4:])
             n_inst_offsets = res.inst_offsets.shape[1]
 

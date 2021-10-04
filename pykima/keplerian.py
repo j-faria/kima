@@ -1,6 +1,6 @@
 __all__ = ['keplerian', 'true_anomaly', 'ecc_anomaly']
 
-import numpy as np 
+import numpy as np
 pi = np.pi
 
 def keplerian(time, p, k, ecc, omega, t0, vsys):
@@ -17,7 +17,8 @@ def keplerian(time, p, k, ecc, omega, t0, vsys):
     return vel
 
 def true_anomaly(E, e):
-    return 2. * np.arctan( np.sqrt((1.+e)/(1.-e)) * np.tan(E/2.))
+    return 2. * np.arctan(np.sqrt((1. + e) / (1. - e)) * np.tan(E / 2.))
+
 
 def ecc_anomaly(M, e):
     M = np.atleast_1d(M)
@@ -28,7 +29,7 @@ def ecc_anomaly(M, e):
         E = E0 - g / gp
 
         # check for convergence
-        if (np.linalg.norm(E - E0, ord=1) <= 1.234e-10): 
+        if (np.linalg.norm(E - E0, ord=1) <= 1.234e-10):
             return E
         # keep going
         E0 = E

@@ -1,3 +1,5 @@
+""" Small (but sometimes important) utility functions """
+
 import sys, os
 import re
 import contextlib
@@ -49,7 +51,7 @@ template_setup = """
 """
 
 
-def need_model_setup(exception):
+def _need_model_setup(exception):
     print()
     print("[FATAL] Couldn't find the file kima_model_setup.txt")
     print("Probably didn't include a call to save_setup() in the")
@@ -69,7 +71,7 @@ def read_model_setup(filename='kima_model_setup.txt'):
     try:
         open('kima_model_setup.txt')
     except IOError as exc:
-        need_model_setup(exc)
+        _need_model_setup(exc)
 
     setup.read(filename)
 
@@ -135,6 +137,7 @@ def read_datafile_rvfwhm(datafile, skip):
 
 @contextlib.contextmanager
 def chdir(dir):
+    """ A simple context manager to switch directories temporarily """
     curdir = os.getcwd()
     try:
         os.chdir(dir)
@@ -144,7 +147,7 @@ def chdir(dir):
 
 
 def show_tips():
-    """ Show a few tips on how to use kima """
+    """ Show a few tips on how to use kima (but only sometimes) """
     tips = (
         "Press Ctrl+C in any of kima's plots to copy the figure.",
         "Run 'kima-showresults all' to plot every figure.",
@@ -193,7 +196,7 @@ def wrms(array, weights):
 
 def apply_argsort(arr1, arr2, axis=-1):
     """
-    Apply arr1.argsort() on arr2, along `axis`.
+    Apply `arr1`.argsort() on `arr2`, along `axis`.
     """
     # check matching shapes
     assert arr1.shape == arr2.shape, "Shapes don't match!"
@@ -247,7 +250,7 @@ def clipped_mean(arr, min, max):
 
 
 def clipped_std(arr, min, max):
-    """ std of `arr` between `min` and `max` """
+    """ Standard deviation of `arr` between `min` and `max` """
     mask = (arr > min) & (arr < max)
     return np.std(arr[mask])
 
@@ -283,7 +286,7 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
         assert isinstance(K, float) and isinstance(e, float)
         uncertainty_star_mass = False
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            star_mass = np.random.normal(star_mass[0], star_mass[1], 5000)
+            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
             uncertainty_star_mass = True
 
         m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
@@ -348,9 +351,18 @@ def get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False,
         # calculate for one value of the orbital period
         # then K and star_mass should also be floats
         assert isinstance(K, float)
-        assert isinstance(star_mass, float)
+        uncertainty_star_mass = False
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
+            uncertainty_star_mass = True
+
         a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
+
+        if uncertainty_star_mass:
+            return a.mean(), a.std()
+
         return a  # in AU
+
     else:
         if isinstance(star_mass, tuple) or isinstance(star_mass, list):
             star_mass = star_mass[0] + star_mass[1] * np.random.randn(P.size)
@@ -399,33 +411,44 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     a = get_planet_semimajor_axis(P, K, star_mass, full_output, verbose=False)
     return mass, a
 
+
 from astropy.units import R_sun, AU, jupiterRad, km, second, Kelvin
 
-def get_planet_teq(Tstar=5777, Rstar=1.0, d=1.0, A=0, f=1):
+
+def get_planet_teq(Tstar=5777, Rstar=1.0, a=1.0, A=0, f=1):
     """
     Tstar = stellar effective temperature in kelvins (K)
     Rstar = stellar radius in solar radii
-    d = distance from the star in AU (change to solRad)
+    a = distance from the star in AU (change to solRad)
     A = bond albedo
     f = redistribution factor
     Returns equilibrium temperature in Kelvins
     """
-    d = d * AU.to('km')
+    a = a * AU.to('km')
     Rstar = 1 * R_sun.to('km')
     # Tstar = Tstar * Kelvin
-    Teq = Tstar * (f * (1 - A))**(1 / 4) * (Rstar / (2 * d))**(1 / 2)
+    Teq = Tstar * (f * (1 - A))**(1 / 4) * (Rstar / (2 * a))**(1 / 2)
     return Teq
+
+
+def get_transit_probability(Rstar=1.0, a=1.0):
+    """
+    Transit probability, simple. Eq 6.1 in Exoplanet Handbook
+    Rstar: stellar radius [Rsun]
+    a: semi-major axis [au]
+    """
+    return Rstar / (a * AU).to(R_sun).value
 
 
 def lighten_color(color, amount=0.5):
     """
-    Lightens the given color by multiplying (1-luminosity) by the given amount.
-    Input can be matplotlib color string, hex string, or RGB tuple.
+    Lightens the given `color` by multiplying (1-luminosity) by the given
+    `amount`. Input can be a matplotlib color string, hex string, or RGB tuple.
 
     Examples:
-    >> lighten_color('g', 0.3)
-    >> lighten_color('#F034A3', 0.6)
-    >> lighten_color((.3,.55,.1), 0.5)
+    >>> lighten_color('g', 0.3)
+    >>> lighten_color('#F034A3', 0.6)
+    >>> lighten_color((.3, .55, .1), 0.5)
     """
     import matplotlib.colors as mc
     import colorsys
@@ -438,25 +461,35 @@ def lighten_color(color, amount=0.5):
 
 
 class Fixed:
-    def __init__(self, val):
-        self.val = val
-    def rvs(self):
-        return self.val
-    def pdf(self, x):
-        return 1.0 if x == self.val else 0.0
-    def logpdf(self, x):
-        return 0.0 if x == self.val else -np.inf
+    """ Not a real distribution, just a parameter fixed at a given `value` """
+    def __init__(self, value: float):
+        self.value = value
+
+    def rvs(self) -> float:
+        """ Random sample (always returns `value`)"""
+        return self.value
+
+    def pdf(self, x: float) -> float:
+        """ Probability density function: 1.0 if x==value, otherwise 0.0"""
+        return 1.0 if x == self.value else 0.0
+
+    def logpdf(self, x: float) -> float:
+        """ Logarithm of the probability density function """
+        return 0.0 if x == self.value else -np.inf
 
 
 class ZeroDist:
     """ A dummy probability distribution which always returns 0.0 """
     def __init__(self):
         pass
-    def rvs(self):
+
+    def rvs(self) -> float:
         return 0.0
-    def pdf(self, x):
+
+    def pdf(self, x: float) -> float:
         return 0.0
-    def logpdf(self, x):
+
+    def logpdf(self, x: float) -> float:
         return 0.0
 
 
@@ -997,7 +1030,7 @@ def datetime_to_jd(date):
 
     Parameters
     ----------
-    date : `datetime.datetime` instance
+    date : datetime.datetime instance
 
     Returns
     -------

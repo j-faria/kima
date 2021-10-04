@@ -20,7 +20,7 @@ $(wildcard $(SRCDIR)/distributions/*.cpp) \
 $(SRCDIR)/Data.cpp \
 $(SRCDIR)/kepler.cpp \
 $(SRCDIR)/AMDstability.cpp \
-$(SRCDIR)/RVConditionalPrior.cpp \
+$(SRCDIR)/ConditionalPrior.cpp \
 $(SRCDIR)/RVmodel.cpp \
 $(SRCDIR)/RVFWHMmodel.cpp \
 $(SRCDIR)/main.cpp

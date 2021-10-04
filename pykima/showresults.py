@@ -193,106 +193,106 @@ def _parse_args(options):
                      remove_crossing=remove_crossing)
 
 
-def showresults(options='', force_return=False, verbose=True, show_plots=True,
-                kima_tips=True, numResampleLogX=1, moreSamples=1):
-    """
-    Generate and plot results from a kima run. The argument `options` should be 
-    a string with the same options as for the kima-showresults script.
-    """
+# def showresults(options='', force_return=False, verbose=True, show_plots=True,
+#                 kima_tips=True, numResampleLogX=1, moreSamples=1):
+#     """
+#     Generate and plot results from a kima run. The argument `options` should be
+#     a string with the same options as for the kima-showresults script.
+#     """
 
-    # force correct CLI arguments
-    args = _parse_args(options)
-    # print(args)
+#     # force correct CLI arguments
+#     args = _parse_args(options)
+#     # print(args)
 
-    plots = []
-    if args.rv:
-        plots.append('6')
-    if args.phase:
-        plots.append('6p')
-    if args.planets:
-        plots.append('1')
-    if args.orbital:
-        plots.append('2')
-        plots.append('3')
-    if args.gp:
-        plots.append('4')
-        plots.append('5')
-    if args.extra:
-        plots.append('7')
-    for number in args.plot_number:
-        plots.append(number)
+#     plots = []
+#     if args.rv:
+#         plots.append('6')
+#     if args.phase:
+#         plots.append('6p')
+#     if args.planets:
+#         plots.append('1')
+#     if args.orbital:
+#         plots.append('2')
+#         plots.append('3')
+#     if args.gp:
+#         plots.append('4')
+#         plots.append('5')
+#     if args.extra:
+#         plots.append('7')
+#     for number in args.plot_number:
+#         plots.append(number)
 
-    # don't repeat plot 6
-    if '6p' in plots:
-        try:
-            plots.remove('6')
-        except ValueError:
-            pass
+#     # don't repeat plot 6
+#     if '6p' in plots:
+#         try:
+#             plots.remove('6')
+#         except ValueError:
+#             pass
 
-    hidden = StringIO()
-    stdout = sys.stdout if verbose else hidden
+#     hidden = StringIO()
+#     stdout = sys.stdout if verbose else hidden
 
-    try:
-        with redirect_stdout(stdout):
-            evidence, H, logx_samples = postprocess(
-                plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
-    except IOError as e:
-        if interactive_or_script:
-            raise e from None
-        else:
-            print(str(e))
-            return
+#     try:
+#         with redirect_stdout(stdout):
+#             evidence, H, logx_samples = postprocess(
+#                 plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
+#     except IOError as e:
+#         if interactive_or_script:
+#             raise e from None
+#         else:
+#             print(str(e))
+#             return
 
-    # sometimes an IndexError is raised when the levels.txt file is being
-    # updated too quickly, and the read operation is not atomic... we try one
-    # more time and then give up
-    except IndexError:
-        try:
-            with redirect_stdout(stdout):
-                evidence, H, logx_samples = postprocess(
-                    plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
-        except IndexError:
-            msg = 'Something went wrong reading "levels.txt". Try again.'
-            if interactive_or_script:
-                raise IOError(msg) from None
-            else:
-                print(msg)
-                return
+#     # sometimes an IndexError is raised when the levels.txt file is being
+#     # updated too quickly, and the read operation is not atomic... we try one
+#     # more time and then give up
+#     except IndexError:
+#         try:
+#             with redirect_stdout(stdout):
+#                 evidence, H, logx_samples = postprocess(
+#                     plot=args.diagnostic, numResampleLogX=1, moreSamples=1)
+#         except IndexError:
+#             msg = 'Something went wrong reading "levels.txt". Try again.'
+#             if interactive_or_script:
+#                 raise IOError(msg) from None
+#             else:
+#                 print(msg)
+#                 return
 
-    # show kima tips
-    if verbose and kima_tips:
-        show_tips()
+#     # show kima tips
+#     if verbose and kima_tips:
+#         show_tips()
 
-    res = KimaResults('')
+#     res = KimaResults('')
 
-    if args.remove_crossing:
-        res = rem_crossing_orbits(res)
+#     if args.remove_crossing:
+#         res = rem_crossing_orbits(res)
 
-    res.make_plots(list(set(plots)), save_plots=args.save_plots)
+#     res.make_plots(list(set(plots)), save_plots=args.save_plots)
 
-    res.evidence = evidence
-    res.information = H
-    res.ESS = res.posterior_sample.shape[0]
+#     res.evidence = evidence
+#     res.information = H
+#     res.ESS = res.posterior_sample.shape[0]
 
-    # getinput = input
-    # # if Python 2, use raw_input()
-    # if sys.version_info[:2] <= (2, 7):
-    #     getinput = raw_input
+#     # getinput = input
+#     # # if Python 2, use raw_input()
+#     # if sys.version_info[:2] <= (2, 7):
+#     #     getinput = raw_input
 
-    if args.pickle:
-        res.save_pickle(input('Filename to save pickle model: '))
-    if args.zip:
-        res.save_zip(input('Filename to save model (must end with .zip): '))
+#     if args.pickle:
+#         res.save_pickle(input('Filename to save pickle model: '))
+#     if args.zip:
+#         res.save_zip(input('Filename to save model (must end with .zip): '))
 
-    if not args.save_plots and show_plots:
-        show()  # render the plots
+#     if not args.save_plots and show_plots:
+#         show()  # render the plots
 
-    #! old solution, but fails when running scripts (res ends up as None)
-    # __main__.__file__ doesn't exist in the interactive interpreter
-    # if not hasattr(__main__, '__file__') or force_return:
-    #! this solution seems to always return, except with kima-showresults
-    if not hasattr(__main__, 'load_entry_point') or force_return:
-        return res
+#     #! old solution, but fails when running scripts (res ends up as None)
+#     # __main__.__file__ doesn't exist in the interactive interpreter
+#     # if not hasattr(__main__, '__file__') or force_return:
+#     #! this solution seems to always return, except with kima-showresults
+#     if not hasattr(__main__, 'load_entry_point') or force_return:
+#         return res
 
 
 def make_wide(formatter, w=120, h=36):
@@ -350,9 +350,15 @@ def _parse_args2(options):
     parser.register('action', 'none', NoAction)
     parser.register('action', 'store_choice', ChoicesAction)
 
+    # dir_opt = parser.add_argument_group(title='positional arguments')
+    # dir_opt.add_argument('-d', '--directory', type=str)
+
     group_opt = parser.add_argument_group(title='positional arguments')
 
-    options = group_opt.add_argument('commands', metavar='', help='', nargs=argparse.REMAINDER,
+    options = group_opt.add_argument('commands',
+                                     metavar='',
+                                     help='',
+                                     nargs=argparse.REMAINDER,
                                      action='store_choice')
 
     # options.add_undocumented('rv', help="")
@@ -378,14 +384,27 @@ def _parse_args2(options):
     options.add_choice('7', help="posteriors for systemic velocity, extra white noise, etc)")
     options.add_choice('8', help="posteriors for the moving average parameters")
 
-    parser.add_argument('--save-plots', action='store_true',
-        help="instead of showing, save the plots as .png files (except for diagnostic plots)")
-    parser.add_argument('--remove-roche', action='store_true',
-        help="remove orbits crossing the Roche limit of the star")
-    parser.add_argument('--remove-crossing', action='store_true',
-        help="remove crossing orbits (use --help-remove-crossing for details)")
-    parser.add_argument('--help-remove-crossing', action='store_true',
-                        help=argparse.SUPPRESS)
+    parser.add_argument(
+        '--save-plots',
+        help="instead of showing, save the plots as .png files (except for diagnostic plots)",
+        action='store_true'
+    )
+
+    parser.add_argument(
+        '--remove-roche',
+        help="remove orbits crossing the Roche limit of the star",
+        action='store_true',
+    )
+    parser.add_argument(
+        '--remove-crossing',
+        help="remove crossing orbits (use --help-remove-crossing for details)",
+        action='store_true',
+    )
+    parser.add_argument(
+        '--help-remove-crossing',
+        help=argparse.SUPPRESS,
+        action='store_true',
+    )
 
     args = parser.parse_args(args_in)
 
@@ -413,6 +432,7 @@ def _parse_args2(options):
         args.commands.remove(cmd)
 
     return args
+
 
 def showresults2(options='', force_return=False, verbose=True, show_plots=True,
                  kima_tips=True, numResampleLogX=1):
@@ -469,7 +489,7 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
             plots.remove('6')
         except ValueError:
             pass
-    
+
     if 'all' in args.commands:
         plots = '1 2 3 4 5 6 7 8'.split()
 
@@ -494,7 +514,7 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
     except IndexError:
         try:
             with redirect_stdout(stdout):
-                evidence, H, logx_samples = postprocess(plot=diagnostic,
+                evidence, H, logx_samples = postprocess(plot=args.diagnostic,
                                                         numResampleLogX=1,
                                                         moreSamples=1)
         except IndexError:
@@ -514,11 +534,12 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
     if args.remove_crossing:
         res = rem_crossing_orbits(res)
 
-    res.make_plots(list(set(plots)), save_plots=args.save_plots)
 
     res.evidence = evidence
     res.information = H
     res.ESS = res.posterior_sample.shape[0]
+
+    res.make_plots(list(set(plots)), save_plots=args.save_plots)
 
     # getinput = input
     # # if Python 2, use raw_input()
@@ -539,6 +560,30 @@ def showresults2(options='', force_return=False, verbose=True, show_plots=True,
     #! this solution seems to always return, except with kima-showresults
     if not hasattr(__main__, 'load_entry_point') or force_return:
         return res
+
+
+def evolution(res):
+    from math import inf
+    from collections import Counter
+    from tqdm import tqdm
+    from .loading import my_loadtxt
+    levels_orig = my_loadtxt('levels.txt')
+    sample_info = my_loadtxt('sample_info.txt')
+
+    total = sample_info.shape[0]
+    lnZ = []
+    counts = []
+    N = range(total, 2000, -2000)
+
+    for i in tqdm(N):
+        out = postprocess(loaded=(levels_orig, sample_info[:i, :]),
+                          save=False, verbose=False, plot=False)
+        lnZ.append(out[0])
+
+        _np = out[-1][:, res.index_component].astype(int)
+        counts.append(Counter(_np))
+
+    return N, lnZ, counts
 
 
 if __name__ == '__main__':

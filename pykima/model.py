@@ -34,6 +34,11 @@ class KimaModel:
 
         self.GP = False
         self.kernel = None
+
+        self.share_eta2 = True
+        self.share_eta3 = True
+        self.share_eta4 = True
+
         self.MA = False
         self.hyperpriors = False
         self._trend = False
@@ -80,6 +85,7 @@ class KimaModel:
     @property
     def model_type(self):
         return self._model_type
+
     @model_type.setter
     def model_type(self, t):
         options = ('RVmodel', 'RVFWHMmodel')
@@ -559,6 +565,14 @@ class KimaModel:
 
         if self.GP and self.kernel is not None:
             file.write('\n\t' + f'kernel = {self.kernel};\n\n')
+
+        if self.GP and self.model_type == 'RVFWHMmodel':
+            if not self.share_eta2:
+                file.write('\t' + 'share_eta2 = false;' + '\n')
+            if not self.share_eta3:
+                file.write('\t' + 'share_eta3 = false;' + '\n')
+            if not self.share_eta4:
+                file.write('\t' + 'share_eta4 = false;' + '\n')
 
         def write_prior_n(name, sets, add_conditional=False):
             s = 'c->' if add_conditional else ''
