@@ -311,8 +311,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if '6' in button:
             try:
-                fig = self.model.res.plot_random_planets(show_vsys=True,
-                                                         show_trend=True)
+                fig = self.model.res.plot_random_planets(show_vsys=True)
             except ValueError as e:
                 self._error('Something went wrong creating this plot.',
                             'This is awkward...')
@@ -329,7 +328,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.setmpl('tab_7_2', fig72)
             # plt.close()
 
-            fig73 = self.model.res.hist_extra_sigma()
+            fig73 = self.model.res.hist_jitter()
             self.setmpl('tab_7_3', fig73)
             # plt.close()
 
@@ -372,8 +371,8 @@ class MainWindow(QtWidgets.QMainWindow):
         filename, ok = QInputDialog.getText(self, 'Save results',
                                             'Enter the file name:')
         if ok:
-            if not filename.endswith('.pickle'):
-                filename += '.pickle'
+            if not filename.endswith(('.pickle', '.pkl')):
+                filename += '.pkl'
 
             if os.path.exists(filename):
                 self.statusMessage(f'{filename} already exists!')
