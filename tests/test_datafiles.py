@@ -10,10 +10,10 @@ def test_skip(tmpdir):
     f = tmpdir.join('data.txt')
     f.write('c1  c2  c3\n1.0  2.0  3.0')
 
-    with pytest.raises(ValueError): # wrong skip value
+    with pytest.raises(ValueError):  # wrong skip value
         read_datafile(f, skip=0)
 
-    with pytest.raises(IndexError): # file has no 4th column
+    with pytest.raises(IndexError):  # file has no 4th column
         read_datafile(f, skip=1)
 
     f.write('c1  c2  c3  c4\n1.0  2.0  3.0  1')
@@ -51,5 +51,5 @@ def test_dtypes(tmpdir):
 
     npt.assert_array_equal(data, np.array([1, 2, 3]))
     npt.assert_array_equal(obs, np.array([1]))
-    assert data.dtype == np.float
-    assert obs.dtype == np.int
+    assert data.dtype == float
+    assert obs.dtype == int
