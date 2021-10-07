@@ -55,7 +55,7 @@ namespace murison
         return E;
     }
 
-    std::vector<double> solver(std::vector<double> M, double ecc)
+    std::vector<double> solver(const std::vector<double> &M, double ecc)
     {
         std::vector<double> E(M.size());
         for (size_t i = 0; i < M.size(); i++)
@@ -140,37 +140,36 @@ namespace murison
 
 
     //
-    std::vector<double> keplerian(std::vector<double> t, const double &P,
-                                const double &K, const double &ecc,
-                                const double &w, const double &M0,
-                                const double &M0_epoch)
+    std::vector<double> keplerian(const std::vector<double> &t, double P,
+                                  double K, double ecc, double w, double M0,
+                                  double M0_epoch) 
     {
-        // allocate RVs
-        std::vector<double> rv(t.size());
+      // allocate RVs
+      std::vector<double> rv(t.size());
 
-        // mean motion, once per orbit
-        double n = 2. * M_PI / P;
-        // sin and cos of argument of periastron, once per orbit
-        double sinw, cosw;
-        sincos(w, &sinw, &cosw);
-        // ecentricity factor for g, once per orbit
-        double g_e = sqrt((1 + ecc) / (1 - ecc));
+      // mean motion, once per orbit
+      double n = 2. * M_PI / P;
+      // sin and cos of argument of periastron, once per orbit
+      double sinw, cosw;
+      sincos(w, &sinw, &cosw);
+      // ecentricity factor for g, once per orbit
+      double g_e = sqrt((1 + ecc) / (1 - ecc));
 
-        for (size_t i = 0; i < t.size(); i++) {
-            double E, cosE;
-            double M = n * (t[i] - M0_epoch) - M0;
-            E = solver(M, ecc);
-            // sincos(E, &sinE, &cosE);
-            cosE = cos(E);
-            double f = acos((cosE - ecc) / (1 - ecc * cosE));
-            // acos gives the principal values ie [0:PI]
-            // when E goes above PI we need another condition
-            if (E > M_PI)
-                f = TWO_PI - f;
-            rv[i] = K * (cos(f + w) + ecc * cosw);
-        }
+      for (size_t i = 0; i < t.size(); i++) {
+        double E, cosE;
+        double M = n * (t[i] - M0_epoch) - M0;
+        E = solver(M, ecc);
+        // sincos(E, &sinE, &cosE);
+        cosE = cos(E);
+        double f = acos((cosE - ecc) / (1 - ecc * cosE));
+        // acos gives the principal values ie [0:PI]
+        // when E goes above PI we need another condition
+        if (E > M_PI)
+          f = TWO_PI - f;
+        rv[i] = K * (cos(f + w) + ecc * cosw);
+      }
 
-        return rv;
+      return rv;
     }
 
 } // namespace murison
@@ -278,7 +277,7 @@ namespace nijenhuis
         return E;
     }
 
-    std::vector<double> solver(std::vector<double> M, double ecc)
+    std::vector<double> solver(const std::vector<double> &M, double ecc)
     {
         std::vector<double> E(M.size());
         for (size_t i = 0; i < M.size(); i++)
@@ -635,7 +634,7 @@ namespace brandt
         return mod2pi(E);
     }
 
-    std::vector<double> solver(std::vector<double> M, double ecc)
+    std::vector<double> solver(const std::vector<double> &M, double ecc)
     {
         double bounds[13];
         double EA_tab[6*13];
@@ -694,40 +693,39 @@ namespace brandt
     }
 
 
-
     //
-    std::vector<double> keplerian(std::vector<double> t, const double &P,
-                                const double &K, const double &ecc,
-                                const double &w, const double &M0,
-                                const double &M0_epoch)
+    std::vector<double> keplerian(const std::vector<double> &t, const double &P,
+                                  const double &K, const double &ecc,
+                                  const double &w, const double &M0,
+                                  const double &M0_epoch)
     {
-        // allocate RVs
-        std::vector<double> rv(t.size());
+      // allocate RVs
+      std::vector<double> rv(t.size());
 
-        // mean motion, once per orbit
-        double n = 2. * M_PI / P;
-        // sin and cos of argument of periastron, once per orbit
-        double sinw, cosw;
-        sincos(w, &sinw, &cosw);
-        // ecentricity factor for g, once per orbit
-        double g_e = sqrt((1 + ecc) / (1 - ecc));
+      // mean motion, once per orbit
+      double n = 2. * M_PI / P;
+      // sin and cos of argument of periastron, once per orbit
+      double sinw, cosw;
+      sincos(w, &sinw, &cosw);
+      // ecentricity factor for g, once per orbit
+      double g_e = sqrt((1 + ecc) / (1 - ecc));
 
-        // brandt solver calculations, once per orbit
-        double bounds[13];
-        double EA_tab[6 * 13];
-        get_bounds(bounds, EA_tab, ecc);
+      // brandt solver calculations, once per orbit
+      double bounds[13];
+      double EA_tab[6 * 13];
+      get_bounds(bounds, EA_tab, ecc);
 
-        for (size_t i = 0; i < t.size(); i++) {
-            double E, sinE, cosE;
-            double M = n * (t[i] - M0_epoch) - M0;
-            E = solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
-            double g = g_e * ((1 - cosE) / sinE);
-            double g2 = g * g;
-            rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) -
-                        sinw * ((2 * g) / (1 + g2)));
-        }
+      for (size_t i = 0; i < t.size(); i++) {
+        double E, sinE, cosE;
+        double M = n * (t[i] - M0_epoch) - M0;
+        E = solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+        double g = g_e * ((1 - cosE) / sinE);
+        double g2 = g * g;
+        rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) -
+                     sinw * ((2 * g) / (1 + g2)));
+      }
 
-        return rv;
+      return rv;
     }
 
 
@@ -979,7 +977,7 @@ namespace contour
         return E;
     }
 
-    std::vector<double> solver(std::vector<double> M, double ecc)
+    std::vector<double> solver(const std::vector<double> &M, double ecc)
     {
         double esinRadius, ecosRadius;
         // Define sampling points (actually use one more than this)
