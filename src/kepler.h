@@ -43,5 +43,19 @@ namespace murison
     double keplerstart3(double e, double M);
     double eps3(double e, double M, double x);
     double true_anomaly(double t, double period, double ecc, double t_peri);
+
+namespace contour
+{
+    double solver(double M, double ecc);
+    std::vector<double> solver(std::vector<double> M, double ecc);
+    void precompute_fft(const double &ecc, double exp2R[], double exp2I[],
+                        double exp4R[], double exp4I[], double coshI[],
+                        double sinhI[], double ecosR[], double esinR[],
+                        double *esinRadius, double *ecosRadius);
+    double solver_fixed_ecc(double exp2R[], double exp2I[], double exp4R[],
+                            double exp4I[], double coshI[], double sinhI[],
+                            double ecosR[], double esinR[],
+                            const double &esinRadius, const double &ecosRadius,
+                            const double &M, const double &ecc);
 }
 

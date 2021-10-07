@@ -314,4 +314,266 @@ namespace nijenhuis
 
     }
 
-} // namespace kepler
+
+
+// Solve Kepler's equation via the contour integration method described in
+// Philcox et al. (2021). This uses techniques described in Ullisch (2020) to
+// solve the `geometric goat problem'.
+namespace contour
+{
+    // N_it specifies the number of grid-points.
+    const int N_it = 10;
+
+    void precompute_fft(const double &ecc, double exp2R[], double exp2I[],
+                        double exp4R[], double exp4I[], double coshI[],
+                        double sinhI[], double ecosR[], double esinR[],
+                        double *esinRadius, double *ecosRadius) {
+      double freq;
+      // Define sampling points (actually use one more than this)
+      int N_points = N_it - 2;
+      int N_fft = (N_it - 1) * 2;
+
+      // Define contour radius
+      double radius = ecc / 2;
+
+      // Generate e^{ikx} sampling points and precompute real and imaginary
+      // parts
+      for (int jj = 0; jj < N_points; jj++) {
+        // NB: j = jj+1
+        freq = 2.0 * M_PI * (jj + 1) / N_fft;
+        exp2R[jj] = cos(freq);
+        exp2I[jj] = sin(freq);
+        exp4R[jj] = cos(2.0 * freq);
+        exp4I[jj] = sin(2.0 * freq);
+        coshI[jj] = cosh(radius * exp2I[jj]);
+        sinhI[jj] = sinh(radius * exp2I[jj]);
+        ecosR[jj] = ecc * cos(radius * exp2R[jj]);
+        esinR[jj] = ecc * sin(radius * exp2R[jj]);
+      }
+
+      // Precompute e sin(e/2) and e cos(e/2)
+      *esinRadius = ecc * sin(radius);
+      *ecosRadius = ecc * cos(radius);
+    }
+
+    double solver_fixed_ecc(double exp2R[], double exp2I[], double exp4R[],
+                            double exp4I[], double coshI[], double sinhI[],
+                            double ecosR[], double esinR[],
+                            const double &esinRadius, const double &ecosRadius,
+                            const double &M, const double &ecc) {
+
+        double E;
+        double ft_gx2, ft_gx1, this_ell, freq, zR, zI, cosC, sinC, center;
+        double fxR, fxI, ftmp, tmpcosh, tmpsinh, tmpcos, tmpsin;
+
+        // Define sampling points (actually use one more than this)
+        int N_points = N_it - 2;
+
+        // Define contour radius
+        double radius = ecc / 2;
+
+        // Define contour center for each ell and precompute sin(center),
+        // cos(center)
+        if (M < M_PI)
+          center = M + ecc / 2;
+        else
+          center = M - ecc / 2;
+        sinC = sin(center);
+        cosC = cos(center);
+        E = center;
+
+        // Accumulate Fourier coefficients
+        // NB: we halve the range by symmetry, absorbing factor of 2 into ratio
+
+        // Separate out j = 0 piece, which is simpler
+
+        // Compute z in real and imaginary parts (zI = 0 here)
+        zR = center + radius;
+
+        // Compute e*sin(zR) from precomputed quantities
+        tmpsin = sinC * ecosRadius + cosC * esinRadius; // sin(zR)
+
+        // Compute f(z(x)) in real and imaginary parts (fxI = 0)
+        fxR = zR - tmpsin - M;
+
+        // Add to array, with factor of 1/2 since an edge
+        ft_gx2 = 0.5 / fxR;
+        ft_gx1 = 0.5 / fxR;
+
+        ///////////////
+        // Compute for j = 1 to N_points
+        // NB: j = jj+1
+        for (int jj = 0; jj < N_points; jj++) {
+
+          // Compute z in real and imaginary parts
+          zR = center + radius * exp2R[jj];
+          zI = radius * exp2I[jj];
+
+          // Compute f(z(x)) in real and imaginary parts
+          // can use precomputed cosh / sinh / cos / sin for this!
+          tmpcosh = coshI[jj];                          // cosh(zI)
+          tmpsinh = sinhI[jj];                          // sinh(zI)
+          tmpsin = sinC * ecosR[jj] + cosC * esinR[jj]; // e sin(zR)
+          tmpcos = cosC * ecosR[jj] - sinC * esinR[jj]; // e cos(zR)
+
+          fxR = zR - tmpsin * tmpcosh - M;
+          fxI = zI - tmpcos * tmpsinh;
+
+          // Compute 1/f(z) and append to array
+          ftmp = fxR * fxR + fxI * fxI;
+          fxR /= ftmp;
+          fxI /= ftmp;
+
+          ft_gx2 += (exp4R[jj] * fxR + exp4I[jj] * fxI);
+          ft_gx1 += (exp2R[jj] * fxR + exp2I[jj] * fxI);
+      }
+
+      ///////////////
+      // Separate out j = N_it piece, which is simpler
+
+      // Compute z in real and imaginary parts (zI = 0 here)
+      zR = center - radius;
+
+      // Compute sin(zR) from precomputed quantities
+      tmpsin = sinC * ecosRadius - cosC * esinRadius; // sin(zR)
+
+      // Compute f(z(x)) in real and imaginary parts (fxI = 0 here)
+      fxR = zR - tmpsin - M;
+
+      // Add to sum, with 1/2 factor for edges
+      ft_gx2 += 0.5 / fxR;
+      ft_gx1 += -0.5 / fxR;
+
+      // Compute E
+      E += radius * ft_gx2 / ft_gx1;
+      return E;
+    }
+
+    double solver(double M, double ecc)
+    {
+        double E;
+        double ft_gx2, ft_gx1, this_ell, freq, zR, zI, cosC, sinC, esinRadius, ecosRadius, center;
+        double fxR, fxI, ftmp, tmpcosh, tmpsinh, tmpcos, tmpsin;
+
+        // Define sampling points (actually use one more than this)
+        int N_points = N_it - 2;
+        int N_fft = (N_it - 1) * 2;
+
+        // Define contour radius
+        double radius = ecc / 2;
+
+        // Generate e^{ikx} sampling points and precompute real and imaginary parts
+        double exp2R[N_points], exp2I[N_points], exp4R[N_points], exp4I[N_points], coshI[N_points], sinhI[N_points], ecosR[N_points], esinR[N_points];
+        for (int jj = 0; jj < N_points; jj++)
+        {
+            // NB: j = jj+1
+            freq = 2.0 * M_PI * (jj + 1) / N_fft;
+            exp2R[jj] = cos(freq);
+            exp2I[jj] = sin(freq);
+            exp4R[jj] = cos(2.0 * freq);
+            exp4I[jj] = sin(2.0 * freq);
+            coshI[jj] = cosh(radius * exp2I[jj]);
+            sinhI[jj] = sinh(radius * exp2I[jj]);
+            ecosR[jj] = ecc * cos(radius * exp2R[jj]);
+            esinR[jj] = ecc * sin(radius * exp2R[jj]);
+        }
+
+        // Precompute e sin(e/2) and e cos(e/2)
+        esinRadius = ecc * sin(radius);
+        ecosRadius = ecc * cos(radius);
+
+        // Define contour center for each ell and precompute sin(center), cos(center)
+        if (M < M_PI)
+            center = M + ecc / 2;
+        else
+            center = M - ecc / 2;
+        sinC = sin(center);
+        cosC = cos(center);
+        E = center;
+
+        // Accumulate Fourier coefficients
+        // NB: we halve the range by symmetry, absorbing factor of 2 into ratio
+
+        ///////////////
+        // Separate out j = 0 piece, which is simpler
+
+        // Compute z in real and imaginary parts (zI = 0 here)
+        zR = center + radius;
+
+        // Compute e*sin(zR) from precomputed quantities
+        tmpsin = sinC * ecosRadius + cosC * esinRadius; // sin(zR)
+
+        // Compute f(z(x)) in real and imaginary parts (fxI = 0)
+        fxR = zR - tmpsin - M;
+
+        // Add to array, with factor of 1/2 since an edge
+        ft_gx2 = 0.5 / fxR;
+        ft_gx1 = 0.5 / fxR;
+
+        ///////////////
+        // Compute for j = 1 to N_points
+        // NB: j = jj+1
+        for (int jj = 0; jj < N_points; jj++)
+        {
+
+            // Compute z in real and imaginary parts
+            zR = center + radius * exp2R[jj];
+            zI = radius * exp2I[jj];
+
+            // Compute f(z(x)) in real and imaginary parts
+            // can use precomputed cosh / sinh / cos / sin for this!
+            tmpcosh = coshI[jj];                          // cosh(zI)
+            tmpsinh = sinhI[jj];                          // sinh(zI)
+            tmpsin = sinC * ecosR[jj] + cosC * esinR[jj]; // e sin(zR)
+            tmpcos = cosC * ecosR[jj] - sinC * esinR[jj]; // e cos(zR)
+
+            fxR = zR - tmpsin * tmpcosh - M;
+            fxI = zI - tmpcos * tmpsinh;
+
+            // Compute 1/f(z) and append to array
+            ftmp = fxR * fxR + fxI * fxI;
+            fxR /= ftmp;
+            fxI /= ftmp;
+
+            ft_gx2 += (exp4R[jj] * fxR + exp4I[jj] * fxI);
+            ft_gx1 += (exp2R[jj] * fxR + exp2I[jj] * fxI);
+        }
+
+        ///////////////
+        // Separate out j = N_it piece, which is simpler
+
+        // Compute z in real and imaginary parts (zI = 0 here)
+        zR = center - radius;
+
+        // Compute sin(zR) from precomputed quantities
+        tmpsin = sinC * ecosRadius - cosC * esinRadius; // sin(zR)
+
+        // Compute f(z(x)) in real and imaginary parts (fxI = 0 here)
+        fxR = zR - tmpsin - M;
+
+        // Add to sum, with 1/2 factor for edges
+        ft_gx2 += 0.5 / fxR;
+        ft_gx1 += -0.5 / fxR;
+
+        // Compute E
+        E += radius * ft_gx2 / ft_gx1;
+        return E;
+    }
+
+    std::vector<double> solver(std::vector<double> M, double ecc)
+    {
+        double esinRadius, ecosRadius;
+        // Define sampling points (actually use one more than this)
+        int N_points = N_it - 2;
+        double exp2R[N_points], exp2I[N_points], exp4R[N_points], exp4I[N_points], coshI[N_points], sinhI[N_points], ecosR[N_points], esinR[N_points];
+        precompute_fft(ecc, exp2R, exp2I, exp4R, exp4I, coshI, sinhI, ecosR, esinR, &esinRadius, &ecosRadius);
+
+        std::vector<double> E(M.size());
+        for (size_t i = 0; i < M.size(); i++)
+            E[i] = solver_fixed_ecc(exp2R, exp2I, exp4R, exp4I, coshI, sinhI, ecosR, esinR,
+                                    esinRadius, ecosRadius, M[i], ecc);
+        return E;
+    }
+
+}
+
