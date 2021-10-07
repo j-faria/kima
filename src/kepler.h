@@ -36,14 +36,30 @@ namespace nijenhuis
     double true_anomaly(double t, double period, double ecc, double t_peri);
 }
 
-
-namespace murison
+namespace brandt
 {
-    double kepler(double M, double ecc);
-    double ecc_anomaly(double t, double period, double ecc, double time_peri);
-    double keplerstart3(double e, double M);
-    double eps3(double e, double M, double x);
+    double shortsin(const double &x);
+    double EAstart(const double &M, const double &ecc);
+    double solver(const double &M, const double &ecc, double *sinE, double *cosE);
+    void get_bounds(double bounds[], double EA_tab[], double ecc);
+    double solver_fixed_ecc(const double bounds[], const double EA_tab[],
+                            const double &M, const double &ecc, double *sinE,
+                            double *cosE);
+    std::vector<double> solver(std::vector<double> M, double ecc);
+    void to_f(const double &ecc, const double &ome, double *sinf, double *cosf);
+    void solve_kepler(const double &M, const double &ecc, double *sinf,
+                      double *cosf);
     double true_anomaly(double t, double period, double ecc, double t_peri);
+
+    //
+    std::vector<double> keplerian(std::vector<double> t, const double &P,
+                                const double &K, const double &ecc,
+                                const double &w, const double &M0,
+                                const double &M0_epoch);
+
+}
+
+
 
 namespace contour
 {

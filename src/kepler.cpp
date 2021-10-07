@@ -314,9 +314,425 @@ namespace nijenhuis
             f = 2 * M_PI - f;
 
         return f;
-
     }
 
+} // namespace nijenhuis
+
+
+namespace brandt
+{
+    // Evaluate sine with a series expansion.  We can guarantee that the
+    // argument will be <=pi/4, and this reaches double precision (within
+    // a few machine epsilon) at a significantly lower cost than the
+    // function call to sine that obeys the IEEE standard.
+    double shortsin(const double &x)
+    {
+        const double if3 = 1. / 6;
+        const double if5 = 1. / (6. * 20);
+        const double if7 = 1. / (6. * 20 * 42);
+        const double if9 = 1. / (6. * 20 * 42 * 72);
+        const double if11 = 1. / (6. * 20 * 42 * 72 * 110);
+        const double if13 = 1. / (6. * 20 * 42 * 72 * 110 * 156);
+        const double if15 = 1. / (6. * 20 * 42 * 72 * 110 * 156 * 210);
+
+        double x2 = x * x;
+        return x *
+               (1 - x2 * (if3 -
+                          x2 * (if5 - x2 * (if7 - x2 * (if9 - x2 * (if11 - x2 * (if13 - x2 * if15)))))));
+    }
+
+    // Use the second-order series expanion in Raposo-Pulido & Pelaez (2017) in
+    // the singular corner (eccentricity close to 1, mean anomaly close to zero)
+    double EAstart(const double &M, const double &ecc)
+    {
+        const double ome = 1. - ecc;
+        const double sqrt_ome = sqrt(ome);
+
+        const double chi = M / (sqrt_ome * ome);
+        const double Lam = sqrt(8 + 9 * chi * chi);
+        const double S = cbrt(Lam + 3 * chi);
+        const double sigma = 6 * chi / (2 + S * S + 4. / (S * S));
+        const double s2 = sigma * sigma;
+        const double s4 = s2 * s2;
+
+        const double denom = 1.0 / (s2 + 2);
+        const double E =
+            sigma * (1 + s2 * ome * denom *
+                             ((s2 + 20) / 60. +
+                              s2 * ome * denom * denom * (s2 * s4 + 25 * s4 + 340 * s2 + 840) / 1400));
+
+        return E * sqrt_ome;
+    }
+
+
+    double solver(const double &M, const double &ecc, double *sinE, double *cosE)
+    {
+        double bounds[13];
+        double EA_tab[6*13];
+        get_bounds(bounds, EA_tab, ecc);
+
+        double E = solver_fixed_ecc(bounds, EA_tab, M, ecc, sinE, cosE);
+        return E;
+    }
+
+    void get_bounds(double bounds[], double EA_tab[], double ecc)
+    {
+        const double pi = 3.14159265358979323846264338327950288;
+        const double pi_d_12 = 3.14159265358979323846264338327950288 / 12;
+        const double pi_d_6 = 3.14159265358979323846264338327950288 / 6;
+        const double pi_d_4 = 3.14159265358979323846264338327950288 / 4;
+        const double pi_d_3 = 3.14159265358979323846264338327950288 / 3;
+        const double fivepi_d_12 = 3.14159265358979323846264338327950288 * 5. / 12;
+        const double pi_d_2 = 3.14159265358979323846264338327950288 / 2;
+        const double sevenpi_d_12 = 3.14159265358979323846264338327950288 * 7. / 12;
+        const double twopi_d_3 = 3.14159265358979323846264338327950288 * 2. / 3;
+        const double threepi_d_4 = 3.14159265358979323846264338327950288 * 3. / 4;
+        const double fivepi_d_6 = 3.14159265358979323846264338327950288 * 5. / 6;
+        const double elevenpi_d_12 = 3.14159265358979323846264338327950288 * 11. / 12;
+
+        double g2s_e = 0.2588190451025207623489 * ecc;
+        double g3s_e = 0.5 * ecc;
+        double g4s_e = 0.7071067811865475244008 * ecc;
+        double g5s_e = 0.8660254037844386467637 * ecc;
+        double g6s_e = 0.9659258262890682867497 * ecc;
+        double g2c_e = g6s_e;
+        double g3c_e = g5s_e;
+        double g4c_e = g4s_e;
+        double g5c_e = g3s_e;
+        double g6c_e = g2s_e;
+
+        bounds[0] = 0;
+        bounds[1] = pi_d_12 - g2s_e;
+        bounds[2] = pi_d_6 - g3s_e;
+        bounds[3] = pi_d_4 - g4s_e;
+        bounds[4] = pi_d_3 - g5s_e;
+        bounds[5] = fivepi_d_12 - g6s_e;
+        bounds[6] = pi_d_2 - ecc;
+        bounds[7] = sevenpi_d_12 - g6s_e;
+        bounds[8] = twopi_d_3 - g5s_e;
+        bounds[9] = threepi_d_4 - g4s_e;
+        bounds[10] = fivepi_d_6 - g3s_e;
+        bounds[11] = elevenpi_d_12 - g2s_e;
+        bounds[12] = pi;
+
+        double x;
+
+        EA_tab[1] = 1 / (1. - ecc);
+        EA_tab[2] = 0;
+
+        x = 1. / (1 - g2c_e);
+        EA_tab[7] = x;
+        EA_tab[8] = -0.5 * g2s_e * x * x * x;
+        x = 1. / (1 - g3c_e);
+        EA_tab[13] = x;
+        EA_tab[14] = -0.5 * g3s_e * x * x * x;
+        x = 1. / (1 - g4c_e);
+        EA_tab[19] = x;
+        EA_tab[20] = -0.5 * g4s_e * x * x * x;
+        x = 1. / (1 - g5c_e);
+        EA_tab[25] = x;
+        EA_tab[26] = -0.5 * g5s_e * x * x * x;
+        x = 1. / (1 - g6c_e);
+        EA_tab[31] = x;
+        EA_tab[32] = -0.5 * g6s_e * x * x * x;
+
+        EA_tab[37] = 1;
+        EA_tab[38] = -0.5 * ecc;
+
+        x = 1. / (1 + g6c_e);
+        EA_tab[43] = x;
+        EA_tab[44] = -0.5 * g6s_e * x * x * x;
+        x = 1. / (1 + g5c_e);
+        EA_tab[49] = x;
+        EA_tab[50] = -0.5 * g5s_e * x * x * x;
+        x = 1. / (1 + g4c_e);
+        EA_tab[55] = x;
+        EA_tab[56] = -0.5 * g4s_e * x * x * x;
+        x = 1. / (1 + g3c_e);
+        EA_tab[61] = x;
+        EA_tab[62] = -0.5 * g3s_e * x * x * x;
+        x = 1. / (1 + g2c_e);
+        EA_tab[67] = x;
+        EA_tab[68] = -0.5 * g2s_e * x * x * x;
+
+        EA_tab[73] = 1. / (1 + ecc);
+        EA_tab[74] = 0;
+
+        double B0, B1, B2, idx;
+        int i, k;
+        for (i = 0; i < 12; i++)
+        {
+            idx = 1. / (bounds[i + 1] - bounds[i]);
+            k = 6 * i;
+            EA_tab[k] = i * pi_d_12;
+
+            B0 = idx * (-EA_tab[k + 2] - idx * (EA_tab[k + 1] - idx * pi_d_12));
+            B1 = idx * (-2 * EA_tab[k + 2] - idx * (EA_tab[k + 1] - EA_tab[k + 7]));
+            B2 = idx * (EA_tab[k + 8] - EA_tab[k + 2]);
+
+            EA_tab[k + 3] = B2 - 4 * B1 + 10 * B0;
+            EA_tab[k + 4] = (-2 * B2 + 7 * B1 - 15 * B0) * idx;
+            EA_tab[k + 5] = (B2 - 3 * B1 + 6 * B0) * idx * idx;
+        }
+    }
+
+    // Calculate the eccentric anomaly, its sine and cosine, using a variant of
+    // the algorithm suggested in Raposo-Pulido & Pelaez (2017) and used in
+    // Brandt et al. (2020).  Use the series expansion above to generate an
+    // initial guess in the singular corner and use a fifth-order polynomial to
+    // get the initial guess otherwise.  Use series and square root calls to
+    // evaluate sine and cosine, and update their values using series.  Accurate
+    // to better than 1e-15 in E-ecc*sin(E)-M at all mean anomalies and at
+    // eccentricies up to 0.999999.
+    double solver_fixed_ecc(const double bounds[], const double EA_tab[],
+                            const double &M, const double &ecc, double *sinE,
+                            double *cosE)
+    {
+        const double one_sixth = 1. / 6;
+        const double pi = 3.14159265358979323846264338327950288;
+        const double pi_d_4 = 0.25 * pi;
+        const double pi_d_2 = 0.5 * pi;
+        const double threepi_d_4 = 0.75 * pi;
+        const double twopi = 2 * pi;
+
+        int j, k;
+        double E = 0, MA, EA, sinEA, cosEA;
+        double dx, num, denom, dEA, dEAsq_d6;
+        double one_over_ecc = 1e17;
+        if (ecc > 1e-17)
+            one_over_ecc = 1. / ecc;
+
+        int MAsign = 1;
+
+        MA = mod2pi(M);
+        if (MA > pi)
+        {
+            MAsign = -1;
+            MA = twopi - MA;
+        }
+
+        if (ecc < 0.78)
+        {
+            // Use the lookup table for the initial guess.
+            for (j = 11; j > 0; --j)
+                if (MA > bounds[j])
+                    break;
+
+            k = 6 * j;
+            dx = MA - bounds[j];
+            EA =
+                EA_tab[k] + dx * (EA_tab[k + 1] +
+                                  dx * (EA_tab[k + 2] +
+                                        dx * (EA_tab[k + 3] + 
+                                            dx * (EA_tab[k + 4] + 
+                                                dx * EA_tab[k + 5]))));
+
+            // For sinEA, since _EA in [0,pi], sinEA should always be >=0 (no
+            // sign ambiguity).  sqrt is much cheaper than sin.  If |cos|>|sin|,
+            // compute them in reverse order, again using sqrt to avoid a trig
+            // call.  Also, use trig identities, sin with a low argument and the
+            // series expansion to minimize computational cost.
+
+            if (EA <= pi_d_4)
+            {
+                sinEA = shortsin(EA);
+                cosEA = sqrt(1 - sinEA * sinEA);
+            }
+            else if (EA < threepi_d_4)
+            {
+                cosEA = shortsin(pi_d_2 - EA);
+                sinEA = sqrt(1 - cosEA * cosEA);
+            }
+            else
+            {
+                sinEA = shortsin(pi - EA);
+                cosEA = -sqrt(1 - sinEA * sinEA);
+            }
+
+            num = (MA - EA) * one_over_ecc + sinEA;
+            denom = one_over_ecc - cosEA;
+
+            // Second order approximation.
+            dEA = num * denom / (denom * denom + 0.5 * sinEA * num);
+
+            // Apply our correction to EA, sinEA, and cosEA using
+            // series.  Go to second order, since that was our level of
+            // approximation above and will get us to basically machine
+            // precision for eccentricities below 0.78.
+
+            E = MAsign * (EA + dEA);
+            *sinE = MAsign * (sinEA * (1 - 0.5 * dEA * dEA) + dEA * cosEA);
+            *cosE = cosEA * (1 - 0.5 * dEA * dEA) - dEA * sinEA;
+        }
+        else
+        {
+            // Higher eccentricities will require a third-order correction to
+            // achieve machine precision for all values of the eccentric
+            // anomaly.  In the singular corner, they also use a series
+            // expansion rather than the piecewise polynomial fit.
+
+            if (2 * MA + (1 - ecc) > 0.2)
+            {
+                // Use the lookup table for the initial guess as long as we
+                // are not in the singular corner.
+                for (j = 11; j > 0; --j)
+                    if (MA > bounds[j])
+                        break;
+
+                k = 6 * j;
+                dx = MA - bounds[j];
+                EA = EA_tab[k] +
+                     dx * (EA_tab[k + 1] +
+                           dx * (EA_tab[k + 2] +
+                                 dx * (EA_tab[k + 3] + dx * (EA_tab[k + 4] + dx * EA_tab[k + 5]))));
+            }
+            else
+            {
+                // Use the series expansions in the singular corner.
+                EA = EAstart(MA, ecc);
+            }
+
+            if (EA <= pi_d_4)
+            {
+                sinEA = shortsin(EA);
+                cosEA = sqrt(1 - sinEA * sinEA);
+            }
+            else if (EA < threepi_d_4)
+            {
+                cosEA = shortsin(pi_d_2 - EA);
+                sinEA = sqrt(1 - cosEA * cosEA);
+            }
+            else
+            {
+                sinEA = shortsin(pi - EA);
+                cosEA = -sqrt(1 - sinEA * sinEA);
+            }
+
+            num = (MA - EA) * one_over_ecc + sinEA;
+            denom = one_over_ecc - cosEA;
+
+            if (MA > 0.4)
+            {
+                dEA = num * denom / (denom * denom + 0.5 * sinEA * num);
+            }
+            else
+            {
+                dEA = num * (denom * denom + 0.5 * num * sinEA);
+                dEA /= denom * denom * denom + num * (denom * sinEA + one_sixth * num * cosEA);
+            }
+
+            dEAsq_d6 = dEA * dEA * one_sixth;
+
+            // Apply our correction to EA, sinEA, and cosEA using series.  Go to
+            // third order, since that was our level of approximation above and
+            // will get us to basically machine precision at the higher
+            // eccentricities.
+            E = MAsign * (EA + dEA);
+            *sinE = MAsign * (sinEA * (1 - 3 * dEAsq_d6) + dEA * (1 - dEAsq_d6) * cosEA);
+            *cosE = cosEA * (1 - 3 * dEAsq_d6) - dEA * (1 - dEAsq_d6) * sinEA;
+        }
+        
+        return mod2pi(E);
+    }
+
+    std::vector<double> solver(std::vector<double> M, double ecc)
+    {
+        double bounds[13];
+        double EA_tab[6*13];
+        get_bounds(bounds, EA_tab, ecc);
+
+        std::vector<double> E(M.size());
+        double sinE, cosE;
+        for (size_t i = 0; i < M.size(); i++)
+            E[i] = solver_fixed_ecc(bounds, EA_tab, M[i], ecc, &sinE, &cosE);
+        return E;
+    }
+
+    void to_f(const double &ecc, const double &ome, double *sinf, double *cosf)
+    {
+        double denom = 1 + (*cosf);
+        if (denom > 1.0e-10)
+        {
+            double tanf2 = sqrt((1 + ecc) / ome) * (*sinf) / denom; // tan(0.5*f)
+            double tanf2_2 = tanf2 * tanf2;
+
+            // Then we compute sin(f) and cos(f) using:
+            // sin(f) = 2*tan(0.5*f)/(1 + tan(0.5*f)^2), and
+            // cos(f) = (1 - tan(0.5*f)^2)/(1 + tan(0.5*f)^2)
+            denom = 1 / (1 + tanf2_2);
+            *sinf = 2 * tanf2 * denom;
+            *cosf = (1 - tanf2_2) * denom;
+        }
+        else
+        {
+            // If cos(E) = -1, E = pi and tan(0.5*E) -> inf and f = E = pi
+            *sinf = 0;
+            *cosf = -1;
+        }
+    }
+
+    void solve_kepler(const double &M, const double &ecc, double *sinf,
+                      double *cosf)
+    {
+        solver(M, ecc, sinf, cosf);
+        to_f(ecc, 1 - ecc, sinf, cosf);
+    }
+
+    double true_anomaly(double t, double period, double ecc, double t_peri)
+    {
+        double n = 2. * M_PI / period; // mean motion
+        double M = n * (t - t_peri);   // mean anomaly
+
+        // Solve Kepler's equation
+        double sinE, cosE;
+        double E = solver(M, ecc, &sinE, &cosE);
+        // std::cout << "brandt E:" << E << std::endl;
+
+        // Calculate true anomaly
+        double f = acos((cosE - ecc) / (1 - ecc * cosE));
+        return f;
+    }
+
+
+
+    //
+    std::vector<double> keplerian(std::vector<double> t, const double &P,
+                                const double &K, const double &ecc,
+                                const double &w, const double &M0,
+                                const double &M0_epoch)
+    {
+        // allocate RVs
+        std::vector<double> rv(t.size());
+
+        // mean motion, once per orbit
+        double n = 2. * M_PI / P;
+        // sin and cos of argument of periastron, once per orbit
+        double sinw, cosw;
+        sincos(w, &sinw, &cosw);
+        // ecentricity factor for g, once per orbit
+        double g_e = sqrt((1 + ecc) / (1 - ecc));
+
+        // brandt solver calculations, once per orbit
+        double bounds[13];
+        double EA_tab[6 * 13];
+        get_bounds(bounds, EA_tab, ecc);
+
+        for (size_t i = 0; i < t.size(); i++) {
+            double E, sinE, cosE;
+            double M = n * (t[i] - M0_epoch) - M0;
+            E = solver_fixed_ecc(bounds, EA_tab, M, ecc, &sinE, &cosE);
+            double g = g_e * ((1 - cosE) / sinE);
+            double g2 = g * g;
+            rv[i] = K * (cosw * ((1 - g2) / (1 + g2) + ecc) -
+                        sinw * ((2 * g) / (1 + g2)));
+        }
+
+        return rv;
+    }
+
+
+
+}
 
 
 // Solve Kepler's equation via the contour integration method described in
