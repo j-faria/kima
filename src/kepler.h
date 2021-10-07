@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+double mod2pi(const double &angle);
+
 namespace nijenhuis
 {
     inline double npy_mod(double a, double b);

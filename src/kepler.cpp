@@ -1,5 +1,29 @@
 #include "kepler.h"
 
+const double TWO_PI = M_PI * 2;
+
+// modulo 2pi
+double mod2pi(const double &angle) {
+    if (angle < TWO_PI && angle >= 0) return angle;
+
+    if (angle >= TWO_PI)
+    {
+        const double M = angle - TWO_PI;
+        if (M > TWO_PI)
+            return fmod(M, TWO_PI);
+        else
+            return M;
+    }
+    else {
+        const double M = angle + TWO_PI;
+        if (M < 0)
+            return fmod(M, TWO_PI) + TWO_PI;
+        else
+            return M;
+    }
+}
+
+
 namespace murison
 {
     // A solver for Kepler's equation based on
