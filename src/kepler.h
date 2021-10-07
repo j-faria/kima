@@ -1,8 +1,30 @@
 #pragma once
 
 #include <cmath>
+#include <vector>
+#include <execution>
+#include <algorithm>
+#include <iostream>
 
 double mod2pi(const double &angle);
+
+namespace murison
+{
+    double solver(double M, double ecc);
+    std::vector<double> solver(std::vector<double> M, double ecc);
+    double ecc_anomaly(double t, double period, double ecc, double time_peri);
+    double start3(double e, double M);
+    double eps3(double e, double M, double x);
+    double true_anomaly(double t, double period, double ecc, double t_peri);
+
+    //
+    std::vector<double> keplerian(std::vector<double> t, const double &P,
+                                const double &K, const double &ecc,
+                                const double &w, const double &M0,
+                                const double &M0_epoch);
+
+}
+
 
 namespace nijenhuis
 {

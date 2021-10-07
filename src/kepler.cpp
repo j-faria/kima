@@ -24,12 +24,12 @@ double mod2pi(const double &angle) {
 }
 
 
+// A solver for Kepler's equation based on
+// "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
 namespace murison
 {
-    // A solver for Kepler's equation based on
-    // "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
 
-    double kepler(double M, double ecc)
+    double solver(double M, double ecc)
     {
         double tol;
         if (ecc < 0.8)
@@ -37,8 +37,8 @@ namespace murison
         else
             tol = 1e-13;
 
-        double Mnorm = fmod(M, 2. * M_PI);
-        double E0 = keplerstart3(ecc, Mnorm);
+        double Mnorm = mod2pi(M);
+        double E0 = start3(ecc, Mnorm);
         double dE = tol + 1;
         double E = M;
         int count = 0;
@@ -55,9 +55,16 @@ namespace murison
         return E;
     }
 
+    std::vector<double> solver(std::vector<double> M, double ecc)
+    {
+        std::vector<double> E(M.size());
+        for (size_t i = 0; i < M.size(); i++)
+            E[i] = solver(M[i], ecc);
+        return E;
+    }
+
     /**
         Calculates the eccentric anomaly at time t by solving Kepler's equation.
-        See "A Practical Method for Solving the Kepler Equation", Marc A. Murison, 2006
 
         @param t the time at which to calculate the eccentric anomaly.
         @param period the orbital period of the planet
@@ -67,30 +74,9 @@ namespace murison
     */
     double ecc_anomaly(double t, double period, double ecc, double time_peri)
     {
-        double tol;
-        if (ecc < 0.8)
-            tol = 1e-14;
-        else
-            tol = 1e-13;
-
         double n = 2. * M_PI / period;  // mean motion
         double M = n * (t - time_peri); // mean anomaly
-        double Mnorm = fmod(M, 2. * M_PI);
-        double E0 = keplerstart3(ecc, Mnorm);
-        double dE = tol + 1;
-        double E = M;
-        int count = 0;
-        while (dE > tol)
-        {
-            E = E0 - eps3(ecc, Mnorm, E0);
-            dE = std::abs(E - E0);
-            E0 = E;
-            count++;
-            // failed to converge, this only happens for nearly parabolic orbits
-            if (count == 100)
-                break;
-        }
-        return E;
+        return solver(M, ecc);
     }
 
     /**
@@ -101,7 +87,7 @@ namespace murison
         @param M mean anomaly (in radians)
         @return starting value for the eccentric anomaly.
     */
-    double keplerstart3(double e, double M)
+    double start3(double e, double M)
     {
         double t34 = e * e;
         double t35 = e * t34;
@@ -143,15 +129,48 @@ namespace murison
     double true_anomaly(double t, double period, double ecc, double t_peri)
     {
         double E = ecc_anomaly(t, period, ecc, t_peri);
-        // double E = solve_kepler(t, period, ecc, t_peri);
         double cosE = cos(E);
         double f = acos((cosE - ecc) / (1 - ecc * cosE));
         // acos gives the principal values ie [0:PI]
         // when E goes above PI we need another condition
         if (E > M_PI)
-            f = 2 * M_PI - f;
-
+            f = TWO_PI - f;
         return f;
+    }
+
+
+    //
+    std::vector<double> keplerian(std::vector<double> t, const double &P,
+                                const double &K, const double &ecc,
+                                const double &w, const double &M0,
+                                const double &M0_epoch)
+    {
+        // allocate RVs
+        std::vector<double> rv(t.size());
+
+        // mean motion, once per orbit
+        double n = 2. * M_PI / P;
+        // sin and cos of argument of periastron, once per orbit
+        double sinw, cosw;
+        sincos(w, &sinw, &cosw);
+        // ecentricity factor for g, once per orbit
+        double g_e = sqrt((1 + ecc) / (1 - ecc));
+
+        for (size_t i = 0; i < t.size(); i++) {
+            double E, cosE;
+            double M = n * (t[i] - M0_epoch) - M0;
+            E = solver(M, ecc);
+            // sincos(E, &sinE, &cosE);
+            cosE = cos(E);
+            double f = acos((cosE - ecc) / (1 - ecc * cosE));
+            // acos gives the principal values ie [0:PI]
+            // when E goes above PI we need another condition
+            if (E > M_PI)
+                f = TWO_PI - f;
+            rv[i] = K * (cos(f + w) + ecc * cosw);
+        }
+
+        return rv;
     }
 
 } // namespace murison
