@@ -176,19 +176,15 @@ namespace murison
 } // namespace murison
 
 
+// A solver for Kepler's equation based on:
+//    Nijenhuis (1991)
+//    http://adsabs.harvard.edu/abs/1991CeMDA..51..319N
+// and
+//    Markley (1995)
+//    http://adsabs.harvard.edu/abs/1995CeMDA..63..101M
 // Code from https://github.com/dfm/kepler.py
 namespace nijenhuis
 {
-    // A solver for Kepler's equation based on:
-    //
-    // Nijenhuis (1991)
-    // http://adsabs.harvard.edu/abs/1991CeMDA..51..319N
-    //
-    // and
-    //
-    // Markley (1995)
-    // http://adsabs.harvard.edu/abs/1995CeMDA..63..101M
-
     // Implementation from numpy
     inline double npy_mod(double a, double b)
     {
@@ -259,17 +255,15 @@ namespace nijenhuis
         @param ecc the orbital eccentricity
         @return E the eccentric anomaly
     */
-    double kepler(double M, double ecc)
+    double solver(double M, double ecc)
     {
-        const double two_pi = 2 * M_PI;
-
         // Wrap M into the range [0, 2*pi]
-        M = npy_mod(M, two_pi);
+        M = npy_mod(M, TWO_PI);
 
         //
         bool high = M > M_PI;
         if (high)
-            M = two_pi - M;
+            M = TWO_PI - M;
 
         // Get the starter
         double ome = 1.0 - ecc;
@@ -279,10 +273,19 @@ namespace nijenhuis
         E = refine_estimate(M, ecc, ome, E);
 
         if (high)
-            E = two_pi - E;
+            E = TWO_PI - E;
 
         return E;
     }
+
+    std::vector<double> solver(std::vector<double> M, double ecc)
+    {
+        std::vector<double> E(M.size());
+        for (size_t i = 0; i < M.size(); i++)
+            E[i] = solver(M[i], ecc);
+        return E;
+    }
+
 
     /**
         Calculates the true anomaly at time t.
@@ -300,7 +303,7 @@ namespace nijenhuis
         double M = n * (t - t_peri);   // mean anomaly
 
         // Solve Kepler's equation
-        double E = kepler(M, ecc);
+        double E = solver(M, ecc);
 
         // Calculate true anomaly
         double cosE = cos(E);

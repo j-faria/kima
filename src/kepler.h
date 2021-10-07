@@ -31,7 +31,8 @@ namespace nijenhuis
     inline double npy_mod(double a, double b);
     inline double get_markley_starter(double M, double ecc, double ome);
     inline double refine_estimate(double M, double ecc, double ome, double E);
-    double kepler(double M, double ecc);
+    double solver(double M, double ecc);
+    std::vector<double> solver(std::vector<double> M, double ecc);
     double true_anomaly(double t, double period, double ecc, double t_peri);
 }
 
