@@ -6,7 +6,7 @@ GCEM_PATH = vendor/gcem/include
 
 #export CXX = g++
 
-CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
+CXXFLAGS += -Wno-inconsistent-missing-override
 
 default_pie := $(shell $(CXX) -v 2>&1 >/dev/null | grep enable-default-pie)
 ifneq ($(default_pie),)

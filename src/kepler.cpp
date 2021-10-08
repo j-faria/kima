@@ -150,8 +150,8 @@ namespace murison
       // mean motion, once per orbit
       double n = 2. * M_PI / P;
       // sin and cos of argument of periastron, once per orbit
-      double sinw, cosw;
-      sincos(w, &sinw, &cosw);
+      double sinw = sin(w), cosw = cos(w);
+      //   sincos(w, &sinw, &cosw);
       // ecentricity factor for g, once per orbit
       double g_e = sqrt((1 + ecc) / (1 - ecc));
 
@@ -159,7 +159,6 @@ namespace murison
         double E, cosE;
         double M = n * (t[i] - M0_epoch) - M0;
         E = solver(M, ecc);
-        // sincos(E, &sinE, &cosE);
         cosE = cos(E);
         double f = acos((cosE - ecc) / (1 - ecc * cosE));
         // acos gives the principal values ie [0:PI]
@@ -705,8 +704,8 @@ namespace brandt
       // mean motion, once per orbit
       double n = 2. * M_PI / P;
       // sin and cos of argument of periastron, once per orbit
-      double sinw, cosw;
-      sincos(w, &sinw, &cosw);
+      double sinw = sin(w), cosw = cos(w);
+      // sincos(w, &sinw, &cosw);
       // ecentricity factor for g, once per orbit
       double g_e = sqrt((1 + ecc) / (1 - ecc));
 
