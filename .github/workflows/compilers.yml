@@ -3,7 +3,8 @@ name: compilers CI
 on:
   push:
     branches:
-      - beta
+      - clang
+      # - beta
 
 jobs:
 
