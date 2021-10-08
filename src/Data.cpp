@@ -62,7 +62,8 @@ istream& operator>>(istream& ins, data_t& data)
  *
  * @param filename   the name of the file
  * @param units      units of the RVs and errors, either "kms" or "ms"
- * @param skip       number of lines to skip in the beginning of the file (default = 2)
+ * @param skip       number of lines to skip in the beginning of the file
+ * (default = 2)
  * @param indicators
  */
 void RVData::load(const string filename, const string units, int skip,
@@ -503,15 +504,139 @@ int RVData::get_trend_magnitude(int degree) const
 }
 
 
+/*******************************************************************************
  * 
- * Returns the expected order of magnitude of the trend coefficient of degree 
- * `degree` supported by the data. It calculates the order of magnitude of 
- *    RVspan / timespan^degree
-*/
-int Data::get_trend_magnitude(int degree) const
+ * LCData class
+ * 
+ ******************************************************************************/
+
+LCData LCData::LCinstance;
+LCData::LCData() {}
+
+
+/**
+ * @brief Load RV data from a file.
+ *
+ * Read a tab/space separated file with columns
+ * ```
+ *   time  vrad  error  quant  error
+ *   ...   ...   ...    ...    ...
+ * ```
+ *
+ * @param filename   the name of the file
+ * @param units      units of the RVs and errors, either "kms" or "ms"
+ * @param skip       number of lines to skip in the beginning of the file
+ * (default = 2)
+ * @param indicators
+ */
+void LCData::load(const string filename, int skip)
 {
-  return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
+    data_t data;
+
+    // Empty the vectors
+    t.clear();
+    flux.clear();
+    sig.clear();
+
+    // Read the file into the data container
+    ifstream infile(filename);
+    infile >> data;
+
+    // Complain if something went wrong.
+    if (!infile.eof()) {
+        printf("Could not read data file (%s)!\n", filename.c_str());
+        exit(1);
+    }
+    if (data.size() - skip == 0) {
+        printf("Data file (%s) seems to be empty!\n", filename.c_str());
+        exit(1);
+    }
+
+    if (skip < 0) skip = 0;
+
+    // number of "columns" of data
+    int ncol = data[skip].size();
+    if (ncol < 3) {
+        printf("Data file (%s) contains less than 3 columns!\n",
+               filename.c_str());
+        exit(1);
+    }
+
+    infile.close();
+
+    datafile = filename;
+    dataskip = skip;
+
+    double factor = 1.;
+    // if (units == "kms") factor = 1E3;
+
+    for (size_t n = 0; n < data.size(); n++) {
+        if (n < skip) continue;
+        t.push_back(data[n][0]);
+        flux.push_back(data[n][1] * factor);
+        sig.push_back(data[n][2] * factor);
+    }
+
+    // epoch for the mean anomaly, by default the time of the first observation
+    M0_epoch = t[0];
+
+#if VERBOSE
+    // How many points did we read?
+    printf("# Loaded %zu data points from file %s\n", t.size(),
+           filename.c_str());
+#endif
 }
+
+double LCData::get_flux_var() const
+{
+    double sum = accumulate(begin(flux), end(flux), 0.0);
+    double mean = sum / flux.size();
+
+    double accum = 0.0;
+    for_each(begin(flux), end(flux),
+             [&](const double d) { accum += (d - mean) * (d - mean); });
+    return accum / (flux.size() - 1);
+}
+
+/**
+ * @brief Calculate the maximum slope "allowed" by the data
+ *
+ * This calculates peak-to-peak(RV) / peak-to-peak(time), which is a good upper
+ * bound for the linear slope of a given dataset. When there are multiple
+ * instruments, the function returns the maximum of this peak-to-peak ratio of
+ * all individual instruments.
+ */
+double LCData::topslope() const
+{
+    return get_flux_span() / get_timespan();
+}
+
+/**
+ * @brief Calculate the total span (peak to peak) of the radial velocities
+ */
+double LCData::get_flux_span() const
+{
+    const auto min = min_element(flux.begin(), flux.end());
+    const auto max = max_element(flux.begin(), flux.end());
+    return *max - *min;
+}
+
+
+/**
+ * @brief Order of magnitude of trend coefficient (of degree) given the data
+ *
+ * Returns the expected order of magnitude of the trend coefficient of degree
+ * `degree` supported by the data. It calculates the order of magnitude of
+ *    RVspan / timespan^degree
+ */
+int LCData::get_trend_magnitude(int degree) const
+{
+    return (int)round(log10(get_flux_span() / pow(get_timespan(), degree)));
+}
+
+
+
+
 
 /**
  * @brief Find pathnames matching a pattern

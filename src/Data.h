@@ -153,3 +153,85 @@ void load_multi(Args&&... args)
     RVData::get_instance().load_multi(args...);
 }
 
+
+
+class LCData {
+   private:
+    vector<double> t, flux, sig;
+    // vector<int> obsi;
+
+    friend class TRANSITmodel;
+
+   public:
+    LCData();
+
+    // to read data from one file, one instrument
+    void load(const string filename, int skip = 0);
+
+    string datafile;
+    vector<string> datafiles;
+    string dataunits = "";
+    int dataskip;
+    bool datamulti;  // multiple instruments? not sure if needed
+    int number_instruments = 1;
+
+    /// docs for M0_epoch
+    double M0_epoch;
+
+    // to deprecate a function (C++14), put
+    // [[deprecated("Replaced by bar, which has an improved interface")]]
+    // before the definition
+
+    /// Get the total number of RV points
+    int N() const { return t.size(); }
+
+    /// @brief Get the array of times @return const vector<double>&
+    const vector<double>& get_t() const { return t; }
+
+    /// @brief Get the array of flux @return const vector<double>&
+    const vector<double>& get_flux() const { return flux; }
+    /// Get the array of errors @return const vector<double>&
+    const vector<double>& get_sig() const { return sig; }
+
+    /// @brief Get the mininum (starting) time @return double
+    double get_t_min() const { return *min_element(t.begin(), t.end()); }
+    /// @brief Get the maximum (ending) time @return double
+    double get_t_max() const { return *max_element(t.begin(), t.end()); }
+    /// @brief Get the timespan @return double
+    double get_timespan() const { return get_t_max() - get_t_min(); }
+    double get_t_span() const { return get_t_max() - get_t_min(); }
+    /// @brief Get the middle time @return double
+    double get_t_middle() const { return get_t_min() + 0.5 * get_timespan(); }
+
+    /// @brief Get the mininum flux @return double
+    double get_flux_min() const { return *min_element(flux.begin(), flux.end()); }
+    /// @brief Get the maximum flux @return double
+    double get_flux_max() const { return *max_element(flux.begin(), flux.end()); }
+    /// @brief Get the flux span @return double
+    double get_flux_span() const;
+    /// @brief Get the variance of the flux @return double
+    double get_flux_var() const;
+    /// @brief Get the standard deviation of the flux @return double
+    double get_flux_std() const { return sqrt(get_flux_var()); }
+
+
+    /// @brief Get the maximum slope allowed by the data. @return double
+    double topslope() const;
+    /// @brief Order of magnitude of trend coefficient (of degree) given the
+    /// data
+    int get_trend_magnitude(int degree) const;
+
+   private:
+    // Singleton
+    static LCData LCinstance;
+
+   public:
+    static LCData& get_instance() { return LCinstance; }
+};
+
+
+template <class... Args>
+void load_lc(Args&&... args)
+{
+    LCData::get_instance().load(args...);
+}
