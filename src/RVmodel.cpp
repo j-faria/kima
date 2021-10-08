@@ -1,19 +1,8 @@
 #include "RVmodel.h"
-// #include "DNest4.h"
-// #include "RNG.h"
-// #include "Utils.h"
-// #include "Data.h"
-// #include <cmath>
-// #include <limits>
-// #include <fstream>
-// #include <chrono>
-// #include <cmath>
-// #include <time.h>
 
 using namespace std;
 using namespace Eigen;
 using namespace DNest4;
-using namespace nijenhuis;
 
 #define TIMING false
 

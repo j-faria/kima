@@ -8,9 +8,9 @@
 #include "distributions/InvGamma.h"
 
 #include "Data.h"
+#include "ConditionalPrior.h"
 #include "RVmodel.h"
 #include "RVFWHMmodel.h"
-#include "ConditionalPrior.h"
 
 const double PI = M_PI;
 
