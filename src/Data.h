@@ -1,16 +1,17 @@
-// (c) 2019 João Faria
-// This file is part of kima, which is licensed under the MIT license (see LICENSE for details)
 #pragma once
 
-#include <string>
-#include <stdexcept>
-#include <sstream>
-#include <vector>
+#include <glob.h>  // glob(), globfree()
 #include <algorithm>
-#include <set>
 #include <cmath>
-#include <glob.h> // glob(), globfree()
-#include <string.h> // memset()
+#include <cstring>  // memset()
+#include <fstream>
+#include <iostream>
+#include <numeric>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace std;
 

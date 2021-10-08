@@ -1,16 +1,4 @@
-// (c) 2019 João Faria
-// This file is part of kima, which is licensed under the MIT license (see LICENSE for details)
-
 #include "Data.h"
-#include <fstream>
-#include <iostream>
-#include <iomanip>
-#include <sstream>
-#include <numeric>
-#include <algorithm>
-#include <vector>
-#include <string>
-#include <set>
 
 #ifndef VERBOSE
 #define VERBOSE true
