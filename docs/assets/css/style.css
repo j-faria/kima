@@ -308,8 +308,8 @@ h5 { margin-top: 20px; }
 .post a:not(.btn):not([class^="carousel-"]):not([class^="list-"]):not(.no-underline):hover { color: #007bff; }
 .post a:not(.btn):not([class^="carousel-"]):not([class^="list-"]):not(.no-underline)::after { content: ""; display: block; height: 0.15em; margin-top: -0.15em; width: 0; background: #007bff; transition: width 0.35s; }
 .post a:not(.btn):not([class^="carousel-"]):not([class^="list-"]):not(.no-underline):hover::after { width: 100%; }
-.post pre { background: #f8f9fa; border: 1px solid #ddd; color: #343a40; font-family: monospace; font-size: 14px; line-height: 20px; margin-bottom: 1.6em; max-width: 100%; padding: 1em 1.5em; display: block; page-break-inside: avoid; overflow: auto; word-wrap: break-word; }
-.post code.highlighter-rouge { background-color: #f8f9fa; color: #343a40; border-radius: 3px; margin: 0; padding: 0.2em 0.65em; }
+.post pre { background: #f8f9fa; border: 1px solid #ddd; color: #343a40; font-family: monospace; line-height: 20px; margin-bottom: 1.6em; max-width: 100%; padding: 1em 1.5em; display: block; page-break-inside: avoid; overflow: auto; word-wrap: break-word; }
+.post code.highlighter-rouge { background-color: #f8f9fa; color: #28a745; border-radius: 3px; margin: 0; padding: 0.2em 0.2em; }
 .post blockquote { border-left: 0.25em solid #007bff; color: #6c757d; padding: 0 1em; }
 .post table { display: block; overflow-x: auto; margin: 1rem 0; }
 .post table td, .post table th { border: 1px solid #ddd; padding: 8px 16px; }
@@ -572,22 +572,30 @@ h5 { margin-top: 20px; }
 .timeline-body .timeline-item .content { margin: 40px; padding-bottom: 20px; border-bottom: 1px dashed #343a40; }
 .timeline-body .timeline-item .content .date { margin-top: -5px; margin-bottom: 15px; color: #6c757d; }
 
-.toc__cont { position: fixed; margin-left: 0px; left: 0; width: 50px; top: 155px; z-index: 10; background-color: salmon; overflow: hidden; white-space: nowrap; transition: width .3s ease; }
-.toc__cont:hover { width: fit-content; }
+.toc__cont { position: fixed; margin-left: 0px; left: 0.2vw; width: 70px; top: 155px; z-index: 10; background-color: white; opacity: 0.2; overflow: hidden; white-space: nowrap; -webkit-transition: width .5s ease-out .2s; -moz-transition: width .5s ease-out .2s; -o-transition: width .5s ease-out .2s; transition: width .5s ease-out .2s; }
+.toc__cont:hover { opacity: 1; width: fit-content; width: -moz-fit-content; }
 @media screen and (max-width: 600px) { .toc__cont { display: none; } }
 
-.toc { list-style: none; padding-left: 5px; color: black; }
+.toc { list-style: none; padding-left: 10px; padding-right: 20px; color: black; }
 .toc:first-child { padding-top: 1rem; }
 
 .toc__items a { transition: all .3s ease; margin-left: 0; margin-right: 0; text-decoration: none; color: black; }
 .toc__items a:after { transition: all 1s ease; }
 .toc__items:hover a:after { opacity: 1; }
 
-.api summary { font-size: larger; margin: 0; }
+.api summary { margin: 0; }
 .api h2 { margin-top: 1em; font-size: large; padding-top: 1em; }
-.api h3 { margin-top: 1em; font-size: large; padding-top: 0; padding-left: 1em; }
-.api p { padding-left: 2.5em; margin-bottom: 0.5em; }
+.api h3 { margin-top: 1em; font-size: large; padding-top: 0; }
+.api p { margin-bottom: 0.5em; }
 .api ul { list-style: none; }
 .api li { padding-left: 1em; }
 .api pre { background: #f8f9fa; color: #343a40; font-family: monospace; font-size: 16px; line-height: 1em; max-width: 100%; margin: 1em 0 0 2em; padding: 0.5em 0 0.5em 0.5em; display: block; page-break-inside: avoid; white-space: pre-wrap; /* css-3 */ white-space: -moz-pre-wrap; /* Mozilla, since 1999 */ white-space: -pre-wrap; /* Opera 4-6 */ white-space: -o-pre-wrap; /* Opera 7 */ word-wrap: break-word; /* Internet Explorer 5.5+ */ }
 .api code.highlighter-rouge { background-color: white; color: #343a40; border-radius: 3px; margin: 0; padding: 0.2em 0.65em; }
+
+.faq summary { font-size: 1.2rem; font-weight: 600; color: #333; margin-bottom: 1rem; outline: none; border-radius: 0.25rem; text-align: left; cursor: pointer; position: relative; }
+
+.faq details > summary::after { position: absolute; content: "+"; right: 20px; }
+
+.faq details[open] > summary::after { position: absolute; content: "-"; right: 20px; }
+
+.faq details > summary::-webkit-details-marker { display: none; }

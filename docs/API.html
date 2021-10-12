@@ -1,0 +1,2520 @@
+<!DOCTYPE html>
+
+<html lang="en" class="h-100">
+
+<head>
+
+  
+  
+
+  
+
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="kima | API">
+  <meta property="og:description" content="A data analysis framework  for exoplanet detection">
+
+  <title>kima | API</title>
+  <meta name="description" content="A data analysis framework  for exoplanet detection">
+
+  
+  <!-- <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico"> -->
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+
+
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.10.0/css/all.css">
+
+  <!-- Bootstrap CSS CDN -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+
+  <!-- Animate CSS CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.css" type="text/css"/>
+  
+  <!-- KaTeX CSS CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/katex.min.css" integrity="sha384-zTROYFVGOfTw7JV7KUu8udsvW2fx4lWOsCEDqhBreBwlHI4ioVRtmIvEThzJHGET" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/katex.min.js" integrity="sha384-GxNFqL3r9uRJQhR+47eDxuPoNE7yLftQM8LcxzgS4HT73tp970WS/wV5p8UzCOmb" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/contrib/auto-render.min.js" integrity="sha384-vZTG03m+2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl" crossorigin="anonymous"></script>
+  <script>
+      document.addEventListener("DOMContentLoaded", function() {
+          renderMathInElement(document.body, {
+            // customised options
+            // • auto-render specific keys, e.g.:
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false},
+                {left: '\\[', right: '\\]', display: true}
+            ],
+            // • rendering keys, e.g.:
+            throwOnError : false
+          });
+      });
+  </script>
+
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/assets/css/style.css" type="text/css">
+
+</head>
+
+
+<body class="d-flex flex-column h-100">
+
+  <main class="flex-shrink-0 container mt-5">
+  <nav class="navbar navbar-expand-md navbar-light">
+
+  <a class="navbar-brand" href="/"><b>kima</b></a>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+    <div class="navbar-nav ml-auto"><a class="nav-item nav-link " href="/pages/docs-parts/analysis-of-results/analysis-of-results"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/analysis-of-results/interactive-analysis"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/analysis-of-results/quick-plots"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/background-model"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/building-models"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/general-settings"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/known-objects"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/np-planets"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/setting-priors"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/types-of-models"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/getting-started"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/installation"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/loading-data/activity-correlations"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/loading-data/loading-data"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/tldr"></a>
+      
+      <a class="nav-item nav-link " href="/about">About</a>
+      
+      <a class="nav-item nav-link " href="/news">News</a>
+      
+      <a class="nav-item nav-link " href="/docs/">Documentation</a>
+      
+      <a class="nav-item nav-link active" href="/API">API</a>
+      
+      
+      
+      <a class="nav-item nav-link" href="https://github.com/j-faria/kima" alt="Github repository">
+        <i class="fab fa-github"></i>
+      </a>
+
+    </div>
+  </div>
+  
+</nav>
+  <div class="col-lg-10 mx-auto mt-5 post">
+  <!-- https://github.com/vfeskov/vanilla-back-to-top -->
+<script src="https://unpkg.com/vanilla-back-to-top@7.2.1/dist/vanilla-back-to-top.min.js"></script>
+
+<script>addBackToTop({
+  diameter: 30, // px
+  cornerOffset: 17, // px
+  showWhenScrollTopIs: 50, // px
+  backgroundColor: 'rgb(255, 82, 82)',
+  textColor: '#fff'
+})</script>
+
+<p>Below is the complete description of the <strong>kima</strong> and <strong>pykima</strong> APIs.</p>
+
+<div class="api">
+
+  <p><strong>kima</strong> classes and modules</p>
+  <details>
+    <summary> Class <code>RVData</code> </summary>
+
+    <head>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin="" />
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin="" />
+<style>:root{--highlight-color:#fe9}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:1em;line-height:1em}h2{font-size:75em;margin:1em 0 .50em 0}h3{font-size:0.5em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#sidebar toc{padding-top:0}#content{width:70%;max-width:100ch;padding:2em 2em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}.docs-content{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{font-size:0.8em;padding-left:0em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin=""></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+    <div class="docs-content">
+<article id="content">
+<header>
+</header>
+<section id="section-intro">
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-variables-RVData">
+Variables
+</h2>
+<dl>
+<dt id="RVData.indicator_correlations"><code class="name"> : bool <span class="ident">indicator_correlations</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.number_indicators"><code class="name"> : int <span class="ident">number_indicators</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.indicator_names"><code class="name"> : vector&lt; string &gt; <span class="ident">indicator_names</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.datafile"><code class="name"> : string <span class="ident">datafile</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.datafiles"><code class="name"> : vector&lt; string &gt; <span class="ident">datafiles</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.dataunits"><code class="name"> : string <span class="ident">dataunits</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.dataskip"><code class="name"> : int <span class="ident">dataskip</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.datamulti"><code class="name"> : bool <span class="ident">datamulti</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.number_instruments"><code class="name"> : int <span class="ident">number_instruments</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.M0_epoch"><code class="name"> : double <span class="ident">M0_epoch</span></code></dt>
+<dd>
+<div class="desc"><p>docs for M0_epoch </p></div>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-functions-RVData">
+Methods
+</h2>
+<dl>
+<dt id="RVData.N"><code class="name flex">
+<span>int <span class="ident">N</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the total number of RV points. </p></div>
+</dd>
+<dt id="RVData.Ninstruments"><code class="name flex">
+<span>int <span class="ident">Ninstruments</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the number of instruments. </p></div>
+</dd>
+<dt id="RVData.get_RV_max"><code class="name flex">
+<span>double <span class="ident">get_RV_max</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the maximum RV. </p></div>
+</dd>
+<dt id="RVData.get_RV_min"><code class="name flex">
+<span>double <span class="ident">get_RV_min</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the mininum RV. </p></div>
+</dd>
+<dt id="RVData.get_RV_span"><code class="name flex">
+<span>double <span class="ident">get_RV_span</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the RV span. </p></div>
+</dd>
+<dt id="RVData.get_RV_std"><code class="name flex">
+<span>double <span class="ident">get_RV_std</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the standard deviation of the RVs. </p></div>
+</dd>
+<dt id="RVData.get_RV_var"><code class="name flex">
+<span>double <span class="ident">get_RV_var</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the variance of the RVs. </p></div>
+</dd>
+<dt id="RVData.get_actind"><code class="name flex">
+<span>const vector&lt; vector&lt; double &gt; &gt; &amp; <span class="ident">get_actind</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the array of activity indictators. </p></div>
+</dd>
+<dt id="RVData.get_adjusted_RV_span"><code class="name flex">
+<span>double <span class="ident">get_adjusted_RV_span</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the RV span, adjusted for multiple instruments. </p></div>
+</dd>
+<dt id="RVData.get_adjusted_RV_std"><code class="name flex">
+<span>double <span class="ident">get_adjusted_RV_std</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the RV standard deviation, adjusted for multiple instruments. </p></div>
+</dd>
+<dt id="RVData.get_adjusted_RV_var"><code class="name flex">
+<span>double <span class="ident">get_adjusted_RV_var</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the RV variance, adjusted for multiple instruments. </p></div>
+</dd>
+<dt id="RVData.get_instance"><code class="name flex">
+<span> <span class="ident">get_instance</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.get_max_RV_span"><code class="name flex">
+<span>double <span class="ident">get_max_RV_span</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the maximum RV span. </p></div>
+</dd>
+<dt id="RVData.get_obsi"><code class="name flex">
+<span>const vector&lt; int &gt; &amp; <span class="ident">get_obsi</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the array of instrument identifiers. </p></div>
+</dd>
+<dt id="RVData.get_sig"><code class="name flex">
+<span>const vector&lt; double &gt; &amp; <span class="ident">get_sig</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the array of errors. </p></div>
+</dd>
+<dt id="RVData.get_sig2"><code class="name flex">
+<span>const vector&lt; double &gt; &amp; <span class="ident">get_sig2</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.get_t"><code class="name flex">
+<span>const vector&lt; double &gt; &amp; <span class="ident">get_t</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the array of times. </p></div>
+</dd>
+<dt id="RVData.get_t_max"><code class="name flex">
+<span>double <span class="ident">get_t_max</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the maximum (ending) time. </p></div>
+</dd>
+<dt id="RVData.get_t_middle"><code class="name flex">
+<span>double <span class="ident">get_t_middle</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the middle time. </p></div>
+</dd>
+<dt id="RVData.get_t_min"><code class="name flex">
+<span>double <span class="ident">get_t_min</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the mininum (starting) time. </p></div>
+</dd>
+<dt id="RVData.get_t_span"><code class="name flex">
+<span>double <span class="ident">get_t_span</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.get_timespan"><code class="name flex">
+<span>double <span class="ident">get_timespan</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the timespan. </p></div>
+</dd>
+<dt id="RVData.get_trend_magnitude"><code class="name flex">
+<span>int <span class="ident">get_trend_magnitude</span></span>(<span>int degree)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Order of magnitude of trend coefficient (of degree) given the data. </p></div>
+</dd>
+<dt id="RVData.get_y"><code class="name flex">
+<span>const vector&lt; double &gt; &amp; <span class="ident">get_y</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the array of RVs. </p></div>
+</dd>
+<dt id="RVData.get_y2"><code class="name flex">
+<span>const vector&lt; double &gt; &amp; <span class="ident">get_y2</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVData.get_y2_max"><code class="name flex">
+<span>double <span class="ident">get_y2_max</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the maximum y2. </p></div>
+</dd>
+<dt id="RVData.get_y2_min"><code class="name flex">
+<span>double <span class="ident">get_y2_min</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the mininum y2. </p></div>
+</dd>
+<dt id="RVData.get_y2_span"><code class="name flex">
+<span>double <span class="ident">get_y2_span</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the y2 span. </p></div>
+</dd>
+<dt id="RVData.load"><code class="name flex">
+<span>void <span class="ident">load</span></span>(<span>const string filename,
+const string units,
+int skip=2,
+const vector&lt; string &gt; &amp;indicators=vector&lt; string &gt;())</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load RV data from a file. </p></div>
+</dd>
+<dt id="RVData.load_multi"><code class="name flex">
+<span>void <span class="ident">load_multi</span></span>(<span>const string filename,
+const string units,
+int skip=2)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load RV data from a multi-instrument file. </p></div>
+</dd>
+<dt id="RVData.topslope"><code class="name flex">
+<span>double <span class="ident">topslope</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the maximum slope allowed by the data. </p></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1 class="title">RVData</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-variables-RVData">
+Variables
+</a></h3>
+<ul class="">
+<li><code><a title="RVData.indicator_correlations" href="#RVData.indicator_correlations">indicator_correlations</a></code></li>
+<li><code><a title="RVData.number_indicators" href="#RVData.number_indicators">number_indicators</a></code></li>
+<li><code><a title="RVData.indicator_names" href="#RVData.indicator_names">indicator_names</a></code></li>
+<li><code><a title="RVData.datafile" href="#RVData.datafile">datafile</a></code></li>
+<li><code><a title="RVData.datafiles" href="#RVData.datafiles">datafiles</a></code></li>
+<li><code><a title="RVData.dataunits" href="#RVData.dataunits">dataunits</a></code></li>
+<li><code><a title="RVData.dataskip" href="#RVData.dataskip">dataskip</a></code></li>
+<li><code><a title="RVData.datamulti" href="#RVData.datamulti">datamulti</a></code></li>
+<li><code><a title="RVData.number_instruments" href="#RVData.number_instruments">number_instruments</a></code></li>
+<li><code><a title="RVData.M0_epoch" href="#RVData.M0_epoch">M0_epoch</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions-RVData">Methods</a></h3>
+<ul class="">
+<li><code><a title="RVData.N" href="#RVData.N">N</a></code></li>
+<li><code><a title="RVData.Ninstruments" href="#RVData.Ninstruments">Ninstruments</a></code></li>
+<li><code><a title="RVData.get_RV_max" href="#RVData.get_RV_max">get_RV_max</a></code></li>
+<li><code><a title="RVData.get_RV_min" href="#RVData.get_RV_min">get_RV_min</a></code></li>
+<li><code><a title="RVData.get_RV_span" href="#RVData.get_RV_span">get_RV_span</a></code></li>
+<li><code><a title="RVData.get_RV_std" href="#RVData.get_RV_std">get_RV_std</a></code></li>
+<li><code><a title="RVData.get_RV_var" href="#RVData.get_RV_var">get_RV_var</a></code></li>
+<li><code><a title="RVData.get_actind" href="#RVData.get_actind">get_actind</a></code></li>
+<li><code><a title="RVData.get_adjusted_RV_span" href="#RVData.get_adjusted_RV_span">get_adjusted_RV_span</a></code></li>
+<li><code><a title="RVData.get_adjusted_RV_std" href="#RVData.get_adjusted_RV_std">get_adjusted_RV_std</a></code></li>
+<li><code><a title="RVData.get_adjusted_RV_var" href="#RVData.get_adjusted_RV_var">get_adjusted_RV_var</a></code></li>
+<li><code><a title="RVData.get_instance" href="#RVData.get_instance">get_instance</a></code></li>
+<li><code><a title="RVData.get_max_RV_span" href="#RVData.get_max_RV_span">get_max_RV_span</a></code></li>
+<li><code><a title="RVData.get_obsi" href="#RVData.get_obsi">get_obsi</a></code></li>
+<li><code><a title="RVData.get_sig" href="#RVData.get_sig">get_sig</a></code></li>
+<li><code><a title="RVData.get_sig2" href="#RVData.get_sig2">get_sig2</a></code></li>
+<li><code><a title="RVData.get_t" href="#RVData.get_t">get_t</a></code></li>
+<li><code><a title="RVData.get_t_max" href="#RVData.get_t_max">get_t_max</a></code></li>
+<li><code><a title="RVData.get_t_middle" href="#RVData.get_t_middle">get_t_middle</a></code></li>
+<li><code><a title="RVData.get_t_min" href="#RVData.get_t_min">get_t_min</a></code></li>
+<li><code><a title="RVData.get_t_span" href="#RVData.get_t_span">get_t_span</a></code></li>
+<li><code><a title="RVData.get_timespan" href="#RVData.get_timespan">get_timespan</a></code></li>
+<li><code><a title="RVData.get_trend_magnitude" href="#RVData.get_trend_magnitude">get_trend_magnitude</a></code></li>
+<li><code><a title="RVData.get_y" href="#RVData.get_y">get_y</a></code></li>
+<li><code><a title="RVData.get_y2" href="#RVData.get_y2">get_y2</a></code></li>
+<li><code><a title="RVData.get_y2_max" href="#RVData.get_y2_max">get_y2_max</a></code></li>
+<li><code><a title="RVData.get_y2_min" href="#RVData.get_y2_min">get_y2_min</a></code></li>
+<li><code><a title="RVData.get_y2_span" href="#RVData.get_y2_span">get_y2_span</a></code></li>
+<li><code><a title="RVData.load" href="#RVData.load">load</a></code></li>
+<li><code><a title="RVData.load_multi" href="#RVData.load_multi">load_multi</a></code></li>
+<li><code><a title="RVData.topslope" href="#RVData.topslope">topslope</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</div>
+
+  </details>
+
+  <details>
+    <summary> Class <code>RVmodel</code> </summary>
+
+    <head>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin="" />
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin="" />
+<style>:root{--highlight-color:#fe9}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:1em;line-height:1em}h2{font-size:75em;margin:1em 0 .50em 0}h3{font-size:0.5em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#sidebar toc{padding-top:0}#content{width:70%;max-width:100ch;padding:2em 2em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}.docs-content{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{font-size:0.8em;padding-left:0em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin=""></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+    <div class="docs-content">
+<article id="content">
+<header>
+</header>
+<section id="section-intro">
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-priors-RVmodel">
+Priors
+</h2>
+<dl>
+<dt id="RVmodel.Cprior"><code class="name"> : ContinuousDistribution <span class="ident">Cprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the systemic velocity. </p></div>
+</dd>
+<dt id="RVmodel.Jprior"><code class="name"> : ContinuousDistribution <span class="ident">Jprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the extra white noise (jitter). </p></div>
+</dd>
+<dt id="RVmodel.slope_prior"><code class="name"> : ContinuousDistribution <span class="ident">slope_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the slope. </p></div>
+</dd>
+<dt id="RVmodel.quadr_prior"><code class="name"> : ContinuousDistribution <span class="ident">quadr_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the quadratic coefficient of the trend. </p></div>
+</dd>
+<dt id="RVmodel.cubic_prior"><code class="name"> : ContinuousDistribution <span class="ident">cubic_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the cubic coefficient of the trend. </p></div>
+</dd>
+<dt id="RVmodel.offsets_prior"><code class="name"> : ContinuousDistribution <span class="ident">offsets_prior</span></code></dt>
+<dd>
+<div class="desc"><p>(Common) prior for the between-instruments offsets. </p></div>
+</dd>
+<dt id="RVmodel.individual_offset_prior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">individual_offset_prior</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.betaprior"><code class="name"> : ContinuousDistribution <span class="ident">betaprior</span></code></dt>
+<dd>
+<div class="desc"><p>no doc. </p></div>
+</dd>
+<dt id="RVmodel.sigmaMA_prior"><code class="name"> : ContinuousDistribution <span class="ident">sigmaMA_prior</span></code></dt>
+<dd>
+<div class="desc"><p>no doc. </p></div>
+</dd>
+<dt id="RVmodel.tauMA_prior"><code class="name"> : ContinuousDistribution <span class="ident">tauMA_prior</span></code></dt>
+<dd>
+<div class="desc"><p>no doc. </p></div>
+</dd>
+<dt id="RVmodel.log_eta1_prior"><code class="name"> : ContinuousDistribution <span class="ident">log_eta1_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the logarithm of $\eta_1$, the GP "amplitude". </p></div>
+</dd>
+<dt id="RVmodel.eta2_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta2_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for $\eta_2$, the GP correlation timescale. </p></div>
+</dd>
+<dt id="RVmodel.eta3_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta3_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for $\eta_3$, the GP period. </p></div>
+</dd>
+<dt id="RVmodel.log_eta4_prior"><code class="name"> : ContinuousDistribution <span class="ident">log_eta4_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the logarithm of $\eta_4$, the recurrence timescale. </p></div>
+</dd>
+<dt id="RVmodel.alpha_prior"><code class="name"> : ContinuousDistribution <span class="ident">alpha_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the Rational Quadratic shape parameter. </p></div>
+</dd>
+<dt id="RVmodel.eta5_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta5_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the "amplitude" of the cosine term of the QPC kernel. </p></div>
+</dd>
+<dt id="RVmodel.KO_Pprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_Pprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO orbital period(s) </p></div>
+</dd>
+<dt id="RVmodel.KO_Kprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_Kprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO semi-amplitude(s) </p></div>
+</dd>
+<dt id="RVmodel.KO_eprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_eprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO eccentricity(ies) </p></div>
+</dd>
+<dt id="RVmodel.KO_phiprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_phiprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO mean anomaly(ies) </p></div>
+</dd>
+<dt id="RVmodel.KO_wprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_wprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO argument(s) of pericenter. </p></div>
+</dd>
+<dt id="RVmodel.nu_prior"><code class="name"> : ContinuousDistribution <span class="ident">nu_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the degrees of freedom $\nu$ of the Student t likelihood. </p></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions-RVmodel">
+Methods
+</h2>
+<dl>
+<dt id="RVmodel.add_known_object"><code class="name flex">
+<span>void <span class="ident">add_known_object</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.calculate_C"><code class="name flex">
+<span>void <span class="ident">calculate_C</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Fill the GP covariance matrix. </p></div>
+</dd>
+<dt id="RVmodel.calculate_mu"><code class="name flex">
+<span>void <span class="ident">calculate_mu</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculate the full RV model. </p></div>
+</dd>
+<dt id="RVmodel.description"><code class="name flex">
+<span>std::string <span class="ident">description</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.from_prior"><code class="name flex">
+<span>void <span class="ident">from_prior</span></span>(<span>DNest4::RNG &amp;rng)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate a point from the prior. </p></div>
+</dd>
+<dt id="RVmodel.get_data"><code class="name flex">
+<span>Data &amp; <span class="ident">get_data</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.initialise"><code class="name flex">
+<span>void <span class="ident">initialise</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.is_stable"><code class="name flex">
+<span>int <span class="ident">is_stable</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.log_likelihood"><code class="name flex">
+<span>double <span class="ident">log_likelihood</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.make_prior"><code class="name flex">
+<span>class T <span class="ident">make_prior</span></span>(<span>Args &amp;&amp;... args)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Assign a prior distribution. </p></div>
+</dd>
+<dt id="RVmodel.perturb"><code class="name flex">
+<span>double <span class="ident">perturb</span></span>(<span>DNest4::RNG &amp;rng)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Do Metropolis-Hastings proposals. </p></div>
+</dd>
+<dt id="RVmodel.print"><code class="name flex">
+<span>void <span class="ident">print</span></span>(<span>std::ostream &amp;out)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.remove_known_object"><code class="name flex">
+<span>void <span class="ident">remove_known_object</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.save_setup"><code class="name flex">
+<span>void <span class="ident">save_setup</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVmodel.setPriors"><code class="name flex">
+<span>void <span class="ident">setPriors</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1 class="title">RVmodel</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-priors-RVmodel">
+Priors
+</a></h3>
+<ul class="">
+<li><code><a title="RVmodel.Cprior" href="#RVmodel.Cprior">Cprior</a></code></li>
+<li><code><a title="RVmodel.Jprior" href="#RVmodel.Jprior">Jprior</a></code></li>
+<li><code><a title="RVmodel.slope_prior" href="#RVmodel.slope_prior">slope_prior</a></code></li>
+<li><code><a title="RVmodel.quadr_prior" href="#RVmodel.quadr_prior">quadr_prior</a></code></li>
+<li><code><a title="RVmodel.cubic_prior" href="#RVmodel.cubic_prior">cubic_prior</a></code></li>
+<li><code><a title="RVmodel.offsets_prior" href="#RVmodel.offsets_prior">offsets_prior</a></code></li>
+<li><code><a title="RVmodel.individual_offset_prior" href="#RVmodel.individual_offset_prior">individual_offset_prior</a></code></li>
+<li><code><a title="RVmodel.betaprior" href="#RVmodel.betaprior">betaprior</a></code></li>
+<li><code><a title="RVmodel.sigmaMA_prior" href="#RVmodel.sigmaMA_prior">sigmaMA_prior</a></code></li>
+<li><code><a title="RVmodel.tauMA_prior" href="#RVmodel.tauMA_prior">tauMA_prior</a></code></li>
+<li><code><a title="RVmodel.log_eta1_prior" href="#RVmodel.log_eta1_prior">log_eta1_prior</a></code></li>
+<li><code><a title="RVmodel.eta2_prior" href="#RVmodel.eta2_prior">eta2_prior</a></code></li>
+<li><code><a title="RVmodel.eta3_prior" href="#RVmodel.eta3_prior">eta3_prior</a></code></li>
+<li><code><a title="RVmodel.log_eta4_prior" href="#RVmodel.log_eta4_prior">log_eta4_prior</a></code></li>
+<li><code><a title="RVmodel.alpha_prior" href="#RVmodel.alpha_prior">alpha_prior</a></code></li>
+<li><code><a title="RVmodel.eta5_prior" href="#RVmodel.eta5_prior">eta5_prior</a></code></li>
+<li><code><a title="RVmodel.KO_Pprior" href="#RVmodel.KO_Pprior">KO_Pprior</a></code></li>
+<li><code><a title="RVmodel.KO_Kprior" href="#RVmodel.KO_Kprior">KO_Kprior</a></code></li>
+<li><code><a title="RVmodel.KO_eprior" href="#RVmodel.KO_eprior">KO_eprior</a></code></li>
+<li><code><a title="RVmodel.KO_phiprior" href="#RVmodel.KO_phiprior">KO_phiprior</a></code></li>
+<li><code><a title="RVmodel.KO_wprior" href="#RVmodel.KO_wprior">KO_wprior</a></code></li>
+<li><code><a title="RVmodel.nu_prior" href="#RVmodel.nu_prior">nu_prior</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions-RVmodel">Methods</a></h3>
+<ul class="two-column">
+<li><code><a title="RVmodel.add_known_object" href="#RVmodel.add_known_object">add_known_object</a></code></li>
+<li><code><a title="RVmodel.calculate_C" href="#RVmodel.calculate_C">calculate_C</a></code></li>
+<li><code><a title="RVmodel.calculate_mu" href="#RVmodel.calculate_mu">calculate_mu</a></code></li>
+<li><code><a title="RVmodel.description" href="#RVmodel.description">description</a></code></li>
+<li><code><a title="RVmodel.from_prior" href="#RVmodel.from_prior">from_prior</a></code></li>
+<li><code><a title="RVmodel.get_data" href="#RVmodel.get_data">get_data</a></code></li>
+<li><code><a title="RVmodel.initialise" href="#RVmodel.initialise">initialise</a></code></li>
+<li><code><a title="RVmodel.is_stable" href="#RVmodel.is_stable">is_stable</a></code></li>
+<li><code><a title="RVmodel.log_likelihood" href="#RVmodel.log_likelihood">log_likelihood</a></code></li>
+<li><code><a title="RVmodel.make_prior" href="#RVmodel.make_prior">make_prior</a></code></li>
+<li><code><a title="RVmodel.perturb" href="#RVmodel.perturb">perturb</a></code></li>
+<li><code><a title="RVmodel.print" href="#RVmodel.print">print</a></code></li>
+<li><code><a title="RVmodel.remove_known_object" href="#RVmodel.remove_known_object">remove_known_object</a></code></li>
+<li><code><a title="RVmodel.save_setup" href="#RVmodel.save_setup">save_setup</a></code></li>
+<li><code><a title="RVmodel.setPriors" href="#RVmodel.setPriors">setPriors</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</div>
+
+  </details>
+
+  <details>
+    <summary> Class <code>RVFWHMmodel</code> </summary>
+
+    <head>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin="" />
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin="" />
+<style>:root{--highlight-color:#fe9}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:1em;line-height:1em}h2{font-size:75em;margin:1em 0 .50em 0}h3{font-size:0.5em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#sidebar toc{padding-top:0}#content{width:70%;max-width:100ch;padding:2em 2em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}.docs-content{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{font-size:0.8em;padding-left:0em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin=""></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+    <div class="docs-content">
+<article id="content">
+<header>
+</header>
+<section id="section-intro">
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-priors-RVFWHMmodel">
+Priors
+</h2>
+<dl>
+<dt id="RVFWHMmodel.Vprior"><code class="name"> : ContinuousDistribution <span class="ident">Vprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the systemic velocity. </p></div>
+</dd>
+<dt id="RVFWHMmodel.C2prior"><code class="name"> : ContinuousDistribution <span class="ident">C2prior</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.Jprior"><code class="name"> : ContinuousDistribution <span class="ident">Jprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the extra white noise (jitter) in the RVs. </p></div>
+</dd>
+<dt id="RVFWHMmodel.J2prior"><code class="name"> : ContinuousDistribution <span class="ident">J2prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the extra white noise (jitter) in the FWHM. </p></div>
+</dd>
+<dt id="RVFWHMmodel.slope_prior"><code class="name"> : ContinuousDistribution <span class="ident">slope_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the slope. </p></div>
+</dd>
+<dt id="RVFWHMmodel.quadr_prior"><code class="name"> : ContinuousDistribution <span class="ident">quadr_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the quadratic coefficient of the trend. </p></div>
+</dd>
+<dt id="RVFWHMmodel.cubic_prior"><code class="name"> : ContinuousDistribution <span class="ident">cubic_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the cubic coefficient of the trend. </p></div>
+</dd>
+<dt id="RVFWHMmodel.offsets_prior"><code class="name"> : ContinuousDistribution <span class="ident">offsets_prior</span></code></dt>
+<dd>
+<div class="desc"><p>(Common) prior for the between-instruments RV offsets </p></div>
+</dd>
+<dt id="RVFWHMmodel.offsets2_prior"><code class="name"> : ContinuousDistribution <span class="ident">offsets2_prior</span></code></dt>
+<dd>
+<div class="desc"><p>(Common) prior for the between-instruments FWHM offsets </p></div>
+</dd>
+<dt id="RVFWHMmodel.betaprior"><code class="name"> : ContinuousDistribution <span class="ident">betaprior</span></code></dt>
+<dd>
+<div class="desc"><p>no doc. </p></div>
+</dd>
+<dt id="RVFWHMmodel.sigmaMA_prior"><code class="name"> : ContinuousDistribution <span class="ident">sigmaMA_prior</span></code></dt>
+<dd>
+<div class="desc"><p>no doc. </p></div>
+</dd>
+<dt id="RVFWHMmodel.tauMA_prior"><code class="name"> : ContinuousDistribution <span class="ident">tauMA_prior</span></code></dt>
+<dd>
+<div class="desc"><p>no doc. </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta1_1_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta1_1_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for $\eta_1$, the GP "amplitude". </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta2_1_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta2_1_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for $\eta_2$, the GP correlation timescale. </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta3_1_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta3_1_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for $\eta_3$, the GP period. </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta4_1_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta4_1_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for $\eta_4$, the recurrence timescale. </p></div>
+</dd>
+<dt id="RVFWHMmodel.alpha_1_prior"><code class="name"> : ContinuousDistribution <span class="ident">alpha_1_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the Rational Quadratic shape parameter. </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta5_1_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta5_1_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the "amplitude" of the cosine term of the QPC kernel. </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta1_2_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta1_2_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Same as $\eta_1$ but for the FWHM. </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta2_2_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta2_2_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Same as $\eta_2$ but for the FWHM. </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta3_2_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta3_2_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Same as $\eta_3$ but for the FWHM. </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta4_2_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta4_2_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Same as $\eta_4$ but for the FWHM. </p></div>
+</dd>
+<dt id="RVFWHMmodel.eta5_2_prior"><code class="name"> : ContinuousDistribution <span class="ident">eta5_2_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Same as $\eta_5$ but for the FWHM. </p></div>
+</dd>
+<dt id="RVFWHMmodel.KO_Pprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_Pprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO orbital period(s) </p></div>
+</dd>
+<dt id="RVFWHMmodel.KO_Kprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_Kprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO semi-amplitude(s) </p></div>
+</dd>
+<dt id="RVFWHMmodel.KO_eprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_eprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO eccentricity(ies) </p></div>
+</dd>
+<dt id="RVFWHMmodel.KO_phiprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_phiprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO mean anomaly(ies) </p></div>
+</dd>
+<dt id="RVFWHMmodel.KO_wprior"><code class="name"> : vector &lt; ContinuousDistribution &gt; <span class="ident">KO_wprior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the KO argument(s) of pericenter. </p></div>
+</dd>
+<dt id="RVFWHMmodel.nu_prior"><code class="name"> : ContinuousDistribution <span class="ident">nu_prior</span></code></dt>
+<dd>
+<div class="desc"><p>Prior for the degrees of freedom $\nu$ of the Student t likelihood. </p></div>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-variables-RVFWHMmodel">
+Variables
+</h2>
+<dl>
+<dt id="RVFWHMmodel.share_eta2"><code class="name"> : bool <span class="ident">share_eta2</span></code></dt>
+<dd>
+<div class="desc"><p>Whether $\eta_2$ is shared between RVs and FWHM. </p></div>
+</dd>
+<dt id="RVFWHMmodel.share_eta3"><code class="name"> : bool <span class="ident">share_eta3</span></code></dt>
+<dd>
+<div class="desc"><p>Whether $\eta_3$ is shared between RVs and FWHM. </p></div>
+</dd>
+<dt id="RVFWHMmodel.share_eta4"><code class="name"> : bool <span class="ident">share_eta4</span></code></dt>
+<dd>
+<div class="desc"><p>Whether $\eta_4$ is shared between RVs and FWHM. </p></div>
+</dd>
+<dt id="RVFWHMmodel.share_eta5"><code class="name"> : bool <span class="ident">share_eta5</span></code></dt>
+<dd>
+<div class="desc"><p>Whether $\eta_5$ is shared between RVs and FWHM. </p></div>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-functions-RVFWHMmodel">
+Methods
+</h2>
+<dl>
+<dt id="RVFWHMmodel.add_known_object"><code class="name flex">
+<span>void <span class="ident">add_known_object</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.calculate_C_1"><code class="name flex">
+<span>void <span class="ident">calculate_C_1</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Fill the GP covariance matrix. </p></div>
+</dd>
+<dt id="RVFWHMmodel.calculate_C_2"><code class="name flex">
+<span>void <span class="ident">calculate_C_2</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Fill the GP covariance matrix. </p></div>
+</dd>
+<dt id="RVFWHMmodel.calculate_mu"><code class="name flex">
+<span>void <span class="ident">calculate_mu</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculate the full RV model. </p></div>
+</dd>
+<dt id="RVFWHMmodel.calculate_mu_2"><code class="name flex">
+<span>void <span class="ident">calculate_mu_2</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculate the FWHM model. </p></div>
+</dd>
+<dt id="RVFWHMmodel.description"><code class="name flex">
+<span>std::string <span class="ident">description</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.ecc_anomaly"><code class="name flex">
+<span>double <span class="ident">ecc_anomaly</span></span>(<span>double time,
+double prd,
+double ecc,
+double peri_pass)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.eps3"><code class="name flex">
+<span>double <span class="ident">eps3</span></span>(<span>double e,
+double M,
+double x)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.from_prior"><code class="name flex">
+<span>void <span class="ident">from_prior</span></span>(<span>DNest4::RNG &amp;rng)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate a point from the prior. </p></div>
+</dd>
+<dt id="RVFWHMmodel.get_data"><code class="name flex">
+<span> <span class="ident">get_data</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.initialise"><code class="name flex">
+<span>void <span class="ident">initialise</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.is_stable"><code class="name flex">
+<span>int <span class="ident">is_stable</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.keplerstart3"><code class="name flex">
+<span>double <span class="ident">keplerstart3</span></span>(<span>double e,
+double M)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.log_likelihood"><code class="name flex">
+<span>double <span class="ident">log_likelihood</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.make_prior"><code class="name flex">
+<span>class T <span class="ident">make_prior</span></span>(<span>Args &amp;&amp;... args)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Assign a prior distribution. </p></div>
+</dd>
+<dt id="RVFWHMmodel.perturb"><code class="name flex">
+<span>double <span class="ident">perturb</span></span>(<span>DNest4::RNG &amp;rng)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Do Metropolis-Hastings proposals. </p></div>
+</dd>
+<dt id="RVFWHMmodel.print"><code class="name flex">
+<span>void <span class="ident">print</span></span>(<span>std::ostream &amp;out)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.remove_known_object"><code class="name flex">
+<span>void <span class="ident">remove_known_object</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.save_setup"><code class="name flex">
+<span>void <span class="ident">save_setup</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.setPriors"><code class="name flex">
+<span>void <span class="ident">setPriors</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="RVFWHMmodel.true_anomaly"><code class="name flex">
+<span>double <span class="ident">true_anomaly</span></span>(<span>double time,
+double prd,
+double ecc,
+double peri_pass)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1 class="title">RVFWHMmodel</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-priors-RVFWHMmodel">
+Priors
+</a></h3>
+<ul class="two-column">
+<li><code><a title="RVFWHMmodel.Vprior" href="#RVFWHMmodel.Vprior">Vprior</a></code></li>
+<li><code><a title="RVFWHMmodel.C2prior" href="#RVFWHMmodel.C2prior">C2prior</a></code></li>
+<li><code><a title="RVFWHMmodel.Jprior" href="#RVFWHMmodel.Jprior">Jprior</a></code></li>
+<li><code><a title="RVFWHMmodel.J2prior" href="#RVFWHMmodel.J2prior">J2prior</a></code></li>
+<li><code><a title="RVFWHMmodel.slope_prior" href="#RVFWHMmodel.slope_prior">slope_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.quadr_prior" href="#RVFWHMmodel.quadr_prior">quadr_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.cubic_prior" href="#RVFWHMmodel.cubic_prior">cubic_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.offsets_prior" href="#RVFWHMmodel.offsets_prior">offsets_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.offsets2_prior" href="#RVFWHMmodel.offsets2_prior">offsets2_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.betaprior" href="#RVFWHMmodel.betaprior">betaprior</a></code></li>
+<li><code><a title="RVFWHMmodel.sigmaMA_prior" href="#RVFWHMmodel.sigmaMA_prior">sigmaMA_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.tauMA_prior" href="#RVFWHMmodel.tauMA_prior">tauMA_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta1_1_prior" href="#RVFWHMmodel.eta1_1_prior">eta1_1_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta2_1_prior" href="#RVFWHMmodel.eta2_1_prior">eta2_1_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta3_1_prior" href="#RVFWHMmodel.eta3_1_prior">eta3_1_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta4_1_prior" href="#RVFWHMmodel.eta4_1_prior">eta4_1_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.alpha_1_prior" href="#RVFWHMmodel.alpha_1_prior">alpha_1_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta5_1_prior" href="#RVFWHMmodel.eta5_1_prior">eta5_1_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta1_2_prior" href="#RVFWHMmodel.eta1_2_prior">eta1_2_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta2_2_prior" href="#RVFWHMmodel.eta2_2_prior">eta2_2_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta3_2_prior" href="#RVFWHMmodel.eta3_2_prior">eta3_2_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta4_2_prior" href="#RVFWHMmodel.eta4_2_prior">eta4_2_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.eta5_2_prior" href="#RVFWHMmodel.eta5_2_prior">eta5_2_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.KO_Pprior" href="#RVFWHMmodel.KO_Pprior">KO_Pprior</a></code></li>
+<li><code><a title="RVFWHMmodel.KO_Kprior" href="#RVFWHMmodel.KO_Kprior">KO_Kprior</a></code></li>
+<li><code><a title="RVFWHMmodel.KO_eprior" href="#RVFWHMmodel.KO_eprior">KO_eprior</a></code></li>
+<li><code><a title="RVFWHMmodel.KO_phiprior" href="#RVFWHMmodel.KO_phiprior">KO_phiprior</a></code></li>
+<li><code><a title="RVFWHMmodel.KO_wprior" href="#RVFWHMmodel.KO_wprior">KO_wprior</a></code></li>
+<li><code><a title="RVFWHMmodel.nu_prior" href="#RVFWHMmodel.nu_prior">nu_prior</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-variables-RVFWHMmodel">
+Variables
+</a></h3>
+<ul class="">
+<li><code><a title="RVFWHMmodel.share_eta2" href="#RVFWHMmodel.share_eta2">share_eta2</a></code></li>
+<li><code><a title="RVFWHMmodel.share_eta3" href="#RVFWHMmodel.share_eta3">share_eta3</a></code></li>
+<li><code><a title="RVFWHMmodel.share_eta4" href="#RVFWHMmodel.share_eta4">share_eta4</a></code></li>
+<li><code><a title="RVFWHMmodel.share_eta5" href="#RVFWHMmodel.share_eta5">share_eta5</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions-RVFWHMmodel">Methods</a></h3>
+<ul class="two-column">
+<li><code><a title="RVFWHMmodel.add_known_object" href="#RVFWHMmodel.add_known_object">add_known_object</a></code></li>
+<li><code><a title="RVFWHMmodel.calculate_C_1" href="#RVFWHMmodel.calculate_C_1">calculate_C_1</a></code></li>
+<li><code><a title="RVFWHMmodel.calculate_C_2" href="#RVFWHMmodel.calculate_C_2">calculate_C_2</a></code></li>
+<li><code><a title="RVFWHMmodel.calculate_mu" href="#RVFWHMmodel.calculate_mu">calculate_mu</a></code></li>
+<li><code><a title="RVFWHMmodel.calculate_mu_2" href="#RVFWHMmodel.calculate_mu_2">calculate_mu_2</a></code></li>
+<li><code><a title="RVFWHMmodel.description" href="#RVFWHMmodel.description">description</a></code></li>
+<li><code><a title="RVFWHMmodel.ecc_anomaly" href="#RVFWHMmodel.ecc_anomaly">ecc_anomaly</a></code></li>
+<li><code><a title="RVFWHMmodel.eps3" href="#RVFWHMmodel.eps3">eps3</a></code></li>
+<li><code><a title="RVFWHMmodel.from_prior" href="#RVFWHMmodel.from_prior">from_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.get_data" href="#RVFWHMmodel.get_data">get_data</a></code></li>
+<li><code><a title="RVFWHMmodel.initialise" href="#RVFWHMmodel.initialise">initialise</a></code></li>
+<li><code><a title="RVFWHMmodel.is_stable" href="#RVFWHMmodel.is_stable">is_stable</a></code></li>
+<li><code><a title="RVFWHMmodel.keplerstart3" href="#RVFWHMmodel.keplerstart3">keplerstart3</a></code></li>
+<li><code><a title="RVFWHMmodel.log_likelihood" href="#RVFWHMmodel.log_likelihood">log_likelihood</a></code></li>
+<li><code><a title="RVFWHMmodel.make_prior" href="#RVFWHMmodel.make_prior">make_prior</a></code></li>
+<li><code><a title="RVFWHMmodel.perturb" href="#RVFWHMmodel.perturb">perturb</a></code></li>
+<li><code><a title="RVFWHMmodel.print" href="#RVFWHMmodel.print">print</a></code></li>
+<li><code><a title="RVFWHMmodel.remove_known_object" href="#RVFWHMmodel.remove_known_object">remove_known_object</a></code></li>
+<li><code><a title="RVFWHMmodel.save_setup" href="#RVFWHMmodel.save_setup">save_setup</a></code></li>
+<li><code><a title="RVFWHMmodel.setPriors" href="#RVFWHMmodel.setPriors">setPriors</a></code></li>
+<li><code><a title="RVFWHMmodel.true_anomaly" href="#RVFWHMmodel.true_anomaly">true_anomaly</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</div>
+
+  </details>
+
+  <p><br />
+<strong>pykima</strong> modules</p>
+  <details>
+    <summary> Module <code>pykima.results</code> </summary>
+
+    <head>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin="" />
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin="" />
+<style>:root{--highlight-color:#fe9}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:1em;line-height:1em}h2{font-size:75em;margin:1em 0 .50em 0}h3{font-size:0.5em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#sidebar toc{padding-top:0}#content{width:70%;max-width:100ch;padding:2em 2em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}.docs-content{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{font-size:0.8em;padding-left:0em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin=""></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+    <div class="docs-content">
+<article id="content">
+<header>
+</header>
+<section id="section-intro">
+<p>This module defines the <code><a title="pykima.results.KimaResults" href="#pykima.results.KimaResults">KimaResults</a></code> class to hold results from a run.</p>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes-pykima.results">Classes</h2>
+<dl>
+<dt id="pykima.results.KimaResults"><code class="flex name class">
+<span>class <span class="ident">KimaResults</span></span>
+<span>(</span><span>options, data_file=None, save_plots=False, return_figs=True, verbose=False, hyperpriors=None, trend=None, GPmodel=None, posterior_samples_file='posterior_sample.txt')</span>
+</code></dt>
+<dd>
+<div class="desc"><p>A class to hold, analyse, and display the results from kima</p></div>
+<h3>Static methods</h3>
+<dl>
+<dt id="pykima.results.KimaResults.load"><code class="name flex">
+<span>def <span class="ident">load</span></span>(<span>filename=None, diagnostic=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load a KimaResults object from the current directory, a pickle file, or
+a zip file.</p></div>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="pykima.results.KimaResults.data_properties"><code class="name">var <span class="ident">data_properties</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.eta1"><code class="name">var <span class="ident">eta1</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.eta2"><code class="name">var <span class="ident">eta2</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.eta3"><code class="name">var <span class="ident">eta3</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.eta4"><code class="name">var <span class="ident">eta4</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.instruments"><code class="name">var <span class="ident">instruments</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.parameter_priors"><code class="name">var <span class="ident">parameter_priors</span></code></dt>
+<dd>
+<div class="desc"><p>A list of priors which can be indexed using self.indices</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.ratios"><code class="name">var <span class="ident">ratios</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.star"><code class="name">var <span class="ident">star</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="pykima.results.KimaResults.apply_cuts_period"><code class="name flex">
+<span>def <span class="ident">apply_cuts_period</span></span>(<span>self, samples, pmin=None, pmax=None, return_mask=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>apply cuts in orbital period</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.burst_model"><code class="name flex">
+<span>def <span class="ident">burst_model</span></span>(<span>self, sample, t, v=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>For models with multiple instruments, this function "bursts" the
+computed RV into <code>n_instruments</code> individual arrays. This is mostly
+useful for plotting the RV model together with the original data.</p>
+<h2 id="arguments">Arguments</h2>
+<dl>
+<dt><strong><code>sample</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>One posterior sample, with shape (npar,)</dd>
+<dt><strong><code>t</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>Times at which to evaluate the model</dd>
+<dt><strong><code>v</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>Pre-computed RVs, if None we call <code>self.eval_model</code></dd>
+</dl></div>
+</dd>
+<dt id="pykima.results.KimaResults.corner_planet_parameters"><code class="name flex">
+<span>def <span class="ident">corner_planet_parameters</span></span>(<span>self, fig=None, pmin=None, pmax=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Corner plot of the posterior samples for the planet parameters</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.eval_model"><code class="name flex">
+<span>def <span class="ident">eval_model</span></span>(<span>self, sample, t=None, include_planets=True, include_known_object=True, include_trend=True, single_planet=None, except_planet=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Evaluate the deterministic part of the model at one posterior <code>sample</code>.
+If <code>t</code> is None, use the observed times. Instrument offsets are only
+added if <code>t</code> is None, but the systemic velocity is always added.
+To evaluate at all posterior samples, consider using
+np.apply_along_axis(self.eval_model, 1, self.posterior_sample)</p>
+<p>Note: this function does <em>not</em> evaluate the GP component of the model.</p>
+<h2 id="arguments">Arguments</h2>
+<dl>
+<dt><strong><code>sample</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>One posterior sample, with shape (npar,)</dd>
+<dt><strong><code>t</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>Times at which to evaluate the model, or None to use observed times</dd>
+<dt><strong><code>include_planets</code></strong> :&ensp;<code>bool</code>, default <code>True</code></dt>
+<dd>Whether to include the contribution from the planets</dd>
+<dt><strong><code>include_known_object</code></strong> :&ensp;<code>bool</code>, default <code>True</code></dt>
+<dd>Whether to include the contribution from the known object planets</dd>
+<dt><strong><code>include_trend</code></strong> :&ensp;<code>bool</code>, default <code>True</code></dt>
+<dd>Whether to include the contribution from the trend</dd>
+<dt><strong><code>single_planet</code></strong> :&ensp;<code>int</code></dt>
+<dd>Index of a single planet to <em>include</em> in the model, starting at 1.
+Use positive values (1, 2, &hellip;) for the Np planets and negative
+values (-1, -2, &hellip;) for the known object planets.</dd>
+<dt><strong><code>except_planet</code></strong> :&ensp;<code>int</code> or <code>list</code></dt>
+<dd>Index (or list of indices) of a single planet to <em>exclude</em> from
+the model, starting at 1. Use positive values (1, 2, &hellip;) for the
+Np planets and negative
+values (-1, -2, &hellip;) for the known object planets.</dd>
+</dl></div>
+</dd>
+<dt id="pykima.results.KimaResults.from_prior"><code class="name flex">
+<span>def <span class="ident">from_prior</span></span>(<span>self, n=1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate <code>n</code> samples from the priors for all parameters.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.full_model"><code class="name flex">
+<span>def <span class="ident">full_model</span></span>(<span>self, sample, t=None, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Evaluate the full model at one posterior sample, including the GP.
+If <code>t</code> is None, use the observed times. Instrument offsets are only
+added if <code>t</code> is None, but the systemic velocity is always added.
+To evaluate at all posterior samples, consider using
+np.apply_along_axis(self.full_model, 1, self.posterior_sample)</p>
+<h2 id="arguments">Arguments</h2>
+<dl>
+<dt><strong><code>sample</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>One posterior sample, with shape (npar,)</dd>
+<dt><strong><code>t</code></strong> :&ensp;<code>ndarray (optional)</code></dt>
+<dd>Times at which to evaluate the model, or None to use observed times</dd>
+<dt><strong><code>**kwargs</code></strong></dt>
+<dd>Keyword arguments passed directly to <code>eval_model</code></dd>
+</dl></div>
+</dd>
+<dt id="pykima.results.KimaResults.get_marginals"><code class="name flex">
+<span>def <span class="ident">get_marginals</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the marginal posteriors from the posterior_sample matrix.
+They go into self.T, self.A, self.E, etc</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.get_medians"><code class="name flex">
+<span>def <span class="ident">get_medians</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>return the median values of all the parameters</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.get_sorted_planet_samples"><code class="name flex">
+<span>def <span class="ident">get_sorted_planet_samples</span></span>(<span>self, full=True)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.hist_MA"><code class="name flex">
+<span>def <span class="ident">hist_MA</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram of the posterior for the MA parameters</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.hist_correlations"><code class="name flex">
+<span>def <span class="ident">hist_correlations</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram of the posterior for the activity correlations</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.hist_jitter"><code class="name flex">
+<span>def <span class="ident">hist_jitter</span></span>(<span>self, show_prior=False, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram of the posterior for the additional white noise</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.hist_nu"><code class="name flex">
+<span>def <span class="ident">hist_nu</span></span>(<span>self, show_prior=False, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram of the posterior for the Student-t degrees of freedom</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.hist_trend"><code class="name flex">
+<span>def <span class="ident">hist_trend</span></span>(<span>self, per_year=True, show_prior=False, ax=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram of the posterior for the coefficients of the trend</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.hist_vsys"><code class="name flex">
+<span>def <span class="ident">hist_vsys</span></span>(<span>self, show_offsets=True, specific=None, show_prior=False, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram of the posterior for the systemic velocity and for
+the between-instrument offsets (if <code>show_offsets</code> is True and the model
+has multiple instruments). If <code>specific</code> is not None, it should be a
+tuple with the name of the datafiles for two instruments (matching
+<code>self.data_file</code>). In that case, this function works out the RV offset
+between the <code>specific[0]</code> and <code>specific[1]</code> instruments.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.log_posterior"><code class="name flex">
+<span>def <span class="ident">log_posterior</span></span>(<span>self, sample, separate=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.log_prior"><code class="name flex">
+<span>def <span class="ident">log_prior</span></span>(<span>self, sample)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.make_plot1"><code class="name flex">
+<span>def <span class="ident">make_plot1</span></span>(<span>self, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram of the posterior for Np</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.make_plot2"><code class="name flex">
+<span>def <span class="ident">make_plot2</span></span>(<span>self, nbins=100, bins=None, plims=None, logx=True, density=False, kde=False, kde_bw=None, show_peaks=False, show_prior=False, show_year=True, show_timespan=True, separate_colors=False, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram (or the kde) of the posterior for the orbital period(s).
+Optionally provide the number of histogram bins, the bins themselves, the
+limits in orbital period, or the kde bandwidth. If both <code>kde</code> and
+<code>show_peaks</code> are true, the routine attempts to plot the most prominent
+peaks in the posterior.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.make_plot3"><code class="name flex">
+<span>def <span class="ident">make_plot3</span></span>(<span>self, mask=None, include_known_object=False, points=True, gridsize=50, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the 2d histograms of the posteriors for semi-amplitude and orbital
+period and eccentricity and orbital period. If <code>points</code> is True, plot
+each posterior sample, else plot hexbins</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.make_plot4"><code class="name flex">
+<span>def <span class="ident">make_plot4</span></span>(<span>self, *args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot histograms for the GP hyperparameters. If Np is not None,
+highlight the samples with Np Keplerians.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.make_plot5"><code class="name flex">
+<span>def <span class="ident">make_plot5</span></span>(<span>self, include_jitters=False, show=True, ranges=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Corner plot for the GP hyperparameters</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.make_plots"><code class="name flex">
+<span>def <span class="ident">make_plots</span></span>(<span>self, options, save_plots=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.map_sample"><code class="name flex">
+<span>def <span class="ident">map_sample</span></span>(<span>self, Np=None, mask=None, printit=True, cache=True)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.maximum_likelihood_sample"><code class="name flex">
+<span>def <span class="ident">maximum_likelihood_sample</span></span>(<span>self, from_posterior=False, Np=None, printit=True, mask=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the maximum likelihood sample. By default, this is the highest
+likelihood sample found by DNest4. If <code>from_posterior</code> is True, this
+returns instead the highest likelihood sample <em>from those that represent
+the posterior</em>. The latter may change, due to random choices, between
+different calls to "showresults". If <code>Np</code> is given, select only samples
+with that number of planets.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.median_sample"><code class="name flex">
+<span>def <span class="ident">median_sample</span></span>(<span>self, Np=None, printit=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the median posterior sample. If <code>Np</code> is given, select only from
+posterior samples with that number of planets.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.phase_plot"><code class="name flex">
+<span>def <span class="ident">phase_plot</span></span>(<span>self, sample, highlight=None, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the phase curves given the solution in <code>sample</code></p></div>
+</dd>
+<dt id="pykima.results.KimaResults.planet_model"><code class="name flex">
+<span>def <span class="ident">planet_model</span></span>(<span>self, sample, t=None, include_known_object=True, single_planet=None, except_planet=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Evaluate the planet part of the model at one posterior <code>sample</code>. If <code>t</code>
+is None, use the observed times.
+To evaluate at all posterior samples, consider using
+np.apply_along_axis(self.planet_model, 1, self.posterior_sample)</p>
+<p>Note: this function does <em>not</em> evaluate the GP component of the model
+nor the systemic velocity and instrument offsets.</p>
+<h2 id="arguments">Arguments</h2>
+<dl>
+<dt><strong><code>sample</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>One posterior sample, with shape (npar,)</dd>
+<dt><strong><code>t</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>Times at which to evaluate the model, or None to use observed times</dd>
+<dt><strong><code>include_known_object</code></strong> :&ensp;<code>bool</code>, default <code>True</code></dt>
+<dd>Whether to include the contribution from the known object planets</dd>
+<dt><strong><code>single_planet</code></strong> :&ensp;<code>int</code></dt>
+<dd>Index of a single planet to <em>include</em> in the model, starting at 1.
+Use positive values (1, 2, &hellip;) for the Np planets and negative
+values (-1, -2, &hellip;) for the known object planets.</dd>
+<dt><strong><code>except_planet</code></strong> :&ensp;<code>int</code> or <code>list</code></dt>
+<dd>Index (or list of indices) of a single planet to <em>exclude</em> from
+the model, starting at 1. Use positive values (1, 2, &hellip;) for the
+Np planets and negative
+values (-1, -2, &hellip;) for the known object planets.</dd>
+</dl></div>
+</dd>
+<dt id="pykima.results.KimaResults.plot1"><code class="name flex">
+<span>def <span class="ident">plot1</span></span>(<span>self, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram of the posterior for Np</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.plot2"><code class="name flex">
+<span>def <span class="ident">plot2</span></span>(<span>self, nbins=100, bins=None, plims=None, logx=True, density=False, kde=False, kde_bw=None, show_peaks=False, show_prior=False, show_year=True, show_timespan=True, separate_colors=False, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram (or the kde) of the posterior for the orbital period(s).
+Optionally provide the number of histogram bins, the bins themselves, the
+limits in orbital period, or the kde bandwidth. If both <code>kde</code> and
+<code>show_peaks</code> are true, the routine attempts to plot the most prominent
+peaks in the posterior.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.plot3"><code class="name flex">
+<span>def <span class="ident">plot3</span></span>(<span>self, mask=None, include_known_object=False, points=True, gridsize=50, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the 2d histograms of the posteriors for semi-amplitude and orbital
+period and eccentricity and orbital period. If <code>points</code> is True, plot
+each posterior sample, else plot hexbins</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.plot4"><code class="name flex">
+<span>def <span class="ident">plot4</span></span>(<span>self, *args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot histograms for the GP hyperparameters. If Np is not None,
+highlight the samples with Np Keplerians.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.plot5"><code class="name flex">
+<span>def <span class="ident">plot5</span></span>(<span>self, include_jitters=False, show=True, ranges=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Corner plot for the GP hyperparameters</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.plot6"><code class="name flex">
+<span>def <span class="ident">plot6</span></span>(<span>self, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Display the RV data together with curves from the posterior predictive.
+A total of <code>ncurves</code> random samples are chosen, and the Keplerian
+curves are calculated covering 100 + <code>over</code>% of the data timespan.
+If the model has a GP component, the prediction is calculated using the
+GP hyperparameters for each of the random samples.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.plot_posterior_np"><code class="name flex">
+<span>def <span class="ident">plot_posterior_np</span></span>(<span>self, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plot the histogram of the posterior for Np</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.plot_random_planets"><code class="name flex">
+<span>def <span class="ident">plot_random_planets</span></span>(<span>self, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Display the RV data together with curves from the posterior predictive.
+A total of <code>ncurves</code> random samples are chosen, and the Keplerian
+curves are calculated covering 100 + <code>over</code>% of the data timespan.
+If the model has a GP component, the prediction is calculated using the
+GP hyperparameters for each of the random samples.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.print_sample"><code class="name flex">
+<span>def <span class="ident">print_sample</span></span>(<span>self, p, star_mass=1.0, show_a=False, show_m=False, mass_units='mjup', squeeze=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.residual_rms"><code class="name flex">
+<span>def <span class="ident">residual_rms</span></span>(<span>self, sample, weighted=True, printit=True)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.residuals"><code class="name flex">
+<span>def <span class="ident">residuals</span></span>(<span>self, sample, full=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.save_pickle"><code class="name flex">
+<span>def <span class="ident">save_pickle</span></span>(<span>self, filename, verbose=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Pickle this KimaResults object into a file.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.save_zip"><code class="name flex">
+<span>def <span class="ident">save_zip</span></span>(<span>self, filename, verbose=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Save this KimaResults object and the text files into a zip.</p></div>
+</dd>
+<dt id="pykima.results.KimaResults.show_kima_setup"><code class="name flex">
+<span>def <span class="ident">show_kima_setup</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.simulate_from_sample"><code class="name flex">
+<span>def <span class="ident">simulate_from_sample</span></span>(<span>self, sample, times, add_noise=True, errors=True, append_to_file=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.results.KimaResults.stochastic_model"><code class="name flex">
+<span>def <span class="ident">stochastic_model</span></span>(<span>self, sample, t=None, return_std=False, derivative=False, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Evaluate the stochastic part of the model (GP) at one posterior sample.
+If <code>t</code> is None, use the observed times. Instrument offsets are only
+added if <code>t</code> is None, but the systemic velocity is always added.
+To evaluate at all posterior samples, consider using
+np.apply_along_axis(self.stochastic_model, 1, self.posterior_sample)</p>
+<h2 id="arguments">Arguments</h2>
+<dl>
+<dt><strong><code>sample</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>One posterior sample, with shape (npar,)</dd>
+<dt><strong><code>t</code></strong> :&ensp;<code>ndarray (optional)</code></dt>
+<dd>Times at which to evaluate the model, or None to use observed times</dd>
+<dt><strong><code>return_std</code></strong> :&ensp;<code>bool (optional</code>, default <code>False)</code></dt>
+<dd>Whether to return the st.d. of the predictive</dd>
+<dt><strong><code>derivative</code></strong> :&ensp;<code>bool (optional</code>, default <code>False)</code></dt>
+<dd>Return the first time derivative of the GP prediction instead</dd>
+</dl></div>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1 class="title">pykima.results</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-classes-pykima.results">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="pykima.results.KimaResults" href="#pykima.results.KimaResults">KimaResults</a></code></h4>
+<ul class="">
+<li><code><a title="pykima.results.KimaResults.apply_cuts_period" href="#pykima.results.KimaResults.apply_cuts_period">apply_cuts_period</a></code></li>
+<li><code><a title="pykima.results.KimaResults.burst_model" href="#pykima.results.KimaResults.burst_model">burst_model</a></code></li>
+<li><code><a title="pykima.results.KimaResults.corner_planet_parameters" href="#pykima.results.KimaResults.corner_planet_parameters">corner_planet_parameters</a></code></li>
+<li><code><a title="pykima.results.KimaResults.data_properties" href="#pykima.results.KimaResults.data_properties">data_properties</a></code></li>
+<li><code><a title="pykima.results.KimaResults.eta1" href="#pykima.results.KimaResults.eta1">eta1</a></code></li>
+<li><code><a title="pykima.results.KimaResults.eta2" href="#pykima.results.KimaResults.eta2">eta2</a></code></li>
+<li><code><a title="pykima.results.KimaResults.eta3" href="#pykima.results.KimaResults.eta3">eta3</a></code></li>
+<li><code><a title="pykima.results.KimaResults.eta4" href="#pykima.results.KimaResults.eta4">eta4</a></code></li>
+<li><code><a title="pykima.results.KimaResults.eval_model" href="#pykima.results.KimaResults.eval_model">eval_model</a></code></li>
+<li><code><a title="pykima.results.KimaResults.from_prior" href="#pykima.results.KimaResults.from_prior">from_prior</a></code></li>
+<li><code><a title="pykima.results.KimaResults.full_model" href="#pykima.results.KimaResults.full_model">full_model</a></code></li>
+<li><code><a title="pykima.results.KimaResults.get_marginals" href="#pykima.results.KimaResults.get_marginals">get_marginals</a></code></li>
+<li><code><a title="pykima.results.KimaResults.get_medians" href="#pykima.results.KimaResults.get_medians">get_medians</a></code></li>
+<li><code><a title="pykima.results.KimaResults.get_sorted_planet_samples" href="#pykima.results.KimaResults.get_sorted_planet_samples">get_sorted_planet_samples</a></code></li>
+<li><code><a title="pykima.results.KimaResults.hist_MA" href="#pykima.results.KimaResults.hist_MA">hist_MA</a></code></li>
+<li><code><a title="pykima.results.KimaResults.hist_correlations" href="#pykima.results.KimaResults.hist_correlations">hist_correlations</a></code></li>
+<li><code><a title="pykima.results.KimaResults.hist_jitter" href="#pykima.results.KimaResults.hist_jitter">hist_jitter</a></code></li>
+<li><code><a title="pykima.results.KimaResults.hist_nu" href="#pykima.results.KimaResults.hist_nu">hist_nu</a></code></li>
+<li><code><a title="pykima.results.KimaResults.hist_trend" href="#pykima.results.KimaResults.hist_trend">hist_trend</a></code></li>
+<li><code><a title="pykima.results.KimaResults.hist_vsys" href="#pykima.results.KimaResults.hist_vsys">hist_vsys</a></code></li>
+<li><code><a title="pykima.results.KimaResults.instruments" href="#pykima.results.KimaResults.instruments">instruments</a></code></li>
+<li><code><a title="pykima.results.KimaResults.load" href="#pykima.results.KimaResults.load">load</a></code></li>
+<li><code><a title="pykima.results.KimaResults.log_posterior" href="#pykima.results.KimaResults.log_posterior">log_posterior</a></code></li>
+<li><code><a title="pykima.results.KimaResults.log_prior" href="#pykima.results.KimaResults.log_prior">log_prior</a></code></li>
+<li><code><a title="pykima.results.KimaResults.make_plot1" href="#pykima.results.KimaResults.make_plot1">make_plot1</a></code></li>
+<li><code><a title="pykima.results.KimaResults.make_plot2" href="#pykima.results.KimaResults.make_plot2">make_plot2</a></code></li>
+<li><code><a title="pykima.results.KimaResults.make_plot3" href="#pykima.results.KimaResults.make_plot3">make_plot3</a></code></li>
+<li><code><a title="pykima.results.KimaResults.make_plot4" href="#pykima.results.KimaResults.make_plot4">make_plot4</a></code></li>
+<li><code><a title="pykima.results.KimaResults.make_plot5" href="#pykima.results.KimaResults.make_plot5">make_plot5</a></code></li>
+<li><code><a title="pykima.results.KimaResults.make_plots" href="#pykima.results.KimaResults.make_plots">make_plots</a></code></li>
+<li><code><a title="pykima.results.KimaResults.map_sample" href="#pykima.results.KimaResults.map_sample">map_sample</a></code></li>
+<li><code><a title="pykima.results.KimaResults.maximum_likelihood_sample" href="#pykima.results.KimaResults.maximum_likelihood_sample">maximum_likelihood_sample</a></code></li>
+<li><code><a title="pykima.results.KimaResults.median_sample" href="#pykima.results.KimaResults.median_sample">median_sample</a></code></li>
+<li><code><a title="pykima.results.KimaResults.parameter_priors" href="#pykima.results.KimaResults.parameter_priors">parameter_priors</a></code></li>
+<li><code><a title="pykima.results.KimaResults.phase_plot" href="#pykima.results.KimaResults.phase_plot">phase_plot</a></code></li>
+<li><code><a title="pykima.results.KimaResults.planet_model" href="#pykima.results.KimaResults.planet_model">planet_model</a></code></li>
+<li><code><a title="pykima.results.KimaResults.plot1" href="#pykima.results.KimaResults.plot1">plot1</a></code></li>
+<li><code><a title="pykima.results.KimaResults.plot2" href="#pykima.results.KimaResults.plot2">plot2</a></code></li>
+<li><code><a title="pykima.results.KimaResults.plot3" href="#pykima.results.KimaResults.plot3">plot3</a></code></li>
+<li><code><a title="pykima.results.KimaResults.plot4" href="#pykima.results.KimaResults.plot4">plot4</a></code></li>
+<li><code><a title="pykima.results.KimaResults.plot5" href="#pykima.results.KimaResults.plot5">plot5</a></code></li>
+<li><code><a title="pykima.results.KimaResults.plot6" href="#pykima.results.KimaResults.plot6">plot6</a></code></li>
+<li><code><a title="pykima.results.KimaResults.plot_posterior_np" href="#pykima.results.KimaResults.plot_posterior_np">plot_posterior_np</a></code></li>
+<li><code><a title="pykima.results.KimaResults.plot_random_planets" href="#pykima.results.KimaResults.plot_random_planets">plot_random_planets</a></code></li>
+<li><code><a title="pykima.results.KimaResults.print_sample" href="#pykima.results.KimaResults.print_sample">print_sample</a></code></li>
+<li><code><a title="pykima.results.KimaResults.ratios" href="#pykima.results.KimaResults.ratios">ratios</a></code></li>
+<li><code><a title="pykima.results.KimaResults.residual_rms" href="#pykima.results.KimaResults.residual_rms">residual_rms</a></code></li>
+<li><code><a title="pykima.results.KimaResults.residuals" href="#pykima.results.KimaResults.residuals">residuals</a></code></li>
+<li><code><a title="pykima.results.KimaResults.save_pickle" href="#pykima.results.KimaResults.save_pickle">save_pickle</a></code></li>
+<li><code><a title="pykima.results.KimaResults.save_zip" href="#pykima.results.KimaResults.save_zip">save_zip</a></code></li>
+<li><code><a title="pykima.results.KimaResults.show_kima_setup" href="#pykima.results.KimaResults.show_kima_setup">show_kima_setup</a></code></li>
+<li><code><a title="pykima.results.KimaResults.simulate_from_sample" href="#pykima.results.KimaResults.simulate_from_sample">simulate_from_sample</a></code></li>
+<li><code><a title="pykima.results.KimaResults.star" href="#pykima.results.KimaResults.star">star</a></code></li>
+<li><code><a title="pykima.results.KimaResults.stochastic_model" href="#pykima.results.KimaResults.stochastic_model">stochastic_model</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</div>
+
+  </details>
+
+  <details>
+    <summary> Module <code>pykima.analysis</code> </summary>
+
+    <head>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin="" />
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin="" />
+<style>:root{--highlight-color:#fe9}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:1em;line-height:1em}h2{font-size:75em;margin:1em 0 .50em 0}h3{font-size:0.5em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#sidebar toc{padding-top:0}#content{width:70%;max-width:100ch;padding:2em 2em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}.docs-content{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{font-size:0.8em;padding-left:0em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin=""></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+    <div class="docs-content">
+<article id="content">
+<header>
+</header>
+<section id="section-intro">
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions-pykima.analysis">
+Functions
+</h2>
+<dl>
+<dt id="pykima.analysis.column_dynamic_ranges"><code class="name flex">
+<span>def <span class="ident">column_dynamic_ranges</span></span>(<span>results)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the range of each column in the posterior file</p></div>
+</dd>
+<dt id="pykima.analysis.columns_with_dynamic_range"><code class="name flex">
+<span>def <span class="ident">columns_with_dynamic_range</span></span>(<span>results)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the columns in the posterior file which vary</p></div>
+</dd>
+<dt id="pykima.analysis.detection_limits"><code class="name flex">
+<span>def <span class="ident">detection_limits</span></span>(<span>results, star_mass=1.0, Np=None, bins=200, plot=True, semi_amplitude=False, semi_major_axis=False, logX=True, sorted_samples=True, return_mask=False, remove_nan=True, add_jitter=False, show_prior=False, show_eccentricity=False, smooth=False, smooth_degree=3)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculate detection limits using samples with more than <code>Np</code> planets. By
+default, this function uses the value of <code>Np</code> which passes the posterior
+probability threshold.</p>
+<h2 id="arguments">Arguments</h2>
+<dl>
+<dt><strong><code>star_mass</code></strong> :&ensp;<code>float</code> or <code>tuple</code></dt>
+<dd>Stellar mass and optionally its uncertainty [in solar masses].</dd>
+<dt><strong><code>Np</code></strong> :&ensp;<code>int</code></dt>
+<dd>Consider only posterior samples with more than <code>Np</code> planets.</dd>
+<dt><strong><code>bins</code></strong> :&ensp;<code>int</code></dt>
+<dd>Number of bins at which to calculate the detection limits. The period
+ranges from the minimum to the maximum orbital period in the posterior.</dd>
+<dt><strong><code>plot</code></strong> :&ensp;<code>bool (default True)</code></dt>
+<dd>Whether to plot the detection limits</dd>
+<dt><strong><code>semi_amplitude</code></strong> :&ensp;<code>bool (default False)</code></dt>
+<dd>Show the detection limits for semi-amplitude, instead of planet mass</dd>
+<dt><strong><code>semi_major_axis</code></strong> :&ensp;<code>bool (default False)</code></dt>
+<dd>Show semi-major axis in the x axis, instead of orbital period</dd>
+<dt><strong><code>logX</code></strong> :&ensp;<code>bool (default True)</code></dt>
+<dd>Should X-axis bins be logarithmic ?</dd>
+<dt><strong><code>sorted_samples</code></strong> :&ensp;<code>bool</code></dt>
+<dd>undoc</dd>
+<dt><strong><code>return_mask</code></strong> :&ensp;<code>bool</code></dt>
+<dd>undoc</dd>
+<dt><strong><code>remove_nan</code></strong> :&ensp;<code>bool</code></dt>
+<dd>remove bins with no counts (no posterior samples)</dd>
+<dt>add_jitter &hellip;</dt>
+<dt>show_prior &hellip;</dt>
+<dt><strong><code>show_prior</code></strong> :&ensp;<code>bool (default False)</code></dt>
+<dd>If true, color the posterior samples according to orbital eccentricity</dd>
+<dt><strong><code>smooth</code></strong> :&ensp;<code>bool (default False)</code></dt>
+<dd>Smooth the binned maximum with a polynomial</dd>
+<dt><strong><code>smooth_degree</code></strong> :&ensp;<code>int (default 3)</code></dt>
+<dd>Degree of the polynomial used for smoothing</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>P</code></strong>, <strong><code>K</code></strong>, <strong><code>E</code></strong>, <strong><code>M</code></strong> :&ensp;<code>ndarray</code></dt>
+<dd>Orbital periods, semi-amplitudes, eccentricities, and planet masses used
+in the calculation of the detection limits. These correspond to all the
+posterior samples with more than <code>Np</code> planets</dd>
+<dt><strong><code>s</code></strong> :&ensp;<code>DLresult, namedtuple</code></dt>
+<dd>Detection limits result, with attributes <code>max</code> and <code>bins</code>. The <code>max</code>
+array is in units of Earth masses, <code>bins</code> is in days.</dd>
+</dl></div>
+</dd>
+<dt id="pykima.analysis.find_outliers"><code class="name flex">
+<span>def <span class="ident">find_outliers</span></span>(<span>results, sample, threshold=10, verbose=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Estimate which observations are outliers, for a model with a Student t
+likelihood. This function first calculates the residuals given the
+parameters in <code>sample</code>. Then it computes the relative probability of each
+residual point given a Student-t (Td) and a Gaussian (Gd) likelihoods. If
+the probability Td is larger than Gd (by a factor of <code>threshold</code>), the point
+is flagged as an outlier. The function returns an "outlier mask".</p></div>
+</dd>
+<dt id="pykima.analysis.full_model_table"><code class="name flex">
+<span>def <span class="ident">full_model_table</span></span>(<span>res, sample, instruments=None, star_mass=1.0)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.analysis.most_probable_np"><code class="name flex">
+<span>def <span class="ident">most_probable_np</span></span>(<span>results)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the value of Np with the highest posterior probability.</p>
+<h2 id="arguments">Arguments</h2>
+<dl>
+<dt><strong><code>results</code></strong> :&ensp;<code>KimaResults</code></dt>
+<dd>A results instance</dd>
+</dl></div>
+</dd>
+<dt id="pykima.analysis.parameter_clusters"><code class="name flex">
+<span>def <span class="ident">parameter_clusters</span></span>(<span>results, n_clusters=None, method='KMeans', include_ecc=True, scale=False, plot=True, downsample=1, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.analysis.passes_threshold_np"><code class="name flex">
+<span>def <span class="ident">passes_threshold_np</span></span>(<span>results, threshold=150)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the value of Np supported by the data, considering a posterior ratio
+threshold (default 150).</p>
+<h2 id="arguments">Arguments</h2>
+<dl>
+<dt><strong><code>results</code></strong> :&ensp;<code>KimaResults</code></dt>
+<dd>A results instance</dd>
+<dt><strong><code>threshold</code></strong> :&ensp;<code>float</code></dt>
+<dd>Posterior ratio threshold, default 150.</dd>
+</dl></div>
+</dd>
+<dt id="pykima.analysis.planet_parameters"><code class="name flex">
+<span>def <span class="ident">planet_parameters</span></span>(<span>results, star_mass=1.0, sample=None, printit=True)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.analysis.sort_planet_samples"><code class="name flex">
+<span>def <span class="ident">sort_planet_samples</span></span>(<span>res, planet_samples, byP=True, byK=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1 class="title">pykima.analysis</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-functions-pykima.analysis">Functions</a></h3>
+<ul class="">
+<li><code><a title="pykima.analysis.column_dynamic_ranges" href="#pykima.analysis.column_dynamic_ranges">column_dynamic_ranges</a></code></li>
+<li><code><a title="pykima.analysis.columns_with_dynamic_range" href="#pykima.analysis.columns_with_dynamic_range">columns_with_dynamic_range</a></code></li>
+<li><code><a title="pykima.analysis.detection_limits" href="#pykima.analysis.detection_limits">detection_limits</a></code></li>
+<li><code><a title="pykima.analysis.find_outliers" href="#pykima.analysis.find_outliers">find_outliers</a></code></li>
+<li><code><a title="pykima.analysis.full_model_table" href="#pykima.analysis.full_model_table">full_model_table</a></code></li>
+<li><code><a title="pykima.analysis.most_probable_np" href="#pykima.analysis.most_probable_np">most_probable_np</a></code></li>
+<li><code><a title="pykima.analysis.parameter_clusters" href="#pykima.analysis.parameter_clusters">parameter_clusters</a></code></li>
+<li><code><a title="pykima.analysis.passes_threshold_np" href="#pykima.analysis.passes_threshold_np">passes_threshold_np</a></code></li>
+<li><code><a title="pykima.analysis.planet_parameters" href="#pykima.analysis.planet_parameters">planet_parameters</a></code></li>
+<li><code><a title="pykima.analysis.sort_planet_samples" href="#pykima.analysis.sort_planet_samples">sort_planet_samples</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</div>
+
+  </details>
+
+  <details>
+    <summary> Module <code>pykima.utils</code> </summary>
+
+    <head>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin="" />
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin="" />
+<style>:root{--highlight-color:#fe9}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:1em;line-height:1em}h2{font-size:75em;margin:1em 0 .50em 0}h3{font-size:0.5em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#sidebar toc{padding-top:0}#content{width:70%;max-width:100ch;padding:2em 2em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}.docs-content{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{font-size:0.8em;padding-left:0em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin=""></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+    <div class="docs-content">
+<article id="content">
+<header>
+</header>
+<section id="section-intro">
+<p>Small (but sometimes important) utility functions</p>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions-pykima.utils">
+Functions
+</h2>
+<dl>
+<dt id="pykima.utils.apply_argsort"><code class="name flex">
+<span>def <span class="ident">apply_argsort</span></span>(<span>arr1, arr2, axis=-1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Apply <code>arr1</code>.argsort() on <code>arr2</code>, along <code>axis</code>.</p></div>
+</dd>
+<dt id="pykima.utils.chdir"><code class="name flex">
+<span>def <span class="ident">chdir</span></span>(<span>dir)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>A simple context manager to switch directories temporarily</p></div>
+</dd>
+<dt id="pykima.utils.clipped_mean"><code class="name flex">
+<span>def <span class="ident">clipped_mean</span></span>(<span>arr, min, max)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Mean of <code>arr</code> between <code>min</code> and <code>max</code></p></div>
+</dd>
+<dt id="pykima.utils.clipped_std"><code class="name flex">
+<span>def <span class="ident">clipped_std</span></span>(<span>arr, min, max)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Standard deviation of <code>arr</code> between <code>min</code> and <code>max</code></p></div>
+</dd>
+<dt id="pykima.utils.date_to_jd"><code class="name flex">
+<span>def <span class="ident">date_to_jd</span></span>(<span>year, month, day)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert a date (year, month, day) to Julian Day.</p>
+<p>Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
+4th ed., Duffet-Smith and Zwart, 2011.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>year</code></strong> :&ensp;<code>int</code></dt>
+<dd>Year as integer. Years preceding 1 A.D. should be 0 or negative.
+The year before 1 A.D. is 0, 10 B.C. is year -9.</dd>
+<dt><strong><code>month</code></strong> :&ensp;<code>int</code></dt>
+<dd>Month as integer, Jan = 1, Feb. = 2, etc.</dd>
+<dt><strong><code>day</code></strong> :&ensp;<code>float</code></dt>
+<dd>Day, may contain fractional part.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>jd</code></strong> :&ensp;<code>float</code></dt>
+<dd>Julian Day</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>Convert 6 a.m., February 17, 1985 to Julian Day</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; date_to_jd(1985, 2, 17.25)
+2446113.75
+</code></pre></div>
+</dd>
+<dt id="pykima.utils.datetime_to_jd"><code class="name flex">
+<span>def <span class="ident">datetime_to_jd</span></span>(<span>date)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert a <code>datetime.datetime</code> object to Julian Day.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>date</code></strong> :&ensp;<code>datetime.datetime instance</code></dt>
+<dd>&nbsp;</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>jd</code></strong> :&ensp;<code>float</code></dt>
+<dd>Julian day.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; d = datetime.datetime(1985, 2, 17, 6)
+&gt;&gt;&gt; d
+datetime.datetime(1985, 2, 17, 6, 0)
+&gt;&gt;&gt; jdutil.datetime_to_jd(d)
+2446113.75
+</code></pre></div>
+</dd>
+<dt id="pykima.utils.days_to_hmsm"><code class="name flex">
+<span>def <span class="ident">days_to_hmsm</span></span>(<span>days)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert fractional days to hours, minutes, seconds, and microseconds.
+Precision beyond microseconds is rounded to the nearest microsecond.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>days</code></strong> :&ensp;<code>float</code></dt>
+<dd>A fractional number of days. Must be less than 1.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>hour</code></strong> :&ensp;<code>int</code></dt>
+<dd>Hour number.</dd>
+<dt><strong><code>min</code></strong> :&ensp;<code>int</code></dt>
+<dd>Minute number.</dd>
+<dt><strong><code>sec</code></strong> :&ensp;<code>int</code></dt>
+<dd>Second number.</dd>
+<dt><strong><code>micro</code></strong> :&ensp;<code>int</code></dt>
+<dd>Microsecond number.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>If <code>days</code> is &gt;= 1.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; days_to_hmsm(0.1)
+(2, 24, 0, 0)
+</code></pre></div>
+</dd>
+<dt id="pykima.utils.find_prior_limits"><code class="name flex">
+<span>def <span class="ident">find_prior_limits</span></span>(<span>prior)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Find lower and upper limits of a prior from the kima_model_setup.txt file.</p></div>
+</dd>
+<dt id="pykima.utils.find_prior_parameters"><code class="name flex">
+<span>def <span class="ident">find_prior_parameters</span></span>(<span>prior)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Find parameters of a prior from the kima_model_setup.txt file.</p></div>
+</dd>
+<dt id="pykima.utils.get_instrument_name"><code class="name flex">
+<span>def <span class="ident">get_instrument_name</span></span>(<span>data_file)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Find instrument name</p></div>
+</dd>
+<dt id="pykima.utils.get_planet_mass"><code class="name flex">
+<span>def <span class="ident">get_planet_mass</span></span>(<span>P, K, e, star_mass=1.0, full_output=False, verbose=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculate the planet (minimum) mass Msini given orbital period <code>P</code>,
+semi-amplitude <code>K</code>, eccentricity <code>e</code>, and stellar mass. If star_mass is a
+tuple with (estimate, uncertainty), this (Gaussian) uncertainty will be
+taken into account in the calculation.</p>
+<h2 id="units">Units</h2>
+<p>P [days]
+K [m/s]
+e []
+star_mass [Msun]</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt>if P is float:</dt>
+<dt>if star_mass is float:</dt>
+<dt>Msini [Mjup], Msini [Mearth]</dt>
+<dt>if star_mass is tuple:</dt>
+<dt>(Msini, error_Msini) [Mjup], (Msini, error_Msini) [Mearth]</dt>
+<dt>if P is array:</dt>
+<dt><code>
+if full_output</code></dt>
+<dd>mean Msini [Mjup], std Msini [Mjup], Msini [Mjup] (array)
+else: mean Msini [Mjup], std Msini [Mjup], mean Msini [Mearth], std Msini [Mearth]</dd>
+</dl></div>
+</dd>
+<dt id="pykima.utils.get_planet_mass_and_semimajor_axis"><code class="name flex">
+<span>def <span class="ident">get_planet_mass_and_semimajor_axis</span></span>(<span>P, K, e, star_mass=1.0, full_output=False, verbose=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculate the planet (minimum) mass Msini and the semi-major axis given
+orbital period <code>P</code>, semi-amplitude <code>K</code>, eccentricity <code>e</code>, and stellar mass.
+If star_mass is a tuple with (estimate, uncertainty), this (Gaussian)
+uncertainty will be taken into account in the calculation.</p>
+<h2 id="units">Units</h2>
+<p>P [days]
+K [m/s]
+e []
+star_mass [Msun]</p>
+<h2 id="returns">Returns</h2>
+<p>(M, A) where
+M is the output of get_planet_mass
+A is the output of get_planet_semimajor_axis</p></div>
+</dd>
+<dt id="pykima.utils.get_planet_mass_latex"><code class="name flex">
+<span>def <span class="ident">get_planet_mass_latex</span></span>(<span>P, K, e, star_mass=1.0, earth=False, **kargs)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.get_planet_semimajor_axis"><code class="name flex">
+<span>def <span class="ident">get_planet_semimajor_axis</span></span>(<span>P, K, star_mass=1.0, full_output=False, verbose=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculate the semi-major axis of the planet's orbit given
+orbital period <code>P</code>, semi-amplitude <code>K</code>, and stellar mass.</p>
+<h2 id="units">Units</h2>
+<p>P [days]
+K [m/s]
+star_mass [Msun]</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>if P is float</code></dt>
+<dd>a [AU]</dd>
+<dt>if P is array:</dt>
+<dt><code>
+if full_output</code></dt>
+<dd>mean a [AU], std a [AU], a [AU] (array)
+else: mean a [AU], std a [AU]</dd>
+</dl></div>
+</dd>
+<dt id="pykima.utils.get_planet_semimajor_axis_latex"><code class="name flex">
+<span>def <span class="ident">get_planet_semimajor_axis_latex</span></span>(<span>P, K, star_mass=1.0, earth=False, **kargs)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.get_planet_teq"><code class="name flex">
+<span>def <span class="ident">get_planet_teq</span></span>(<span>Tstar=5777, Rstar=1.0, a=1.0, A=0, f=1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Tstar = stellar effective temperature in kelvins (K)
+Rstar = stellar radius in solar radii
+a = distance from the star in AU (change to solRad)
+A = bond albedo
+f = redistribution factor
+Returns equilibrium temperature in Kelvins</p></div>
+</dd>
+<dt id="pykima.utils.get_prior"><code class="name flex">
+<span>def <span class="ident">get_prior</span></span>(<span>prior)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a scipt.stats-like prior from a kima_model_setup.txt prior</p></div>
+</dd>
+<dt id="pykima.utils.get_star_name"><code class="name flex">
+<span>def <span class="ident">get_star_name</span></span>(<span>data_file)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Find star name (usually works for approx. standard filenames)</p></div>
+</dd>
+<dt id="pykima.utils.get_transit_probability"><code class="name flex">
+<span>def <span class="ident">get_transit_probability</span></span>(<span>Rstar=1.0, a=1.0)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Transit probability, simple. Eq 6.1 in Exoplanet Handbook
+Rstar: stellar radius [Rsun]
+a: semi-major axis [au]</p></div>
+</dd>
+<dt id="pykima.utils.hmsm_to_days"><code class="name flex">
+<span>def <span class="ident">hmsm_to_days</span></span>(<span>hour=0, min=0, sec=0, micro=0)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert hours, minutes, seconds, and microseconds to fractional days.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>hour</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Hour number. Defaults to 0.</dd>
+<dt><strong><code>min</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Minute number. Defaults to 0.</dd>
+<dt><strong><code>sec</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Second number. Defaults to 0.</dd>
+<dt><strong><code>micro</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Microsecond number. Defaults to 0.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>days</code></strong> :&ensp;<code>float</code></dt>
+<dd>Fractional days.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; hmsm_to_days(hour=6)
+0.25
+</code></pre></div>
+</dd>
+<dt id="pykima.utils.hyperprior_samples"><code class="name flex">
+<span>def <span class="ident">hyperprior_samples</span></span>(<span>size)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.jd_to_date"><code class="name flex">
+<span>def <span class="ident">jd_to_date</span></span>(<span>jd)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert Julian Day to date.</p>
+<p>Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
+4th ed., Duffet-Smith and Zwart, 2011.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>jd</code></strong> :&ensp;<code>float</code></dt>
+<dd>Julian Day</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>year</code></strong> :&ensp;<code>int</code></dt>
+<dd>Year as integer. Years preceding 1 A.D. should be 0 or negative.
+The year before 1 A.D. is 0, 10 B.C. is year -9.</dd>
+<dt><strong><code>month</code></strong> :&ensp;<code>int</code></dt>
+<dd>Month as integer, Jan = 1, Feb. = 2, etc.</dd>
+<dt><strong><code>day</code></strong> :&ensp;<code>float</code></dt>
+<dd>Day, may contain fractional part.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>Convert Julian Day 2446113.75 to year, month, and day.</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; jd_to_date(2446113.75)
+(1985, 2, 17.25)
+</code></pre></div>
+</dd>
+<dt id="pykima.utils.jd_to_mjd"><code class="name flex">
+<span>def <span class="ident">jd_to_mjd</span></span>(<span>jd)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert Julian Day to Modified Julian Day</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>jd</code></strong> :&ensp;<code>float</code></dt>
+<dd>Julian Day</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>mjd</code></strong> :&ensp;<code>float</code></dt>
+<dd>Modified Julian Day</dd>
+</dl></div>
+</dd>
+<dt id="pykima.utils.lighten_color"><code class="name flex">
+<span>def <span class="ident">lighten_color</span></span>(<span>color, amount=0.5)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Lightens the given <code>color</code> by multiplying (1-luminosity) by the given
+<code>amount</code>. Input can be a matplotlib color string, hex string, or RGB tuple.</p>
+<p>Examples:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; lighten_color('g', 0.3)
+&gt;&gt;&gt; lighten_color('#F034A3', 0.6)
+&gt;&gt;&gt; lighten_color((.3, .55, .1), 0.5)
+</code></pre></div>
+</dd>
+<dt id="pykima.utils.mjd_to_jd"><code class="name flex">
+<span>def <span class="ident">mjd_to_jd</span></span>(<span>mjd)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert Modified Julian Day to Julian Day.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>mjd</code></strong> :&ensp;<code>float</code></dt>
+<dd>Modified Julian Day</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>jd</code></strong> :&ensp;<code>float</code></dt>
+<dd>Julian Day</dd>
+</dl></div>
+</dd>
+<dt id="pykima.utils.percentile68_ranges"><code class="name flex">
+<span>def <span class="ident">percentile68_ranges</span></span>(<span>a, min=None, max=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.percentile68_ranges_latex"><code class="name flex">
+<span>def <span class="ident">percentile68_ranges_latex</span></span>(<span>a, min=None, max=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.percentile_ranges"><code class="name flex">
+<span>def <span class="ident">percentile_ranges</span></span>(<span>a, percentile=68, min=None, max=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.percentile_ranges_latex"><code class="name flex">
+<span>def <span class="ident">percentile_ranges_latex</span></span>(<span>a, percentile, min=None, max=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.priors_latex"><code class="name flex">
+<span>def <span class="ident">priors_latex</span></span>(<span>results, title='Priors', label='tab:1')</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.read_big_file"><code class="name flex">
+<span>def <span class="ident">read_big_file</span></span>(<span>filename)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.read_datafile"><code class="name flex">
+<span>def <span class="ident">read_datafile</span></span>(<span>datafile, skip)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Read data from <code>datafile</code> for multiple instruments.
+Can be str, in which case the 4th column is assumed to contain an integer
+identifier of the instrument.
+Or list, in which case each element will be one different filename
+containing three columns each.</p></div>
+</dd>
+<dt id="pykima.utils.read_datafile_rvfwhm"><code class="name flex">
+<span>def <span class="ident">read_datafile_rvfwhm</span></span>(<span>datafile, skip)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Read data from <code>datafile</code> for multiple instruments and RV-FWHM data.
+Can be str, in which case the 4th column is assumed to contain an integer
+identifier of the instrument.
+Or list, in which case each element will be one different filename
+containing three columns each.</p></div>
+</dd>
+<dt id="pykima.utils.read_model_setup"><code class="name flex">
+<span>def <span class="ident">read_model_setup</span></span>(<span>filename='kima_model_setup.txt')</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.rms"><code class="name flex">
+<span>def <span class="ident">rms</span></span>(<span>array)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Root mean square of array</p></div>
+</dd>
+<dt id="pykima.utils.show_tips"><code class="name flex">
+<span>def <span class="ident">show_tips</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Show a few tips on how to use kima (but only sometimes)</p></div>
+</dd>
+<dt id="pykima.utils.wrms"><code class="name flex">
+<span>def <span class="ident">wrms</span></span>(<span>array, weights)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Weighted root mean square of array, given weights</p></div>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes-pykima.utils">Classes</h2>
+<dl>
+<dt id="pykima.utils.Fixed"><code class="flex name class">
+<span>class <span class="ident">Fixed</span></span>
+<span>(</span><span>value: float)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Not a real distribution, just a parameter fixed at a given <code>value</code></p></div>
+<h3>Methods</h3>
+<dl>
+<dt id="pykima.utils.Fixed.logpdf"><code class="name flex">
+<span>def <span class="ident">logpdf</span></span>(<span>self, x: float) ‑&gt; float</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Logarithm of the probability density function</p></div>
+</dd>
+<dt id="pykima.utils.Fixed.pdf"><code class="name flex">
+<span>def <span class="ident">pdf</span></span>(<span>self, x: float) ‑&gt; float</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Probability density function: 1.0 if x==value, otherwise 0.0</p></div>
+</dd>
+<dt id="pykima.utils.Fixed.rvs"><code class="name flex">
+<span>def <span class="ident">rvs</span></span>(<span>self) ‑&gt; float</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Random sample (always returns <code>value</code>)</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="pykima.utils.ZeroDist"><code class="flex name class">
+<span>class <span class="ident">ZeroDist</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>A dummy probability distribution which always returns 0.0</p></div>
+<h3>Methods</h3>
+<dl>
+<dt id="pykima.utils.ZeroDist.logpdf"><code class="name flex">
+<span>def <span class="ident">logpdf</span></span>(<span>self, x: float) ‑&gt; float</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.ZeroDist.pdf"><code class="name flex">
+<span>def <span class="ident">pdf</span></span>(<span>self, x: float) ‑&gt; float</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="pykima.utils.ZeroDist.rvs"><code class="name flex">
+<span>def <span class="ident">rvs</span></span>(<span>self) ‑&gt; float</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1 class="title">pykima.utils</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-functions-pykima.utils">Functions</a></h3>
+<ul class="">
+<li><code><a title="pykima.utils.apply_argsort" href="#pykima.utils.apply_argsort">apply_argsort</a></code></li>
+<li><code><a title="pykima.utils.chdir" href="#pykima.utils.chdir">chdir</a></code></li>
+<li><code><a title="pykima.utils.clipped_mean" href="#pykima.utils.clipped_mean">clipped_mean</a></code></li>
+<li><code><a title="pykima.utils.clipped_std" href="#pykima.utils.clipped_std">clipped_std</a></code></li>
+<li><code><a title="pykima.utils.date_to_jd" href="#pykima.utils.date_to_jd">date_to_jd</a></code></li>
+<li><code><a title="pykima.utils.datetime_to_jd" href="#pykima.utils.datetime_to_jd">datetime_to_jd</a></code></li>
+<li><code><a title="pykima.utils.days_to_hmsm" href="#pykima.utils.days_to_hmsm">days_to_hmsm</a></code></li>
+<li><code><a title="pykima.utils.find_prior_limits" href="#pykima.utils.find_prior_limits">find_prior_limits</a></code></li>
+<li><code><a title="pykima.utils.find_prior_parameters" href="#pykima.utils.find_prior_parameters">find_prior_parameters</a></code></li>
+<li><code><a title="pykima.utils.get_instrument_name" href="#pykima.utils.get_instrument_name">get_instrument_name</a></code></li>
+<li><code><a title="pykima.utils.get_planet_mass" href="#pykima.utils.get_planet_mass">get_planet_mass</a></code></li>
+<li><code><a title="pykima.utils.get_planet_mass_and_semimajor_axis" href="#pykima.utils.get_planet_mass_and_semimajor_axis">get_planet_mass_and_semimajor_axis</a></code></li>
+<li><code><a title="pykima.utils.get_planet_mass_latex" href="#pykima.utils.get_planet_mass_latex">get_planet_mass_latex</a></code></li>
+<li><code><a title="pykima.utils.get_planet_semimajor_axis" href="#pykima.utils.get_planet_semimajor_axis">get_planet_semimajor_axis</a></code></li>
+<li><code><a title="pykima.utils.get_planet_semimajor_axis_latex" href="#pykima.utils.get_planet_semimajor_axis_latex">get_planet_semimajor_axis_latex</a></code></li>
+<li><code><a title="pykima.utils.get_planet_teq" href="#pykima.utils.get_planet_teq">get_planet_teq</a></code></li>
+<li><code><a title="pykima.utils.get_prior" href="#pykima.utils.get_prior">get_prior</a></code></li>
+<li><code><a title="pykima.utils.get_star_name" href="#pykima.utils.get_star_name">get_star_name</a></code></li>
+<li><code><a title="pykima.utils.get_transit_probability" href="#pykima.utils.get_transit_probability">get_transit_probability</a></code></li>
+<li><code><a title="pykima.utils.hmsm_to_days" href="#pykima.utils.hmsm_to_days">hmsm_to_days</a></code></li>
+<li><code><a title="pykima.utils.hyperprior_samples" href="#pykima.utils.hyperprior_samples">hyperprior_samples</a></code></li>
+<li><code><a title="pykima.utils.jd_to_date" href="#pykima.utils.jd_to_date">jd_to_date</a></code></li>
+<li><code><a title="pykima.utils.jd_to_mjd" href="#pykima.utils.jd_to_mjd">jd_to_mjd</a></code></li>
+<li><code><a title="pykima.utils.lighten_color" href="#pykima.utils.lighten_color">lighten_color</a></code></li>
+<li><code><a title="pykima.utils.mjd_to_jd" href="#pykima.utils.mjd_to_jd">mjd_to_jd</a></code></li>
+<li><code><a title="pykima.utils.percentile68_ranges" href="#pykima.utils.percentile68_ranges">percentile68_ranges</a></code></li>
+<li><code><a title="pykima.utils.percentile68_ranges_latex" href="#pykima.utils.percentile68_ranges_latex">percentile68_ranges_latex</a></code></li>
+<li><code><a title="pykima.utils.percentile_ranges" href="#pykima.utils.percentile_ranges">percentile_ranges</a></code></li>
+<li><code><a title="pykima.utils.percentile_ranges_latex" href="#pykima.utils.percentile_ranges_latex">percentile_ranges_latex</a></code></li>
+<li><code><a title="pykima.utils.priors_latex" href="#pykima.utils.priors_latex">priors_latex</a></code></li>
+<li><code><a title="pykima.utils.read_big_file" href="#pykima.utils.read_big_file">read_big_file</a></code></li>
+<li><code><a title="pykima.utils.read_datafile" href="#pykima.utils.read_datafile">read_datafile</a></code></li>
+<li><code><a title="pykima.utils.read_datafile_rvfwhm" href="#pykima.utils.read_datafile_rvfwhm">read_datafile_rvfwhm</a></code></li>
+<li><code><a title="pykima.utils.read_model_setup" href="#pykima.utils.read_model_setup">read_model_setup</a></code></li>
+<li><code><a title="pykima.utils.rms" href="#pykima.utils.rms">rms</a></code></li>
+<li><code><a title="pykima.utils.show_tips" href="#pykima.utils.show_tips">show_tips</a></code></li>
+<li><code><a title="pykima.utils.wrms" href="#pykima.utils.wrms">wrms</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes-pykima.utils">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="pykima.utils.Fixed" href="#pykima.utils.Fixed">Fixed</a></code></h4>
+<ul class="">
+<li><code><a title="pykima.utils.Fixed.logpdf" href="#pykima.utils.Fixed.logpdf">logpdf</a></code></li>
+<li><code><a title="pykima.utils.Fixed.pdf" href="#pykima.utils.Fixed.pdf">pdf</a></code></li>
+<li><code><a title="pykima.utils.Fixed.rvs" href="#pykima.utils.Fixed.rvs">rvs</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="pykima.utils.ZeroDist" href="#pykima.utils.ZeroDist">ZeroDist</a></code></h4>
+<ul class="">
+<li><code><a title="pykima.utils.ZeroDist.logpdf" href="#pykima.utils.ZeroDist.logpdf">logpdf</a></code></li>
+<li><code><a title="pykima.utils.ZeroDist.pdf" href="#pykima.utils.ZeroDist.pdf">pdf</a></code></li>
+<li><code><a title="pykima.utils.ZeroDist.rvs" href="#pykima.utils.ZeroDist.rvs">rvs</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</div>
+
+  </details>
+
+</div>
+
+</div>
+  </main>
+
+  <footer class="mt-auto py-3 text-center">
+
+  <small class="text-muted mb-2">
+    <!-- <i class="fas fa-code"></i> with <i class="fas fa-heart"></i> -->
+    by <strong>João Faria</strong>
+  </small>
+
+  <div class="container-fluid justify-content-center"><a class="social mx-1"  href="mailto:joao.faria@astro.up.pt"
+       style="color: #6c757d"
+       onMouseOver="this.style.color='#db4437'"
+       onMouseOut="this.style.color='#6c757d'">
+      <i class="fas fa-envelope fa-1x"></i>
+    </a>
+
+</div><small id="attribution">
+    theme: <a href="https://github.com/YoussefRaafatNasry/portfolYOU">portfolYOU</a>
+  </small>
+  
+</footer>
+  
+  <!-- GitHub Buttons -->
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+
+<!-- jQuery CDN -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+<!-- Popper.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script>
+
+<!-- Bootstrap JS CDN -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+<!-- wow.js CDN & Activation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/wow/1.1.2/wow.js"></script>
+<script> new WOW().init(); </script>
+
+<!-- Initialize all tooltips -->
+<script>
+$(function () {
+    $('[data-toggle="tooltip"]').tooltip()
+})
+</script>
+
+</body>
+
+</html>

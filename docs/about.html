@@ -21,7 +21,13 @@
   <meta name="description" content="A data analysis framework  for exoplanet detection">
 
   
-  <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico">
+  <!-- <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico"> -->
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+
 
   <!-- Font Awesome CDN -->
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.10.0/css/all.css">
@@ -33,8 +39,27 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.css" type="text/css"/>
   
   <!-- KaTeX CSS CDN -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.2/dist/katex.min.css" integrity="sha384-Cqd8ihRLum0CCg8rz0hYKPoLZ3uw+gES2rXQXycqnL5pgVQIflxAUDS7ZSjITLb5" crossorigin="anonymous">
-  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/katex.min.css" integrity="sha384-zTROYFVGOfTw7JV7KUu8udsvW2fx4lWOsCEDqhBreBwlHI4ioVRtmIvEThzJHGET" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/katex.min.js" integrity="sha384-GxNFqL3r9uRJQhR+47eDxuPoNE7yLftQM8LcxzgS4HT73tp970WS/wV5p8UzCOmb" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/contrib/auto-render.min.js" integrity="sha384-vZTG03m+2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl" crossorigin="anonymous"></script>
+  <script>
+      document.addEventListener("DOMContentLoaded", function() {
+          renderMathInElement(document.body, {
+            // customised options
+            // • auto-render specific keys, e.g.:
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false},
+                {left: '\\[', right: '\\]', display: true}
+            ],
+            // • rendering keys, e.g.:
+            throwOnError : false
+          });
+      });
+  </script>
+
+
   <!-- Custom CSS -->
   <link rel="stylesheet" href="/assets/css/style.css" type="text/css">
 
@@ -54,7 +79,43 @@
 
   <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
     <div class="navbar-nav ml-auto">
-<a class="nav-item nav-link active" href="/about">About</a>
+<a class="nav-item nav-link " href="/pages/docs-parts/analysis-of-results/analysis-of-results"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/analysis-of-results/interactive-analysis"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/analysis-of-results/quick-plots"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/background-model"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/building-models"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/general-settings"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/known-objects"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/np-planets"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/setting-priors"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/building-models/types-of-models"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/getting-started"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/installation"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/loading-data/activity-correlations"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/loading-data/loading-data"></a>
+      
+      <a class="nav-item nav-link " href="/pages/docs-parts/tldr"></a>
+      
+      <a class="nav-item nav-link active" href="/about">About</a>
+      
+      <a class="nav-item nav-link " href="/news">News</a>
+      
+      <a class="nav-item nav-link " href="/docs/">Documentation</a>
+      
+      <a class="nav-item nav-link " href="/API">API</a>
       
       
       
