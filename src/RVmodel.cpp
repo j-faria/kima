@@ -1,19 +1,8 @@
 #include "RVmodel.h"
-// #include "DNest4.h"
-// #include "RNG.h"
-// #include "Utils.h"
-// #include "Data.h"
-// #include <cmath>
-// #include <limits>
-// #include <fstream>
-// #include <chrono>
-// #include <cmath>
-// #include <time.h>
 
 using namespace std;
 using namespace Eigen;
 using namespace DNest4;
-using namespace nijenhuis;
 
 #define TIMING false
 
@@ -21,9 +10,10 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 
 /* set default priors if the user didn't change them */
+
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
 
     betaprior = make_prior<Gaussian>(0, 1);
     // sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 10.);
@@ -33,6 +23,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+
 
     if (!Jprior)
         Jprior = make_prior<ModifiedLogUniform>(min(1.0, 0.1*data.get_max_RV_span()), data.get_max_RV_span());
@@ -156,7 +147,7 @@ void RVmodel::from_prior(RNG& rng)
         tauMA = tauMA_prior->generate(rng);
     }
 
-    auto data = Data::get_instance();
+    auto data = get_data();
     if (data.indicator_correlations)
     {
         for (unsigned i=0; i<data.number_indicators; i++)
@@ -196,7 +187,7 @@ void RVmodel::from_prior(RNG& rng)
 void RVmodel::calculate_C()
 {
     // Get the data
-    auto data = Data::get_instance();
+    auto data = get_data();
     const vector<double>& t = data.get_t();
     const vector<double>& sig = data.get_sig();
     const vector<int>& obsi = data.get_obsi();
@@ -491,7 +482,7 @@ void RVmodel::calculate_C()
 */
 void RVmodel::calculate_mu()
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
     // Get the times from the data
     const vector<double>& t = data.get_t();
     // only really needed if multi_instrument
@@ -601,9 +592,10 @@ void RVmodel::calculate_mu()
 
 }
 
+
 void RVmodel::remove_known_object()
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
     auto t = data.get_t();
     double f, v, ti, Tp;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
@@ -620,9 +612,10 @@ void RVmodel::remove_known_object()
     }
 }
 
+
 void RVmodel::add_known_object()
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
     auto t = data.get_t();
     double f, v, ti, Tp;
     for(int j=0; j<n_known_object; j++)
@@ -656,7 +649,7 @@ double RVmodel::perturb(RNG& rng)
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    auto data = Data::get_instance();
+    auto data = get_data();
     const vector<double>& t = data.get_t();
     const vector<int>& obsi = data.get_obsi();
     auto actind = data.get_actind();
@@ -1043,7 +1036,7 @@ double RVmodel::perturb(RNG& rng)
 */
 double RVmodel::log_likelihood() const
 {
-    auto data = Data::get_instance();
+    const auto data = get_data();
     int N = data.N();
     auto y = data.get_y();
     auto sig = data.get_sig();
@@ -1201,7 +1194,7 @@ void RVmodel::print(std::ostream& out) const
         }
     }
 
-    auto data = Data::get_instance();
+    auto data = get_data();
     if(data.indicator_correlations){
         for(int j=0; j<data.number_indicators; j++){
             out<<betas[j]<<'\t';
@@ -1246,6 +1239,7 @@ void RVmodel::print(std::ostream& out) const
     out << background;
 }
 
+
 string RVmodel::description() const
 {
     string desc;
@@ -1272,7 +1266,7 @@ string RVmodel::description() const
             desc += "offset" + std::to_string(j+1) + sep;
     }
 
-    auto data = Data::get_instance();
+    auto data = get_data();
     if(data.indicator_correlations){
         for(int j=0; j<data.number_indicators; j++){
             desc += "beta" + std::to_string(j+1) + sep;
@@ -1341,7 +1335,7 @@ string RVmodel::description() const
  * 
 */
 void RVmodel::save_setup() {
-    auto data = Data::get_instance();
+    auto data = get_data();
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 

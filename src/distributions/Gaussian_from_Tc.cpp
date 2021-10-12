@@ -6,7 +6,7 @@ namespace DNest4
 
 Gaussian_from_Tc::Gaussian_from_Tc(double Tc, double errTc, double P, double errP)
     {
-        double t0 = Data::get_instance().M0_epoch;
+        double t0 = RVData::get_instance().M0_epoch;
 
         // propagate uncertainty on Tc and P to phi
         double A, B, AoB, sA, sB;

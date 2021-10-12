@@ -3,12 +3,11 @@
 #include <vector>
 #include <memory>
 #include "ConditionalPrior.h"
-#include "RJObject/RJObject.h"
-#include "RNG.h"
 #include "DNest4.h"
 #include "Data.h"
 #include "kepler.h"
 #include "AMDstability.h"
+
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
@@ -49,12 +48,12 @@ class RVmodel
         double background;
 
         std::vector<double> offsets = // between instruments
-              std::vector<double>(Data::get_instance().number_instruments - 1);
+              std::vector<double>(RVData::get_instance().number_instruments - 1);
         std::vector<double> jitters = // for each instrument
-              std::vector<double>(Data::get_instance().number_instruments);
+              std::vector<double>(RVData::get_instance().number_instruments);
 
         std::vector<double> betas = // "slopes" for each indicator
-              std::vector<double>(Data::get_instance().number_indicators);
+              std::vector<double>(RVData::get_instance().number_indicators);
 
         double slope, quadr=0.0, cubic=0.0;
         double sigmaMA, tauMA;
@@ -81,8 +80,8 @@ class RVmodel
         std::vector<double> KO_w;
 
         // The signal
-        std::vector<long double> mu = // the RV model
-                            std::vector<long double>(Data::get_instance().N());
+        std::vector<double> mu = // the RV model
+                            std::vector<double>(RVData::get_instance().N());
         void calculate_mu();
         void add_known_object();
         void remove_known_object();
@@ -92,7 +91,7 @@ class RVmodel
         double star_mass = 1.0;  // [Msun]
 
         // The covariance matrix for the data
-        Eigen::MatrixXd C {Data::get_instance().N(), Data::get_instance().N()};
+        Eigen::MatrixXd C {RVData::get_instance().N(), RVData::get_instance().N()};
         void calculate_C();
 
         unsigned int staleness;
@@ -117,7 +116,7 @@ class RVmodel
         /// (Common) prior for the between-instruments offsets.
         std::shared_ptr<DNest4::ContinuousDistribution> offsets_prior;
         std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> individual_offset_prior {
-            (size_t) Data::get_instance().number_instruments - 1
+            (size_t) RVData::get_instance().number_instruments - 1
         };
         /// no doc.
         std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
@@ -171,11 +170,14 @@ class RVmodel
          * @param args   Arguments for constructor of distribution
          * @return std::shared_ptr<T> 
         */
-        template< class T, class... Args >
-        std::shared_ptr<T> make_prior( Args&&... args ) { return std::make_shared<T>(args...); }
+        template <class T, class... Args>
+        std::shared_ptr<T> make_prior(Args&&... args)
+        {
+            return std::make_shared<T>(args...);
+        }
 
-        // create an alias for Data::get_instance()
-        Data& get_data() { return Data::get_instance(); }
+        // create an alias for RVData::get_instance()
+        static RVData& get_data() { return RVData::get_instance(); }
 
         /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);

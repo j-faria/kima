@@ -22,7 +22,7 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 /* set default priors if the user didn't change them */
 void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
 
     betaprior = make_prior<Gaussian>(0, 1);
     // sigmaMA_prior = make_prior<ModifiedLogUniform>(1.0, 10.);
@@ -196,7 +196,7 @@ void RVFWHMmodel::from_prior(RNG& rng)
         tauMA = tauMA_prior->generate(rng);
     }
 
-    auto data = Data::get_instance();
+    auto data = get_data();
 
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
@@ -235,7 +235,7 @@ void RVFWHMmodel::from_prior(RNG& rng)
 void RVFWHMmodel::calculate_C_1()
 {
     // Get the data
-    auto data = Data::get_instance();
+    auto data = get_data();
     const vector<double>& t = data.get_t();
     const vector<double>& sig = data.get_sig();
     const vector<int>& obsi = data.get_obsi();
@@ -389,7 +389,7 @@ void RVFWHMmodel::calculate_C_1()
 void RVFWHMmodel::calculate_C_2()
 {
     // Get the data
-    auto data = Data::get_instance();
+    auto data = get_data();
     const vector<double>& t = data.get_t();
     const vector<double>& sig = data.get_sig2();
     const vector<int>& obsi = data.get_obsi();
@@ -543,7 +543,7 @@ void RVFWHMmodel::calculate_C_2()
 */
 void RVFWHMmodel::calculate_mu()
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
     // Get the times from the data
     const vector<double>& t = data.get_t();
     // only really needed if multi_instrument
@@ -649,7 +649,7 @@ void RVFWHMmodel::calculate_mu()
 */
 void RVFWHMmodel::calculate_mu_2()
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
     size_t N = data.N();
     int Ni = data.Ninstruments();
     // only really needed if multi_instrument
@@ -676,7 +676,7 @@ void RVFWHMmodel::calculate_mu_2()
 
 void RVFWHMmodel::remove_known_object()
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
     auto t = data.get_t();
     double f, v, ti, Tp;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
@@ -695,7 +695,7 @@ void RVFWHMmodel::remove_known_object()
 
 void RVFWHMmodel::add_known_object()
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
     auto t = data.get_t();
     double f, v, ti, Tp;
     for(int j=0; j<n_known_object; j++)
@@ -729,7 +729,7 @@ double RVFWHMmodel::perturb(RNG& rng)
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    auto data = Data::get_instance();
+    auto data = get_data();
     const vector<double>& t = data.get_t();
     const vector<int>& obsi = data.get_obsi();
     auto actind = data.get_actind();
@@ -1139,7 +1139,7 @@ double RVFWHMmodel::perturb(RNG& rng)
 */
 double RVFWHMmodel::log_likelihood() const
 {
-    auto data = Data::get_instance();
+    auto data = get_data();
     size_t N = data.N();
     auto y = data.get_y();
     auto y2 = data.get_y2();
@@ -1315,7 +1315,7 @@ void RVFWHMmodel::print(std::ostream& out) const
         }
     }
 
-    auto data = Data::get_instance();
+    auto data = get_data();
 
     if(GP)
     {
@@ -1391,7 +1391,7 @@ string RVFWHMmodel::description() const
             desc += "offset" + std::to_string(j+1) + sep;
     }
 
-    auto data = Data::get_instance();
+    auto data = get_data();
 
     if(GP)
     {
@@ -1462,7 +1462,7 @@ string RVFWHMmodel::description() const
  * 
 */
 void RVFWHMmodel::save_setup() {
-    auto data = Data::get_instance();
+    auto data = get_data();
 	std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
