@@ -8,45 +8,45 @@ on:
 
 jobs:
 
-  install_linux:
-    continue-on-error: false
-    name: ${{ matrix.os }}-${{ matrix.compiler }}
-    runs-on: ${{ matrix.os }}
+  # install_linux:
+  #   continue-on-error: false
+  #   name: ${{ matrix.os }}-${{ matrix.compiler }}
+  #   runs-on: ${{ matrix.os }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        # os: [ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, ubuntu-latest, macOS-latest]
-        # compiler: [g++-4.8, g++-5, g++-6, g++-7, g++-8, g++-9, g++-10, clang-3.9, clang]
-        os: [ubuntu-latest]
-        compiler: [g++]
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       # os: [ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, ubuntu-latest, macOS-latest]
+  #       # compiler: [g++-4.8, g++-5, g++-6, g++-7, g++-8, g++-9, g++-10, clang-3.9, clang]
+  #       os: [ubuntu-latest]
+  #       compiler: [g++]
 
-    steps:
-      - name: Setup compiler
-        id: setup
-        run: |
-          sudo apt install ${{ matrix.compiler }}
+  #   steps:
+  #     - name: Setup compiler
+  #       id: setup
+  #       run: |
+  #         sudo apt install ${{ matrix.compiler }}
 
-      - name: Check compiler
-        if: ${{ success() }}
-        run: |
-          ${{ matrix.compiler }} --version
+  #     - name: Check compiler
+  #       if: ${{ success() }}
+  #       run: |
+  #         ${{ matrix.compiler }} --version
 
-      - uses: actions/checkout@v2
-        if: ${{ success() }}
+  #     - uses: actions/checkout@v2
+  #       if: ${{ success() }}
 
-      - name: Checkout submodules
-        if: ${{ success() }}
-        shell: bash
-        run: |
-          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
-          git submodule sync --recursive
-          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+  #     - name: Checkout submodules
+  #       if: ${{ success() }}
+  #       shell: bash
+  #       run: |
+  #         auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+  #         git submodule sync --recursive
+  #         git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
     
-      - name: Install kima
-        if: ${{ success() }}
-        run: |
-          CXX=${{ matrix.compiler }} make -j 4
+  #     - name: Install kima
+  #       if: ${{ success() }}
+  #       run: |
+  #         CXX=${{ matrix.compiler }} make -j 4
 
 
   install_macOS:
@@ -80,4 +80,4 @@ jobs:
       - name: Install kima
         if: ${{ success() }}
         run: |
-          CXX=${{ matrix.compiler }} make -j 4
+          CXX=${{ matrix.compiler }} make main 51Peg -j 1
