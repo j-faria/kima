@@ -3,4 +3,3 @@
 #include "mixGaussianLogUniform.h"
 #include "Gaussian_from_Tc.h"
 #include "InvGamma.h"
-#include "QuadraticLimbDarkening.h"
