@@ -1,11 +1,7 @@
 #pragma once
 
 #include "DNest4.h"
-#include "distributions/Fixed.h"
-#include "distributions/Empirical.h"
-#include "distributions/mixGaussianLogUniform.h"
-#include "distributions/Gaussian_from_Tc.h"
-#include "distributions/InvGamma.h"
+#include "distributions/distributions.h"
 
 #include "Data.h"
 #include "ConditionalPrior.h"
