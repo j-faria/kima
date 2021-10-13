@@ -65,19 +65,20 @@ jobs:
         run: |
           ${{ matrix.compiler }} --version
           g++ --version
+          uname
 
-      - uses: actions/checkout@v2
-        if: ${{ success() }}
+      # - uses: actions/checkout@v2
+      #   if: ${{ success() }}
 
-      - name: Checkout submodules
-        if: ${{ success() }}
-        shell: bash
-        run: |
-          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
-          git submodule sync --recursive
-          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+      # - name: Checkout submodules
+      #   if: ${{ success() }}
+      #   shell: bash
+      #   run: |
+      #     auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+      #     git submodule sync --recursive
+      #     git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
     
-      - name: Install kima
-        if: ${{ success() }}
-        run: |
-          CXX=${{ matrix.compiler }} make main -j 4
+      # - name: Install kima
+      #   if: ${{ success() }}
+      #   run: |
+      #     CXX=${{ matrix.compiler }} make main -j 4
