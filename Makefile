@@ -4,9 +4,12 @@ CELERITE_PATH = celerite/cpp/include
 STATS_PATH = vendor/stats/include
 GCEM_PATH = vendor/gcem/include
 
-#export CXX = g++
+# export CXX = g++
+# export CXX = clang++-9
 
+CXXFLAGS = -pthread -fPIC -std=c++17 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY -Wfatal-errors
 CXXFLAGS += -Wno-inconsistent-missing-override
+CXXFLAGS += -g
 
 default_pie := $(shell $(CXX) -v 2>&1 >/dev/null | grep enable-default-pie)
 ifneq ($(default_pie),)
@@ -15,6 +18,11 @@ endif
 
 LIBS = -L$(DNEST4_PATH) -ldnest4 -L/usr/local/lib
 includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH) -I$(STATS_PATH) -I$(GCEM_PATH)
+
+# for modules and functions that use pybind11
+pybind_includes := `python3 -m pybind11 --includes`
+# includes += $(pybind_includes)
+
 
 SRCDIR = ./src
 SRCS =\
@@ -26,6 +34,8 @@ $(SRCDIR)/ConditionalPrior.cpp \
 $(SRCDIR)/RVmodel.cpp \
 $(SRCDIR)/RVFWHMmodel.cpp \
 $(SRCDIR)/main.cpp
+# $(SRCDIR)/WFmodel.cpp \
+# $(SRCDIR)/DataPy.cpp \
 
 OBJS=$(subst .cpp,.o,$(SRCS))
 HEADERS=$(subst .cpp,.h,$(SRCS))
@@ -45,7 +55,8 @@ main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 	@$(CXX) -o kima $(OBJS) $(LIBS) $(CXXFLAGS)
 
 
-.PHONY: ${EXAMPLES}
+.PHONY: ${EXAMPLES} bench test
+
 # old way, does not respect make -j flag
 # examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 # 	@+for example in $(EXAMPLES) ; do \
@@ -59,6 +70,22 @@ ${EXAMPLES}: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 $(DNEST4_PATH)/libdnest4.a:
 	@echo "Compiling DNest4"
 	@+$(MAKE) -s -C $(DNEST4_PATH) libdnest4.a
+
+
+
+pyAMD:
+	$(CXX) -O3 -Wall -shared -std=c++11 -fPIC `python3 -m pybind11 --includes` src/AMDstability.o src/pyAMDstability.cpp -o pykima/pyAMD`python3-config --extension-suffix`
+
+pykepler: src/kepler.o src/pykepler.cpp
+	$(CXX) $(CXXFLAGS) -shared -I. $(pybind_includes) $^ -o pykima/pykepler`python3-config --extension-suffix`
+
+
+test:
+	@make -C tests
+	@pytest tests --disable-pytest-warnings
+
+bench:
+	@$(MAKE) -C benchmarks
 
 
 clean:
