@@ -80,4 +80,4 @@ jobs:
       - name: Install kima
         if: ${{ success() }}
         run: |
-          CXX=${{ matrix.compiler }} make main 51Peg -j 1
+          CXX=${{ matrix.compiler }} make main -j 4
