@@ -47,7 +47,7 @@ all: main ${EXAMPLES}
 
 %.o: %.cpp
 	@echo "Compiling:" $<
-	$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
+	@$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
 
 
 main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
@@ -69,7 +69,7 @@ ${EXAMPLES}: $(DNEST4_PATH)/libdnest4.a $(OBJS)
 
 $(DNEST4_PATH)/libdnest4.a:
 	@echo "Compiling DNest4"
-	+$(MAKE) -s -C $(DNEST4_PATH) libdnest4.a
+	@+$(MAKE) -s -C $(DNEST4_PATH) libdnest4.a
 
 
 
