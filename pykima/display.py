@@ -1156,7 +1156,7 @@ def phase_plot(res,
     pars = sample[res.indices['planets']].copy()
 
     if res.KO:
-        k = 0
+        k = pars.size // nd - 1
         for i in range(res.nKO):
             KOpars = sample[res.indices['KOpars']][i::res.nKO]
             if pars.size == 0:
