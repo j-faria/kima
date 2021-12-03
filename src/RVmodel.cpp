@@ -556,6 +556,13 @@ double RVmodel::perturb(RNG& rng)
                         if (obsi[i] == j+1) { mu[i] -= offsets[j]; }
                     }
                 }
+
+                if(data.indicator_correlations) {
+                    for(size_t j = 0; j < data.number_indicators; j++){
+                        mu[i] -= betas[j] * actind[j][i];
+                    }
+                }
+
             }
 
             Cprior->perturb(background, rng);
@@ -571,6 +578,13 @@ double RVmodel::perturb(RNG& rng)
                 slope_prior->perturb(slope, rng);
             }
 
+            // propose new indicator correlations
+            if(data.indicator_correlations){
+                for(size_t j = 0; j < data.number_indicators; j++){
+                    betaprior->perturb(betas[j], rng);
+                }
+            }
+
             for(size_t i=0; i<mu.size(); i++)
             {
                 mu[i] += background;
@@ -582,11 +596,17 @@ double RVmodel::perturb(RNG& rng)
                         if (obsi[i] == j+1) { mu[i] += offsets[j]; }
                     }
                 }
+
+                if(data.indicator_correlations) {
+                    for(size_t j = 0; j < data.number_indicators; j++){
+                        mu[i] += betas[j]*actind[j][i];
+                    }
+                }
+                
             }
         }
 
     }
-
 
     else if(MA)
     {
@@ -1129,6 +1149,10 @@ void RVmodel::save_setup() {
     }
     if (multi_instrument)
         fout << "offsets_prior: " << *offsets_prior << endl;
+
+    if (data.indicator_correlations)
+        fout << "betaprior: " << *betaprior << endl;
+
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
 

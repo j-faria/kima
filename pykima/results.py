@@ -134,6 +134,17 @@ class KimaResults(object):
         if debug:
             print('--- skipping first %d rows of data file' % self.data_skip)
 
+        # activity indicator correlations?
+        try:
+            self.indcorrel = setup['kima']['indicator_correlations'] == 'true'
+            self.activity_indicators = setup['kima']['indicators'].split(',')
+            self.activity_indicators = [
+                s.strip() for s in self.activity_indicators
+            ]
+        except KeyError:
+            self.indcorrel = False
+
+
         if self.multi:
             self.data, self.obs = read_datafile(self.data_file, self.data_skip)
             # make sure the times are sorted when coming from multiple instruments
@@ -143,8 +154,21 @@ class KimaResults(object):
             self.n_instruments = np.unique(self.obs).size
             self.n_jitters = self.n_instruments
         else:
-            self.data = np.loadtxt(self.data_file, skiprows=self.data_skip,
-                                   usecols=(0, 1, 2))
+            if self.indcorrel:
+                indicator_cols = []
+                for i, ind in enumerate(self.activity_indicators):
+                    if ind != '':
+                        indicator_cols.append(i + 3)
+                # time, rv, error
+                self.data = np.loadtxt(self.data_file, skiprows=self.data_skip,
+                                       usecols=(0, 1, 2))
+                # indicators
+                self.data_indicators = np.loadtxt(self.data_file,
+                                                  skiprows=self.data_skip,
+                                                  usecols=indicator_cols)
+            else:
+                self.data = np.loadtxt(self.data_file, skiprows=self.data_skip,
+                                       usecols=(0, 1, 2))
             self.n_jitters = 1
 
         # to m/s
@@ -235,12 +259,7 @@ class KimaResults(object):
         else:
             n_inst_offsets = 0
 
-        # activity indicator correlations?
-        try:
-            self.indcorrel = setup['kima']['indicator_correlations'] == 'true'
-        except KeyError:
-            self.indcorrel = False
-
+        # activity indicator correlations
         if self.indcorrel:
             self.activity_indicators = setup['kima']['indicators'].split(',')
             n_act_ind = len(self.activity_indicators)
@@ -274,10 +293,10 @@ class KimaResults(object):
             elif self.GPkernel is KERNEL.celerite:
                 n_hyperparameters = 3
 
-            start_hyperpars = start_parameters + n_trend + n_inst_offsets + 1
-            self.etas = self.posterior_sample[:, start_hyperpars:
-                                              start_hyperpars +
-                                              n_hyperparameters]
+            # Changed by ACC 1/12/21 (add n_act_ind)
+            start_hyperpars = start_parameters + n_trend + n_inst_offsets + n_act_ind + 1
+            i1, i2 = start_hyperpars, start_hyperpars + n_hyperparameters
+            self.etas = self.posterior_sample[:, i1:i2]
 
             for i in range(n_hyperparameters):
                 name = 'eta' + str(i + 1)
@@ -285,19 +304,17 @@ class KimaResults(object):
                 setattr(self, name, self.posterior_sample[:, ind])
 
             if self.GPkernel is KERNEL.standard:
-                self.GP = GP(
-                    QPkernel(1, 1, 1, 1), self.data[:, 0], self.data[:, 2],
-                    white_noise=0.)
+                self.GP = GP(QPkernel(1, 1, 1, 1), self.data[:, 0],
+                             self.data[:, 2], white_noise=0.)
+
             elif self.GPkernel is KERNEL.celerite:
-                self.GP = GP_celerite(
-                    QPkernel_celerite(η1=1, η2=1, η3=1), self.data[:, 0], self.data[:, 2],
-                    white_noise=0.)
-                # print('ahhhh')
+                self.GP = GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1),
+                                      self.data[:, 0], self.data[:, 2],
+                                      white_noise=0.)
 
             self.indices['GPpars_start'] = start_hyperpars
             self.indices['GPpars_end'] = start_hyperpars + n_hyperparameters
-            self.indices['GPpars'] = slice(start_hyperpars,
-                                           start_hyperpars + n_hyperparameters)
+            self.indices['GPpars'] = slice(start_hyperpars, start_hyperpars + n_hyperparameters)
         else:
             n_hyperparameters = 0
 
@@ -312,9 +329,9 @@ class KimaResults(object):
 
         if self.MAmodel:
             n_MAparameters = 2
-            start_hyperpars = start_parameters + n_trend + n_inst_offsets + n_hyperparameters + 1
-            self.MA = self.posterior_sample[:, start_hyperpars:
-                                            start_hyperpars + n_MAparameters]
+            start_hyperpars = start_parameters + n_trend + n_inst_offsets + n_act_ind + n_hyperparameters + 1
+            i1, i2 = start_hyperpars, start_hyperpars + n_MAparameters
+            self.MA = self.posterior_sample[:, i1:i2]
         else:
             n_MAparameters = 0
 
@@ -328,7 +345,7 @@ class KimaResults(object):
 
         if self.KO:
             n_KOparameters = 5 * self.nKO
-            start = start_parameters + n_trend + n_inst_offsets + n_hyperparameters + n_MAparameters + 1
+            start = start_parameters + n_trend + n_inst_offsets + n_act_ind + n_hyperparameters + n_MAparameters + 1
             koinds = slice(start, start + n_KOparameters)
             self.KOpars = self.posterior_sample[:, koinds]
             self.indices['KOpars'] = koinds
@@ -336,9 +353,14 @@ class KimaResults(object):
             n_KOparameters = 0
 
 
-        start_objects_print = start_parameters + n_inst_offsets + \
-                              n_trend + n_act_ind + n_hyperparameters + \
-                              n_MAparameters + n_KOparameters + 1
+        start_objects_print = start_parameters
+        start_objects_print += n_inst_offsets
+        start_objects_print += n_trend
+        start_objects_print += n_act_ind
+        start_objects_print += n_hyperparameters
+        start_objects_print += n_MAparameters
+        start_objects_print += n_KOparameters
+        start_objects_print += 1
 
         # how many parameters per component
         self.n_dimensions = int(self.posterior_sample[0, start_objects_print])
@@ -1039,7 +1061,8 @@ class KimaResults(object):
             cfig.set_figheight(8)
 
     def plot_random_planets(self, ncurves=50, over=0.1, pmin=None, pmax=None,
-                            show_vsys=False, show_trend=False, Np=None,
+                            show_vsys=False, show_trend=False,
+                            show_indcorrel=False, Np=None,
                             return_residuals=False, ntt=10000, **kwargs):
         """
         Display the RV data together with curves from the posterior predictive.
@@ -1184,6 +1207,11 @@ class KimaResults(object):
                 if self.GPmodel:
                     v_at_ttGP += keplerian(ttGP, P, K, ecc, w, t0, 0.)
 
+            # add the correlation with indicators
+            if self.indcorrel and show_indcorrel:
+                betas = self.betas[i]
+                v_at_t += betas.dot(self.data_indicators.T)
+
             # systemic velocity for the current (ith) sample
             vsys = self.posterior_sample[mask][i, -1]
 
@@ -1275,6 +1303,8 @@ class KimaResults(object):
                 ax.plot(tt, v, alpha=0.1, color=color)
                 if self.KO:
                     ax1.plot(tt, v - v_KO[icurve], alpha=0.1, color='k')
+                if self.indcorrel and show_indcorrel:
+                    ax.plot(t, v_at_t, alpha=0.1, color='r')
 
             # plot the GP prediction
             if self.GPmodel:
@@ -1359,10 +1389,16 @@ class KimaResults(object):
             lab = dict(xlabel='Time [days]', ylabel='RV [m/s]')
 
         ax.set(**lab)
+
+        if self.indcorrel and show_indcorrel:
+            from matplotlib.lines import Line2D
+            elem = Line2D([0], [0], color='r', lw=1,
+                          label='Indicator correlations model')
+            ax.legend(handles=[elem])
+
         if self.KO:
             ax1.set(**lab)
 
-            from matplotlib.patches import Patch
             from matplotlib.lines import Line2D
 
             legend_elements = [
