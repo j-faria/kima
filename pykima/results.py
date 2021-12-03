@@ -9,7 +9,7 @@ except ImportError:
     import ConfigParser as configparser
 
 from .keplerian import keplerian
-from .GP import GP, QPkernel, GP_celerite, QPkernel_celerite
+from .GP import GP, QPkernel, GP_celerite, QPkernel_celerite, KERNEL
 from .utils import (need_model_setup, get_planet_mass,
                     get_planet_semimajor_axis, percentile68_ranges,
                     percentile68_ranges_latex, read_datafile, lighten_color,
@@ -258,7 +258,8 @@ class KimaResults(object):
         if GPmodel is None:
             try:
                 self.GPmodel = setup['kima']['GP'] == 'true'
-                self.GPkernel = int(setup['kima']['GP_kernel'])
+                kern = int(setup['kima']['GP_kernel'])
+                self.GPkernel = {0: KERNEL.standard, 1: KERNEL.celerite}[kern]
             except KeyError:
                 self.GPmodel = False
         else:
@@ -268,9 +269,9 @@ class KimaResults(object):
             print('GP model:', self.GPmodel)
 
         if self.GPmodel:
-            if self.GPkernel == 0:
+            if self.GPkernel is KERNEL.standard:
                 n_hyperparameters = 4
-            elif self.GPkernel == 1:
+            elif self.GPkernel is KERNEL.celerite:
                 n_hyperparameters = 3
 
             start_hyperpars = start_parameters + n_trend + n_inst_offsets + 1
@@ -283,11 +284,11 @@ class KimaResults(object):
                 ind = start_hyperpars + i
                 setattr(self, name, self.posterior_sample[:, ind])
 
-            if self.GPkernel == 0:
+            if self.GPkernel is KERNEL.standard:
                 self.GP = GP(
                     QPkernel(1, 1, 1, 1), self.data[:, 0], self.data[:, 2],
                     white_noise=0.)
-            elif self.GPkernel == 1:
+            elif self.GPkernel is KERNEL.celerite:
                 self.GP = GP_celerite(
                     QPkernel_celerite(η1=1, η2=1, η3=1), self.data[:, 0], self.data[:, 2],
                     white_noise=0.)
@@ -618,10 +619,10 @@ class KimaResults(object):
                     print(s)
 
             if self.GPmodel:
-                if self.GPkernel == 0:
+                if self.GPkernel is KERNEL.standard:
                     eta1, eta2, eta3, eta4 = pars[self.indices['GPpars']]
                     print('GP parameters: ', eta1, eta2, eta3, eta4)
-                elif self.GPkernel == 1:
+                elif self.GPkernel is KERNEL.celerite:
                     eta1, eta2, eta3 = pars[self.indices['GPpars']]
                     print('GP parameters: ', eta1, eta2, eta3)
 
@@ -1277,10 +1278,10 @@ class KimaResults(object):
 
             # plot the GP prediction
             if self.GPmodel:
-                if self.GPkernel == 0:
+                if self.GPkernel is KERNEL.standard:
                     self.GP.kernel.setpars(self.eta1[i], self.eta2[i],
                                            self.eta3[i], self.eta4[i])
-                elif self.GPkernel == 1:
+                elif self.GPkernel is KERNEL.celerite:
                     self.GP.kernel.setpars(self.eta1[i], self.eta2[i],
                                            self.eta3[i])
                 mu = self.GP.predict(y - v_at_t, ttGP, return_std=False)

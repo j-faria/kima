@@ -1,13 +1,21 @@
+import sys
 import numpy as np
 from scipy.spatial.distance import squareform, pdist, cdist
 from scipy.linalg import cholesky, cho_solve, solve_triangular
 
 try:
-    import celerite
     from celerite import GP as GPcel, terms
 except ImportError:
     print('Please install celerite: https://celerite.readthedocs.io/en/stable/python/install')
     sys.exit(1)
+
+from enum import IntEnum
+
+
+class KERNEL(IntEnum):
+    standard = 0
+    celerite = 1
+
 
 
 class QPkernel():
