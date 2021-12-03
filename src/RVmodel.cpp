@@ -445,7 +445,6 @@ double RVmodel::perturb(RNG& rng)
     double logH = 0.;
     double tmid = data.get_t_middle();
 
-    // begin ACC modification to include indicator_correlations
     if(GP)
     {
         if(rng.rand() <= 0.5) // perturb planet parameters
@@ -579,6 +578,7 @@ double RVmodel::perturb(RNG& rng)
                 slope_prior->perturb(slope, rng);
             }
 
+            // propose new indicator correlations
             if(data.indicator_correlations){
                 for(size_t j = 0; j < data.number_indicators; j++){
                     betaprior->perturb(betas[j], rng);
@@ -607,7 +607,6 @@ double RVmodel::perturb(RNG& rng)
         }
 
     }
-    // end ACC modification to include indicator_correlations
 
     else if(MA)
     {
@@ -1150,10 +1149,10 @@ void RVmodel::save_setup() {
     }
     if (multi_instrument)
         fout << "offsets_prior: " << *offsets_prior << endl;
-    // begin addition by ACC 1/12/21
+
     if (data.indicator_correlations)
         fout << "betaprior: " << *betaprior << endl;
-    // end addition by ACC 1/12/21
+
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
 
