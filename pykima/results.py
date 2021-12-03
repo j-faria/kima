@@ -274,11 +274,16 @@ class KimaResults(object):
             elif self.GPkernel is KERNEL.celerite:
                 n_hyperparameters = 3
 
-            start_hyperpars = start_parameters + n_trend + n_inst_offsets + 1
+            #start_hyperpars = start_parameters + n_trend + n_inst_offsets + 1
+            # Changed by ACC 1/12/21
+            start_hyperpars = start_parameters + n_trend + n_inst_offsets + n_act_ind + 1
             self.etas = self.posterior_sample[:, start_hyperpars:
                                               start_hyperpars +
                                               n_hyperparameters]
+                                              
 
+            #print("DBG> start_hyperpars = ",start_hyperpars,n_act_ind)
+            
             for i in range(n_hyperparameters):
                 name = 'eta' + str(i + 1)
                 ind = start_hyperpars + i
