@@ -12,7 +12,7 @@ const bool known_object = false;
 const int n_known_object = 0;
 const bool studentt = false;
 
-RVmodel::RVmodel() : fix(true), npmax(1)
+RV_binaries_model::RV_binaries_model() : fix(true), npmax(1)
 {
     // Cprior = make_prior<Uniform>(0, 1);
     auto c = planets.get_conditional_prior();
@@ -29,7 +29,7 @@ int main(int argc, char** argv)
     load(datafile, "kms", 0);
 
     // set the sampler and run it!
-    Sampler<RVmodel> sampler = setup<RVmodel>(argc, argv);
+    Sampler<RV_binaries_model> sampler = setup<RV_binaries_model>(argc, argv);
     sampler.run(50);
 
     return 0;

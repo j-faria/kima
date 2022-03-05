@@ -4,6 +4,8 @@
 #include "distributions/distributions.h"
 
 #include "Data.h"
+#include "ConditionalPrior_2.h"
+#include "RV_binaries_model.h"
 #include "ConditionalPrior.h"
 #include "RVmodel.h"
 #include "RVFWHMmodel.h"
