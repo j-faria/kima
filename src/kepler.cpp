@@ -151,7 +151,7 @@ namespace murison
       double n = 2. * M_PI / P;
       // sin and cos of argument of periastron, once per orbit
       double sinw, cosw;
-      sincos(w, &sinw, &cosw);
+      __sincos(w, &sinw, &cosw);
       // ecentricity factor for g, once per orbit
       double g_e = sqrt((1 + ecc) / (1 - ecc));
 
@@ -706,7 +706,7 @@ namespace brandt
       double n = 2. * M_PI / P;
       // sin and cos of argument of periastron, once per orbit
       double sinw, cosw;
-      sincos(w, &sinw, &cosw);
+      __sincos(w, &sinw, &cosw);
       // ecentricity factor for g, once per orbit
       double g_e = sqrt((1 + ecc) / (1 - ecc));
 
