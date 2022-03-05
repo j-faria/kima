@@ -126,6 +126,8 @@ void RVData::load(const string filename, const string units, int skip,
 
     // epoch for the mean anomaly, by default the time of the first observation
     M0_epoch = t[0];
+    // Alternatively use the barycentre of Datapoints
+    M0_epoch = std::accumulate(t.begin(),t.end(),0.0)/t.size();
 
 #if VERBOSE
     // How many points did we read?
@@ -223,6 +225,8 @@ void RVData::load_multi(const string filename, const string units, int skip)
 
     // epoch for the mean anomaly, by default the time of the first observation
     M0_epoch = t[0];
+    // Alternatively use the barycentre of Datapoints
+    M0_epoch = std::accumulate(t.begin(),t.end(),0.0)/t.size();
 }
 
 /**
@@ -372,6 +376,8 @@ void RVData::load_multi(vector<string> filenames, const string units, int skip,
 
     // epoch for the mean anomaly, by default the time of the first observation
     M0_epoch = t[0];
+    // Alternatively use the barycentre of Datapoints
+    M0_epoch = std::accumulate(t.begin(),t.end(),0.0)/t.size();
 }
 
 double RVData::get_RV_var() const
@@ -579,6 +585,8 @@ void LCData::load(const string filename, int skip)
 
     // epoch for the mean anomaly, by default the time of the first observation
     M0_epoch = t[0];
+    // Alternatively use the barycentre of Datapoints
+    M0_epoch = std::accumulate(t.begin(),t.end(),0.0)/t.size();
 
 #if VERBOSE
     // How many points did we read?
