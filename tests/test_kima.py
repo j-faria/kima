@@ -31,7 +31,7 @@ def test_true_ecc_anomaly():
 
 def test_keplerian():
     from pykima.keplerian import keplerian
-    # keplerian(time, p, k, ecc, omega, t0, vsys)
+    # keplerian(time, p, k, ecc, omega, omegadot, t0, vsys)
 
     times1 = [
         0.,
@@ -42,13 +42,13 @@ def test_keplerian():
     # now it should raise a FloatingPointError
     with pytest.warns(RuntimeWarning):
         with pytest.raises(FloatingPointError):
-            keplerian(times1, 0., 0., 0., 0., 0., 0.)
+            keplerian(times1, 0., 0., 0., 0., 0., 0., 0.)
             # assert np.isnan(result)
-            keplerian(times2, 0., 0., 0., 0., 0., 0.)
+            keplerian(times2, 0., 0., 0., 0., 0., 0., 0.)
             # assert np.all(np.isnan(result))
 
-    npt.assert_allclose(keplerian(times1, 100., 1., 0., 0., 0., 0.), 1.)
-    npt.assert_allclose(keplerian(times2, 1., 1., 0., 0., 0., 0.), 1.)
+    npt.assert_allclose(keplerian(times1, 100., 1., 0., 0., 0., 0., 0.), 1.)
+    npt.assert_allclose(keplerian(times2, 1., 1., 0., 0., 0., 0., 0.), 1.)
 
 
 ## pykima.utils
