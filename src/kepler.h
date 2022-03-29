@@ -73,3 +73,12 @@ namespace contour
                             const double &M, const double &ecc);
 }
 
+
+namespace postKep
+{
+    double period_correction(double p_obs, double wdot);
+    double change_omega(double w, double wdot, double ti, double Tp);
+}
+
+
+

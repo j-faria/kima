@@ -175,6 +175,25 @@ namespace murison
 } // namespace murison
 
 
+namespace postKep
+{
+    double period_correction(double p_obs, double wdot)
+    {
+    //convert observational period (in days) to anomalistic period (in days) using wdot (in arcsec per year)
+    double P_anom = p_obs*(1+wdot*0.0000000132733744*p_obs/TWO_PI);
+    
+    return P_anom;
+    }
+    
+    double change_omega(double w, double wdot, double ti, double Tp)
+    {
+    //linear change in omega and convert from arcsec/year to radians/day
+    double dw = wdot*(ti-Tp)*0.0000000132733744;
+    
+    return w + dw;
+    }
+}
+
 // A solver for Kepler's equation based on:
 //    Nijenhuis (1991)
 //    http://adsabs.harvard.edu/abs/1991CeMDA..51..319N
@@ -993,4 +1012,5 @@ namespace contour
     }
 
 }
+
 

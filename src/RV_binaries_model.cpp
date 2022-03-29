@@ -4,6 +4,7 @@ using namespace std;
 using namespace Eigen;
 using namespace DNest4;
 using namespace nijenhuis;
+using namespace postKep;
 
 #define TIMING false
 
@@ -549,7 +550,7 @@ void RV_binaries_model::calculate_mu()
 
 
     double f, v, ti;
-    double P, K, phi, ecc, omega, omegadot, dw, Tp, P_anom;
+    double P, K, phi, ecc, omega, omegadot, omega_t, Tp, P_anom;
     for(size_t j=0; j<components.size(); j++)
     {
         if(hyperpriors)
@@ -566,12 +567,12 @@ void RV_binaries_model::calculate_mu()
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            P_anom = P*(1+omegadot*0.0000000132733744*P/(2. * M_PI)); //correction to anomalistic period
+            P_anom = postKep::period_correction(P, omegadot);
             Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
-            dw = omegadot*(ti-Tp)*0.0000000132733744; //linear change in omega and convert from arcsec/year to radians per day
+            omega_t = postKep::change_omega(omega, omegadot, ti, Tp);
             f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
             // f = brandt::true_anomaly(ti, P, ecc, Tp);
-            v = K * (cos(f + omega + dw) + ecc * cos(omega + dw));
+            v = K * (cos(f + omega_t) + ecc * cos(omega_t));
             mu[i] += v;
         }
     }
@@ -600,18 +601,18 @@ void RV_binaries_model::remove_known_object()
 {
     auto data = get_data();
     auto t = data.get_t();
-    double f, v, ti, Tp, dw, P_anom;
+    double f, v, ti, Tp, w_t, P_anom;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            P_anom = KO_P[j]*(1+KO_wdot[j]*0.0000000132733744*KO_P[j]/(2. * M_PI)); //correction to anomalistic period
+            P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-            dw = KO_wdot[j]*(ti-Tp)*0.0000000132733744; //linear change in omega and convert from arcsec/year to radians per day
+            w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-            v = KO_K[j] * (cos(f+KO_w[j]+dw) + KO_e[j]*cos(KO_w[j]+dw));
+            v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
             mu[i] -= v;
         }
     }
@@ -621,17 +622,17 @@ void RV_binaries_model::add_known_object()
 {
     auto data = get_data();
     auto t = data.get_t();
-    double f, v, ti, Tp, dw, P_anom;
+    double f, v, ti, Tp, w_t, P_anom;
     for(int j=0; j<n_known_object; j++)
     {
         for(size_t i=0; i<t.size(); i++)
         {
             ti = t[i];
-            P_anom = KO_P[j]*(1+KO_wdot[j]*0.0000000132733744*KO_P[j]/(2. * M_PI)); //correction to anomalistic period
+            P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
             Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
-            dw = KO_wdot[j]*(ti-Tp)*0.0000000132733744; //linear change in omega and convert from arcsec/year to radians per day
+            w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
-            v = KO_K[j] * (cos(f+KO_w[j]+dw) + KO_e[j]*cos(KO_w[j]+dw));
+            v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
             mu[i] += v;
         }
     }
