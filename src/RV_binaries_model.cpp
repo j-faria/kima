@@ -601,7 +601,7 @@ void RV_binaries_model::remove_known_object()
 {
     auto data = get_data();
     auto t = data.get_t();
-    double f, v, ti, Tp, w_t, P_anom;
+    double f, v, delta_v, ti, Tp, w_t, P_anom;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
     for(int j=0; j<n_known_object; j++)
     {
@@ -613,6 +613,8 @@ void RV_binaries_model::remove_known_object()
             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
             v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
+            delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom);
+            v += delta_v;
             mu[i] -= v;
         }
     }
@@ -622,7 +624,7 @@ void RV_binaries_model::add_known_object()
 {
     auto data = get_data();
     auto t = data.get_t();
-    double f, v, ti, Tp, w_t, P_anom;
+    double f, v, delta_v, ti, Tp, w_t, P_anom;
     for(int j=0; j<n_known_object; j++)
     {
         for(size_t i=0; i<t.size(); i++)
@@ -633,6 +635,8 @@ void RV_binaries_model::add_known_object()
             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
             v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
+            delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom);
+            v += delta_v;
             mu[i] += v;
         }
     }

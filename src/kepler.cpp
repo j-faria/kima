@@ -177,20 +177,91 @@ namespace murison
 
 namespace postKep
 {
+    double c_light = 299792458; //m/s
     double period_correction(double p_obs, double wdot)
     {
-    //convert observational period (in days) to anomalistic period (in days) using wdot (in arcsec per year)
-    double P_anom = p_obs*(1+wdot*0.0000000132733744*p_obs/TWO_PI);
+        //convert observational period (in days) to anomalistic period (in days) using wdot (in arcsec per year)
+        double P_anom = p_obs*(1+wdot*0.0000000132733744*p_obs/TWO_PI);
     
-    return P_anom;
+        return P_anom;
     }
     
     double change_omega(double w, double wdot, double ti, double Tp)
     {
-    //linear change in omega and convert from arcsec/year to radians/day
-    double dw = wdot*(ti-Tp)*0.0000000132733744;
+        //linear change in omega and convert from arcsec/year to radians/day
+        double dw = wdot*(ti-Tp)*0.0000000132733744;
     
-    return w + dw;
+        return w + dw;
+    }
+    
+    inline double semiamp(double M0, double M1, double P, double ecc)
+    {
+        // given M0 and M1 in solar mass and P in days, returns in m/s
+        double m1 = M1 * 1047.5655; //in jupiter mass
+        double m01 = (M0 + M1); //in solar mass
+        
+        return 28.4329*pow((1-pow(ecc,2.0)),-0.5)*m1*pow(m01,-2/3)*pow(P/365,-1/3);
+    }
+    
+    inline double get_K2(double K1, double M, double P, double ecc)
+    {
+        double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2/3)*pow((P/365),1/3)/1047.5655;
+        double a = M/3;
+        double b = M*3;
+        double c = (a+b)/2;
+        double eps = semiamp(M,b,P,ecc) - semiamp(M,a,P,ecc);
+    
+        while (abs(eps) > 1) {
+            c = (b+a)/2;
+            double x = K1 - semiamp(M,c,P,ecc);
+            if (x < 0) {
+                b = c;
+            } else {
+                a = c;
+            }
+            eps = semiamp(M,b,P,ecc) - semiamp(M,a,P,ecc);
+        }
+        double M2 = c;
+        double K2 =K1*M/M2;
+        
+        return K2;
+    }
+    
+    inline double light_travel_time(double K1, double f, double w, double ecc)
+    {
+        double delta_LT = pow(K1,2.0)*pow(sin(f + w), 2.0)*(1+ecc*cos(f))/c_light;
+    
+        return delta_LT;
+    }
+    
+    inline double transverse_doppler(double K1, double f, double ecc)
+    {
+        //here assume inclination of 90 (eclipsing) so sin(i) = 1
+        double sini = 1.0;
+        double delta_TD = pow(K1,2.0)*(1 + ecc*cos(f) - (1-pow(ecc,2.0))/2)/(c_light*pow(sini,2.0));
+    
+        return delta_TD;
+    }
+    
+    inline double gravitational_redshift(double K1, double K2, double f, double ecc)
+    {
+        //again assume inclination of 90 (eclipsing) so sin(i) = 1
+        double sini = 1.0;
+        double delta_GR = K1*(K1+K2)*(1+ecc*cos(f))/(c_light*pow(sini,2.0));
+    
+        return delta_GR;
+    }
+    
+    double post_Newtonian(double K1, double f, double ecc, double w, double P)
+    {
+        double M = 0.6897;
+        double K2 = get_K2(K1, M, P, ecc); 
+        //double K2 = K1;
+        double delta_LT = light_travel_time(K1, f, w, ecc);
+        double delta_TD = transverse_doppler(K1, f, ecc);
+        double delta_GR = gravitational_redshift(K1, K2, f, ecc);
+    
+        return delta_LT + delta_TD;
     }
 }
 
