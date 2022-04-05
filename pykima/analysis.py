@@ -207,7 +207,11 @@ def detection_limits(results,
     """
     res = results
     if Np is None:
-        Np = passes_threshold_np(res)
+        if res.fix:
+            print('Np is fixed in the model, using Np-1')
+            Np = res.max_components - 1
+        else:
+            Np = passes_threshold_np(res)
 
     if res.verbose:
         print(f'Using samples with Np > {Np}')
