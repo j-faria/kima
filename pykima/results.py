@@ -1935,8 +1935,6 @@ class KimaResults(object):
     plot2 = make_plot2
 
     def make_plot3(self,
-                   mask=None,
-                   include_known_object=False,
                    points=True,
                    gridsize=50,
                    **kwargs):
@@ -1945,8 +1943,7 @@ class KimaResults(object):
         period and eccentricity and orbital period. If `points` is True, plot
         each posterior sample, else plot hexbins
         """
-        return display.make_plot3(self, mask, include_known_object, points,
-                                  gridsize, **kwargs)
+        return display.make_plot3(self, points, gridsize, **kwargs)
 
     plot3 = make_plot3
 
