@@ -200,14 +200,14 @@ namespace postKep
         double m1 = M1 * 1047.5655; //in jupiter mass
         double m01 = (M0 + M1); //in solar mass
         
-        return 28.4329*pow((1-pow(ecc,2.0)),-0.5)*m1*pow(m01,-2/3)*pow(P/365,-1/3);
+        return 28.4329*pow((1-pow(ecc,2.0)),-0.5)*m1*pow(m01,-2.0/3)*pow(P/365,-1.0/3);
     }
     
     inline double get_K2(double K1, double M, double P, double ecc)
     {
-        double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2/3)*pow((P/365),1/3)/1047.5655;
-        double a = M/3;
-        double b = M*3;
+        double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2.0/3)*pow((P/365),1.0/3)/1047.5655;
+        double a = M_est/3;
+        double b = M_est*3;
         double c = (a+b)/2;
         double eps = semiamp(M,b,P,ecc) - semiamp(M,a,P,ecc);
     
@@ -252,16 +252,15 @@ namespace postKep
         return delta_GR;
     }
     
-    double post_Newtonian(double K1, double f, double ecc, double w, double P)
+    double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1)
     {
-        double M = 0.6897;
-        double K2 = get_K2(K1, M, P, ecc); 
+        double K2 = get_K2(K1, M1, P, ecc); 
         //double K2 = K1;
         double delta_LT = light_travel_time(K1, f, w, ecc);
         double delta_TD = transverse_doppler(K1, f, ecc);
         double delta_GR = gravitational_redshift(K1, K2, f, ecc);
     
-        return delta_LT + delta_TD;
+        return delta_LT + delta_TD + delta_GR;
     }
 }
 
