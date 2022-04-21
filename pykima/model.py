@@ -195,11 +195,22 @@ class KimaModel:
     @filename.setter
     def filename(self, f):
         if f is None:
+            self._filename = f
             return
         if isinstance(f, list):
-            self._filename = f
+            files = f
         else:
-            self._filename = [f, ]
+            files = [f]
+
+        relative_files = []
+        for i, file in enumerate(files):
+            if os.path.dirname(file) != self.directory:
+                relative_files.append(os.path.abspath(file))
+            else:
+                relative_files.append(os.path.basename(file))
+
+        self._filename = relative_files
+        self._filename_full_path = [os.path.abspath(f) for f in self._filename]
         self.data
 
 
