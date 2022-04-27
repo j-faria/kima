@@ -1140,7 +1140,11 @@ def phase_plot(res,
         P = p[0]
         phi = p[2]
         t0 = M0_epoch - (P * phi) / (2. * np.pi)
-        return np.array([P, p[1], p[3], p[4], p[5], t0, 0.0])
+        try:
+            return np.array([P, p[1], p[3], p[4], p[5], t0, 0.0])
+        except IndexError:
+            return np.array([P, p[1], p[3], p[4], 0, t0, 0.0])
+
 
     if highlight_points is not None:
         hlkw = dict(fmt='*', ms=6, color='y', zorder=2)

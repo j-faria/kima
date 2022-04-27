@@ -1150,7 +1150,10 @@ class KimaResults(object):
                     formatter = {'all': lambda v: f'{v:11.5f}'}
                     with np.printoptions(formatter=formatter, linewidth=1000):
                         planet_pars = p[self.indices['planets']][i::self.max_components]
-                        P, K, M0, ecc, ω, ωdot = planet_pars
+                        if self.model == 'RV_binaries_model':
+                            P, K, M0, ecc, ω, ωdot = planet_pars
+                        else:
+                            P, K, M0, ecc, ω = planet_pars
 
                         if show_a or show_m:
                             (m, _), a = get_planet_mass_and_semimajor_axis(
@@ -1363,7 +1366,10 @@ class KimaResults(object):
                     t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                     ecc = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
-                    wdot = pars[j + 5 * self.nKO]
+                    if self.model == 'RV_binaries_model':
+                        wdot = pars[j + 5 * self.nKO]
+                    else:
+                        wdot = 0
                     v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
 
             # get the planet parameters for this sample
@@ -1391,12 +1397,12 @@ class KimaResults(object):
                 t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
-                wdot = pars[j + 5 * self.max_components]
                 if self.model == 'RVFWHMmodel':
-                    v[0, :] += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
+                    v[0, :] += keplerian(t, P, K, ecc, w, 0, t0, 0.)
                 elif self.model == 'RVmodel':
-                    v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
+                    v += keplerian(t, P, K, ecc, w, 0, t0, 0.)
                 elif self.model == 'RV_binaries_model':
+                    wdot = pars[j + 5 * self.max_components]
                     v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
 
         # systemic velocity (and C2) for this sample
@@ -1511,7 +1517,10 @@ class KimaResults(object):
                 t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                 ecc = pars[j + 3 * self.nKO]
                 w = pars[j + 4 * self.nKO]
-                wdot = pars[j + 5 * self.nKO]
+                if self.model == 'RV_binaries_model':
+                    wdot = pars[j + 5 * self.nKO]
+                else:
+                    wdot = 0
                 v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
 
         # get the planet parameters for this sample
@@ -1539,12 +1548,12 @@ class KimaResults(object):
             t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
             ecc = pars[j + 3 * self.max_components]
             w = pars[j + 4 * self.max_components]
-            wdot = pars[j + 5 * self.max_components]
             if self.model == 'RVFWHMmodel':
-                v[0, :] += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
+                v[0, :] += keplerian(t, P, K, ecc, w, 0, t0, 0.)
             elif self.model == 'RVmodel':
-                v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
+                v += keplerian(t, P, K, ecc, w, 0, t0, 0.)
             elif self.model == 'RV_binaries_model':
+                wdot = pars[j + 5 * self.max_components]
                 v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
 
         return v
@@ -2155,11 +2164,13 @@ class KimaResults(object):
             )
             return
 
-        labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w', 'wdot']
+        
         if self.model == 'RV_binaries_model':
             numpar = 6
+            labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w', 'wdot']
         else:
             numpar = 5
+            labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w']
         for i in range(self.KOpars.shape[1] // numpar):
             # if together and i>0:
             #     fig = cfig
