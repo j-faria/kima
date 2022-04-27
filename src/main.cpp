@@ -11,6 +11,7 @@ const bool multi_instrument = false;
 const bool known_object = false;
 const int n_known_object = 0;
 const bool studentt = false;
+const bool relativistic_correction = false;
 
 RV_binaries_model::RV_binaries_model() : fix(true), npmax(1)
 {

@@ -35,6 +35,9 @@ extern const int n_known_object;
 /// use a Student-t distribution for the likelihood (instead of Gaussian)
 extern const bool studentt;
 
+/// whether to include relativistic corrections
+extern const bool relativistic_correction;
+
 class RV_binaries_model
 {
     private:

@@ -203,7 +203,42 @@ namespace postKep
         return 28.4329*pow((1-pow(ecc,2.0)),-0.5)*m1*pow(m01,-2.0/3)*pow(P/365,-1.0/3);
     }
     
-    inline double get_K2(double K1, double M, double P, double ecc)
+    inline double f_M(double K,double M0, double M1, double P, double ecc)
+    {
+        double f = semiamp(M0, M1, P, ecc) - K;
+    
+        return f;
+    }
+
+    inline double f_dash_M(double K,double M0, double M1, double P, double ecc)
+    {
+        // given M0 and M1 in solar mass and P in days, returns in m/s
+        double MjMs = 1047.5655;
+        double m1 = M1 * MjMs; //in jupiter mass
+        double m01 = (M0 + M1); //in solar mass
+    
+        double f_dash_1 = 28.4329*pow((1-pow(ecc,2.0)),-0.5)*MjMs*pow(m01,-2.0/3)*pow(P/365,-1.0/3);
+        double f_dash_2 = -2*28.4329*pow((1-pow(ecc,2.0)),-0.5)*m1*pow(m01,-5.0/3)*pow(P/365,-1.0/3)/3;
+    
+        return f_dash_1 - f_dash_2;
+    }
+
+    inline double get_K2_v2(double K1, double M, double P, double ecc)
+    {
+        double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2.0/3)*pow((P/365),1.0/3)/1047.5655;
+        double k = semiamp(M, M_est, P, ecc);
+        while(abs(k-K1)>50)
+        {
+            M_est = M_est - f_M(K1, M, M_est, P, ecc)/f_dash_M(K1, M, M_est, P, ecc);
+            k = semiamp(M, M_est, P, ecc);
+        }
+        double K2 = K1*M/M_est;
+    
+        return K2;
+
+    }
+
+    inline double get_K2_v1(double K1, double M, double P, double ecc)
     {
         double M_est = (K1/28.4329)*pow((1-pow(ecc,2.0)),0.5)*pow(M,2.0/3)*pow((P/365),1.0/3)/1047.5655;
         double a = M_est/3;
@@ -211,7 +246,7 @@ namespace postKep
         double c = (a+b)/2;
         double eps = semiamp(M,b,P,ecc) - semiamp(M,a,P,ecc);
     
-        while (abs(eps) > 1) {
+        while (abs(eps) > 50) {
             c = (b+a)/2;
             double x = K1 - semiamp(M,c,P,ecc);
             if (x < 0) {
@@ -222,7 +257,7 @@ namespace postKep
             eps = semiamp(M,b,P,ecc) - semiamp(M,a,P,ecc);
         }
         double M2 = c;
-        double K2 =K1*M/M2;
+        double K2 =K1*M/M_est;
         
         return K2;
     }
@@ -254,8 +289,7 @@ namespace postKep
     
     double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1)
     {
-        double K2 = get_K2(K1, M1, P, ecc); 
-        //double K2 = K1;
+        double K2 = get_K2_v2(K1, M1, P, ecc); 
         double delta_LT = light_travel_time(K1, f, w, ecc);
         double delta_TD = transverse_doppler(K1, f, ecc);
         double delta_GR = gravitational_redshift(K1, K2, f, ecc);

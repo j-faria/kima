@@ -613,8 +613,11 @@ void RV_binaries_model::remove_known_object()
             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
             v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
-            delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass);
-            v += delta_v;
+            if (relativistic_correction)
+            {    
+                delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass);
+                v += delta_v;
+            }
             mu[i] -= v;
         }
     }
@@ -635,8 +638,11 @@ void RV_binaries_model::add_known_object()
             w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp);
             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
             v = KO_K[j] * (cos(f+w_t) + KO_e[j]*cos(w_t));
-            delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass);
-            v += delta_v;
+            if (relativistic_correction)
+            {    
+                delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass);
+                v += delta_v;
+            }
             mu[i] += v;
         }
     }
@@ -1376,6 +1382,7 @@ void RV_binaries_model::save_setup() {
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
+    fout << "relativistic_correction: " << relativistic_correction <<endl;
     fout << endl;
 
     fout << endl;
