@@ -287,9 +287,18 @@ namespace postKep
         return delta_GR;
     }
     
-    double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1)
+    double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1, double M2)
     {
-        double K2 = get_K2_v2(K1, M1, P, ecc); 
+        double K2;
+        //if M2 is specified use it, if not, numerically calculate it
+        if (M2 > 0.01)
+        {
+            K2 = K1*M1/M2;
+        }
+        else
+        {
+            K2 = get_K2_v2(K1, M1, P, ecc); 
+        }
         double delta_LT = light_travel_time(K1, f, w, ecc);
         double delta_TD = transverse_doppler(K1, f, ecc);
         double delta_GR = gravitational_redshift(K1, K2, f, ecc);

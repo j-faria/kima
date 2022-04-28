@@ -94,6 +94,7 @@ class RV_binaries_model
         bool enforce_stability = false;
         
         double star_mass = 1.0;  // [Msun]
+        double binary_mass = 0.0; //if not specified set to zero
 
         // The covariance matrix for the data
         Eigen::MatrixXd C {get_data().N(), get_data().N()};
