@@ -6,7 +6,7 @@ from pprint import pformat, pprint
 from hashlib import md5
 import contextlib
 import numpy as np
-from . import showresults as pkshowresults
+from .showresults import showresults as pkshowresults
 
 thisdir = os.path.dirname(os.path.realpath(__file__))
 kimadir = os.path.dirname(thisdir)
@@ -268,6 +268,9 @@ class KimaModel:
         # calculate the hash of the levels.txt file the first time
         # we create self.res to avoid calling showresults repeatedly
         levels_f = os.path.join(self.directory, 'levels.txt')
+        if not os.path.exists(levels_f):
+            raise ValueError(
+                'levels.txt does not exist, did you run the model?')
         h = md5(open(levels_f, 'rb').read()).hexdigest()
 
 
@@ -276,7 +279,8 @@ class KimaModel:
             self._levels_hash = h
             # with io.StringIO() as buf, contextlib.redirect_stdout(buf):  # redirect stdout
             with chdir(self.directory):
-                self.res = pkshowresults(force_return=True, show_plots=False, verbose=False)
+                self.res = pkshowresults(force_return=True, show_plots=False,
+                                         verbose=False)
             # output = buf.getvalue()
         # self.res.return_figs = True
 
