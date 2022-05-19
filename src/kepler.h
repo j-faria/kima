@@ -6,6 +6,12 @@
 #include <algorithm>
 #include <iostream>
 
+/// whether to include relativistic corrections
+extern const bool relativistic_correction;
+
+/// whether to include tidal correction
+extern const bool tidal_correction;
+
 double mod2pi(const double &angle);
 
 namespace murison
@@ -86,7 +92,8 @@ namespace postKep
     inline double light_travel_time(double K1, double f, double w, double ecc);
     inline double transverse_doppler(double K1, double f, double ecc);
     inline double gravitational_redshift(double K1, double K2, double f, double ecc);
-    double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1, double M2);
+    inline double v_tide(double R1, double M1, double M2, double P, double f, double w);
+    double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1, double M2, double R1);
 }
 
 

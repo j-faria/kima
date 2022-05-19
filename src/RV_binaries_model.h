@@ -38,6 +38,9 @@ extern const bool studentt;
 /// whether to include relativistic corrections
 extern const bool relativistic_correction;
 
+/// whether to include tidal correction
+extern const bool tidal_correction;
+
 class RV_binaries_model
 {
     private:
@@ -94,6 +97,7 @@ class RV_binaries_model
         bool enforce_stability = false;
         
         double star_mass = 1.0;  // [Msun]
+        double star_radius = 0.0; //if not specified set to zero
         double binary_mass = 0.0; //if not specified set to zero
 
         // The covariance matrix for the data

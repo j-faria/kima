@@ -287,23 +287,51 @@ namespace postKep
         return delta_GR;
     }
     
-    double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1, double M2)
+    inline double v_tide(double R1, double M1, double M2, double P, double f, double w)
+    {
+        double phi_0 = M_PI/2 - w;
+        double MjMs = 1047.5655;
+        M2 = M2*MjMs;
+        
+        return 1.13*M2/(M1*(M1+M2/MjMs))*pow(R1,4.0)*pow(P,-3.0)*sin(2*(f-phi_0));
+    }
+    
+    double post_Newtonian(double K1, double f, double ecc, double w, double P, double M1, double M2, double R1)
     {
         double K2;
+        double v = 0.0;
         //if M2 is specified use it, if not, numerically calculate it
-        if (M2 > 0.01)
+        if (relativistic_correction || tidal_correction)
         {
-            K2 = K1*M1/M2;
+            if (M2 > 0.01)
+            {
+                K2 = K1*M1/M2;
+            }
+            else
+            {
+                K2 = get_K2_v2(K1, M1, P, ecc); 
+                M2 = K1*M1/K2;
+            }
         }
-        else
+        if (tidal_correction)
         {
-            K2 = get_K2_v2(K1, M1, P, ecc); 
+            if (R1 <0.01)
+            {
+                R1 = pow(M1,0.8);
+            }
+            double delta_v_tide = v_tide(R1,M1,M2,P,f,w);
+            v = v + delta_v_tide;
         }
-        double delta_LT = light_travel_time(K1, f, w, ecc);
-        double delta_TD = transverse_doppler(K1, f, ecc);
-        double delta_GR = gravitational_redshift(K1, K2, f, ecc);
+        if (relativistic_correction)
+        {
+            double delta_LT = light_travel_time(K1, f, w, ecc);
+            double delta_TD = transverse_doppler(K1, f, ecc);
+            double delta_GR = gravitational_redshift(K1, K2, f, ecc);
+            v = v + delta_LT + delta_TD + delta_GR;
+        }
+        
     
-        return delta_LT + delta_TD + delta_GR;
+        return v;
     }
 }
 
