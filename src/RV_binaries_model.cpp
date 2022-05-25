@@ -75,6 +75,8 @@ void RV_binaries_model::setPriors()  // BUG: should be done by only one thread!
         for (int i = 0; i < n_known_object; i++){
             if (!KO_Pprior[i] || !KO_Kprior[i] || !KO_eprior[i] || !KO_phiprior[i] || !KO_wprior[i] || !KO_wdotprior[i])
                 throw std::logic_error("When known_object=true, please set priors for each (KO_Pprior, KO_Kprior, KO_eprior, KO_phiprior, KO_wprior, KO_wdotprior)");
+            if (double_lined && !KO_qprior[i])
+                throw std::logic_error("When double_lined=true, please set prior for KO_qprior");
         }
     }
 
@@ -1458,6 +1460,6 @@ void RV_binaries_model::save_setup() {
     }
 
     fout << endl;
-	fout.close();
+    fout.close();
 }
 

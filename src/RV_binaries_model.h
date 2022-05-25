@@ -41,6 +41,9 @@ extern const bool relativistic_correction;
 /// whether to include tidal correction
 extern const bool tidal_correction;
 
+///whether double-lined binary
+extern const bool double_lined;
+
 class RV_binaries_model
 {
     private:
@@ -82,6 +85,7 @@ class RV_binaries_model
         // double KO_P, KO_K, KO_e, KO_phi, KO_w, KO_wdot;
         std::vector<double> KO_P;
         std::vector<double> KO_K;
+        std::vector<double> KO_q;
         std::vector<double> KO_e;
         std::vector<double> KO_phi;
         std::vector<double> KO_w;
@@ -154,6 +158,7 @@ class RV_binaries_model
         // priors for KO mode!
         std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {(size_t) n_known_object};
         std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Kprior {(size_t) n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_qprior {(size_t) n_known_object};
         std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {(size_t) n_known_object};
         std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {(size_t) n_known_object};
         std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {(size_t) n_known_object};
