@@ -93,10 +93,15 @@ class RV_binaries_model
 
         // The signal
         std::vector<long double> mu = // the RV model
-                            std::vector<long double>(get_data().N());
+                            std::vector<long double>(RVData::get_instance().N());
+        std::vector<long double> mu_2 = // the RV model for secondary
+                            std::vector<long double>(RVData::get_instance().N()); // changed to imitate RVFWHM get_data replaced by get_instance
         void calculate_mu();
+        void calculate_mu_2();
         void add_known_object();
+        void add_known_object_secondary();
         void remove_known_object();
+        void remove_known_object_secondary();
         int is_stable() const;
         bool enforce_stability = false;
         

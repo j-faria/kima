@@ -159,6 +159,8 @@ void RV_binaries_model::from_prior(RNG& rng)
     if (known_object) { // KO mode!
         KO_P.resize(n_known_object);
         KO_K.resize(n_known_object);
+        if (double_lined)
+            KO_q.resize(n_known_object);
         KO_e.resize(n_known_object);
         KO_phi.resize(n_known_object);
         KO_w.resize(n_known_object);
@@ -167,6 +169,8 @@ void RV_binaries_model::from_prior(RNG& rng)
         for (int i=0; i<n_known_object; i++){
             KO_P[i] = KO_Pprior[i]->generate(rng);
             KO_K[i] = KO_Kprior[i]->generate(rng);
+            if (double_lined)
+                KO_q[i] = KO_qprior[i]->generate(rng);
             KO_e[i] = KO_eprior[i]->generate(rng);
             KO_phi[i] = KO_phiprior[i]->generate(rng);
             KO_w[i] = KO_wprior[i]->generate(rng);
@@ -596,6 +600,123 @@ void RV_binaries_model::calculate_mu()
     auto end = std::chrono::high_resolution_clock::now();
     cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
     #endif
+    
+
+}
+
+void RV_binaries_model::calculate_mu_2()
+{
+    auto data = get_data();
+    // Get the times from the data
+    const vector<double>& t = data.get_t();
+    // only really needed if multi_instrument
+    const vector<int>& obsi = data.get_obsi();
+    auto actind = data.get_actind();
+
+    // Update or from scratch?
+    bool update = (planets.get_added().size() < planets.get_components().size()) &&
+            (staleness <= 10);
+
+    // Get the components
+    const vector< vector<double> >& components = (update)?(planets.get_added()):
+                (planets.get_components());
+    // at this point, components has:
+    //  if updating: only the added planets' parameters
+    //  if from scratch: all the planets' parameters
+
+    // Zero the signal
+    if(!update) // not updating, means recalculate everything
+    {
+        mu_2.assign(mu_2.size(), background);
+        staleness = 0;
+        if(trend)
+        {
+            double tmid = data.get_t_middle();
+            for(size_t i=0; i<t.size(); i++)
+            {
+                mu_2[i] += slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
+            }
+        }
+
+        if(multi_instrument)
+        {
+            for(size_t j=0; j<offsets.size(); j++)
+            {
+                for(size_t i=0; i<t.size(); i++)
+                {
+                    if (obsi[i] == j+1) { mu_2[i] += offsets[j]; }
+                }
+            }
+        }
+
+        if(data.indicator_correlations)
+        {
+            for(size_t i=0; i<t.size(); i++)
+            {
+                for(size_t j = 0; j < data.number_indicators; j++)
+                   mu_2[i] += betas[j] * actind[j][i];
+            }   
+        }
+
+        if (known_object) { // KO mode!
+            add_known_object_secondary();
+        }
+    }
+    else // just updating (adding) planets
+        staleness++;
+
+
+    #if TIMING
+    auto begin = std::chrono::high_resolution_clock::now();  // start timing
+    #endif
+
+
+    double f, v, ti;
+    double P, K, phi, ecc, omega, omegadot, omega_t, Tp, P_anom;
+    for(size_t j=0; j<components.size(); j++)
+    {
+        if(hyperpriors)
+            P = exp(components[j][0]);
+        else
+            P = components[j][0];
+
+        K = components[j][1];
+        phi = components[j][2];
+        ecc = components[j][3];
+        omega = components[j][4];
+        omegadot = components[j][5];
+
+        for(size_t i=0; i<t.size(); i++)
+        {
+            ti = t[i];
+            P_anom = postKep::period_correction(P, omegadot);
+            Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
+            omega_t = postKep::change_omega(omega, omegadot, ti, Tp);
+            f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
+            // f = brandt::true_anomaly(ti, P, ecc, Tp);
+            v = K * (cos(f + omega_t) + ecc * cos(omega_t));
+            mu_2[i] += v;
+        }
+    }
+
+
+    if(MA)
+    {
+        const vector<double>& y_2 = data.get_y2();
+        for(size_t i=1; i<t.size(); i++) // the loop starts at the 2nd point
+        {
+            // y_2[i-1] - mu_2[i-1] is the residual at the i-1 observation
+            mu_2[i] += sigmaMA * exp(-fabs(t[i-1] - t[i]) / tauMA) * (y_2[i-1] - mu_2[i-1]);
+        }   
+    }
+
+
+
+    #if TIMING
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
+    #endif
+    
 
 }
 
@@ -622,6 +743,30 @@ void RV_binaries_model::remove_known_object()
     }
 }
 
+void RV_binaries_model::remove_known_object_secondary()
+{
+    auto data = get_data();
+    auto t = data.get_t();
+    double f, v, delta_v, ti, Tp, w_t, P_anom, K2;
+    // cout << "in remove_known_obj: " << KO_P[1] << endl;
+    for(int j=0; j<n_known_object; j++)
+    {
+        for(size_t i=0; i<t.size(); i++)
+        {
+            ti = t[i];
+            P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
+            Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
+            w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp)-M_PI;
+            f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
+            K2 = KO_K[j]/KO_q[j];
+            v = K2 * (cos(f+w_t) + KO_e[j]*cos(w_t));
+            delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,star_radius);
+            v += delta_v;
+            mu_2[i] -= v;
+        }
+    }
+}
+
 void RV_binaries_model::add_known_object()
 {
     auto data = get_data();
@@ -640,6 +785,29 @@ void RV_binaries_model::add_known_object()
             delta_v = postKep::post_Newtonian(KO_K[j],f,KO_e[j],w_t,P_anom,star_mass,binary_mass,star_radius);
             v += delta_v;
             mu[i] += v;
+        }
+    }
+}
+
+void RV_binaries_model::add_known_object_secondary()
+{
+    auto data = get_data();
+    auto t = data.get_t();
+    double f, v, delta_v, ti, Tp, w_t, P_anom, K2;
+    for(int j=0; j<n_known_object; j++)
+    {
+        for(size_t i=0; i<t.size(); i++)
+        {
+            ti = t[i];
+            P_anom = postKep::period_correction(KO_P[j], KO_wdot[j]);
+            Tp = data.M0_epoch-(P_anom*KO_phi[j])/(2.*M_PI);
+            w_t = postKep::change_omega(KO_w[j], KO_wdot[j], ti, Tp)-M_PI;
+            f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
+            K2 = KO_K[j]/KO_q[j];
+            v = K2 * (cos(f+w_t) + KO_e[j]*cos(w_t));
+            delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,star_radius);
+            v += delta_v;
+            mu_2[i] += v;
         }
     }
 }
@@ -773,6 +941,8 @@ double RV_binaries_model::perturb(RNG& rng)
             if (known_object)
             {
                 remove_known_object();
+                //if (double_lined)
+                    //remove_known_object_secondary();
 
                 for (int i=0; i<n_known_object; i++){
                     KO_Pprior[i]->perturb(KO_P[i], rng);
@@ -781,6 +951,8 @@ double RV_binaries_model::perturb(RNG& rng)
                     KO_phiprior[i]->perturb(KO_phi[i], rng);
                     KO_wprior[i]->perturb(KO_w[i], rng);
                     KO_wdotprior[i]->perturb(KO_wdot[i], rng);
+                    //if (double_lined)
+                        //KO_qprior[i]->perturb(KO_q[i], rng);
                 }
 
                 add_known_object();
@@ -933,6 +1105,8 @@ double RV_binaries_model::perturb(RNG& rng)
             logH += planets.perturb(rng);
             planets.consolidate_diff();
             calculate_mu();
+            if (double_lined)
+                calculate_mu_2();
         }
         else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
         {
@@ -953,6 +1127,8 @@ double RV_binaries_model::perturb(RNG& rng)
             if (known_object)
             {
                 remove_known_object();
+                if (double_lined)
+                    remove_known_object_secondary();
 
                 for (int i=0; i<n_known_object; i++){
                     KO_Pprior[i]->perturb(KO_P[i], rng);
@@ -961,9 +1137,13 @@ double RV_binaries_model::perturb(RNG& rng)
                     KO_phiprior[i]->perturb(KO_phi[i], rng);
                     KO_wprior[i]->perturb(KO_w[i], rng);
                     KO_wdotprior[i]->perturb(KO_wdot[i], rng);
+                    if (double_lined)
+                        KO_qprior[i]->perturb(KO_q[i],rng);
                 }
 
                 add_known_object();
+                if (double_lined)
+                    add_known_object_secondary();
             }
         
         }
@@ -984,6 +1164,25 @@ double RV_binaries_model::perturb(RNG& rng)
                 if(data.indicator_correlations) {
                     for(size_t j = 0; j < data.number_indicators; j++){
                         mu[i] -= betas[j] * actind[j][i];
+                    }
+                }
+                
+                if (double_lined)
+                {
+                    mu_2[i] -= background;
+                    if(trend) {
+                        mu_2[i] -= slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
+                    }
+                    if(multi_instrument) {
+                        for(size_t j=0; j<offsets.size(); j++){
+                            if (obsi[i] == j+1) { mu_2[i] -= offsets[j]; }
+                        }
+                    }
+
+                    if(data.indicator_correlations) {
+                        for(size_t j = 0; j < data.number_indicators; j++){
+                            mu_2[i] -= betas[j] * actind[j][i];
+                        }
                     }
                 }
             }
@@ -1029,6 +1228,24 @@ double RV_binaries_model::perturb(RNG& rng)
                         mu[i] += betas[j]*actind[j][i];
                     }
                 }
+                if (double_lined)
+                {
+                    mu_2[i] += background;
+                    if(trend) {
+                        mu_2[i] += slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
+                    }
+                    if(multi_instrument) {
+                        for(size_t j=0; j<offsets.size(); j++){
+                            if (obsi[i] == j+1) { mu_2[i] += offsets[j]; }
+                        }
+                    }
+
+                    if(data.indicator_correlations) {
+                        for(size_t j = 0; j < data.number_indicators; j++){
+                            mu_2[i] += betas[j]*actind[j][i];
+                        }
+                    }
+                }
             }
         }
     }
@@ -1056,7 +1273,11 @@ double RV_binaries_model::log_likelihood() const
     auto y = data.get_y();
     auto sig = data.get_sig();
     auto obsi = data.get_obsi();
-
+    auto y_2 = data.get_y2();
+    auto sig_2 = data.get_sig2();
+    //cout<< "background: " << background <<endl;
+    //cout << "mu1: " << mu[0]-background<<endl;
+    //cout << "mu2: " << mu_2[0]-background<<endl;
     double logL = 0.;
 
     if (enforce_stability){
@@ -1128,20 +1349,30 @@ double RV_binaries_model::log_likelihood() const
         if (studentt){
             // The following code calculates the log likelihood 
             // in the case of a t-Student model
-            double var, jit;
+            double var, var_2, jit;
             for(size_t i=0; i<N; i++)
             {
                 if(multi_instrument)
                 {
                     jit = jitters[obsi[i]-1];
                     var = sig[i]*sig[i] + jit*jit;
+                    if (double_lined)
+                        var_2 = sig_2[i]*sig_2[i] + jit*jit;
                 }
                 else
                     var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                    if (double_lined)
+                        var_2 = sig_2[i]*sig_2[i] + extra_sigma*extra_sigma;
 
                 logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
                         - 0.5*log(M_PI*nu) - 0.5*log(var)
                         - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
+                if (double_lined)
+                {
+                    logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
+                            - 0.5*log(M_PI*nu) - 0.5*log(var_2)
+                            - 0.5*(nu + 1.)*log(1. + pow(y_2[i] - mu_2[i], 2)/var_2/nu);
+                }
             }
 
         }
@@ -1149,19 +1380,28 @@ double RV_binaries_model::log_likelihood() const
         else{
             // The following code calculates the log likelihood
             // in the case of a Gaussian likelihood
-            double var, jit;
+            double var, var_2, jit;
             for(size_t i=0; i<N; i++)
             {
                 if(multi_instrument)
                 {
                     jit = jitters[obsi[i]-1];
                     var = sig[i]*sig[i] + jit*jit;
+                    if (double_lined)
+                        var_2 = sig_2[i]*sig_2[i] + jit*jit;
                 }
                 else
                     var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                    if (double_lined)
+                        var_2 = sig_2[i]*sig_2[i] + extra_sigma*extra_sigma;
 
                 logL += - halflog2pi - 0.5*log(var)
                         - 0.5*(pow(y[i] - mu[i], 2)/var);
+                if (double_lined)
+                {
+                    logL += - halflog2pi - 0.5*log(var_2)
+                            - 0.5*(pow(y_2[i]-mu_2[i],2)/var_2);
+                }
             }
         }
 
@@ -1239,6 +1479,8 @@ void RV_binaries_model::print(std::ostream& out) const
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
         for (auto K: KO_K) out << K << "\t";
+        if (double_lined)
+            for (auto q: KO_q) out << q << "\t";
         for (auto phi: KO_phi) out << phi << "\t";
         for (auto e: KO_e) out << e << "\t";
         for (auto w: KO_w) out << w << "\t";
@@ -1313,6 +1555,11 @@ string RV_binaries_model::description() const
             desc += "KO_P" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_K" + std::to_string(i) + sep;
+        if (double_lined)
+        {
+            for(int i=0; i<n_known_object; i++) 
+                desc += "KO_q" + std::to_string(i) + sep;
+        }
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_phi" + std::to_string(i) + sep;
         for(int i=0; i<n_known_object; i++) 
@@ -1354,7 +1601,7 @@ string RV_binaries_model::description() const
 */
 void RV_binaries_model::save_setup() {
     auto data = get_data();
-	std::fstream fout("kima_model_setup.txt", std::ios::out);
+    std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
     time_t rawtime;
@@ -1379,6 +1626,8 @@ void RV_binaries_model::save_setup() {
     fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
     fout << "relativistic_correction: " << relativistic_correction <<endl;
+    fout << "tidal_correction: " << tidal_correction <<endl;
+    fout << "double_lined: " << double_lined <<endl;
     fout << endl;
 
     fout << endl;
@@ -1452,6 +1701,8 @@ void RV_binaries_model::save_setup() {
         for(int i=0; i<n_known_object; i++){
             fout << "Pprior_" << i << ": " << *KO_Pprior[i] << endl;
             fout << "Kprior_" << i << ": " << *KO_Kprior[i] << endl;
+            if (double_lined)
+                fout << "qprior_" << i << ": " << *KO_qprior[i] << endl;
             fout << "eprior_" << i << ": " << *KO_eprior[i] << endl;
             fout << "phiprior_" << i << ": " << *KO_phiprior[i] << endl;
             fout << "wprior_" << i << ": " << *KO_wprior[i] << endl;

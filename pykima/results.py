@@ -849,6 +849,8 @@ class KimaResults(object):
 
         max_components = self.max_components
         index_component = self.index_component
+        max_components = 2
+        index_component = 10
 
         # periods
         i1 = 0 * max_components + index_component + 1
