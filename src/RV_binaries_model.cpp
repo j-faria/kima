@@ -95,7 +95,8 @@ void RV_binaries_model::from_prior(RNG& rng)
     planets.from_prior(rng);
     planets.consolidate_diff();
 
-    background = Cprior->generate(rng);
+    bkg = Cprior->generate(rng);
+    bkg2 = Cprior->generate(rng);
 
     if(multi_instrument)
     {
@@ -107,6 +108,7 @@ void RV_binaries_model::from_prior(RNG& rng)
     else
     {
         extra_sigma = Jprior->generate(rng);
+        extra_sigma_2 = Jprior->generate(rng);
     }
 
 
@@ -183,6 +185,8 @@ void RV_binaries_model::from_prior(RNG& rng)
 
 
     calculate_mu();
+    if (double_lined)
+        calculate_mu_2();
 
     if(GP) calculate_C();
 
@@ -511,7 +515,7 @@ void RV_binaries_model::calculate_mu()
     // Zero the signal
     if(!update) // not updating, means recalculate everything
     {
-        mu.assign(mu.size(), background);
+        mu.assign(mu.size(), bkg);
         staleness = 0;
         if(trend)
         {
@@ -627,7 +631,7 @@ void RV_binaries_model::calculate_mu_2()
     // Zero the signal
     if(!update) // not updating, means recalculate everything
     {
-        mu_2.assign(mu_2.size(), background);
+        mu_2.assign(mu_2.size(), bkg2);
         staleness = 0;
         if(trend)
         {
@@ -640,11 +644,11 @@ void RV_binaries_model::calculate_mu_2()
 
         if(multi_instrument)
         {
-            for(size_t j=0; j<offsets.size(); j++)
+            for(size_t j=0; j<offsets_2.size(); j++)
             {
                 for(size_t i=0; i<t.size(); i++)
                 {
-                    if (obsi[i] == j+1) { mu_2[i] += offsets[j]; }
+                    if (obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
                 }
             }
         }
@@ -963,7 +967,7 @@ double RV_binaries_model::perturb(RNG& rng)
         {
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] -= background;
+                mu[i] -= bkg;
                 if(trend) {
                     mu[i] -= slope*(t[i]-data.get_t_middle());
                 }
@@ -974,7 +978,7 @@ double RV_binaries_model::perturb(RNG& rng)
                 }
             }
 
-            Cprior->perturb(background, rng);
+            Cprior->perturb(bkg, rng);
 
             // propose new instrument offsets
             if (multi_instrument){
@@ -989,7 +993,7 @@ double RV_binaries_model::perturb(RNG& rng)
 
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] += background;
+                mu[i] += bkg;
                 if(trend) {
                     mu[i] += slope*(t[i]-data.get_t_middle());
                 }
@@ -1038,7 +1042,7 @@ double RV_binaries_model::perturb(RNG& rng)
         {
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] -= background;
+                mu[i] -= bkg;
                 if(trend) {
                     mu[i] -= slope*(t[i]-data.get_t_middle());
                 }
@@ -1056,7 +1060,7 @@ double RV_binaries_model::perturb(RNG& rng)
 
             }
 
-            Cprior->perturb(background, rng);
+            Cprior->perturb(bkg, rng);
 
             // propose new instrument offsets
             if (multi_instrument){
@@ -1077,7 +1081,7 @@ double RV_binaries_model::perturb(RNG& rng)
 
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] += background;
+                mu[i] += bkg;
                 if(trend) {
                     mu[i] += slope*(t[i]-data.get_t_middle());
                 }
@@ -1114,10 +1118,16 @@ double RV_binaries_model::perturb(RNG& rng)
             {
                 for(int i=0; i<jitters.size(); i++)
                     Jprior->perturb(jitters[i], rng);
+                if (double_lined) {
+                    for(int i=0; i<jitters_2.size(); i++)
+                        Jprior->perturb(jitters_2[i], rng);
+                }
             }
             else
             {
                 Jprior->perturb(extra_sigma, rng);
+                if (double_lined)
+                    Jprior->perturb(extra_sigma_2, rng);
             }
 
             if (studentt)
@@ -1151,7 +1161,7 @@ double RV_binaries_model::perturb(RNG& rng)
         {
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] -= background;
+                mu[i] -= bkg;
                 if(trend) {
                     mu[i] -= slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
                 }
@@ -1169,13 +1179,13 @@ double RV_binaries_model::perturb(RNG& rng)
                 
                 if (double_lined)
                 {
-                    mu_2[i] -= background;
+                    mu_2[i] -= bkg2;
                     if(trend) {
                         mu_2[i] -= slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
                     }
                     if(multi_instrument) {
-                        for(size_t j=0; j<offsets.size(); j++){
-                            if (obsi[i] == j+1) { mu_2[i] -= offsets[j]; }
+                        for(size_t j=0; j<offsets_2.size(); j++){
+                            if (obsi[i] == j+1) { mu_2[i] -= offsets_2[j]; }
                         }
                     }
 
@@ -1188,12 +1198,18 @@ double RV_binaries_model::perturb(RNG& rng)
             }
 
             // propose new vsys
-            Cprior->perturb(background, rng);
+            Cprior->perturb(bkg, rng);
+            Cprior->perturb(bkg2, rng);
 
             // propose new instrument offsets
             if (multi_instrument){
                 for(unsigned j=0; j<offsets.size(); j++){
                     individual_offset_prior[j]->perturb(offsets[j], rng);
+                }
+                if (double_lined){
+                    for(unsigned j=0; j<offsets.size(); j++){
+                        individual_offset_prior[j]->perturb(offsets[j], rng);
+                    }
                 }
             }
 
@@ -1213,7 +1229,7 @@ double RV_binaries_model::perturb(RNG& rng)
 
             for(size_t i=0; i<mu.size(); i++)
             {
-                mu[i] += background;
+                mu[i] += bkg;
                 if(trend) {
                     mu[i] += slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
                 }
@@ -1230,13 +1246,13 @@ double RV_binaries_model::perturb(RNG& rng)
                 }
                 if (double_lined)
                 {
-                    mu_2[i] += background;
+                    mu_2[i] += bkg2;
                     if(trend) {
                         mu_2[i] += slope*(t[i]-tmid) + quadr*pow(t[i]-tmid, 2) + cubic*pow(t[i]-tmid, 3);
                     }
                     if(multi_instrument) {
-                        for(size_t j=0; j<offsets.size(); j++){
-                            if (obsi[i] == j+1) { mu_2[i] += offsets[j]; }
+                        for(size_t j=0; j<offsets_2.size(); j++){
+                            if (obsi[i] == j+1) { mu_2[i] += offsets_2[j]; }
                         }
                     }
 
@@ -1275,9 +1291,7 @@ double RV_binaries_model::log_likelihood() const
     auto obsi = data.get_obsi();
     auto y_2 = data.get_y2();
     auto sig_2 = data.get_sig2();
-    //cout<< "background: " << background <<endl;
-    //cout << "mu1: " << mu[0]-background<<endl;
-    //cout << "mu2: " << mu_2[0]-background<<endl;
+
     double logL = 0.;
 
     if (enforce_stability){
@@ -1349,20 +1363,22 @@ double RV_binaries_model::log_likelihood() const
         if (studentt){
             // The following code calculates the log likelihood 
             // in the case of a t-Student model
-            double var, var_2, jit;
+            double var, var_2, jit, jit2;
             for(size_t i=0; i<N; i++)
             {
                 if(multi_instrument)
                 {
                     jit = jitters[obsi[i]-1];
                     var = sig[i]*sig[i] + jit*jit;
-                    if (double_lined)
-                        var_2 = sig_2[i]*sig_2[i] + jit*jit;
+                    if (double_lined){
+                        jit2 = jitters_2[obsi[i]-1];
+                        var_2 = sig_2[i]*sig_2[i] + jit2*jit2;
+                    }
                 }
                 else
                     var = sig[i]*sig[i] + extra_sigma*extra_sigma;
                     if (double_lined)
-                        var_2 = sig_2[i]*sig_2[i] + extra_sigma*extra_sigma;
+                        var_2 = sig_2[i]*sig_2[i] + extra_sigma_2*extra_sigma_2;
 
                 logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
                         - 0.5*log(M_PI*nu) - 0.5*log(var)
@@ -1380,20 +1396,22 @@ double RV_binaries_model::log_likelihood() const
         else{
             // The following code calculates the log likelihood
             // in the case of a Gaussian likelihood
-            double var, var_2, jit;
+            double var, var_2, jit, jit2;
             for(size_t i=0; i<N; i++)
             {
                 if(multi_instrument)
                 {
                     jit = jitters[obsi[i]-1];
                     var = sig[i]*sig[i] + jit*jit;
-                    if (double_lined)
-                        var_2 = sig_2[i]*sig_2[i] + jit*jit;
+                    if (double_lined){
+                        jit2 = jitters_2[obsi[i]-1];
+                        var_2 = sig_2[i]*sig_2[i] + jit2*jit2;
+                    }
                 }
                 else
                     var = sig[i]*sig[i] + extra_sigma*extra_sigma;
                     if (double_lined)
-                        var_2 = sig_2[i]*sig_2[i] + extra_sigma*extra_sigma;
+                        var_2 = sig_2[i]*sig_2[i] + extra_sigma_2*extra_sigma_2;
 
                 logL += - halflog2pi - 0.5*log(var)
                         - 0.5*(pow(y[i] - mu[i], 2)/var);
@@ -1430,9 +1448,15 @@ void RV_binaries_model::print(std::ostream& out) const
     {
         for(int j=0; j<jitters.size(); j++)
             out<<jitters[j]<<'\t';
+        if (double_lined) {
+            for(int j=0; j<jitters_2.size(); j++)
+                out<<jitters_2[j]<<'\t';
+        }
     }
     else
         out<<extra_sigma<<'\t';
+        if (double_lined)
+            out<<extra_sigma_2<<'\t';
 
     if(trend)
     {
@@ -1446,6 +1470,11 @@ void RV_binaries_model::print(std::ostream& out) const
     if (multi_instrument){
         for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
+        }
+        if (double_lined) {
+            for(int j=0; j<offsets_2.size(); j++){
+                out<<offsets_2[j]<<'\t';
+            }
         }
     }
 
@@ -1493,8 +1522,9 @@ void RV_binaries_model::print(std::ostream& out) const
 
     if (studentt)
         out << '\t' << nu << '\t';
-
-    out << background;
+    if (double_lined)
+        out << bkg2 << '\t';
+    out << bkg;
 }
 
 string RV_binaries_model::description() const
@@ -1505,10 +1535,16 @@ string RV_binaries_model::description() const
     if (multi_instrument)
     {
         for(int j=0; j<jitters.size(); j++)
-           desc += "jitter" + std::to_string(j+1) + sep;
+            desc += "jitter" + std::to_string(j+1) + sep;
+        if (double_lined) {
+            for(int j=0; j<jitters_2.size(); j++)
+                desc += "jitter_sec" + std::to_string(j+1) + sep;
+        }
     }
     else
         desc += "extra_sigma   ";
+        if (double_lined)
+            desc += "extra_sigma_sec   ";
 
     if(trend)
     {
@@ -1521,6 +1557,10 @@ string RV_binaries_model::description() const
     if (multi_instrument){
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + sep;
+        if (double_lined){
+            for(unsigned j=0; j<offsets_2.size(); j++)
+                desc += "offset_sec" + std::to_string(j+1) + sep;
+        }
     }
 
     auto data = get_data();
@@ -1589,7 +1629,8 @@ string RV_binaries_model::description() const
     desc += "staleness" + sep;
     if (studentt)
         desc += "nu" + sep;
-    
+    if (double_lined)
+        desc += "vsys_sec" + sep;
     desc += "vsys";
 
     return desc;

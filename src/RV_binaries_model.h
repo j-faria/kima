@@ -55,19 +55,27 @@ class RV_binaries_model
         DNest4::RJObject<RVConditionalPrior_2> planets =
             DNest4::RJObject<RVConditionalPrior_2>(6, npmax, fix, RVConditionalPrior_2());
 
-        double background;
+        double bkg, bkg2;
 
+        //primary
         std::vector<double> offsets = // between instruments
               std::vector<double>(get_data().number_instruments - 1);
         std::vector<double> jitters = // for each instrument
               std::vector<double>(get_data().number_instruments);
-
+              
+        //secondary
+        std::vector<double> offsets_2 = // between instruments
+              std::vector<double>(get_data().number_instruments - 1);
+        std::vector<double> jitters_2 = // for each instrument
+              std::vector<double>(get_data().number_instruments);
+        
+        
         std::vector<double> betas = // "slopes" for each indicator
               std::vector<double>(get_data().number_indicators);
 
         double slope, quadr=0.0, cubic=0.0;
         double sigmaMA, tauMA;
-        double extra_sigma;
+        double extra_sigma, extra_sigma_2;
         double nu;
 
         // Parameters for the quasi-periodic extra noise
