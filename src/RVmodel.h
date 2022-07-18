@@ -142,11 +142,11 @@ class RVmodel
 
 
         // priors for KO mode!
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Kprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {(size_t) n_known_object};
-        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {(size_t) n_known_object};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Pprior {static_cast<size_t>(n_known_object)};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_Kprior {static_cast<size_t>(n_known_object)};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_eprior {static_cast<size_t>(n_known_object)};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_phiprior {static_cast<size_t>(n_known_object)};
+        std::vector<std::shared_ptr<DNest4::ContinuousDistribution>> KO_wprior {static_cast<size_t>(n_known_object)};
 
 
 

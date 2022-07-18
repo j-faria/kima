@@ -11,6 +11,7 @@ from scipy.signal import find_peaks
 from corner import corner
 
 from .analysis import passes_threshold_np, find_outliers
+from .GP import KERNEL
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
                     wrms, lighten_color, get_instrument_name)
 
@@ -379,8 +380,10 @@ def make_plot4(res, Np=None, ranges=None, show_prior=False, **hist_kwargs):
     if Np is not None:
         m = res.posterior_sample[:, res.index_component] == Np
 
-    nplots = int(np.ceil(n / 2))
-    fig, axes = plt.subplots(2, nplots)
+    fig, axes = plt.subplots(2, int(np.ceil(len(available_etas) / 2)))
+
+    if res.GPkernel is KERNEL.celerite:
+        axes[-1, -1].axis('off')
 
     for i, eta in enumerate(available_etas):
         ax = np.ravel(axes)[i]

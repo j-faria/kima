@@ -10,12 +10,12 @@ from copy import copy, deepcopy
 from string import ascii_lowercase
 
 from .keplerian import keplerian
-from .GP import *
-
-from .utils import (get_planet_mass_and_semimajor_axis, read_datafile,
-                    read_datafile_rvfwhm, read_model_setup, get_star_name,
-                    mjup2mearth, read_datafile_rvfwhm, get_prior,
-                    get_instrument_name, _show_kima_setup, read_big_file, wrms)
+from .GP import GP, QPkernel, GP_celerite, QPkernel_celerite, KERNEL
+from .utils import (need_model_setup, get_planet_mass,
+                    get_planet_semimajor_axis, percentile68_ranges,
+                    percentile68_ranges_latex, read_datafile, lighten_color,
+                    wrms, get_prior, hyperprior_samples, get_star_name,
+                    get_instrument_name)
 
 from . import display
 
@@ -439,62 +439,32 @@ class KimaResults(object):
             self.GPmodel = False
 
         if self.GPmodel:
-            if self.model == 'RVmodel':
-                try:
-                    n_hyperparameters = {
-                        'standard': 4,
-                        'qpc': 5,
-                        'celerite': 3}
-                    n_hyperparameters = n_hyperparameters[self.GPkernel]
-                except KeyError:
-                    raise ValueError(
-                        f'GP kernel = {self.GPkernel} not recognized')
+            if self.GPkernel is KERNEL.standard:
+                n_hyperparameters = 4
+            elif self.GPkernel is KERNEL.celerite:
+                n_hyperparameters = 3
 
-            elif self.model == 'RVFWHMmodel':
-                self.share_eta2 = self.setup['kima']['share_eta2'] == 'true'
-                self.share_eta3 = self.setup['kima']['share_eta3'] == 'true'
-                self.share_eta4 = self.setup['kima']['share_eta4'] == 'true'
-                self.share_eta5 = self.setup['kima']['share_eta5'] == 'true'
-                n_hyperparameters = 2  # at least 2 x eta1
-                n_hyperparameters += 1 if self.share_eta2 else 2
-                n_hyperparameters += 1 if self.share_eta3 else 2
-                n_hyperparameters += 1 if self.share_eta4 else 2
-                if self.GPkernel == 'qpc':
-                    n_hyperparameters += 1 if self.share_eta5 else 2
+            # Changed by ACC 1/12/21 (add n_act_ind)
+            start_hyperpars = start_parameters + n_trend + n_inst_offsets + n_act_ind + 1
+            i1, i2 = start_hyperpars, start_hyperpars + n_hyperparameters
+            self.etas = self.posterior_sample[:, i1:i2]
 
             istart = self._current_column
             iend = istart + n_hyperparameters
             self.etas = self.posterior_sample[:, istart:iend]
 
-            # if self.model == 'RVmodel':
-            #     for i in range(n_hyperparameters):
-            #         name = 'eta' + str(i + 1)
-            #         ind = istart + i
-            #         setattr(self, name, self.posterior_sample[:, ind])
+            if self.GPkernel is KERNEL.standard:
+                self.GP = GP(QPkernel(1, 1, 1, 1), self.data[:, 0],
+                             self.data[:, 2], white_noise=0.)
 
-            self._current_column += n_hyperparameters
-            self.indices['GPpars_start'] = istart
-            self.indices['GPpars_end'] = iend
-            self.indices['GPpars'] = slice(istart, iend)
+            elif self.GPkernel is KERNEL.celerite:
+                self.GP = GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1),
+                                      self.data[:, 0], self.data[:, 2],
+                                      white_noise=0.)
 
-            if self.model == 'RVmodel':
-                GPs = {
-                    'standard': GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
-                    'qpc': GP(QPCkernel(1, 1, 1, 1, 1), self.t, self.e, white_noise=0),
-                    'celerite': GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
-                }
-                self.GP = GPs[self.GPkernel]
-
-            elif self.model == 'RVFWHMmodel':
-                t, e = self.t, self.e
-                GPs = {
-                    'standard': GP(QPkernel(1, 1, 1, 1), t, e, white_noise=0),
-                    'qpc': GP(QPCkernel(1, 1, 1, 1, 1), t, e, white_noise=0),
-                    'celerite': GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
-                }
-                self.GP1 = GPs[self.GPkernel]
-                self.GP2 = deepcopy(GPs[self.GPkernel])
-
+            self.indices['GPpars_start'] = start_hyperpars
+            self.indices['GPpars_end'] = start_hyperpars + n_hyperparameters
+            self.indices['GPpars'] = slice(start_hyperpars, start_hyperpars + n_hyperparameters)
         else:
             n_hyperparameters = 0
 
@@ -781,9 +751,6 @@ class KimaResults(object):
         except Exception:
             # print('Unable to load data from ', filename, ':', e)
             raise
-
-    def show_kima_setup(self):
-        return _show_kima_setup()
 
     def save_pickle(self, filename, verbose=True):
         """Pickle this KimaResults object into a file."""

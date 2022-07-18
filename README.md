@@ -1,7 +1,7 @@
 ### RV analysis with DNest4 and GPs
 
 <!-- [![Build Status](https://travis-ci.org/j-faria/kima.svg?branch=master)](https://travis-ci.org/j-faria/kima) -->
-![CI](https://github.com/j-faria/kima/workflows/CI/badge.svg?branch=beta)
+![CI](https://github.com/j-faria/kima/workflows/CI/badge.svg?branch=master)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/j-faria/kima/blob/master/LICENSE)
 [![JOSS](https://joss.theoj.org/papers/b396d6f8c5566bb67844f05bda0cbc8a/status.svg)](https://joss.theoj.org/papers/b396d6f8c5566bb67844f05bda0cbc8a)
 [![cite](https://img.shields.io/badge/cite-kima-red.svg)](https://github.com/j-faria/kima/wiki/Citing-kima)

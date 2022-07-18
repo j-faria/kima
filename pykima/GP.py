@@ -5,32 +5,18 @@ from scipy.spatial.distance import squareform, pdist, cdist
 from scipy.linalg import cholesky, cho_solve, solve_triangular
 
 try:
-    import celerite
     from celerite import GP as GPcel, terms
 except ImportError:
     print('Please install celerite: https://celerite.readthedocs.io/en/stable/python/install')
     sys.exit(1)
 
-__all__ = [
-    'QPkernel',
-    'QPCkernel',
-    'QPMatern32kernel',
-    'QPMatern52kernel',
-    'QPRQkernel',
-    'SqExpkernel',
-    'QPkernel_celerite',
-    'GP',
-    'GP_celerite',
-]
+from enum import IntEnum
 
-# available_kernels = {
-#     0: 'standard',
-#     1: 'celerite',
-#     2: 'permatern32',
-#     3: 'permatern52',
-#     4: 'perrq',
-#     5: 'sqexp',
-# }
+
+class KERNEL(IntEnum):
+    standard = 0
+    celerite = 1
+
 
 
 class QPkernel():
