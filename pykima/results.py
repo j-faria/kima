@@ -38,7 +38,7 @@ pathjoin = os.path.join
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
 
 
-class KimaResults(object):
+class KimaResults:
     """ A class to hold, analyse, and display the results from kima """
 
     def __init__(self, options, data_file=None, save_plots=False,
@@ -831,18 +831,19 @@ class KimaResults(object):
 
     def full_model(self, sample, t=None):
         """
-        Evaluate the full model at one posterior sample, including the GP. 
-        If `t` is None, use the observed times. Instrument offsets are only
-        added if `t` is None, but the systemic velocity is always added.
-        To evaluate at all posterior samples, consider using
+        Evaluate the full model at one posterior sample, including the GP. If
+        `t` is None, use the observed times. Instrument offsets are only added
+        if `t` is None, but the systemic velocity is always added. To evaluate
+        at all posterior samples, consider using
+
             np.apply_along_axis(self.full_model, 1, self.posterior_sample)
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray (optional)
-            Times at which to evaluate the model, or None to use observed times
+        Args:
+            sample (ndarray):
+                One posterior sample, with shape (npar,)
+            t (ndarray):
+                Times at which to evaluate the model, or None to use observed
+                times
         """
         deterministic = self.model(sample, t)
 

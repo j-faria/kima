@@ -1,13 +1,13 @@
-import sys, os
+import sys
+import os
 import re
 import math
-import datetime as dt
 
 import numpy as np
 from scipy import stats
 
 import urepr
-from loguniform import LogUniform, ModifiedLogUniform
+from loguniform import ModifiedLogUniform
 from kumaraswamy import kumaraswamy
 
 # CONSTANTS
@@ -55,11 +55,10 @@ def need_model_setup(exception):
 
 def read_datafile(datafile, skip):
     """
-    Read data from `datafile` for multiple instruments.
-    Can be str, in which case the 4th column is assumed to contain an integer
-    identifier of the instrument.
-    Or list, in which case each element will be one different filename
-    containing three columns each.
+    Read data from `datafile` for multiple instruments. Can be str, in which
+    case the 4th column is assumed to contain an integer identifier of the
+    instrument. Or list, in which case each element will be one different
+    filename containing three columns each.
     """
     if isinstance(datafile, list):
         data = np.empty((0, 3))
@@ -107,11 +106,14 @@ def wrms(array, weights):
 
 def apply_argsort(arr1, arr2, axis=-1):
     """
-    Apply arr1.argsort() on arr2, along `axis`.
-    """
-    # check matching shapes
-    assert arr1.shape == arr2.shape, "Shapes don't match!"
+    Apply `arr1.argsort()` on `arr2`, along `axis`.
 
+    Args:
+        arr1 (ndarray): first array
+        arr2 (ndarray): second array
+        axis (int): axis over which to apply argsort
+    """
+    assert arr1.shape == arr2.shape, "Shapes don't match!"
     i = list(np.ogrid[[slice(x) for x in arr1.shape]])
     i[axis] = arr1.argsort(axis)
     return arr2[i]
@@ -155,40 +157,62 @@ def percentile_ranges_latex(a, percentile, min=None, max=None):
 
 
 def clipped_mean(arr, min, max):
-    """ Mean of `arr` between `min` and `max` """
+    """
+    Mean of `arr` between `min` and `max`
+
+    Args:
+        arr (ndarray): array
+        min (float): minimum value to use for clipped mean
+        max (float): maximum value to use for clipped mean
+    """
     mask = (arr > min) & (arr < max)
     return np.mean(arr[mask])
 
 
 def clipped_std(arr, min, max):
-    """ std of `arr` between `min` and `max` """
+    """
+    Standard deviation of `arr` between `min` and `max`
+
+    Args:
+        arr (ndarray): array
+        min (float): minimum value to use for clipped standard deviation
+        max (float): maximum value to use for clipped standard deviation
+    """
     mask = (arr > min) & (arr < max)
     return np.std(arr[mask])
 
 
 def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
     """
-    Calculate the planet (minimum) mass Msini given orbital period `P`,
-    semi-amplitude `K`, eccentricity `e`, and stellar mass. If star_mass is a
-    tuple with (estimate, uncertainty), this (Gaussian) uncertainty will be
-    taken into account in the calculation.
+    Calculate the planet (minimum) mass, $M_p \sin i$, given orbital period,
+    semi-amplitude, eccentricity, and stellar mass. If `star_mass` is a tuple
+    with (estimate, uncertainty), this (Gaussian) uncertainty will be taken into
+    account in the calculation.
 
-    Units:
-        P [days]
-        K [m/s]
-        e []
-        star_mass [Msun]
-    Returns:
-        if P is float:
-            if star_mass is float:
-                Msini [Mjup], Msini [Mearth]
-            if star_mass is tuple:
-                (Msini, error_Msini) [Mjup], (Msini, error_Msini) [Mearth]
-        if P is array:
-            if full_output: mean Msini [Mjup], std Msini [Mjup], Msini [Mjup] (array)
-            else: mean Msini [Mjup], std Msini [Mjup], mean Msini [Mearth], std Msini [Mearth]
+    Args:
+        P (float or ndarray):
+            Orbital period [days]
+        K (float or ndarray):
+            Semi-amplitude [m/s]
+        e (float or ndarray):
+            Orbital eccentricity
+        star_mass (float or tuple): 
+            Stellar mass [Msun]. If a tuple, should correspond to an
+            (estimate, uncertainty) pair, and the uncertainty will be propagated
+            to the planet mass.
     """
-    if verbose: print('Using star mass = %s solar mass' % star_mass)
+        # star_mass [Msun]
+    # Returns:
+    #     if P is float:
+    #         if star_mass is float:
+    #             Msini [Mjup], Msini [Mearth]
+    #         if star_mass is tuple:
+    #             (Msini, error_Msini) [Mjup], (Msini, error_Msini) [Mearth]
+    #     if P is array:
+    #         if full_output: mean Msini [Mjup], std Msini [Mjup], Msini [Mjup] (array)
+    #         else: mean Msini [Mjup], std Msini [Mjup], mean Msini [Mearth], std Msini [Mearth]
+    if verbose:
+        print('Using star mass = %s solar mass' % star_mass)
 
     try:
         P = float(P)
@@ -244,17 +268,18 @@ def get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False,
     """
     Calculate the semi-major axis of the planet's orbit given
     orbital period `P`, semi-amplitude `K`, and stellar mass.
-    Units:
-        P [days]
-        K [m/s]
-        star_mass [Msun]
-    Returns:
-        if P is float: a [AU]
-        if P is array:
-            if full_output: mean a [AU], std a [AU], a [AU] (array)
-            else: mean a [AU], std a [AU]
     """
-    if verbose: print('Using star mass = %s solar mass' % star_mass)
+    # Units:
+    #     P [days]
+    #     K [m/s]
+    #     star_mass [Msun]
+    # Returns:
+    #     if P is float: a [AU]
+    #     if P is array:
+    #         if full_output: mean a [AU], std a [AU], a [AU] (array)
+    #         else: mean a [AU], std a [AU]
+    if verbose:
+        print('Using star mass = %s solar mass' % star_mass)
 
     # gravitational constant G in AU**3 / (Msun * day**2), to the power of 1/3
     f = 0.0666378476025686
@@ -291,16 +316,20 @@ def lighten_color(color, amount=0.5):
     Lightens the given color by multiplying (1-luminosity) by the given amount.
     Input can be matplotlib color string, hex string, or RGB tuple.
 
+    Args:
+        color (str or tuple): The color to be brightened
+        amount (float): How much to lighten the color
+
     Examples:
-    >> lighten_color('g', 0.3)
-    >> lighten_color('#F034A3', 0.6)
-    >> lighten_color((.3,.55,.1), 0.5)
+        >>> lighten_color('g', 0.3)
+        >>> lighten_color('#F034A3', 0.6)
+        >>> lighten_color((.3,.55,.1), 0.5)
     """
     import matplotlib.colors as mc
     import colorsys
     try:
         c = mc.cnames[color]
-    except:
+    except Exception:
         c = color
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
@@ -466,63 +495,54 @@ def get_instrument_name(data_file):
 
 
 def mjd_to_jd(mjd):
-    """ Convert Modified Julian Day to Julian Day.
+    """
+    Convert Modified Julian Day to Julian Day.
 
-    Parameters
-    ----------
-    mjd : float
-        Modified Julian Day
+    Args:
+        mjd (float): Modified Julian Day
 
-    Returns
-    -------
-    jd : float
-        Julian Day
+    Returns:
+        jd (float): Julian Day
     """
     return mjd + 2400000.5
 
 
 def jd_to_mjd(jd):
-    """ Convert Julian Day to Modified Julian Day
+    """
+    Convert Julian Day to Modified Julian Day
 
-    Parameters
-    ----------
-    jd : float
-        Julian Day
+    Args:
+        jd (float): Julian Day
 
-    Returns
-    -------
-    mjd : float
-        Modified Julian Day
+    Returns:
+        mjd (float): Modified Julian Day
     """
     return jd - 2400000.5
 
 
 def date_to_jd(year, month, day):
-    """ Convert a date (year, month, day) to Julian Day.
+    """
+    Convert a date (year, month, day) to Julian Day.
 
     Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
-        4th ed., Duffet-Smith and Zwart, 2011.
+    4th ed., Duffet-Smith and Zwart, 2011.
 
-    Parameters
-    ----------
-    year : int
-        Year as integer. Years preceding 1 A.D. should be 0 or negative.
-        The year before 1 A.D. is 0, 10 B.C. is year -9.
-    month : int
-        Month as integer, Jan = 1, Feb. = 2, etc.
-    day : float
-        Day, may contain fractional part.
+    Args:
+        year (int):
+            Year, as an integer. Years preceding 1 A.D. should be 0 or negative.
+            The year before 1 A.D. is 0, 10 B.C. is year -9.
+        month (int):
+            Month, as an integer. Jan = 1, Feb. = 2, etc.
+        day (float):
+            Day, which may contain fractional part.
 
-    Returns
-    -------
-    jd : float
-        Julian Day
+    Returns:
+        jd (float): Julian Day
 
-    Examples
-    --------
-    Convert 6 a.m., February 17, 1985 to Julian Day
-    >>> date_to_jd(1985, 2, 17.25)
-    2446113.75
+    Examples:
+        Convert 6 a.m., February 17, 1985 to Julian Day
+        >>> date_to_jd(1985, 2, 17.25)
+        2446113.75
     """
     if month == 1 or month == 2:
         yearp = year - 1
@@ -555,31 +575,28 @@ def date_to_jd(year, month, day):
 
 
 def jd_to_date(jd):
-    """ Convert Julian Day to date.
+    """
+    Convert Julian Day to date.
 
     Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
         4th ed., Duffet-Smith and Zwart, 2011.
 
-    Parameters
-    ----------
-    jd : float
-        Julian Day
+    Args:
+        jd (float): Julian Day
 
-    Returns
-    -------
-    year : int
-        Year as integer. Years preceding 1 A.D. should be 0 or negative.
-        The year before 1 A.D. is 0, 10 B.C. is year -9.
-    month : int
-        Month as integer, Jan = 1, Feb. = 2, etc.
-    day : float
-        Day, may contain fractional part.
+    Returns:
+        year (int):
+            Year as integer. Years preceding 1 A.D. should be 0 or negative. The
+            year before 1 A.D. is 0, 10 B.C. is year -9.
+        month (int):
+            Month as integer, Jan = 1, Feb. = 2, etc.
+        day (float):
+            Day, may contain fractional part.
 
-    Examples
-    --------
-    Convert Julian Day 2446113.75 to year, month, and day.
-    >>> jd_to_date(2446113.75)
-    (1985, 2, 17.25)
+    Examples:
+        Convert Julian Day 2446113.75 to year, month, and day:
+        >>> jd_to_date(2446113.75)
+        (1985, 2, 17.25)
     """
     jd = jd + 0.5
 
@@ -620,65 +637,45 @@ def hmsm_to_days(hour=0, min=0, sec=0, micro=0):
     """
     Convert hours, minutes, seconds, and microseconds to fractional days.
 
-    Parameters
-    ----------
-    hour : int, optional
-        Hour number. Defaults to 0.
-    min : int, optional
-        Minute number. Defaults to 0.
-    sec : int, optional
-        Second number. Defaults to 0.
-    micro : int, optional
-        Microsecond number. Defaults to 0.
+    Args:
+        hour (int) : Hour
+        min (int) : Minute
+        sec (int) : Second
+        micro (int) : Microsecond
 
-    Returns
-    -------
-    days : float
-        Fractional days.
+    Returns:
+        days (float): Fractional days
 
-    Examples
-    --------
-    >>> hmsm_to_days(hour=6)
-    0.25
+    Examples:
+        >>> hmsm_to_days(hour=6)
+        0.25
     """
     days = sec + (micro / 1.e6)
-
     days = min + (days / 60.)
-
     days = hour + (days / 60.)
-
     return days / 24.
 
 
 def days_to_hmsm(days):
-    """ Convert fractional days to hours, minutes, seconds, and microseconds.
+    """
+    Convert fractional days to hours, minutes, seconds, and microseconds.
     Precision beyond microseconds is rounded to the nearest microsecond.
 
-    Parameters
-    ----------
-    days : float
-        A fractional number of days. Must be less than 1.
+    Args:
+        days (float): A fractional number of days. Must be less than 1.
 
-    Returns
-    -------
-    hour : int
-        Hour number.
-    min : int
-        Minute number.
-    sec : int
-        Second number.
-    micro : int
-        Microsecond number.
+    Returns:
+        hour (int): Hour number.
+        min (int): Minute number.
+        sec (int): Second number.
+        micro (int): Microsecond number.
 
-    Raises
-    ------
-    ValueError
-        If `days` is >= 1.
+    Raises:
+        ValueError: If `days` is >= 1.
 
-    Examples
-    --------
-    >>> days_to_hmsm(0.1)
-    (2, 24, 0, 0)
+    Examples:
+        >>> days_to_hmsm(0.1)
+        (2, 24, 0, 0)
     """
     hours = days * 24.
     hours, hour = math.modf(hours)
@@ -695,24 +692,21 @@ def days_to_hmsm(days):
 
 
 def datetime_to_jd(date):
-    """ Convert a `datetime.datetime` object to Julian Day.
+    """
+    Convert a `datetime.datetime` object to Julian Day.
 
-    Parameters
-    ----------
-    date : `datetime.datetime` instance
+    Args:
+        date (datetime): The date to convert
 
-    Returns
-    -------
-    jd : float
-        Julian day.
+    Returns:
+        jd (float): Julian day
 
-    Examples
-    --------
-    >>> d = datetime.datetime(1985, 2, 17, 6)
-    >>> d
-    datetime.datetime(1985, 2, 17, 6, 0)
-    >>> jdutil.datetime_to_jd(d)
-    2446113.75
+    Examples:
+        >>> d = datetime.datetime(1985, 2, 17, 6)
+        >>> d
+        datetime.datetime(1985, 2, 17, 6, 0)
+        >>> jdutil.datetime_to_jd(d)
+        2446113.75
     """
     days = date.day + hmsm_to_days(date.hour, date.minute, date.second,
                                    date.microsecond)

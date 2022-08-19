@@ -3,14 +3,15 @@ from collections import namedtuple
 import numpy as np
 from scipy.stats import norm, t as T, binned_statistic
 
-from .utils import get_planet_mass, get_planet_semimajor_axis, mjup2mearth
+from .utils import get_planet_mass, mjup2mearth
 
 
 def most_probable_np(results):
-    """ 
-    Return the value of Np with the highest posterior probability.
-    Arguments:
-        results: a KimaResults instance. 
+    """
+    Returns the value of $N_p$ with the highest posterior probability
+
+    Args:
+        results (KimaResults): the results from a **kima** run
     """
     Nplanets = results.posterior_sample[:, results.index_component].astype(int)
     values, counts = np.unique(Nplanets, return_counts=True)
@@ -18,12 +19,13 @@ def most_probable_np(results):
 
 
 def passes_threshold_np(results, threshold=150):
-    """ 
-    Return the value of Np supported by the data, considering a posterior ratio
-    threshold (default 150).
-    Arguments:
-        results: a KimaResults instance. 
-        threshold: posterior ratio threshold, default 150.
+    """
+    Returns the value of Np supported by the data, considering a posterior
+    ratio threshold (default 150).
+
+    Args:
+        results (KimaResults): the results from a **kima** run
+        threshold (int): posterior ratio threshold
     """
     Nplanets = results.posterior_sample[:, results.index_component].astype(int)
     values, counts = np.unique(Nplanets, return_counts=True)
@@ -53,15 +55,15 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
     if sample is None:
         sample = results.maximum_likelihood_sample(printit=printit)
 
-    mass_errs = False 
+    mass_errs = False
     if isinstance(star_mass, (tuple, list)):
         mass_errs = True
 
-    format_tuples = lambda data: '{:10.5f} \pm {:.5f}'.format(data[0], data[1]) if mass_errs else '{:12.5f}'.format(data)
+    format_tuples = lambda data: r'{:10.5f} \pm {:.5f}'.format(data[0], data[1]) if mass_errs else '{:12.5f}'.format(data)
 
     if printit:
         print()
-        final_string = star_mass if not mass_errs else '{} \pm {}'.format(star_mass[0], star_mass[1])
+        final_string = star_mass if not mass_errs else r'{} \pm {}'.format(star_mass[0], star_mass[1])
         print('Calculating planet masses with Mstar = {} Msun'.format(final_string))
 
 
@@ -99,30 +101,38 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
 
 
 def find_outliers(results, sample, threshold=10, verbose=False):
-    """ 
+    """
     Estimate which observations are outliers, for a model with a Student t
     likelihood. This function first calculates the residuals given the
-    parameters in `sample`. Then it computes the relative probability of each
+    parameters in `sample`. Then, it computes the relative probability of each
     residual point given a Student-t (Td) and a Gaussian (Gd) likelihoods. If
-    the probability Td is larger than Gd (by a factor of `threshold`), the point
-    is flagged as an outlier. The function returns an "outlier mask".
+    the probability Td is larger than Gd (by a factor of `threshold`), that
+    point is flagged as an outlier. The function returns an "outlier mask".
+
+    Args:
+        results (KimaResults): the results from a **kima** run
+        sample (ndarray): posterior sample
+        threshold (int): threshold for Student-t / Gaussian ratio
+        verbose (bool): Whether to print the number of outliers found
+    Returns:
+        outlier (ndarray): outlier mask (shape $N$)
     """
     res = results
     # the model must have studentt = true
     if not res.studentT:
         raise ValueError('studentt option is off, cannot estimate outliers')
-    
+
     # calculate residuals for this sample
     resid = res.y - res.model(sample)
-    
+
     # this sample's jitter and degrees of freedom
     J = sample[res.indices['jitter']]
     nu = sample[res.indices['nu']]
-    
+
     # probabilities within the Gaussian and Student-t likelihoods
     Gd = norm(loc=0, scale=np.hypot(res.e, J)).pdf(resid)
     Td = T(df=nu, loc=0, scale=np.hypot(res.e, J)).pdf(resid)
-    
+
     # if Td/Gd > threshold, the point is an outlier, in the sense that it is
     # more likely within the Student-t likelihood than it would have been within
     # the Gaussian likelihood
@@ -136,36 +146,34 @@ def find_outliers(results, sample, threshold=10, verbose=False):
 
 def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
                      sorted_samples=True, return_mask=False):
-    """ 
+    """
     Calculate detection limits using samples with more than `Np` planets. By 
     default, this function uses the value of `Np` which passes the posterior
     probability threshold.
 
-    Arguments
-    ---------
-    star_mass : float or tuple
-        Stellar mass and optionally its uncertainty [in solar masses].
-    Np : int
-        Consider only posterior samples with more than `Np` planets.
-    bins : int
-        Number of bins at which to calculate the detection limits. The period 
-        ranges from the minimum to the maximum orbital period in the posterior.
-    plot : bool
-        Whether to plot the detection limits
-    sorted_samples : bool
-        undoc
-    return_mask: bool
-        undoc
-    
-    Returns
-    -------
-    P, K, E, M : ndarray
-        Orbital periods, semi-amplitudes, eccentricities, and planet masses used
-        in the calculation of the detection limits. These correspond to all the
-        posterior samples with more than `Np` planets
-    s : DLresult, namedtuple
-        Detection limits result, with attributes `max` and `bins`. The `max` 
-        array is in units of Earth masses, `bins` is in days.
+    Args:
+        star_mass (float or tuple):
+            Stellar mass and optionally its uncertainty [in solar masses].
+        Np (int):
+            Consider only posterior samples with more than `Np` planets.
+        bins (int):
+            Number of bins at which to calculate the detection limits. The period 
+            ranges from the minimum to the maximum orbital period in the posterior.
+        plot (bool):
+            Whether to plot the detection limits
+        sorted_samples (bool):
+            undoc
+        return_mask (bool):
+            undoc
+
+    Returns:
+        P, K, E, M (ndarray):
+            Orbital periods, semi-amplitudes, eccentricities, and planet masses
+            used in the calculation of the detection limits. These correspond to
+            all the posterior samples with more than `Np` planets
+        s (DLresult, namedtuple):
+            Detection limits result, with attributes `max` and `bins`. The `max` 
+            array is in units of Earth masses, `bins` is in days.
     """
     res = results
     if Np is None:
@@ -232,12 +240,13 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
         # ax.hlines(s.max, bins_start, bins_end, lw=2)
         # ax.loglog(s99.bins, s99.max * mjup2mearth)
 
-        lege = [f'{i} m/s' for i in (5, 3, 1)] 
+        lege = [f'{i} m/s' for i in (5, 3, 1)]
         lege += ['posterior samples', 'binned maximum']
 
         ax.legend(lege, ncol=2, frameon=False)
         ax.set(ylim=(0.5, None))
-        ax.set(xlabel='Orbital period [days]', ylabel='Planet mass [M$_\odot$]')
+        ax.set(xlabel=r'Orbital period [days]',
+               ylabel=r'Planet mass [M$_\odot$]')
         try:
             ax.set_title(res.star)
         except AttributeError:
@@ -251,11 +260,21 @@ def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
 
 
 def column_dynamic_ranges(results):
-    """ Return the range of each column in the posterior file """
+    """
+    Return the range of each column in the posterior file
+
+    Args:
+        results (KimaResults): the results from a **kima** run
+    """
     return results.posterior_sample.ptp(axis=0)
 
 
 def columns_with_dynamic_range(results):
-    """ Return the columns in the posterior file which vary """
+    """
+    Return the columns in the posterior file which vary (range > 0)
+
+    Args:
+        results (KimaResults): the results from a **kima** run
+    """
     dr = column_dynamic_ranges(results)
     return np.nonzero(dr)[0]
