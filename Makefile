@@ -21,11 +21,13 @@ LIBS = -L$(DNEST4_PATH) -ldnest4
 ################################################################################
 SRCDIR = kima
 SRCS = \
-	$(wildcard $(SRCDIR)/distributions/*.cpp)
+	$(wildcard $(SRCDIR)/distributions/*.cpp) \
+	$(SRCDIR)/Data.cpp
+
 OBJS = $(SRCS:.cpp=.o)
 
 
-.PHONY: dnest4
+.PHONY: dnest4 main
 all: main
 
 %.o: %.cpp
@@ -39,12 +41,27 @@ dnest4:
 main: dnest4 $(OBJS)
 	@echo "Linking"
 
+################################################################################
+# tests
+################################################################################
+TEST_DIR = tests
+TEST_SRCS = $(wildcard $(TEST_DIR)/*.cpp)
+TEST_LIBS = -lgtest -lgtest_main $(LIBS) -L$(SRCDIR) -lkima
+TEST_INC = -I$(SRCDIR) $(INCLUDES)
+
+test: main $(TEST_SRCS)
+	@$(CXX) -pthread $(TEST_SRCS) $(TEST_LIBS) $(TEST_INC) -o $(TEST_DIR)/run
+	@cd $(TEST_DIR) && ./run
+
 
 ################################################################################
 # clean-up rules
 ################################################################################
+cleankima:
+	@rm -f $(OBJS)
+
 cleandnest4:
 	@echo "Cleaning DNest4"
 	@$(MAKE) clean -s -C $(DNEST4_PATH)
 
-clean: cleandnest4
+clean: cleankima cleandnest4
