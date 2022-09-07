@@ -2,7 +2,8 @@
 # paths to libraries
 ################################################################################
 DNEST4_PATH = vendor/DNest4/code
-INCLUDES = -I$(DNEST4_PATH)
+LOADTXT_PATH = vendor/cpp-loadtxt/src
+INCLUDES = -I$(DNEST4_PATH) -I$(LOADTXT_PATH)
 
 ################################################################################
 # C++ compiler and compilation flags
