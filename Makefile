@@ -53,6 +53,13 @@ main: dnest4 $(OBJS)
 	@$(LIBTOOL) $(SRCDIR)/libkima.a $(OBJS)
 
 
+EXAMPLES = 14Her
+
+${EXAMPLES}: main
+	@echo "Compiling example $@"
+	@$(MAKE) -s -C examples/$@;
+
+
 ################################################################################
 # tests
 ################################################################################
@@ -71,10 +78,17 @@ test: main $(TEST_SRCS)
 # clean-up rules
 ################################################################################
 cleankima:
+	@echo "Cleaning kima"
 	@rm -f $(OBJS)
 
 cleandnest4:
 	@echo "Cleaning DNest4"
 	@$(MAKE) clean -s -C $(DNEST4_PATH)
 
-clean: cleankima cleandnest4
+cleanexamples:
+	@+for example in $(EXAMPLES) ; do \
+		echo "Cleaning example $$example"; \
+		$(MAKE) clean -s -C examples/$$example; \
+	done
+
+clean: cleankima cleandnest4 cleanexamples
