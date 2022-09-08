@@ -1,9 +1,9 @@
 ################################################################################
 # paths to libraries
 ################################################################################
-DNEST4_PATH = vendor/DNest4/code
-EIGEN_PATH = vendor/eigen
-LOADTXT_PATH = vendor/cpp-loadtxt/src
+DNEST4_PATH = kima/vendor/DNest4/code
+EIGEN_PATH = kima/vendor/eigen
+LOADTXT_PATH = kima/vendor/cpp-loadtxt/src
 INCLUDES = -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(LOADTXT_PATH)
 
 ################################################################################
@@ -79,7 +79,7 @@ test: main $(TEST_SRCS)
 ################################################################################
 cleankima:
 	@echo "Cleaning kima"
-	@rm -f $(OBJS)
+	@rm -f $(OBJS) $(SRCDIR)/libkima.a
 
 cleandnest4:
 	@echo "Cleaning DNest4"

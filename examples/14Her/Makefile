@@ -1,8 +1,8 @@
 KIMA_DIR = ../..
 
-DNEST4_PATH = $(KIMA_DIR)/vendor/DNest4/code
-EIGEN_PATH = $(KIMA_DIR)/vendor/eigen
-LOADTXT_PATH = $(KIMA_DIR)/vendor/cpp-loadtxt/src
+DNEST4_PATH = $(KIMA_DIR)/kima/vendor/DNest4/code
+EIGEN_PATH = $(KIMA_DIR)/kima/vendor/eigen
+LOADTXT_PATH = $(KIMA_DIR)/kima/vendor/cpp-loadtxt/src
 INCLUDES = -I$(KIMA_DIR)/kima -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(LOADTXT_PATH)
 
 LIBS = -L$(DNEST4_PATH) -ldnest4

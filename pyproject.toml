@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kima"
+version = "0.1.22"
+description = "A data analysis framework for exoplanet detection"
+authors = [
+    {name = "João Faria", email="joao.faria@astro.up.pt"},
+]
+license = {text = "MIT License"}
+readme = "README.md"
+keywords = ["exoplanets", "bayesian", "gaussian processes", "radial velocity"]
+
+
+requires-python = ">=3.7"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "corner",
+    "urepr",
+    "loguniform",
+    "kumaraswamy",
+    "urepr",
+]
+
+[project.scripts]
+kima-checkpriors = "pykima.check_priors:main"
+
+
+
+[tool.setuptools]
+packages = ["kima", "pykima"]
+
+[tool.setuptools.package-data]
+kima = [
+    "kima.h",
+    "*.h", "*.cpp", "**/*.h", #"**/*.cpp",
+    # 
+    "vendor/cpp-loadtxt/src/*.hpp", 
+    # 
+    "vendor/DNest4/code/*.h", 
+    "vendor/DNest4/code/Distributions/*.h",
+    "vendor/DNest4/code/RJObject/*.h", "vendor/DNest4/code/RJObject/**/*.h",
+    # go down many levels
+    "vendor/eigen/Eigen/*", # all files
+    "vendor/eigen/Eigen/*/*", # all files in all dirs
+    "vendor/eigen/Eigen/*/*/*", # ...
+    "vendor/eigen/Eigen/*/*/*/*", # ...
+    "vendor/eigen/Eigen/*/*/*/*/*", # ...
+]
+
+[tool.setuptools.exclude-package-data]
+kima = [
+    "vendor/DNest4/code/Examples/*",
+    "vendor/DNest4/code/Templates/*",
+]
+
+
+[project.urls]
+homepage = "https://kima.science"
+documentation = "https://github.com/j-faria/kima"
+repository = "https://github.com/j-faria/kima"
