@@ -26,8 +26,14 @@ struct loadtxt {
 
     vector<vector<double>> operator()()
     {
-        ifstream infile( _fname );
-        
+
+        ifstream infile(_fname);
+
+        if (!infile.good()) {
+            cout << "Could not read file (" << _fname << ")!\n";
+            exit(1);
+        }
+
         // ignore first `skiprows` lines
         static const int max_line = 65536;
         for (int i = 0 ; i < _skiprows ; i++)
@@ -44,8 +50,9 @@ struct loadtxt {
             string line;
             getline(infile, line);
 
-            if (infile.eof() && line.empty())
+            if (infile.eof() && line.empty()) {
                 break;
+            }
             
             if (line.find(_comments, 0) == 0)
                 continue;
@@ -55,9 +62,18 @@ struct loadtxt {
 
             // convert each field to a double
             // and add the newly-converted field to the end of the record
-            double f;
-            while (ss >> f)
-                record.push_back(f);
+
+            if (_delimiter == " ") {
+                double f;
+                while (ss >> f)
+                    record.push_back(f);
+            }
+            else {
+                string val;
+                while (getline(ss, val, _delimiter[0]))
+                    record.push_back(stod(val));
+            }
+
 
             _filedata.push_back(record);
 
@@ -73,6 +89,13 @@ struct loadtxt {
         infile.close();
 
         int nlines = _filedata.size();
+
+        if (nlines <= 0)
+        {
+            cout << "File seems to be empty (" << _fname << ")!\n";
+            exit(1);
+        }
+
         int ncols = _filedata[0].size();
 
         vector<int> cols;
