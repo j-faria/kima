@@ -61,6 +61,17 @@ ${EXAMPLES}: main
 
 
 ################################################################################
+# run examples
+################################################################################
+run_examples: ${EXAMPLES}
+	@echo "Running examples"
+	@+for example in $(EXAMPLES) ; do \
+		echo "Running $$example"; \
+		cd examples/$$example; \
+		./kima;  \
+	done
+
+################################################################################
 # tests
 ################################################################################
 TEST_DIR = tests
@@ -68,7 +79,7 @@ TEST_SRCS = $(wildcard $(TEST_DIR)/*.cpp) $(SRCDIR)/libkima.a
 TEST_LIBS = -lgtest -lgtest_main $(LIBS) -L$(SRCDIR) -lkima
 TEST_INC = -I$(SRCDIR) $(INCLUDES)
 
-test: main $(TEST_SRCS)
+test: main
 	@echo "Compiling tests"
 	@$(CXX) -pthread $(TEST_SRCS) $(TEST_LIBS) $(TEST_INC) -o $(TEST_DIR)/run
 	@cd $(TEST_DIR) && ./run
