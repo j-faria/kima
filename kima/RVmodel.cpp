@@ -515,10 +515,10 @@ void RVmodel::print(std::ostream& out) const
 
     planets.print(out);
 
-    out << ' ' << staleness << ' ';
+    out << staleness << '\t';
 
     if (studentt)
-        out << '\t' << nu << '\t';
+        out << nu << '\t';
 
     out << background;
 }

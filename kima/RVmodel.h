@@ -38,11 +38,11 @@ class RVmodel
         int degree {0};
 
         /// use a Student-t distribution for the likelihood (instead of Gaussian)
-        bool studentt;
+        bool studentt {false};
 
         /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object;
-        int n_known_object;
+        bool known_object {false};
+        int n_known_object {0};
 
         std::vector<double> offsets = // between instruments
               std::vector<double>(data.number_instruments - 1);
