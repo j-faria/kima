@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://codeberg.org/kima/kima/raw/branch/main/logo/logo.png" 
+<img src="http://www.kima.science/assets/img/logo.png" 
      width="200" alt="Logo created by Solène Ulmer-Moll">
 
 <p align="center">
