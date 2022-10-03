@@ -3,34 +3,16 @@
 #include <vector>
 #include <memory>
 #include "DNest4.h"
-#include "ConditionalPrior.h"
 #include "Data.h"
+#include "ConditionalPrior.h"
+#include "utils.h"
 #include "kepler.h"
 #include "AMDstability.h"
-
-#include <Eigen/Core>
-#include <Eigen/Dense>
-#include <Eigen/Cholesky>
 
 using namespace std;
 using namespace DNest4;
 using namespace kima;
-using namespace Eigen;
 
-/// whether the model includes a MA component
-extern const bool MA;
-
-
-/// whether the data comes from different instruments
-/// (and offsets should be included in the model)
-extern const bool multi_instrument;
-
-/// include a (better) known extra Keplerian curve? (KO mode!)
-extern const bool known_object;
-extern const int n_known_object;
-
-/// use a Student-t distribution for the likelihood (instead of Gaussian)
-extern const bool studentt;
 
 namespace kima {
 
@@ -42,6 +24,7 @@ class RVmodel
 
         /// Fix the number of planets? (by default, yes)
         bool fix {true};
+
         /// Maximum number of planets (by default 1)
         int npmax {1};
 
@@ -54,6 +37,13 @@ class RVmodel
         bool trend {false};
         int degree {0};
 
+        /// use a Student-t distribution for the likelihood (instead of Gaussian)
+        bool studentt;
+
+        /// include (better) known extra Keplerian curve(s)? (KO mode!)
+        bool known_object;
+        int n_known_object;
+
         std::vector<double> offsets = // between instruments
               std::vector<double>(data.number_instruments - 1);
         std::vector<double> jitters = // for each instrument
@@ -63,7 +53,6 @@ class RVmodel
               std::vector<double>(data.number_indicators);
 
         double slope, quadr=0.0, cubic=0.0;
-        double sigmaMA, tauMA;
         double extra_sigma;
         double nu;
 
@@ -88,8 +77,6 @@ class RVmodel
 
         unsigned int staleness;
 
-        void setPriors();
-        void save_setup();
 
     public:
         RVmodel();
@@ -112,10 +99,6 @@ class RVmodel
         };
         /// no doc.
         std::shared_ptr<DNest4::ContinuousDistribution> betaprior;
-        /// no doc.
-        std::shared_ptr<DNest4::ContinuousDistribution> sigmaMA_prior;
-        /// no doc.
-        std::shared_ptr<DNest4::ContinuousDistribution> tauMA_prior;
 
         // priors for KO mode!
         /// Prior for the KO orbital period(s)
@@ -132,40 +115,22 @@ class RVmodel
         /// Prior for the degrees of freedom $\nu$ of the Student t likelihood
         std::shared_ptr<DNest4::ContinuousDistribution> nu_prior;
 
-        // change the name of std::make_shared :)
-        /**
-         * @brief Assign a prior distribution.
-         * 
-         * This function defines, initializes, and assigns a prior distribution.
-         * Possible distributions are ...
-         * 
-         * For example:
-         * 
-         * @code{.cpp}
-         *          Cprior = make_prior<Uniform>(0, 1);
-         * @endcode
-         * 
-         * @tparam T     ContinuousDistribution
-         * @tparam Args  
-         * @param args   Arguments for constructor of distribution
-         * @return std::shared_ptr<T> 
-        */
-        template <class T, class... Args>
-        std::shared_ptr<T> make_prior(Args&&... args)
-        {
-            return std::make_shared<T>(args...);
-        }
-
-        // create an alias for RVData::get_instance()
+        /// @brief an alias for RVData::get_instance()
         static RVData& get_data() { return RVData::get_instance(); }
 
         /// @brief Generate a point from the prior.
         void from_prior(DNest4::RNG& rng);
 
+        /// @brief Set the default priors
+        void setPriors();
+
+        /// @brief Save the setup of this model
+        void save_setup();
+
         /// @brief Do Metropolis-Hastings proposals.
         double perturb(DNest4::RNG& rng);
 
-        // Likelihood function
+        /// @brief log-likelihood function
         double log_likelihood() const;
 
         // Print parameters to stream

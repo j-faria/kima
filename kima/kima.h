@@ -11,4 +11,5 @@ using namespace kima;
 const double PI = M_PI;
 
 std::string datafile;
-std::vector<std::string> datafiles;
+// std::vector<std::string> datafiles;
+

@@ -20,9 +20,6 @@ using namespace std;
 // from https://stackoverflow.com/a/8615450
 vector<string> glob(const string& pattern);
 
-typedef vector<double> vd;
-typedef vector<double> record_t;
-typedef vector<record_t> data_t;
 
 namespace kima {
 
@@ -33,12 +30,6 @@ class RVData {
     vector<vector<double>> actind;
 
     friend class RVmodel;
-    friend class RVmodel2;
-    friend class RVmodel3;
-    friend class RVmodel4;
-    friend class RVmodelF;
-    friend class RVFWHMmodel;
-    friend class SPLEAFmodel;
 
    public:
     RVData();
@@ -164,6 +155,5 @@ void load_multi(Args&&... args)
 {
     RVData::get_instance().load_multi(args...);
 }
-
 
 } // namespace kima

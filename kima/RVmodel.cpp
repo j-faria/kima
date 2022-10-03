@@ -10,14 +10,15 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
     betaprior = make_prior<Gaussian>(0, 1);
-    sigmaMA_prior = make_prior<Uniform>(-1, 1);
-    tauMA_prior = make_prior<LogUniform>(1, 100);
-    
+
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
 
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(min(1.0, 0.1*data.get_max_RV_span()), data.get_max_RV_span());
+        Jprior = make_prior<ModifiedLogUniform>(
+            min(1.0, 0.1*data.get_max_RV_span()), 
+            data.get_max_RV_span()
+        );
 
     if (trend){
         if (degree == 0)
@@ -33,7 +34,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
     }
 
     // if offsets_prior is not (re)defined, assume a default
-    if (multi_instrument && !offsets_prior)
+    if (data.datamulti && !offsets_prior)
         offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
@@ -68,7 +69,7 @@ void RVmodel::from_prior(RNG& rng)
 
     background = Cprior->generate(rng);
 
-    if(multi_instrument)
+    if(data.datamulti)
     {
         for(int i=0; i<offsets.size(); i++)
             offsets[i] = individual_offset_prior[i]->generate(rng);
@@ -86,12 +87,6 @@ void RVmodel::from_prior(RNG& rng)
         if (degree >= 1) slope = slope_prior->generate(rng);
         if (degree >= 2) quadr = quadr_prior->generate(rng);
         if (degree == 3) cubic = cubic_prior->generate(rng);
-    }
-
-    if(MA)
-    {
-        sigmaMA = sigmaMA_prior->generate(rng);
-        tauMA = tauMA_prior->generate(rng);
     }
 
     if (data.indicator_correlations)
@@ -159,7 +154,7 @@ void RVmodel::calculate_mu()
             }
         }
 
-        if(multi_instrument)
+        if(data.datamulti)
         {
             for(size_t j=0; j<offsets.size(); j++)
             {
@@ -209,17 +204,6 @@ void RVmodel::calculate_mu()
         auto v = brandt::keplerian(data.t, P, K, ecc, omega, phi, data.M0_epoch);
         for(size_t i=0; i<N; i++)
             mu[i] += v[i];
-    }
-
-
-    if(MA)
-    {
-        const vector<double>& y = data.get_y();
-        for(size_t i=1; i<N; i++) // the loop starts at the 2nd point
-        {
-            // y[i-1] - mu[i-1] is the residual at the i-1 observation
-            mu[i] += sigmaMA * exp(-fabs(data.t[i-1] - data.t[i]) / tauMA) * (y[i-1] - mu[i-1]);
-        }   
     }
 
 
@@ -289,205 +273,109 @@ double RVmodel::perturb(RNG& rng)
     double logH = 0.;
     double tmid = data.get_t_middle();
 
-    if(MA)
+
+    if(rng.rand() <= 0.75) // perturb planet parameters
     {
-        if(rng.rand() <= 0.5) // perturb planet parameters
-        {
-            logH += planets.perturb(rng);
-            planets.consolidate_diff();
-            calculate_mu();
-        }
-        else if(rng.rand() <= 0.5) // perturb MA parameters
-        {
-            if(rng.rand() <= 0.5)
-                sigmaMA_prior->perturb(sigmaMA, rng);
-            else
-                tauMA_prior->perturb(tauMA, rng);
-            
-            calculate_mu();
-        }
-        else if(rng.rand() <= 0.5) // perturb jitter(s)
-        {
-            if(multi_instrument)
-            {
-                for(int i=0; i<jitters.size(); i++)
-                    Jprior->perturb(jitters[i], rng);
-            }
-            else
-            {
-                Jprior->perturb(extra_sigma, rng);
-            }
-            // calculate_C();
-        }
-        else // perturb other parameters: vsys, slope, offsets
-        {
-            for(size_t i=0; i<mu.size(); i++)
-            {
-                mu[i] -= background;
-                if(trend) {
-                    mu[i] -= slope*(data.t[i]-tmid);
-                }
-                if(multi_instrument) {
-                    for(size_t j=0; j<offsets.size(); j++){
-                        if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
-                    }
-                }
-
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu[i] -= betas[j] * actind[j][i];
-                    }
-                }
-
-            }
-
-            Cprior->perturb(background, rng);
-
-            // propose new instrument offsets
-            if (multi_instrument){
-                for(unsigned j=0; j<offsets.size(); j++)
-                    individual_offset_prior[j]->perturb(offsets[j], rng);
-            }
-
-            // propose new slope
-            if(trend) {
-                slope_prior->perturb(slope, rng);
-            }
-
-            if(data.indicator_correlations){
-                for(size_t j = 0; j < data.number_indicators; j++){
-                    betaprior->perturb(betas[j], rng);
-                }
-            }
-
-            for(size_t i=0; i<mu.size(); i++)
-            {
-                mu[i] += background;
-                if(trend) {
-                    mu[i] += slope * (data.t[i] - tmid);
-                }
-                if(multi_instrument) {
-                    for (size_t j = 0; j < offsets.size(); j++) {
-                        if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
-                    }
-                }
-
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu[i] += betas[j]*actind[j][i];
-                    }
-                }
-                
-            }
-        }
-
+        logH += planets.perturb(rng);
+        planets.consolidate_diff();
+        calculate_mu();
     }
-
-    else
+    else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
-        if(rng.rand() <= 0.75) // perturb planet parameters
+        if(data.datamulti)
         {
-            logH += planets.perturb(rng);
-            planets.consolidate_diff();
-            calculate_mu();
-        }
-        else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
-        {
-            if(multi_instrument)
-            {
-                for(int i=0; i<jitters.size(); i++)
-                    Jprior->perturb(jitters[i], rng);
-            }
-            else
-            {
-                Jprior->perturb(extra_sigma, rng);
-            }
-
-            if (studentt)
-                nu_prior->perturb(nu, rng);
-
-
-            if (known_object)
-            {
-                remove_known_object();
-
-                for (int i=0; i<n_known_object; i++){
-                    KO_Pprior[i]->perturb(KO_P[i], rng);
-                    KO_Kprior[i]->perturb(KO_K[i], rng);
-                    KO_eprior[i]->perturb(KO_e[i], rng);
-                    KO_phiprior[i]->perturb(KO_phi[i], rng);
-                    KO_wprior[i]->perturb(KO_w[i], rng);
-                }
-
-                add_known_object();
-            }
-        
+            for(int i=0; i<jitters.size(); i++)
+                Jprior->perturb(jitters[i], rng);
         }
         else
         {
-            for(size_t i=0; i<mu.size(); i++)
-            {
-                mu[i] -= background;
-                if(trend) {
-                    mu[i] -= slope * (data.t[i] - tmid) +
-                             quadr * pow(data.t[i] - tmid, 2) +
-                             cubic * pow(data.t[i] - tmid, 3);
-                }
-                if(multi_instrument) {
-                    for(size_t j=0; j<offsets.size(); j++){
-                        if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
-                    }
-                }
+            Jprior->perturb(extra_sigma, rng);
+        }
 
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu[i] -= betas[j] * actind[j][i];
-                    }
-                }
+        if (studentt)
+            nu_prior->perturb(nu, rng);
+
+
+        if (known_object)
+        {
+            remove_known_object();
+
+            for (int i=0; i<n_known_object; i++){
+                KO_Pprior[i]->perturb(KO_P[i], rng);
+                KO_Kprior[i]->perturb(KO_K[i], rng);
+                KO_eprior[i]->perturb(KO_e[i], rng);
+                KO_phiprior[i]->perturb(KO_phi[i], rng);
+                KO_wprior[i]->perturb(KO_w[i], rng);
             }
 
-            // propose new vsys
-            Cprior->perturb(background, rng);
-
-            // propose new instrument offsets
-            if (multi_instrument){
-                for(unsigned j=0; j<offsets.size(); j++){
-                    individual_offset_prior[j]->perturb(offsets[j], rng);
-                }
-            }
-
-            // propose new slope
+            add_known_object();
+        }
+    
+    }
+    else
+    {
+        for(size_t i=0; i<mu.size(); i++)
+        {
+            mu[i] -= background;
             if(trend) {
-                if (degree >= 1) slope_prior->perturb(slope, rng);
-                if (degree >= 2) quadr_prior->perturb(quadr, rng);
-                if (degree == 3) cubic_prior->perturb(cubic, rng);
+                mu[i] -= slope * (data.t[i] - tmid) +
+                            quadr * pow(data.t[i] - tmid, 2) +
+                            cubic * pow(data.t[i] - tmid, 3);
+            }
+            if(data.datamulti) {
+                for(size_t j=0; j<offsets.size(); j++){
+                    if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
+                }
             }
 
-            // propose new indicator correlations
-            if(data.indicator_correlations){
+            if(data.indicator_correlations) {
                 for(size_t j = 0; j < data.number_indicators; j++){
-                    betaprior->perturb(betas[j], rng);
+                    mu[i] -= betas[j] * actind[j][i];
+                }
+            }
+        }
+
+        // propose new vsys
+        Cprior->perturb(background, rng);
+
+        // propose new instrument offsets
+        if (data.datamulti){
+            for(unsigned j=0; j<offsets.size(); j++){
+                individual_offset_prior[j]->perturb(offsets[j], rng);
+            }
+        }
+
+        // propose new slope
+        if(trend) {
+            if (degree >= 1) slope_prior->perturb(slope, rng);
+            if (degree >= 2) quadr_prior->perturb(quadr, rng);
+            if (degree == 3) cubic_prior->perturb(cubic, rng);
+        }
+
+        // propose new indicator correlations
+        if(data.indicator_correlations){
+            for(size_t j = 0; j < data.number_indicators; j++){
+                betaprior->perturb(betas[j], rng);
+            }
+        }
+
+        for(size_t i=0; i<mu.size(); i++)
+        {
+            mu[i] += background;
+            if(trend) {
+                mu[i] += slope * (data.t[i] - tmid) +
+                            quadr * pow(data.t[i] - tmid, 2) +
+                            cubic * pow(data.t[i] - tmid, 3);
+            }
+            if(data.datamulti) {
+                for(size_t j=0; j<offsets.size(); j++){
+                    if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
             }
 
-            for(size_t i=0; i<mu.size(); i++)
-            {
-                mu[i] += background;
-                if(trend) {
-                    mu[i] += slope * (data.t[i] - tmid) +
-                             quadr * pow(data.t[i] - tmid, 2) +
-                             cubic * pow(data.t[i] - tmid, 3);
-                }
-                if(multi_instrument) {
-                    for(size_t j=0; j<offsets.size(); j++){
-                        if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
-                    }
-                }
-
-                if(data.indicator_correlations) {
-                    for(size_t j = 0; j < data.number_indicators; j++){
-                        mu[i] += betas[j]*actind[j][i];
-                    }
+            if(data.indicator_correlations) {
+                for(size_t j = 0; j < data.number_indicators; j++){
+                    mu[i] += betas[j]*actind[j][i];
                 }
             }
         }
@@ -535,7 +423,7 @@ double RVmodel::log_likelihood() const
         double var, jit;
         for(size_t i=0; i<N; i++)
         {
-            if(multi_instrument)
+            if(data.datamulti)
             {
                 jit = jitters[obsi[i]-1];
                 var = sig[i]*sig[i] + jit*jit;
@@ -556,7 +444,7 @@ double RVmodel::log_likelihood() const
         double var, jit;
         for(size_t i=0; i<N; i++)
         {
-            if(multi_instrument)
+            if(data.datamulti)
             {
                 jit = jitters[obsi[i]-1];
                 var = sig[i]*sig[i] + jit*jit;
@@ -588,7 +476,7 @@ void RVmodel::print(std::ostream& out) const
     out.setf(ios::fixed,ios::floatfield);
     out.precision(8);
 
-    if (multi_instrument)
+    if (data.datamulti)
     {
         for(int j=0; j<jitters.size(); j++)
             out<<jitters[j]<<'\t';
@@ -605,7 +493,7 @@ void RVmodel::print(std::ostream& out) const
         out.precision(8);
     }
         
-    if (multi_instrument){
+    if (data.datamulti){
         for(int j=0; j<offsets.size(); j++){
             out<<offsets[j]<<'\t';
         }
@@ -617,9 +505,6 @@ void RVmodel::print(std::ostream& out) const
         }
     }
     
-    if(MA)
-        out << sigmaMA << '\t' << tauMA << '\t';
-
     if(known_object){ // KO mode!
         for (auto P: KO_P) out << P << "\t";
         for (auto K: KO_K) out << K << "\t";
@@ -644,7 +529,7 @@ string RVmodel::description() const
     string desc;
     string sep = "   ";
 
-    if (multi_instrument)
+    if (data.datamulti)
     {
         for(int j=0; j<jitters.size(); j++)
            desc += "jitter" + std::to_string(j+1) + sep;
@@ -660,7 +545,7 @@ string RVmodel::description() const
     }
 
 
-    if (multi_instrument){
+    if (data.datamulti){
         for(unsigned j=0; j<offsets.size(); j++)
             desc += "offset" + std::to_string(j+1) + sep;
     }
@@ -671,9 +556,6 @@ string RVmodel::description() const
         }
     }
     
-    if(MA)
-        desc += "sigmaMA" + sep + "tauMA";
-
     if(known_object) { // KO mode!
         for(int i=0; i<n_known_object; i++) 
             desc += "KO_P" + std::to_string(i) + sep;
@@ -729,11 +611,10 @@ void RVmodel::save_setup() {
     fout << "fix: " << fix << endl;
     fout << "npmax: " << npmax << endl << endl;
 
-    fout << "MA: " << MA << endl;
     fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
-    fout << "multi_instrument: " << multi_instrument << endl;
+    fout << "multi_instrument: " << data.datamulti << endl;
     fout << "known_object: " << known_object << endl;
     fout << "n_known_object: " << n_known_object << endl;
     fout << "studentt: " << studentt << endl;
@@ -766,7 +647,7 @@ void RVmodel::save_setup() {
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (multi_instrument)
+    if (data.datamulti)
         fout << "offsets_prior: " << *offsets_prior << endl;
     if (studentt)
         fout << "nu_prior: " << *nu_prior << endl;
