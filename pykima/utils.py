@@ -229,7 +229,8 @@ def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
             if full_output: mean Msini [Mjup], std Msini [Mjup], Msini [Mjup] (array)
             else: mean Msini [Mjup], std Msini [Mjup], mean Msini [Mearth], std Msini [Mearth]
     """
-    if verbose: print('Using star mass = %s solar mass' % star_mass)
+    if verbose:
+        print('Using star mass = %s solar mass' % star_mass)
 
     try:
         P = float(P)
