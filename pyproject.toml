@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kima"
-version = "0.1.22"
+version = "0.1.23"
 description = "A data analysis framework for exoplanet detection"
 authors = [
     {name = "João Faria", email="joao.faria@astro.up.pt"},
@@ -20,7 +20,6 @@ dependencies = [
     "scipy",
     "matplotlib",
     "corner",
-    "urepr",
     "loguniform",
     "kumaraswamy",
     "urepr",
@@ -28,6 +27,7 @@ dependencies = [
 
 [project.scripts]
 kima-checkpriors = "pykima.check_priors:main"
+kima-template = "pykima.make_template:main"
 
 
 
