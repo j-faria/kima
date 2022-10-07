@@ -1,9 +1,14 @@
 #pragma once
 
 #include "DNest4.h"
+
+#include "distributions/distributions.h"
 #include "Data.h"
 #include "ConditionalPrior.h"
 #include "RVmodel.h"
+#include "GPmodel.h"
+#include "RVFWHMmodel.h"
+
 
 using namespace DNest4;
 using namespace kima;
