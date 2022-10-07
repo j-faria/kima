@@ -22,7 +22,7 @@ void RVmodel::setPriors()  // BUG: should be done by only one thread!
 
     if (trend){
         if (degree == 0)
-            throw std::logic_error("trend=true but degree=0, what gives?");
+            throw std::logic_error("trend=true but degree=0");
         if (degree > 3)
             throw std::range_error("can't go higher than 3rd degree trends");
         if (degree >= 1 && !slope_prior)
@@ -116,8 +116,6 @@ void RVmodel::from_prior(RNG& rng)
 
     calculate_mu();
 }
-
-/**
 
 /**
  * @brief Calculate the full RV model
@@ -535,7 +533,7 @@ string RVmodel::description() const
            desc += "jitter" + std::to_string(j+1) + sep;
     }
     else
-        desc += "extra_sigma   ";
+        desc += "extra_sigma" + sep;
 
     if(trend)
     {
