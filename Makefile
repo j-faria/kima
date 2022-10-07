@@ -32,7 +32,9 @@ SRCS = \
 	$(SRCDIR)/AMDstability.cpp                \
 	$(SRCDIR)/Data.cpp                        \
 	$(SRCDIR)/ConditionalPrior.cpp            \
-	$(SRCDIR)/RVmodel.cpp
+	$(SRCDIR)/RVmodel.cpp                     \
+	$(SRCDIR)/GPmodel.cpp                     \
+	$(SRCDIR)/RVFWHMmodel.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 
@@ -67,22 +69,25 @@ run_examples: ${EXAMPLES}
 	@echo "Running examples"
 	@+for example in $(EXAMPLES) ; do \
 		echo "Running $$example"; \
-		cd examples/$$example; \
-		./kima;  \
+		cd examples/$$example && ./kima && cd ../.. ; \
 	done
 
 ################################################################################
 # tests
 ################################################################################
+THIS_DIR = $(shell pwd)
 TEST_DIR = tests
-TEST_SRCS = $(wildcard $(TEST_DIR)/*.cpp) $(SRCDIR)/libkima.a
-TEST_LIBS = -lgtest -lgtest_main $(LIBS) -L$(SRCDIR) -lkima
+# TEST_SRCS = $(wildcard $(TEST_DIR)/*.cpp)
+TEST_SRCS = $(TEST_DIR)/test_Data.cpp
+TEST_LIBS = -lgtest -lgtest_main $(LIBS) #-L$(SRCDIR) -lkima
 TEST_INC = -I$(SRCDIR) $(INCLUDES)
 
-test: main
+test: main $(TEST_SRCS)
 	@echo "Compiling tests"
-	@$(CXX) -pthread $(TEST_SRCS) $(TEST_LIBS) $(TEST_INC) -o $(TEST_DIR)/run
-	@cd $(TEST_DIR) && ./run
+	@+for test_src in $(TEST_SRCS) ; do \
+		$(CXX) -pthread $$test_src $(SRCDIR)/libkima.a $(TEST_LIBS) $(TEST_INC) -o $(TEST_DIR)/run ; \
+		cd $(TEST_DIR) && ./run && cd $(THIS_DIR) ; \
+	done
 
 
 ################################################################################

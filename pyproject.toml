@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "pybind11~=2.6.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -23,11 +23,17 @@ dependencies = [
     "loguniform",
     "kumaraswamy",
     "urepr",
+    "astropy",
+    "jaxlib", 
+    "jax",
+    "rebound",
 ]
 
 [project.scripts]
 kima-checkpriors = "pykima.check_priors:main"
 kima-template = "pykima.make_template:main"
+kima-run = "pykima.run:run_local"
+kima-showresults = "pykima.showresults:showresults"
 
 
 
