@@ -24,7 +24,7 @@ namespace kima {
      * @param indicators
      */
     void RVData::load(const string filename, const string units, int skip,
-                    const string delimiter, const vector<string>& indicators)
+                      const string delimiter, const vector<string>& indicators)
     {
         auto data = loadtxt(filename)
                         .skiprows(skip)
@@ -44,6 +44,38 @@ namespace kima {
         t = data[0];
         y = data[1];
         sig = data[2];
+
+
+        // check for indicator correlations and store stuff
+        int nempty = count(indicators.begin(), indicators.end(), "");
+        number_indicators = indicators.size() - nempty;
+        indicator_correlations = number_indicators > 0;
+        indicator_names = indicators;
+        indicator_names.erase(
+            std::remove(indicator_names.begin(), indicator_names.end(), ""),
+            indicator_names.end());
+
+        // empty and resize the indicator vectors
+        actind.clear();
+        actind.resize(number_indicators);
+        for (int n = 0; n < number_indicators; n++)
+            actind[n].clear();
+
+        // set the indicator vectors to the right columns
+        if (indicator_correlations)
+        {
+            int j = 0;
+            for (size_t i = 0; i < number_indicators + nempty; i++)
+            {
+                if (indicators[i] == "")
+                    continue; // skip column
+                else
+                {
+                    actind[j] = data[3 + i];
+                    j++;
+                }
+            }
+        }
 
         double factor = 1.;
         if (units == "kms") factor = 1E3;
@@ -71,26 +103,29 @@ namespace kima {
      *
      * Read a tab/space separated file with columns
      * ```
-     *   time  vrad  error  obs
-     *   ...   ...   ...    ...
+     *   time  vrad  error  ...  obs
+     *   ...   ...   ...    ...  ...
      * ```
      * The `obs` column should be an integer identifying the instrument.
      *
      * @param filename   the name of the file
      * @param units      units of the RVs and errors, either "kms" or "ms"
-     * @param skip       number of lines to skip in the beginning of the file
-     * (default = 2)
+     * @param skip       number of lines to skip in the beginning of the file (default = 2)
      */
-    void RVData::load_multi(const string filename, const string units, int skip)
+    void RVData::load_multi(const string filename, const string units, int skip,
+                            const string delimiter, const vector<string> &indicators)
     {
 
-        auto data = loadtxt(filename).skiprows(skip)();
+        auto data = loadtxt(filename)
+                        .skiprows(skip)
+                        .delimiter(delimiter)();
 
         if (data.size() < 4) {
             printf("Data file (%s) contains less than 4 columns!\n", filename.c_str());
             exit(1);
         }
 
+        auto Ncol = data.size();
         auto N = data[0].size();
 
         datafile = filename;
@@ -101,6 +136,37 @@ namespace kima {
         t = data[0];
         y = data[1];
         sig = data[2];
+
+        // check for indicator correlations and store stuff
+        int nempty = count(indicators.begin(), indicators.end(), "");
+        number_indicators = indicators.size() - nempty;
+        indicator_correlations = number_indicators > 0;
+        indicator_names = indicators;
+        indicator_names.erase(
+            std::remove(indicator_names.begin(), indicator_names.end(), ""),
+            indicator_names.end());
+
+        // empty and resize the indicator vectors
+        actind.clear();
+        actind.resize(number_indicators);
+        for (int n = 0; n < number_indicators; n++)
+            actind[n].clear();
+
+        // set the indicator vectors to the right columns
+        if (indicator_correlations)
+        {
+            int j = 0;
+            for (size_t i = 0; i < number_indicators + nempty; i++)
+            {
+                if (indicators[i] == "")
+                    continue; // skip column
+                else
+                {
+                    actind[j] = data[3 + i];
+                    j++;
+                }
+            }
+        }
 
         double factor = 1.;
         if (units == "kms") factor = 1E3;
@@ -113,18 +179,18 @@ namespace kima {
         // this is to make sure the obsi vector always starts at 1, to avoid
         // segmentation faults later
         vector<int> inst_id;
-        inst_id.push_back(data[3][0]);
+        inst_id.push_back(data[Ncol - 1][0]);
 
         for (size_t n = 1; n < N; n++) {
-            if (data[3][n] != inst_id.back()) {
-                inst_id.push_back(data[3][n]);
+            if (data[Ncol - 1][n] != inst_id.back()) {
+                inst_id.push_back(data[Ncol - 1][n]);
             }
         }
         int id_offset = *min_element(inst_id.begin(), inst_id.end());
 
         obsi.clear();
         for (unsigned n = 0; n < N; n++) {
-            obsi.push_back(data[3][n] - id_offset + 1);
+            obsi.push_back(data[Ncol - 1][n] - id_offset + 1);
         }
 
         // How many points did we read?
@@ -161,12 +227,28 @@ namespace kima {
      * @param indicators
      */
     void RVData::load_multi(vector<string> filenames, const string units, int skip,
-                            const vector<string>& indicators)
+                            const string delimiter, const vector<string>& indicators)
     {
         t.clear();
         y.clear();
         sig.clear();
         obsi.clear();
+
+        // check for indicator correlations and store stuff
+        int nempty = count(indicators.begin(), indicators.end(), "");
+        number_indicators = indicators.size() - nempty;
+        indicator_correlations = number_indicators > 0;
+        indicator_names = indicators;
+        indicator_names.erase(
+            std::remove(indicator_names.begin(), indicator_names.end(), ""),
+            indicator_names.end());
+
+        // empty and resize the indicator vectors
+        actind.clear();
+        actind.resize(number_indicators);
+        for (int n = 0; n < number_indicators; n++)
+            actind[n].clear();
+
 
         int filecount = 1;
         for (auto& filename : filenames) {
@@ -180,6 +262,25 @@ namespace kima {
             t.insert(t.end(), data[0].begin(), data[0].end());
             y.insert(y.end(), data[1].begin(), data[1].end());
             sig.insert(sig.end(), data[2].begin(), data[2].end());
+
+            // set the indicator vectors to the right columns
+            if (indicator_correlations)
+            {
+                int j = 0;
+                for (size_t i = 0; i < number_indicators + nempty; i++)
+                {
+                    if (indicators[i] == "")
+                        continue; // skip column
+                    else
+                    {
+                        actind[j].insert(actind[j].end(), 
+                                         data[3 + i].begin(), 
+                                         data[3 + i].end());
+                        j++;
+                    }
+                }
+            }
+
             for (size_t n = 0; n < data[0].size(); n++)
                 obsi.push_back(filecount);
             filecount++;
@@ -221,8 +322,8 @@ namespace kima {
         if (number_instruments > 1) {
             // We need to sort t because it comes from different instruments
             size_t N = t.size();
-            vector<double> tt(N), yy(N), yy2(N);
-            vector<double> sigsig(N), sig2sig2(N), obsiobsi(N);
+            vector<double> tt(N), yy(N);
+            vector<double> sigsig(N), obsiobsi(N);
             vector<int> order(N);
 
             // order = argsort(t)
@@ -303,16 +404,6 @@ namespace kima {
     }
 
     /**
-     * @brief Calculate the total span (peak to peak) of the radial velocities
-     */
-    double RVData::get_RV_span() const
-    {
-        const auto min = min_element(y.begin(), y.end());
-        const auto max = max_element(y.begin(), y.end());
-        return *max - *min;
-    }
-
-    /**
      * @brief Calculate the maximum span (peak to peak) of the radial velocities
      *
      * This is different from get_RV_span only in the case of multiple instruments:
@@ -321,7 +412,7 @@ namespace kima {
     double RVData::get_max_RV_span() const
     {
         // for multiple instruments, calculate individual RV spans and return
-        // largest
+        // the largest one
         if (datamulti) {
             double span = 0.0;
             for (size_t j = 0; j < number_instruments; j++) {

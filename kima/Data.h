@@ -21,17 +21,38 @@ using namespace std;
 vector<string> glob(const string& pattern);
 
 
+
+template <typename T>
+vector<size_t> sort_indexes(const vector<T> &v) {
+
+  // initialize original index locations
+  vector<size_t> idx(v.size());
+  iota(idx.begin(), idx.end(), 0);
+
+  // sort indexes based on comparing values in v using std::stable_sort instead
+  // of std::sort to avoid unnecessary index re-orderings when v contains
+  // elements of equal values 
+  stable_sort(idx.begin(), idx.end(),
+       [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+
+  return idx;
+}
+
+
 namespace kima {
 
 class RVData {
-   private:
-    vector<double> t, y, sig, y2, sig2;
+
+  friend class RVmodel;
+  friend class GPmodel;
+  friend class RVFWHMmodel;
+
+  private:
+    vector<double> t, y, sig;
     vector<int> obsi;
     vector<vector<double>> actind;
 
-    friend class RVmodel;
-
-   public:
+  public:
     RVData();
     friend ostream& operator<<(ostream& os, const RVData& d);
 
@@ -41,10 +62,13 @@ class RVData {
               const vector<string> &indicators = vector<string>());
 
     // to read data from one file, more than one instrument
-    void load_multi(const string filename, const string units, int skip = 2);
+    void load_multi(const string filename, const string units, int skip = 2,
+                    const string delimiter = " ",
+                    const vector<string> &indicators = vector<string>());
 
     // to read data from more than one file, more than one instrument
     void load_multi(vector<string> filenames, const string units, int skip = 2,
+                    const string delimiter = " ",
                     const vector<string>& indicators = vector<string>());
 
     bool indicator_correlations;
@@ -70,13 +94,10 @@ class RVData {
 
     /// Get the array of times
     const vector<double>& get_t() const { return t; }
-
     /// Get the array of RVs
     const vector<double>& get_y() const { return y; }
-    const vector<double>& get_y2() const { return y2; }
     /// Get the array of errors
     const vector<double>& get_sig() const { return sig; }
-    const vector<double>& get_sig2() const { return sig2; }
 
     /// Get the mininum (starting) time
     double get_t_min() const { return *min_element(t.begin(), t.end()); }
@@ -92,8 +113,8 @@ class RVData {
     double get_RV_min() const { return *min_element(y.begin(), y.end()); }
     /// Get the maximum RV
     double get_RV_max() const { return *max_element(y.begin(), y.end()); }
-    /// Get the RV span
-    double get_RV_span() const;
+    /// Get the RV span (peak-to-peak)
+    double get_RV_span() const { return get_RV_max() - get_RV_min(); };
     /// Get the maximum RV span
     double get_max_RV_span() const;
     /// Get the mean of the RVs
@@ -103,15 +124,6 @@ class RVData {
     /// Get the standard deviation of the RVs
     double get_RV_std() const { return sqrt(get_RV_var()); }
 
-    /// Get the mininum y2
-    double get_y2_min() const { return *min_element(y2.begin(), y2.end()); }
-    /// Get the maximum y2
-    double get_y2_max() const { return *max_element(y2.begin(), y2.end()); }
-    /// Get the y2 span
-    double get_y2_span() const { return get_y2_max() - get_y2_min(); }
-
-    /// Get the RV span, adjusted for multiple instruments
-    double get_adjusted_RV_span() const;
     /// Get the RV variance, adjusted for multiple instruments
     double get_adjusted_RV_var() const;
     /// Get the RV standard deviation, adjusted for multiple instruments
@@ -142,7 +154,6 @@ class RVData {
    public:
     static RVData& get_instance() { return instance; }
 };
-
 
 template <class... Args>
 void load(Args&&... args)
