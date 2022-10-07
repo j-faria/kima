@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-import scipy.stats as st
+import scipy.stats as st  # noqa: F401
 import matplotlib.pyplot as plt
 import argparse
 
@@ -13,23 +13,26 @@ def _parse_args():
     Then, sample.txt contains samples from the prior.
     This script simply plots histograms of each column of that file.
     """
-    parser = argparse.ArgumentParser(description=desc,
-                                     prog='kima-checkpriors',
-                                     # usage='%(prog)s [no,1,2,...,7]'
-                                     )
-    parser.add_argument('column', nargs='*',
-                        help='column number or column name to use for histogram')
+    parser = argparse.ArgumentParser(
+        description=desc,
+        prog='kima-checkpriors',
+        # usage='%(prog)s [no,1,2,...,7]'
+    )
+    parser.add_argument(
+        'column', nargs='*',
+        help='column number or column name to use for histogram')
     parser.add_argument('--log', action='store_true',
                         help='plot the logarithm of the samples')
     parser.add_argument('--joint', action='store_true',
                         help='show the joint prior of two parameters')
-    parser.add_argument('--code', nargs=1, type=str,
-                        help='code to generate "theoretical" samples '\
-                             'to compare to the prior. \n'\
-                             'Assign samples to an iterable called `samples`. '\
-                             'Use numpy and scipy.stats as `np` and `st`, respectively. '\
-                             'Number of prior samples in sample.txt is in variable `nsamples`. '\
-                             'For example: samples=np.random.uniform(0,1,nsamples)')
+    parser.add_argument(
+        '--code', nargs=1, type=str, help=(
+            'code to generate "theoretical" samples '
+            'to compare to the prior. \n'
+            'Assign samples to an iterable called `samples`. '
+            'Use numpy and scipy.stats as `np` and `st`, respectively. '
+            'Number of prior samples in sample.txt is in variable `nsamples`. '
+            'For example: samples=np.random.uniform(0,1,nsamples)'))
 
     args = parser.parse_args()
     return args
@@ -83,7 +86,7 @@ def main():
                     name = 'column %d' % column
                     print('Histogram of column %d' % column)
 
-                data = np.loadtxt('sample.txt', usecols=(column - 1,))
+                data = np.loadtxt('sample.txt', usecols=(column - 1, ))
                 data = data[np.nonzero(data)[0]]
 
             except ValueError:  # or column name?
@@ -91,7 +94,7 @@ def main():
                 data = np.genfromtxt('sample.txt', names=True)
                 if column in data.dtype.names:
                     data = data[column]
-                elif column+'1' in data.dtype.names:
+                elif column + '1' in data.dtype.names:
                     col, columns = 1, []
                     while column + str(col) in data.dtype.names:
                         columns.append(column + str(col))
