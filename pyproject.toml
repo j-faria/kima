@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kima"
-version = "0.1.23"
+version = "0.1.24"
 description = "A data analysis framework for exoplanet detection"
 authors = [
     {name = "João Faria", email="joao.faria@astro.up.pt"},
@@ -27,6 +27,8 @@ dependencies = [
     "jaxlib", 
     "jax",
     "rebound",
+    "psutil",
+    "tinygp",
 ]
 
 [project.scripts]
