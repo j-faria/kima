@@ -7,32 +7,28 @@ import argparse
 
 def _parse_args():
     desc = """
-    A small script to check correct sampling from the priors.
-    Remember to run kima with the maximum number of levels
-    set to 1 (and save interval = 1 to speed things up).
-    Then, sample.txt contains samples from the prior.
-    This script simply plots histograms of each column of that file.
+    A small script to check correct sampling from the priors. Remember to run
+    kima with the maximum number of levels set to 1 (and save interval = 1 to
+    speed things up). Then, sample.txt contains samples from the prior. This
+    script simply plots histograms of each column of that file.
     """
-    parser = argparse.ArgumentParser(
-        description=desc,
-        prog='kima-checkpriors',
-        # usage='%(prog)s [no,1,2,...,7]'
-    )
-    parser.add_argument(
-        'column', nargs='*',
-        help='column number or column name to use for histogram')
+    parser = argparse.ArgumentParser(description=desc, prog='kima-checkpriors')
+
+    help = 'column number or column name to use for histogram'
+    parser.add_argument('column', nargs='*', help=help)
+
     parser.add_argument('--log', action='store_true',
                         help='plot the logarithm of the samples')
     parser.add_argument('--joint', action='store_true',
                         help='show the joint prior of two parameters')
-    parser.add_argument(
-        '--code', nargs=1, type=str, help=(
-            'code to generate "theoretical" samples '
+
+    help = ('code to generate "theoretical" samples '
             'to compare to the prior. \n'
             'Assign samples to an iterable called `samples`. '
             'Use numpy and scipy.stats as `np` and `st`, respectively. '
             'Number of prior samples in sample.txt is in variable `nsamples`. '
-            'For example: samples=np.random.uniform(0,1,nsamples)'))
+            'For example: samples=np.random.uniform(0,1,nsamples)')
+    parser.add_argument('--code', nargs=1, type=str, help=help)
 
     args = parser.parse_args()
     return args
@@ -40,10 +36,10 @@ def _parse_args():
 
 def main():
     args = _parse_args()
-    print(args)
     columns = args.column
     log = args.log
 
+    # read the names of each column
     with open('sample.txt') as f:
         firstline = f.readline()
     firstline = firstline.strip().replace('#', '')
@@ -59,8 +55,6 @@ def main():
 
         cols = np.array(columns).astype(int) - 1
         data = np.loadtxt('sample.txt', usecols=cols)
-        print(data.shape)
-        # data = data[np.nonzero(data)[0]]
 
         axs['a'].scatter(*data.T, s=2)
         axs['a'].set(xlabel=names[cols[0]], ylabel=names[cols[1]])
@@ -120,7 +114,6 @@ def main():
                 data,
                 density=True,
                 bins=100,
-                # color='k',
                 histtype='step',
                 align='mid',
                 range=[
