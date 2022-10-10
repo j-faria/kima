@@ -1,0 +1,9 @@
+# Parameters for DNest4
+2	  # Number of particles
+5000  # new level interval
+2000  # save interval
+50	  # threadSteps: number of steps each thread does independently before communication
+0	  # maximum number of levels
+10	  # Backtracking scale length (lambda)
+100	  # Strength of effect to force histogram to equal push (beta)
+5000  # Maximum number of saves (0 = infinite)
