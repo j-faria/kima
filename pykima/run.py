@@ -13,6 +13,7 @@ import signal
 import psutil
 import shlex
 
+from .version import kima_version
 from .showresults import calculate_ESS
 
 
@@ -189,10 +190,9 @@ def run_local(args=None, return_time=False):
     args, parser = _parse_args1(args)
 
     if args.version:
-        version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
-        v = open(version_file).read().strip()  # same as kima
-        print('kima (%s script)' % parser.prog, v)
-        sys.exit(0)
+        # same as kima
+        print(f'kima ({parser.prog} script)', kima_version)
+        return
 
     # get back to current directory when finished
     with remember_cwd():

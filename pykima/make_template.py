@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from glob import glob
 import sys
 import os
 import argparse
@@ -6,6 +7,9 @@ import subprocess
 import pipes
 from collections import namedtuple
 from distutils.dir_util import copy_tree
+
+from .version import kima_version
+from kima.paths import kima_dir
 
 
 def usage():
@@ -17,6 +21,8 @@ def usage():
 def _parse_args():
     parser = argparse.ArgumentParser(usage=usage())
     parser.add_argument('DIRECTORY', nargs='?', default=os.getcwd())
+    parser.add_argument('-e', '--example', type=str, choices=['14Her'],
+                        help='Start from an example')
     parser.add_argument('--dace', type=str, metavar='STAR',
                         help='download .rdb files for STAR from DACE')
     parser.add_argument('--version', action='store_true',
@@ -39,12 +45,9 @@ def mkdir_remote(host, path, verbose=False):
 
 
 def write_makefile(directory):
-    from os.path import dirname, join
+    from os.path import join
     import sysconfig
-    from kima.paths import kima_dir
     from textwrap import dedent
-
-    kima_dir = dirname(kima_dir)
 
     lib = sysconfig.get_config_vars('EXT_SUFFIX')[0].replace('.so', '.a')
     kima_lib = f'libkima{lib}'
@@ -52,7 +55,7 @@ def write_makefile(directory):
     # print(dnest4_lib, kima_lib)
 
     make = f"""
-    KIMA_DIR = {kima_dir}/kima
+    KIMA_DIR = {kima_dir}
 
     DNEST4_PATH = $(KIMA_DIR)/vendor/DNest4/code
     EIGEN_PATH = $(KIMA_DIR)/vendor/eigen
@@ -80,20 +83,20 @@ def main(args=None, stopIfNoReplace=True):
         Args = namedtuple('Args', 'version debug DIRECTORY')
         args = Args(version=False, debug=False, DIRECTORY=args)
 
-    print(args)
-
     if args.version:
-        version_file = os.path.join(os.path.dirname(__file__), '../VERSION')
-        print('kima', open(version_file).read().strip())  # same as kima
-        sys.exit(0)
+        # same as kima
+        print('kima (kima-template script)', kima_version)
+        return
 
     dst = args.DIRECTORY
 
-    # kimadir = '{kimadir}'  # filled by setup.py
-
-    thisdir = os.path.dirname(os.path.realpath(__file__))
-    src = os.path.join(thisdir, 'template')
-    templatefiles = ['kima_setup.cpp', 'OPTIONS']
+    if args.example:
+        src = os.path.join(kima_dir, 'examples', args.example)
+        templatefiles = glob(os.path.join(src, '*'))
+    else:
+        thisdir = os.path.dirname(os.path.realpath(__file__))
+        src = os.path.join(thisdir, 'template')
+        templatefiles = ['kima_setup.cpp', 'OPTIONS']
 
     # by default, replace directory
     replace = True
@@ -173,7 +176,10 @@ def main(args=None, stopIfNoReplace=True):
     #     with open(os.path.join(dst, 'Makefile'), 'w') as f:
     #         f.write(m)
 
-    # if args.dace is not None:
+    if args.dace is not None:
+        raise NotImplementedError
+
+
     #     from vera import DACE
     #     from .utils import chdir
     #     with chdir(dst):
