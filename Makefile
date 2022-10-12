@@ -32,9 +32,7 @@ SRCS = \
 	$(SRCDIR)/AMDstability.cpp                \
 	$(SRCDIR)/Data.cpp                        \
 	$(SRCDIR)/ConditionalPrior.cpp            \
-	$(SRCDIR)/RVmodel.cpp                     \
-	$(SRCDIR)/GPmodel.cpp                     \
-	$(SRCDIR)/RVFWHMmodel.cpp
+	$(SRCDIR)/RVmodel.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 
@@ -55,7 +53,7 @@ main: dnest4 $(OBJS)
 	@$(LIBTOOL) $(SRCDIR)/libkima.a $(OBJS)
 
 
-EXAMPLES = 14Her
+EXAMPLES = 51Peg BL2009 14Her studentT CoRoT7 GP_rv_fwhm
 
 ${EXAMPLES}: main
 	@echo "Compiling example $@"
