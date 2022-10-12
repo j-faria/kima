@@ -1,4 +1,8 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .results import KimaResults
+
 from collections import namedtuple
 from typing import Tuple, Union
 
@@ -8,7 +12,7 @@ from scipy.stats import norm, t as T, binned_statistic
 from .utils import mjup2mearth
 
 
-def np_most_probable(results: 'KimaResults'):
+def np_most_probable(results: KimaResults):
     """
     Return the value of Np with the highest posterior probability.
 
@@ -20,7 +24,7 @@ def np_most_probable(results: 'KimaResults'):
     return values[counts.argmax()]
 
 
-def np_bayes_factor_threshold(results: 'KimaResults', threshold: float = 150):
+def np_bayes_factor_threshold(results: KimaResults, threshold: float = 150):
     """
     Return the value of Np supported by the data considering a posterior ratio
     (Bayes factor) threshold.
@@ -40,7 +44,7 @@ def np_bayes_factor_threshold(results: 'KimaResults', threshold: float = 150):
         return np.where(above, np.arange(results.npmax), -1).max(axis=1) + 1
 
 
-def np_posterior_threshold(results: 'KimaResults', threshold: float = 0.9):
+def np_posterior_threshold(results: KimaResults, threshold: float = 0.9):
     """
     Return the value of Np supported by the data considering an absolute
     posterior probability threshold.
@@ -226,6 +230,35 @@ def get_planet_semimajor_axis(P: Union[float, np.ndarray],
             return a.mean(), a.std(), a
         else:
             return a.mean(), a.std()
+
+
+def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
+                                       full_output=False, verbose=False):
+    """
+    Calculate the planet (minimum) mass Msini and the semi-major axis given
+    orbital period `P`, semi-amplitude `K`, eccentricity `e`, and stellar mass.
+    If star_mass is a tuple with (estimate, uncertainty), this (Gaussian)
+    uncertainty will be taken into account in the calculation.
+
+    Units:
+        P [days]
+        K [m/s]
+        e []
+        star_mass [Msun]
+    Returns:
+        (M, A) where
+            M is the output of get_planet_mass
+            A is the output of get_planet_semimajor_axis
+    """
+    # this is just a convenience function for calling
+    # get_planet_mass and get_planet_semimajor_axis
+
+    if verbose:
+        print('Using star mass = %s solar mass' % star_mass)
+
+    mass = get_planet_mass(P, K, e, star_mass, full_output, verbose=False)
+    a = get_planet_semimajor_axis(P, K, star_mass, full_output, verbose=False)
+    return mass, a
 
 
 def FIP(results, oversampling=5, plot=True, adjust_oversampling=True):
@@ -1101,5 +1134,5 @@ def _column_dynamic_ranges(results):
 
 def _columns_with_dynamic_range(results):
     """ Return the columns in the posterior file which vary """
-    dr = column_dynamic_ranges(results)
+    dr = _column_dynamic_ranges(results)
     return np.nonzero(dr)[0]

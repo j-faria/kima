@@ -15,9 +15,9 @@ from .pykepler import keplerian as kepleriancpp
 from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
                  mixtureGP)
 
-from .utils import (get_planet_mass_and_semimajor_axis, read_datafile,
-                    read_datafile_rvfwhm, read_model_setup, get_star_name,
-                    mjup2mearth, get_prior, get_instrument_name,
+from .analysis import get_planet_mass_and_semimajor_axis
+from .utils import (read_datafile, read_datafile_rvfwhm, read_model_setup,
+                    get_star_name, mjup2mearth, get_prior, get_instrument_name,
                     _show_kima_setup, read_big_file, wrms)
 
 from . import display
