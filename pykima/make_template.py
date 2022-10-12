@@ -48,23 +48,23 @@ def write_makefile(directory):
 
     lib = sysconfig.get_config_vars('EXT_SUFFIX')[0].replace('.so', '.a')
     kima_lib = f'libkima{lib}'
-    # dnest4_lib = f'libdnest4{lib}'
+    dnest4_lib = f'libdnest4{lib}'
     # print(dnest4_lib, kima_lib)
 
     make = f"""
-    KIMA_DIR = {kima_dir}
+    KIMA_DIR = {kima_dir}/kima
 
-    DNEST4_PATH = $(KIMA_DIR)/kima/vendor/DNest4/code
-    EIGEN_PATH = $(KIMA_DIR)/kima/vendor/eigen
-    LOADTXT_PATH = $(KIMA_DIR)/kima/vendor/cpp-loadtxt/src
-    INCLUDES = -I$(KIMA_DIR)/kima -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(LOADTXT_PATH)
+    DNEST4_PATH = $(KIMA_DIR)/vendor/DNest4/code
+    EIGEN_PATH = $(KIMA_DIR)/vendor/eigen
+    LOADTXT_PATH = $(KIMA_DIR)/vendor/cpp-loadtxt/src
+    INCLUDES = -I$(KIMA_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(LOADTXT_PATH)
 
-    LIBS = -L$(DNEST4_PATH) -ldnest4
+    LIBS = -L$(KIMA_DIR) -l:{dnest4_lib}
 
     CXXFLAGS = -pthread -std=c++17 -O3 -DNDEBUG -DEIGEN_MPL2_ONLY
 
     kima: kima_setup.cpp
-    \t@$(CXX) -o $@ $< $(CXXFLAGS) $(KIMA_DIR)/kima/{kima_lib} $(INCLUDES) $(LIBS)
+    \t@$(CXX) -o $@ $< $(CXXFLAGS) $(KIMA_DIR)/{kima_lib} $(INCLUDES) $(LIBS)
 
     clean:
     \trm -f kima kima_setup.o
