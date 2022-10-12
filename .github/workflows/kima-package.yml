@@ -28,6 +28,9 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Install kima
+      run: |
         python -m pip install -e .
 
     - name: Lint with flake8
@@ -40,3 +43,12 @@ jobs:
     - name: Test with pytest
       run: |
         pytest tests
+
+    - name: Test scripts
+      run: |
+        kima-checkpriors -h
+        kima-template -h
+        kima-run -h
+        kima-showresults -h
+
+
