@@ -53,7 +53,7 @@ main: dnest4 $(OBJS)
 	@$(LIBTOOL) $(SRCDIR)/libkima.a $(OBJS)
 
 
-EXAMPLES = 51Peg BL2009 14Her studentT CoRoT7 GP_rv_fwhm
+EXAMPLES = 14Her
 
 ${EXAMPLES}: main
 	@echo "Compiling example $@"
