@@ -1,39 +1,33 @@
+from __future__ import annotations
 from collections import namedtuple
+from typing import Tuple, Union
 
 import numpy as np
-from numpy.core.numeric import full
 from scipy.stats import norm, t as T, binned_statistic
-from scipy.cluster.vq import kmeans2
 
-from .utils import (get_planet_mass, get_planet_semimajor_axis,
-                    get_planet_mass_and_semimajor_axis, mjup2mearth)
+from .utils import mjup2mearth
 
 
-def np_most_probable(results):
+def np_most_probable(results: 'KimaResults'):
     """
     Return the value of Np with the highest posterior probability.
 
-    Arguments
-    ---------
-    results: `KimaResults`
-        A results instance
+    Arguments:
+        results (KimaResults): A results instance
     """
     Nplanets = results.posterior_sample[:, results.index_component].astype(int)
     values, counts = np.unique(Nplanets, return_counts=True)
     return values[counts.argmax()]
 
 
-def np_bayes_factor_threshold(results, threshold=150):
+def np_bayes_factor_threshold(results: 'KimaResults', threshold: float = 150):
     """
     Return the value of Np supported by the data considering a posterior ratio
-    (Bayes factor) threshold (default 150).
+    (Bayes factor) threshold.
 
-    Arguments
-    ---------
-    results: `KimaResults`
-        A results instance
-    threshold: float
-        Posterior ratio threshold, default 150.
+    Arguments:
+        results (KimaResults): A results instance
+        threshold (float): Posterior ratio threshold.
     """
     ratios = results.ratios
 
@@ -46,22 +40,19 @@ def np_bayes_factor_threshold(results, threshold=150):
         return np.where(above, np.arange(results.npmax), -1).max(axis=1) + 1
 
 
-def np_posterior_threshold(results, threshold=0.9):
+def np_posterior_threshold(results: 'KimaResults', threshold: float = 0.9):
     """
     Return the value of Np supported by the data considering an absolute
-    posterior probability threshold (default 0.9).
+    posterior probability threshold.
 
-    Arguments
-    ---------
-    results: `KimaResults`
-        A results instance
-    threshold: float
-        Posterior probability threshold, default 0.1.
+    Arguments:
+        results (KimaResults): A results instance
+        threshold (float): Posterior probability threshold
     """
     values = np.arange(results.npmax + 1)
     bins = np.arange(results.npmax + 2) - 0.5
-    counts, _ = np.histogram(results._NP, bins=bins)
-    # values, counts = np.unique(results._NP, return_counts=True)
+    counts, _ = np.histogram(results.Np, bins=bins)
+    # values, counts = np.unique(results.Np, return_counts=True)
     if isinstance(threshold, float):
         above = (counts / results.ESS) > threshold
         print(above)
@@ -71,6 +62,170 @@ def np_posterior_threshold(results, threshold=0.9):
         above = (counts / results.ESS) > threshold
         return np.where(above, np.arange(values.size), 0).max(axis=1)
 
+
+def get_planet_mass(P: Union[float, np.ndarray], K: Union[float, np.ndarray],
+                    e: Union[float, np.ndarray],
+                    star_mass: Union[float, Tuple] = 1.0, full_output=False):
+    r"""
+    Calculate the planet (minimum) mass, $M_p \sin i$, given orbital period `P`,
+    semi-amplitude `K`, eccentricity `e`, and stellar mass. If `star_mass` is a
+    tuple with (estimate, uncertainty), this (Gaussian) uncertainty will be
+    taken into account in the calculation.
+
+    Args:
+        P (Union[float, ndarray]):
+            orbital period [days]
+        K (Union[float, ndarray]):
+            semi-amplitude [m/s]
+        e (Union[float, ndarray]):
+            orbital eccentricity
+        star_mass (Union[float, Tuple]):
+            stellar mass, or (mass, uncertainty) [Msun]
+
+    This function returns different results depending on the inputs.
+
+    !!! note "If `P`, `K`, and `e` are floats and `star_mass` is a float"
+
+    Returns:
+        Msini (float): planet mass, in $M_{\rm Jup}$
+        Msini (float): planet mass, in $M_{\rm Earth}$
+
+    !!! note "If `P`, `K`, and `e` are floats and `star_mass` is a tuple"
+
+    Returns:
+        Msini (tuple): planet mass and uncertainty, in $M_{\rm Jup}$
+        Msini (tuple): planet mass and uncertainty, in $M_{\rm Earth}$
+
+    !!! note "If `P`, `K`, and `e` are arrays and `full_output=True`"
+
+    Returns:
+        m_Msini (float):
+            posterior mean for the planet mass, in $M_{\rm Jup}$
+        s_Msini (float):
+            posterior standard deviation for the planet mass, in $M_{\rm Jup}$
+        Msini (array):
+            posterior samples for the planet mass, in $M_{\rm Jup}$
+
+    !!! note "If `P`, `K`, and `e` are arrays and `full_output=False`"
+
+    Returns:
+        m_Msini (float):
+            posterior mean for the planet mass, in $M_{\rm Jup}$
+        s_Msini (float):
+            posterior standard deviation for the planet mass, in $M_{\rm Jup}$
+        m_Msini (float):
+            posterior mean for the planet mass, in $M_{\rm Earth}$
+        s_Msini (float):
+            posterior standard deviation for the planet mass, in $M_{\rm Earth}$
+    """
+    C = 4.919e-3
+
+    try:
+        P = float(P)
+        # calculate for one value of the orbital period
+        # then K, e, and star_mass should also be floats
+        assert isinstance(K, float) and isinstance(e, float)
+        uncertainty_star_mass = False
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
+            uncertainty_star_mass = True
+
+        m_mj = C * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
+        m_me = m_mj * mjup2mearth
+        if uncertainty_star_mass:
+            return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
+        else:
+            return m_mj, m_me
+
+    except TypeError:
+        # calculate for an array of periods
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            # include (Gaussian) uncertainty on the stellar mass
+            star_mass = np.random.normal(star_mass[0], star_mass[1], P.size)
+
+        m_mj = C * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
+        m_me = m_mj * mjup2mearth
+
+        if full_output:
+            return m_mj.mean(), m_mj.std(), m_mj
+        else:
+            return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
+
+
+def get_planet_semimajor_axis(P: Union[float, np.ndarray],
+                              K: Union[float, np.ndarray],
+                              star_mass: Union[float, tuple] = 1.0,
+                              full_output=False):
+    r"""
+    Calculate the semi-major axis of the planet's orbit given orbital period
+    `P`, semi-amplitude `K`, and stellar mass.
+
+    Args:
+        P (Union[float, ndarray]):
+            orbital period [days]
+        K (Union[float, ndarray]):
+            semi-amplitude [m/s]
+        star_mass (Union[float, Tuple]):
+            stellar mass, or (mass, uncertainty) [Msun]
+
+    This function returns different results depending on the inputs.
+
+    !!! note "If `P` and `K` are floats and `star_mass` is a float"
+
+    Returns:
+        a (float): planet semi-major axis, in AU
+
+    !!! note "If `P` and `K` are floats and `star_mass` is a tuple"
+
+    Returns:
+        a (tuple): semi-major axis and uncertainty, in AU
+
+    !!! note "If `P` and `K` are arrays and `full_output=True`"
+
+    Returns:
+        m_a (float):
+            posterior mean for the semi-major axis, in AU
+        s_a (float):
+            posterior standard deviation for the semi-major axis, in AU
+        a (array):
+            posterior samples for the semi-major axis, in AU
+
+    !!! note "If `P` and `K` are arrays and `full_output=False`"
+
+    Returns:
+        m_a (float):
+            posterior mean for the semi-major axis, in AU
+        s_a (float):
+            posterior standard deviation for the semi-major axis, in AU
+    """
+    # gravitational constant G in AU**3 / (Msun * day**2), to the power of 1/3
+    f = 0.0666378476025686
+
+    if isinstance(P, float):
+        # calculate for one value of the orbital period
+        # then K and star_mass should also be floats
+        assert isinstance(K, float)
+        uncertainty_star_mass = False
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
+            uncertainty_star_mass = True
+
+        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
+
+        if uncertainty_star_mass:
+            return a.mean(), a.std()
+
+        return a  # in AU
+
+    else:
+        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
+            star_mass = star_mass[0] + star_mass[1] * np.random.randn(P.size)
+        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
+
+        if full_output:
+            return a.mean(), a.std(), a
+        else:
+            return a.mean(), a.std()
 
 
 def FIP(results, oversampling=5, plot=True, adjust_oversampling=True):
@@ -262,12 +417,12 @@ def planet_parameters(results, star_mass=1.0, sample=None, printit=True):
     if isinstance(star_mass, (tuple, list)):
         mass_errs = True
 
-    format_tuples = lambda data: '{:10.5f} \pm {:.5f}'.format(
+    format_tuples = lambda data: r'{:10.5f} \pm {:.5f}'.format(
         data[0], data[1]) if mass_errs else '{:12.5f}'.format(data)
 
     if printit:
         print()
-        final_string = star_mass if not mass_errs else '{} \pm {}'.format(
+        final_string = star_mass if not mass_errs else r'{} \pm {}'.format(
             star_mass[0], star_mass[1])
         print('Calculating planet masses with Mstar = {} Msun'.format(
             final_string))
@@ -363,55 +518,50 @@ def find_outliers(results, sample, threshold=10, verbose=False):
     return outlier
 
 
-def detection_limits(results, star_mass=1.0, Np=None, bins=200, plot=True,
+def detection_limits(results, star_mass: Union[float, Tuple] = 1.0,
+                     Np: int = None, bins: int = 200, plot=True,
                      semi_amplitude=False, semi_major_axis=False, logX=True,
-                     sorted_samples=True, return_mask=False, remove_nan=True,
-                     add_jitter=False, show_prior=False,
+                     return_mask=False, remove_nan=True,
                      show_eccentricity=False, K_lines=(5, 3, 1), smooth=False,
-                     smooth_degree=3):
+                     smooth_degree: int = 3):
     """
-    Calculate detection limits using samples with more than `Np` planets. By 
+    Calculate detection limits using samples with more than `Np` planets. By
     default, this function uses the value of `Np` which passes the posterior
     probability threshold.
 
-    Arguments
-    ---------
-    star_mass : float or tuple
-        Stellar mass and optionally its uncertainty [in solar masses].
-    Np : int
-        Consider only posterior samples with more than `Np` planets.
-    bins : int
-        Number of bins at which to calculate the detection limits. The period
-        ranges from the minimum to the maximum orbital period in the posterior.
-    plot : bool (default True)
-        Whether to plot the detection limits
-    semi_amplitude : bool (default False)
-        Show the detection limits for semi-amplitude, instead of planet mass
-    semi_major_axis : bool (default False)
-        Show semi-major axis in the x axis, instead of orbital period
-    logX : bool (default True)
-        Should X-axis bins be logarithmic ?
-    sorted_samples : bool
-        undoc
-    return_mask: bool
-        undoc
-    remove_nan : bool
-        remove bins with no counts (no posterior samples)
-    add_jitter ...
-    smooth : bool (default False)
-        Smooth the binned maximum with a polynomial
-    smooth_degree : int (default 3)
-        Degree of the polynomial used for smoothing
+    Arguments:
+        star_mass (Union[float, Tuple]):
+            Stellar mass and optionally its uncertainty [in solar masses].
+        Np (int):
+            Consider only posterior samples with more than `Np` planets.
+        bins (int):
+            Number of bins at which to calculate the detection limits. The
+            period ranges from the minimum to the maximum orbital period in the
+            posterior.
+        plot (bool):
+            Whether to plot the detection limits
+        semi_amplitude (bool):
+            Show the detection limits for semi-amplitude, instead of planet mass
+        semi_major_axis (bool):
+            Show semi-major axis in the x axis, instead of orbital period
+        logX (bool):
+            Should X-axis bins be logarithmic?
+        return_mask (bool):
+        remove_nan (bool):
+            remove bins with no counts (no posterior samples)
+        smooth (bool):
+            Smooth the binned maximum with a polynomial
+        smooth_degree (int):
+            Degree of the polynomial used for smoothing
 
-    Returns
-    -------
-    P, K, E, M : ndarray
-        Orbital periods, semi-amplitudes, eccentricities, and planet masses used
-        in the calculation of the detection limits. These correspond to all the
-        posterior samples with more than `Np` planets
-    s : DLresult, namedtuple
-        Detection limits result, with attributes `max` and `bins`. The `max` 
-        array is in units of Earth masses, `bins` is in days.
+    Returns:
+        P,K,E,M (ndarray):
+            Orbital periods, semi-amplitudes, eccentricities, and planet masses
+            used in the calculation of the detection limits. These correspond to
+            all the posterior samples with more than `Np` planets
+        s (namedtuple):
+            Detection limits result, with attributes `max` and `bins`. The `max`
+            array is in units of Earth masses, `bins` is in days.
     """
     res = results
     if Np is None:
@@ -677,11 +827,11 @@ def parameter_clusters(results, n_clusters=None, method='KMeans',
         if include_ecc:
             ax = axs['a']
             ax.scatter(data[:, 0], data[:, 2], c=pred, s=2, alpha=0.1)
-            ax.set(xscale='log', xlabel='P [days]', ylabel='$\omega$')
+            ax.set(xscale='log', xlabel='P [days]', ylabel=r'$\omega$')
 
             ax = axs['c']
             ax.scatter(data[:, 0], data[:, 3], c=pred, s=2, alpha=0.1)
-            ax.set(xscale='log', xlabel='P [days]', ylabel='$\phi$')
+            ax.set(xscale='log', xlabel='P [days]', ylabel=r'$\phi$')
 
             ax = axs['d']
             ax.scatter(data[:, 0], data[:, 4], c=pred, s=2, alpha=0.1)
@@ -798,7 +948,7 @@ def full_model_table(res, sample, instruments=None, star_mass=1.0):
 
     # planets
     x.add_row([r'\multicolumn{3}{c}{Keplerians}', '', ''])
-    parnames = ['P', 'K', 'M_0', 'e', '\omega']
+    parnames = ['P', 'K', 'M_0', 'e', r'\omega']
     units = ['days', 'm/s', '', '', '']
     planet_names = ['b', 'd']
     pl = sample[ind['planets']]
@@ -839,7 +989,7 @@ def full_model_table(res, sample, instruments=None, star_mass=1.0):
         _Mlow, _Mmed, _Mupp = np.percentile(_M, [16, 50, 84], axis=0)
         v = uformatul(_Mpar, _Mupp - _Mmed, _Mmed - _Mlow, 'L')
         v = v.center(len(v) + 2, '$')
-        x.add_row(['$M_p \,\sin\!i$', v, '$M_\oplus$'])
+        x.add_row([r'$M_p \,\sin\!i$', v, r'$M_\oplus$'])
 
         _A = get_planet_semimajor_axis(isamples[:, 0], isamples[:, 1],
                                        star_mass, full_output=True)[-1]
@@ -852,11 +1002,11 @@ def full_model_table(res, sample, instruments=None, star_mass=1.0):
     x.add_row([r'\multicolumn{3}{c}{GP}', '', ''])
     # GP
     if res.GPmodel:
-        parnames = ['$\eta_1$', '$\eta_2$', '$\eta_3$', '$\eta_4$']
+        parnames = [r'$\eta_1$', r'$\eta_2$', r'$\eta_3$', r'$\eta_4$']
         units = ['m/s', 'days', 'days', '']
         if res.model == 'RVFWHMmodel':
-            parnames[0] = '$\eta_1$ RV'
-            parnames.insert(1, '$\eta_1$ FWHM')
+            parnames[0] = r'$\eta_1$ RV'
+            parnames.insert(1, r'$\eta_1$ FWHM')
             units.insert(1, 'm/s')
         η = sample[ind['GPpars']]
         ηlow, ηmed, ηupp = lower[ind['GPpars']], median[ind['GPpars']], upper[
@@ -944,12 +1094,12 @@ def full_model_table(res, sample, instruments=None, star_mass=1.0):
     return x
 
 
-def column_dynamic_ranges(results):
+def _column_dynamic_ranges(results):
     """ Return the range of each column in the posterior file """
     return results.posterior_sample.ptp(axis=0)
 
 
-def columns_with_dynamic_range(results):
+def _columns_with_dynamic_range(results):
     """ Return the columns in the posterior file which vary """
     dr = column_dynamic_ranges(results)
     return np.nonzero(dr)[0]

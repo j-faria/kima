@@ -4,11 +4,12 @@ This module defines the `KimaResults` class to hold results from a run.
 
 import os
 import pickle
+from typing import List, Union
 import zipfile
 import time
 import tempfile
 from string import ascii_lowercase
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .pykepler import keplerian as kepleriancpp
 from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
@@ -63,16 +64,71 @@ def _read_priors(setup):
 
 @dataclass
 class data_holder:
-    pass
+    """ A simple class to hold the datasets used in kima
+
+    Attributes:
+        t (ndarray): The observation times
+        y (ndarray): The observed radial velocities
+        e (ndarray): The radial velocity uncertainties
+        obs (ndarray): Identifier for the instrument of each observation
+        N (int): Total number of observations
+    """
+    t: np.ndarray = field(init=False)
+    y: np.ndarray = field(init=False)
+    e: np.ndarray = field(init=False)
+    obs: np.ndarray = field(init=False)
+    N: int = field(init=False)
 
 
-class KimaResults(object):
-    """ A class to hold, analyse, and display the results from kima """
+@dataclass
+class posterior_holder:
+    """ A simple class to hold the posterior samples
+
+    Attributes:
+        P (ndarray): The orbital period(s)
+        K (ndarray): The semi-amplitude(s)
+        e (ndarray): The orbital eccentricities(s)
+        ω (ndarray): The argument(s) of pericenter
+        φ (ndarray): The mean anomaly(ies) at the epoch
+    """
+    P: np.ndarray = field(init=False, repr=False)
+    K: np.ndarray = field(init=False, repr=False)
+    e: np.ndarray = field(init=False, repr=False)
+    ω: np.ndarray = field(init=False, repr=False)
+    φ: np.ndarray = field(init=False, repr=False)
+
+
+class KimaResults:
+    r""" A class to hold, analyse, and display the results from kima
+
+    Attributes:
+        model (str):
+            The type of kima model
+        priors (dict):
+            A dictionary with the priors used in the model
+        ESS (int):
+            Effective sample size
+        evidence (float):
+            The log-evidence ($\ln Z$) of the model
+        information (float):
+            The Kulback-Leibler divergence between prior and posterior
+
+        data (data_holder): The data
+        posteriors (posterior_holder): The marginal posterior samples
+    """
+
+    data: data_holder
+    model: str
+    priors: dict
+    GPmodel: bool
+
+    evidence: float
+    information: float
 
     _debug = False
 
     def __init__(self, options, save_plots=False, return_figs=True,
-                 verbose=False, posterior_samples_file='posterior_sample.txt'):
+                 verbose=False):
 
         self.options = options
         self.save_plots = save_plots
@@ -109,7 +165,7 @@ class KimaResults(object):
             print('finished reading data')
 
         self.posterior_sample = np.atleast_2d(
-            read_big_file(posterior_samples_file))
+            read_big_file('posterior_sample.txt'))
 
         try:
             self.posterior_lnlike = np.atleast_2d(
@@ -128,7 +184,7 @@ class KimaResults(object):
             with open('sample.txt', 'r') as fs:
                 header = fs.readline()
                 header = header.replace('#', '').replace('  ', ' ').strip()
-                self.parameters = header.split(' ')
+                self.parameters = [p for p in header.split(' ') if p != '']
 
             # different sizes can happen when running the model and sample_info
             # was updated while reading sample.txt
@@ -417,7 +473,6 @@ class KimaResults(object):
             self.indices[f'planets.{p}'] = slice(istart, iend)
             istart += self.max_components
 
-
     def _read_studentt(self):
         # student-t likelihood?
         try:
@@ -583,10 +638,12 @@ class KimaResults(object):
 
     @property
     def _mc(self):
+        """ Maximum number of Keplerians in the model """
         return self.max_components
 
     @property
     def _nd(self):
+        """ Number of parameters per Keplerian """
         return self.n_dimensions
 
     @property
@@ -697,16 +754,27 @@ class KimaResults(object):
         return parameter_priors
 
     @classmethod
-    def load(cls, filename=None, diagnostic=False):
+    def load(cls, filename: str = None, diagnostic: bool = False, **kwargs):
         """
         Load a KimaResults object from the current directory, a pickle file, or
         a zip file.
+
+        Args:
+            filename (str, optional):
+                If given, load the model from this file. Can be a zip or pickle
+                file. Defaults to None.
+            diagnostic (bool, optional):
+                Whether to plot the DNest4 diagnotics. Defaults to False.
+            **kwargs: Extra keyword arguments passed to `showresults`
+
+        Returns:
+            res (KimaResults): An object holding the results
         """
         from .utils import chdir
 
         if filename is None:
             from .showresults import showresults
-            return showresults(force_return=True)
+            return showresults(force_return=True, **kwargs)
 
         try:
             if filename.endswith('.zip'):
@@ -775,15 +843,25 @@ class KimaResults(object):
     def show_kima_setup(self):
         return _show_kima_setup()
 
-    def save_pickle(self, filename, verbose=True):
-        """Pickle this KimaResults object into a file."""
+    def save_pickle(self, filename: str, verbose=True):
+        """ Pickle this KimaResults object into a file.
+
+        Args:
+            filename (str): The name of the file where to save the model
+            verbose (bool, optional): Print a message. Defaults to True.
+        """
         with open(filename, 'wb') as f:
             pickle.dump(self, f, protocol=2)
         if verbose:
             print('Wrote to file "%s"' % f.name)
 
-    def save_zip(self, filename, verbose=True):
-        """Save this KimaResults object and the text files into a zip."""
+    def save_zip(self, filename: str, verbose=True):
+        """ Save this KimaResults object and the text files into a zip.
+
+        Args:
+            filename (str): The name of the file where to save the model
+            verbose (bool, optional): Print a message. Defaults to True.
+        """
         if not filename.endswith('.zip'):
             filename = filename + '.zip'
 
@@ -813,11 +891,12 @@ class KimaResults(object):
             print('Wrote to file "%s"' % zf.filename)
 
     def get_marginals(self):
-        """ 
+        """
         Get the marginal posteriors from the posterior_sample matrix.
         They go into self.T, self.A, self.E, etc
         """
 
+        self.posteriors = posterior_holder()
         max_components = self.max_components
         index_component = self.index_component
 
@@ -825,46 +904,47 @@ class KimaResults(object):
         i1 = 0 * max_components + index_component + 1
         i2 = 0 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
-        self.T = self.posterior_sample[:, s]
-        self.Tall = np.copy(self.T)
+        self.posteriors.P = self.posterior_sample[:, s]
+        self.T = self.posteriors.P
 
         # amplitudes
         i1 = 1 * max_components + index_component + 1
         i2 = 1 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
+        self.posteriors.K = self.posterior_sample[:, s]
         self.A = self.posterior_sample[:, s]
-        self.Aall = np.copy(self.A)
 
         # phases
         i1 = 2 * max_components + index_component + 1
         i2 = 2 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
+        self.posteriors.φ = self.posterior_sample[:, s]
         self.phi = self.posterior_sample[:, s]
-        self.phiall = np.copy(self.phi)
 
         # eccentricities
         i1 = 3 * max_components + index_component + 1
         i2 = 3 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
+        self.posteriors.e = self.posterior_sample[:, s]
         self.E = self.posterior_sample[:, s]
-        self.Eall = np.copy(self.E)
 
         # omegas
         i1 = 4 * max_components + index_component + 1
         i2 = 4 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
+        self.posteriors.ω = self.posterior_sample[:, s]
         self.Omega = self.posterior_sample[:, s]
-        self.Omegaall = np.copy(self.Omega)
 
         # times of periastron
+        self.posteriors.Tp = (self.T * self.phi) / (2 * np.pi) + self.M0_epoch
         self.Tp = (self.T * self.phi) / (2. * np.pi) + self.M0_epoch
-        self.Tpall = np.copy(self.Tp)
 
-        # times of inferior conjunction (transit if planet transits)
+        # times of inferior conjunction (transit, if the planet transits)
         f = np.pi / 2 - self.Omega
         ee = 2 * np.arctan(
             np.tan(f / 2) * np.sqrt((1 - self.E) / (1 + self.E)))
-        self.Tc = self.Tp + self.T / (2 * np.pi) * (ee - self.E * np.sin(ee))
+        Tc = self.Tp + self.T / (2 * np.pi) * (ee - self.E * np.sin(ee))
+        self.posteriors.Tc = Tc
 
         which = self.T != 0
         self.T = self.T[which].flatten()
@@ -1241,9 +1321,10 @@ class KimaResults(object):
         ttGP.sort()  # in-place
         return ttGP
 
-    def eval_model(self, sample, t=None, include_planets=True,
-                   include_known_object=True, include_trend=True,
-                   single_planet=None, except_planet=None):
+    def eval_model(self, sample: np.ndarray, t: np.ndarray = None,
+                   include_planets=True, include_known_object=True,
+                   include_trend=True, single_planet: int = None,
+                   except_planet: Union[int, List] = None):
         """
         Evaluate the deterministic part of the model at one posterior `sample`.
         If `t` is None, use the observed times. Instrument offsets are only
@@ -1253,27 +1334,27 @@ class KimaResults(object):
 
         Note: this function does *not* evaluate the GP component of the model.
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray
-            Times at which to evaluate the model, or None to use observed times
-        include_planets : bool, default True
-            Whether to include the contribution from the planets
-        include_known_object : bool, default True
-            Whether to include the contribution from the known object planets
-        include_trend : bool, default True
-            Whether to include the contribution from the trend
-        single_planet : int
-            Index of a single planet to *include* in the model, starting at 1.
-            Use positive values (1, 2, ...) for the Np planets and negative
-            values (-1, -2, ...) for the known object planets.
-        except_planet : int or list
-            Index (or list of indices) of a single planet to *exclude* from
-            the model, starting at 1. Use positive values (1, 2, ...) for the
-            Np planets and negative
-            values (-1, -2, ...) for the known object planets.
+        Arguments:
+            sample (ndarray): One posterior sample, with shape (npar,)
+            t (ndarray):
+                Times at which to evaluate the model, or None to use observed
+                times
+            include_planets (bool):
+                Whether to include the contribution from the planets
+            include_known_object (bool):
+                Whether to include the contribution from the known object
+                planets
+            include_trend (bool):
+                Whether to include the contribution from the trend
+            single_planet (int):
+                Index of a single planet to *include* in the model, starting at
+                1. Use positive values (1, 2, ...) for the Np planets and
+                negative values (-1, -2, ...) for the known object planets.
+            except_planet (Union[int, List]):
+                Index (or list of indices) of a single planet to *exclude* from
+                the model, starting at 1. Use positive values (1, 2, ...) for
+                the Np planets and negative values (-1, -2, ...) for the known
+                object planets.
         """
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
@@ -1386,34 +1467,38 @@ class KimaResults(object):
 
         return v
 
-    def planet_model(self, sample, t=None, include_known_object=True,
-                     single_planet=None, except_planet=None):
+    def planet_model(self, sample: np.ndarray, t: np.ndarray = None,
+                     include_known_object=True, single_planet: int = None,
+                     except_planet: Union[int, List] = None):
         """
         Evaluate the planet part of the model at one posterior `sample`. If `t`
-        is None, use the observed times.
-        To evaluate at all posterior samples, consider using
+        is None, use the observed times. To evaluate at all posterior samples,
+        consider using
+
             np.apply_along_axis(self.planet_model, 1, self.posterior_sample)
 
-        Note: this function does *not* evaluate the GP component of the model
-              nor the systemic velocity and instrument offsets.
+        Note:
+            this function does *not* evaluate the GP component of the model
+            nor the systemic velocity and instrument offsets.
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray
-            Times at which to evaluate the model, or None to use observed times
-        include_known_object : bool, default True
-            Whether to include the contribution from the known object planets
-        single_planet : int
-            Index of a single planet to *include* in the model, starting at 1.
-            Use positive values (1, 2, ...) for the Np planets and negative
-            values (-1, -2, ...) for the known object planets.
-        except_planet : int or list
-            Index (or list of indices) of a single planet to *exclude* from
-            the model, starting at 1. Use positive values (1, 2, ...) for the
-            Np planets and negative
-            values (-1, -2, ...) for the known object planets.
+        Arguments:
+            sample (ndarray):
+                One posterior sample, with shape (npar,)
+            t (ndarray):
+                Times at which to evaluate the model, or None to use observed
+                times
+            include_known_object (bool):
+                Whether to include the contribution from the known object
+                planets
+            single_planet (int):
+                Index of a single planet to *include* in the model, starting at
+                1. Use positive values (1, 2, ...) for the Np planets and
+                negative values (-1, -2, ...) for the known object planets.
+            except_planet (Union[int, List]):
+                Index (or list of indices) of a single planet to *exclude* from
+                the model, starting at 1. Use positive values (1, 2, ...) for
+                the Np planets and negative values (-1, -2, ...) for the known
+                object planets.
         """
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
@@ -1496,18 +1581,20 @@ class KimaResults(object):
         If `t` is None, use the observed times. Instrument offsets are only
         added if `t` is None, but the systemic velocity is always added.
         To evaluate at all posterior samples, consider using
+
             np.apply_along_axis(self.stochastic_model, 1, self.posterior_sample)
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray (optional)
-            Times at which to evaluate the model, or None to use observed times
-        return_std : bool (optional, default False)
-            Whether to return the st.d. of the predictive
-        derivative : bool (optional, default False)
-            Return the first time derivative of the GP prediction instead
+        Arguments:
+            sample (ndarray):
+                One posterior sample, with shape (npar,)
+            t (ndarray, optional):
+                Times at which to evaluate the model, or None to use observed
+                times
+            return_std (bool, optional):
+                Whether to return the standard deviation of the predictive.
+                Default is False.
+            derivative (bool, optional):
+                Return the first time derivative of the GP prediction instead
         """
 
         if sample.shape[0] != self.posterior_sample.shape[1]:
@@ -1583,22 +1670,21 @@ class KimaResults(object):
                 self.GP.kernel.pars = GPpars
                 return self.GP.predict(r, t, return_std=return_std)
 
-    def full_model(self, sample, t=None, **kwargs):
+    def full_model(self, sample: np.ndarray, t: np.ndarray = None, **kwargs):
         """
-        Evaluate the full model at one posterior sample, including the GP. 
-        If `t` is None, use the observed times. Instrument offsets are only
-        added if `t` is None, but the systemic velocity is always added.
-        To evaluate at all posterior samples, consider using
+        Evaluate the full model at one posterior sample, including the GP. If
+        `t` is `None`, use the observed times. Instrument offsets are only added
+        if `t` is `None`, but the systemic velocity is always added. To evaluate
+        at all posterior samples, consider using
+        
             np.apply_along_axis(self.full_model, 1, self.posterior_sample)
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray (optional)
-            Times at which to evaluate the model, or None to use observed times
-        **kwargs
-            Keyword arguments passed directly to `eval_model`
+        Arguments:
+            sample (ndarray): One posterior sample, with shape (npar,)
+            t (ndarray, optional):
+                Times at which to evaluate the model, or `None` to use observed
+                times
+            **kwargs: Keyword arguments passed directly to `eval_model`
         """
         deterministic = self.eval_model(sample, t, **kwargs)
         stochastic = self.stochastic_model(sample, t)
@@ -1610,14 +1696,10 @@ class KimaResults(object):
         computed RV into `n_instruments` individual arrays. This is mostly
         useful for plotting the RV model together with the original data.
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray
-            Times at which to evaluate the model
-        v : ndarray
-            Pre-computed RVs, if None we call `self.eval_model`
+        Arguments:
+            sample (ndarray): One posterior sample, with shape (npar,)
+            t (ndarray): Times at which to evaluate the model
+            v (ndarray): Pre-computed RVs. If `None`, calls `self.eval_model`
         """
         if v is None:
             v = self.eval_model(sample, t)
@@ -1787,13 +1869,13 @@ class KimaResults(object):
             return get_instrument_name(self.data_file)
 
     @property
-    def _NP(self):
+    def Np(self):
         return self.posterior_sample[:, self.index_component]
 
     @property
     def ratios(self):
         bins = np.arange(self.max_components + 2)
-        n, _ = np.histogram(self._NP, bins=bins)
+        n, _ = np.histogram(self.Np, bins=bins)
         n = n.astype(np.float)
         n[n == 0] = np.nan
         r = n.flat[1:] / n.flat[:-1]
@@ -1805,7 +1887,7 @@ class KimaResults(object):
         # self if a KimaResults instance
         from scipy.stats import multinomial
         bins = np.arange(self.max_components + 2)
-        n, _ = np.histogram(self._NP, bins=bins)
+        n, _ = np.histogram(self.Np, bins=bins)
         prob = n / self.ESS
         r = multinomial(self.ESS, prob).rvs(10000)
         r = r.astype(np.float)

@@ -59,8 +59,9 @@ EXAMPLES = 14Her
 
 ${EXAMPLES}: main
 	@echo "Compiling example $@"
-	@$(MAKE) -s -C examples/$@;
+	@$(MAKE) -s -C kima/examples/$@;
 
+examples: $(EXAMPLES)
 
 ################################################################################
 # run examples
@@ -69,7 +70,7 @@ run_examples: ${EXAMPLES}
 	@echo "Running examples"
 	@+for example in $(EXAMPLES) ; do \
 		echo "Running $$example"; \
-		cd examples/$$example && ./kima && cd ../.. ; \
+		cd kima/examples/$$example && ./kima && cd ../../.. ; \
 	done
 
 ################################################################################
@@ -104,7 +105,7 @@ cleandnest4:
 cleanexamples:
 	@+for example in $(EXAMPLES) ; do \
 		echo "Cleaning example $$example"; \
-		$(MAKE) clean -s -C examples/$$example; \
+		$(MAKE) clean -s -C kima/examples/$$example; \
 	done
 
 clean: cleankima cleandnest4 cleanexamples

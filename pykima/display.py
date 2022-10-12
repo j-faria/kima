@@ -325,7 +325,7 @@ def make_plot3(res,
             print('Model has no planets! make_plot3() doing nothing...')
             return
 
-        if res.T.size == 0:
+        if res.posteriors.P.size == 0:
             print('None of the posterior samples have planets!', end=' ')
             print('make_plot3() doing nothing...')
             return
@@ -457,7 +457,7 @@ def make_plot4(res, Np=None, ranges=None, show_prior=False, fig=None,
 
     n = res.etas.shape[1]
     available_etas = [f'eta{i}' for i in range(1, n + 1)]
-    labels = [f'$\eta_{i}$' for i in range(1, n + 1)]
+    labels = [rf'$\eta_{i}$' for i in range(1, n + 1)]
     if ranges is None:
         ranges = len(labels) * [None]
 
@@ -637,9 +637,9 @@ def make_plot5(res, include_jitters=False, show=True, ranges=None):
         labels += [r'$\eta_1^{RV}$', r'$\eta_1^{FWHM}$']
         for i in range(2, res.n_hyperparameters):
             print(i)
-            labels += [f'$\eta_{i}$']
+            labels += [rf'$\eta_{i}$']
     else:
-        labels += [f'$\eta_{i}$' for i in range(1, 5)]
+        labels += [rf'$\eta_{i}$' for i in range(1, 5)]
 
     data.append(res.etas)
 
@@ -832,7 +832,6 @@ def corner_planet_parameters(res, fig=None, pmin=None, pmax=None):
 
     for i in range(mc):
         fig = c(
-            # samples[res._NP == i + 1, i::mc],
             samples[:, i::mc],
             labels=labels,
             show_titles=len(samples) == 1,
@@ -1493,7 +1492,7 @@ def corner_known_object(res, star_mass=1.0, adda=False, **kwargs):
 
     import pygtc
 
-    labels = [r'$P$', r'$K$', r'$M_0$', 'ecc', '$\omega$']
+    labels = [r'$P$', r'$K$', r'$M_0$', 'ecc', r'$\omega$']
     for i in range(1):
         data = res.KOpars[:, i::res.nKO]
         fig = pygtc.plotGTC(

@@ -11,6 +11,7 @@ import contextlib
 import asyncio
 import signal
 import psutil
+import shlex
 
 from .showresults import calculate_ESS
 
@@ -28,7 +29,7 @@ def receiveSIGTERM(signalNumber, frame):
 signal.signal(signal.SIGTERM, receiveSIGTERM)
 
 
-def _parse_args1():
+def _parse_args1(argstring=None):
     desc = """(compile and) Run kima jobs"""
 
     parser = argparse.ArgumentParser(description=desc, prog='kima-run')
@@ -85,7 +86,11 @@ def _parse_args1():
                         help='run with valgrind')
     parser.add_argument('--version', action='store_true', help='show version')
 
-    args = parser.parse_args()
+    if argstring is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(shlex.split(argstring))
+
     return args, parser
 
 
@@ -181,8 +186,7 @@ def _change_OPTIONS(postfix):
 
 def run_local(args=None, return_time=False):
     """ Run kima jobs """
-    if args is None:
-        args, parser = _parse_args1()
+    args, parser = _parse_args1(args)
 
     if args.version:
         version_file = os.path.join(os.path.dirname(__file__), '../VERSION')

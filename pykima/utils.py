@@ -1,6 +1,7 @@
 """ Small (but sometimes important) utility functions """
 
-import sys, os
+from datetime import datetime
+import os
 import re
 import contextlib
 import math
@@ -8,6 +9,7 @@ import configparser
 
 import numpy as np
 from scipy import stats
+from astropy.units import R_sun, AU
 
 import urepr
 from loguniform import ModifiedLogUniform
@@ -207,133 +209,51 @@ def clipped_std(arr, min, max):
     return np.std(arr[mask])
 
 
-def get_planet_mass(P, K, e, star_mass=1.0, full_output=False, verbose=False):
-    """
-    Calculate the planet (minimum) mass Msini given orbital period `P`,
-    semi-amplitude `K`, eccentricity `e`, and stellar mass. If star_mass is a
-    tuple with (estimate, uncertainty), this (Gaussian) uncertainty will be
-    taken into account in the calculation.
 
-    Units:
-        P [days]
-        K [m/s]
-        e []
-        star_mass [Msun]
-    Returns:
-        if P is float:
-            if star_mass is float:
-                Msini [Mjup], Msini [Mearth]
-            if star_mass is tuple:
-                (Msini, error_Msini) [Mjup], (Msini, error_Msini) [Mearth]
-        if P is array:
-            if full_output: mean Msini [Mjup], std Msini [Mjup], Msini [Mjup] (array)
-            else: mean Msini [Mjup], std Msini [Mjup], mean Msini [Mearth], std Msini [Mearth]
-    """
-    if verbose:
-        print('Using star mass = %s solar mass' % star_mass)
+# def get_planet_mass_latex(P, K, e, units='earth', **kwargs):
+#     """ A simple wrapper around `get_planet_mass` to provide LaTeX strings
 
-    try:
-        P = float(P)
-        # calculate for one value of the orbital period
-        # then K, e, and star_mass should also be floats
-        assert isinstance(K, float) and isinstance(e, float)
-        uncertainty_star_mass = False
-        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
-            uncertainty_star_mass = True
+#     Args:
+#         P : Same argument as for `get_planet_mass`
+#         K : Same argument as for `get_planet_mass`
+#         e : Same argument as for `get_planet_mass`
+#         units (str, optional): Planet mass units, either 'earth' or 'jup'
+#         **kwargs : Provided directly to `get_planet_mass`
 
-        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 - e**2)
-        m_me = m_mj * mjup2mearth
-        if uncertainty_star_mass:
-            return (m_mj.mean(), m_mj.std()), (m_me.mean(), m_me.std())
-        else:
-            return m_mj, m_me
+#     Returns:
+#         s (str): LaTeX string with planet mass and possibly uncertainty
+#     """
+#     out = get_planet_mass(P, K, e, **kwargs)
 
-    except TypeError:
-        # calculate for an array of periods
-        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            # include (Gaussian) uncertainty on the stellar mass
-            star_mass = np.random.normal(star_mass[0], star_mass[1], P.size)
-
-        m_mj = 4.919e-3 * star_mass**(2. / 3) * P**(1. / 3) * K * np.sqrt(1 -
-                                                                          e**2)
-        m_me = m_mj * mjup2mearth
-
-        if full_output:
-            return m_mj.mean(), m_mj.std(), m_mj
-        else:
-            return (m_mj.mean(), m_mj.std(), m_me.mean(), m_me.std())
+#     if isinstance(P, float):
+#         if units.lower() == 'earth':
+#             return '$%f$' % out[1]
+#         else:
+#             return '$%f$' % out[0]
+#     else:
+#         if units.lower() == 'earth':
+#             return percentile68_ranges_latex(out[2] * mjup2mearth)
+#         else:
+#             return percentile68_ranges_latex(out[2])
 
 
-def get_planet_mass_latex(P, K, e, star_mass=1.0, earth=False, **kargs):
-    out = get_planet_mass(P, K, e, star_mass, full_output=True, verbose=False)
+# def get_planet_semimajor_axis_latex(P, K, **kwargs):
+#     """
+#     A simple wrapper around `get_planet_semimajor_axis` to provide LaTeX strings
 
-    if isinstance(P, float):
-        if earth:
-            return '$%f$' % out[1]
-        else:
-            return '$%f$' % out[0]
-    else:
-        if earth:
-            return percentile68_ranges_latex(out[2] * mjup2mearth)
-        else:
-            return percentile68_ranges_latex(out[2])
+#     Args:
+#         P : Same argument as for `get_planet_semimajor_axis`
+#         K : Same argument as for `get_planet_semimajor_axis`
+#         **kwargs : Provided directly to `get_planet_semimajor_axis`
 
-
-def get_planet_semimajor_axis(P, K, star_mass=1.0, full_output=False,
-                              verbose=False):
-    """
-    Calculate the semi-major axis of the planet's orbit given
-    orbital period `P`, semi-amplitude `K`, and stellar mass.
-    Units:
-        P [days]
-        K [m/s]
-        star_mass [Msun]
-    Returns:
-        if P is float: a [AU]
-        if P is array:
-            if full_output: mean a [AU], std a [AU], a [AU] (array)
-            else: mean a [AU], std a [AU]
-    """
-    if verbose: print('Using star mass = %s solar mass' % star_mass)
-
-    # gravitational constant G in AU**3 / (Msun * day**2), to the power of 1/3
-    f = 0.0666378476025686
-
-    if isinstance(P, float):
-        # calculate for one value of the orbital period
-        # then K and star_mass should also be floats
-        assert isinstance(K, float)
-        uncertainty_star_mass = False
-        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            star_mass = np.random.normal(star_mass[0], star_mass[1], 20000)
-            uncertainty_star_mass = True
-
-        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
-
-        if uncertainty_star_mass:
-            return a.mean(), a.std()
-
-        return a  # in AU
-
-    else:
-        if isinstance(star_mass, tuple) or isinstance(star_mass, list):
-            star_mass = star_mass[0] + star_mass[1] * np.random.randn(P.size)
-        a = f * star_mass**(1. / 3) * (P / (2 * np.pi))**(2. / 3)
-
-        if full_output:
-            return a.mean(), a.std(), a
-        else:
-            return a.mean(), a.std()
-
-
-def get_planet_semimajor_axis_latex(P, K, star_mass=1.0, earth=False, **kargs):
-    out = get_planet_semimajor_axis(P, K, star_mass, full_output=True,
-                                    verbose=False)
-    if isinstance(P, float):
-        return '$%f$' % out
-    else:
-        return '$%f$' % out[0]
+#     Returns:
+#         s (str): LaTeX string with planet semi-major axis
+#     """
+#     out = get_planet_semimajor_axis(P, K, **kwargs)
+#     if isinstance(P, float):
+#         return '$%f$' % out
+#     else:
+#         return '$%f$' % out[0]
 
 
 def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
@@ -365,21 +285,22 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     return mass, a
 
 
-from astropy.units import R_sun, AU, jupiterRad, km, second, Kelvin
+def get_planet_teq(Tstar: float = 5777, Rstar: float = 1, a: float = 1,
+                   A: float = 0, f: float = 1):
+    """ Calculate the planet's equlibrium temperature
 
+    Args:
+        Tstar (float, optional): Stellar effective temperature [K]. Defaults to 5777.
+        Rstar (float, optional): Stellar radius [Rsun]. Defaults to 1.0.
+        a (float, optional): Planet semi-major axis [AU]. Defaults to 1.0.
+        A (float, optional): Bond albedo. Defaults to 0.
+        f (float, optional): Redistribution factor. Defaults to 1.
 
-def get_planet_teq(Tstar=5777, Rstar=1.0, a=1.0, A=0, f=1):
-    """
-    Tstar = stellar effective temperature in kelvins (K)
-    Rstar = stellar radius in solar radii
-    a = distance from the star in AU (change to solRad)
-    A = bond albedo
-    f = redistribution factor
-    Returns equilibrium temperature in Kelvins
+    Returns:
+        Teq (float): Planet equiolibrium temperature [K]
     """
     a = a * AU.to('km')
     Rstar = 1 * R_sun.to('km')
-    # Tstar = Tstar * Kelvin
     Teq = Tstar * (f * (1 - A))**(1 / 4) * (Rstar / (2 * a))**(1 / 2)
     return Teq
 
@@ -407,7 +328,7 @@ def lighten_color(color, amount=0.5):
     import colorsys
     try:
         c = mc.cnames[color]
-    except:
+    except Exception:
         c = color
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
@@ -444,7 +365,6 @@ class ZeroDist:
 
     def logpdf(self, x: float) -> float:
         return 0.0
-
 
 
 def _prior_to_dist():
@@ -577,7 +497,7 @@ def hyperprior_samples(size):
 def priors_latex(results, title='Priors', label='tab:1'):
     priors = results.priors
 
-    tab1 = f"""\\begin{{table}}
+    tab1 = rf"""\\begin{{table}}
     \r\caption{{{title}}}
     \r\label{{{label}}}
     \r\centering
@@ -587,7 +507,7 @@ def priors_latex(results, title='Priors', label='tab:1'):
     \r  \hline
     """
 
-    tab2 = """  \hline
+    tab2 = r"""  \hline
     \r\end{tabular}
     \r\end{table}
     """
@@ -628,16 +548,16 @@ def priors_latex(results, title='Priors', label='tab:1'):
         eta1_2_prior=r'\ms',
         eta2_1_prior='days',
         eta3_1_prior='days',
-        )
+    )
 
     dist_symbols = {
-        'uniform': '$\mathcal{U}$',
-        'reciprocal': '$\mathcal{L}\mathcal{U}$',
-        'ModifiedLogUniform': '$\mathcal{M}\mathcal{L}\mathcal{U}$',
+        'uniform': r'$\mathcal{U}$',
+        'reciprocal': r'$\mathcal{L}\mathcal{U}$',
+        'ModifiedLogUniform': r'$\mathcal{M}\mathcal{L}\mathcal{U}$',
     }
     translation = {
-        np.pi: '$\pi$',
-        2 * np.pi: '$2\pi$',
+        np.pi: r'$\pi$',
+        2 * np.pi: r'$2\pi$',
         results.y.min(): r'$\min v$',
         results.y.max(): r'$\max v$',
         results.t.ptp(): r'$\Delta t$',
@@ -688,8 +608,17 @@ def get_star_name(data_file):
     bn = os.path.basename(data_file)
     try:
         pattern = '|'.join([
-            'HD\d+', 'HIP\d+', 'HR\d+', 'BD-\d+', 'CD-\d+', 'NGC\d+No\d+',
-            'GJ[\d.]+', 'Gl\d+', 'Proxima', 'Barnard', 'Ross128',
+            r'HD\d+',
+            r'HIP\d+',
+            r'HR\d+',
+            r'BD-\d+',
+            r'CD-\d+',
+            r'NGC\d+No\d+',
+            r'GJ[\d.]+',
+            r'Gl\d+',
+            r'Proxima',
+            r'Barnard',
+            r'Ross128',
         ])
         return re.findall(pattern, bn)[0]
 
@@ -707,18 +636,18 @@ def get_instrument_name(data_file):
         pattern = '|'.join([
             # 'ESPRESSO',
             # 'ESPRESSO*[\d+]*',
-            'ESPRESSO*[\d+_\w+]*',
-            'HARPS[^\W_]*[\d+]*',
-            'HIRES',
-            'APF',
-            'CORALIE',
-            'HJS',
-            'ELODIE',
-            'KECK',
-            'HET',
-            'LICK',
-            'HRS',
-            'SOPHIE'
+            r'ESPRESSO*[\d+_\w+]*',
+            r'HARPS[^\W_]*[\d+]*',
+            r'HIRES',
+            r'APF',
+            r'CORALIE',
+            r'HJS',
+            r'ELODIE',
+            r'KECK',
+            r'HET',
+            r'LICK',
+            r'HRS',
+            r'SOPHIE'
         ])
         return re.findall(pattern, bn, re.IGNORECASE)[0]
 
@@ -748,9 +677,8 @@ def read_big_file(filename):
             data = np.genfromtxt(filename)
         return data
 
-    except ImportError: # no pandas, use np.genfromtxt
+    except ImportError:  # no pandas, use np.genfromtxt
         return np.genfromtxt(filename)
-
 
 
 # covert dates to/from Julian days and MJD
@@ -761,15 +689,11 @@ def read_big_file(filename):
 def mjd_to_jd(mjd):
     """ Convert Modified Julian Day to Julian Day.
 
-    Parameters
-    ----------
-    mjd : float
-        Modified Julian Day
+    Args:
+        mjd (float): Modified Julian Day
 
     Returns
-    -------
-    jd : float
-        Julian Day
+        jd (float): Julian Day
     """
     return mjd + 2400000.5
 
@@ -777,15 +701,11 @@ def mjd_to_jd(mjd):
 def jd_to_mjd(jd):
     """ Convert Julian Day to Modified Julian Day
 
-    Parameters
-    ----------
-    jd : float
-        Julian Day
+    Args:
+        jd (float): Julian Day
 
     Returns
-    -------
-    mjd : float
-        Modified Julian Day
+        mjd (float): Modified Julian Day
     """
     return jd - 2400000.5
 
@@ -796,26 +716,20 @@ def date_to_jd(year, month, day):
     Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
         4th ed., Duffet-Smith and Zwart, 2011.
 
-    Parameters
-    ----------
-    year : int
-        Year as integer. Years preceding 1 A.D. should be 0 or negative.
-        The year before 1 A.D. is 0, 10 B.C. is year -9.
-    month : int
-        Month as integer, Jan = 1, Feb. = 2, etc.
-    day : float
-        Day, may contain fractional part.
+    Args:
+        year (int): 
+            Year as integer. Years preceding 1 A.D. should be 0 or negative. The
+            year before 1 A.D. is 0, 10 B.C. is year -9.
+        month (int): Month as integer, Jan = 1, Feb. = 2, etc.
+        day (float): Day, may contain fractional part.
 
-    Returns
-    -------
-    jd : float
-        Julian Day
+    Returns:
+        jd (float): Julian Day
 
-    Examples
-    --------
-    Convert 6 a.m., February 17, 1985 to Julian Day
-    >>> date_to_jd(1985, 2, 17.25)
-    2446113.75
+    Examples:
+        Convert 6 a.m., February 17, 1985 to Julian Day
+        >>> date_to_jd(1985, 2, 17.25)
+        2446113.75
     """
     if month == 1 or month == 2:
         yearp = year - 1
@@ -826,7 +740,7 @@ def date_to_jd(year, month, day):
 
     # this checks where we are in relation to October 15, 1582, the beginning
     # of the Gregorian calendar.
-    if ((year < 1582) or (year == 1582 and month < 10)
+    if (year < 1582 or (year == 1582 and month < 10)
             or (year == 1582 and month == 10 and day < 15)):
         # before start of Gregorian calendar
         B = 0
@@ -853,38 +767,32 @@ def jd_to_date(jd):
     Algorithm from 'Practical Astronomy with your Calculator or Spreadsheet',
         4th ed., Duffet-Smith and Zwart, 2011.
 
-    Parameters
-    ----------
-    jd : float
-        Julian Day
+    Args:
+        jd (float): Julian Day
 
-    Returns
-    -------
-    year : int
-        Year as integer. Years preceding 1 A.D. should be 0 or negative.
-        The year before 1 A.D. is 0, 10 B.C. is year -9.
-    month : int
-        Month as integer, Jan = 1, Feb. = 2, etc.
-    day : float
-        Day, may contain fractional part.
+    Returns:
+        year (int): 
+            Year as integer. Years preceding 1 A.D. should be 0 or negative. The
+            year before 1 A.D. is 0, 10 B.C. is year -9.
+        month (int): Month as integer, Jan = 1, Feb. = 2, etc.
+        day (float): Day, may contain fractional part.
 
-    Examples
-    --------
-    Convert Julian Day 2446113.75 to year, month, and day.
-    >>> jd_to_date(2446113.75)
-    (1985, 2, 17.25)
+    Examples:
+        Convert Julian Day 2446113.75 to year, month, and day.
+        >>> jd_to_date(2446113.75)
+        (1985, 2, 17.25)
     """
     jd = jd + 0.5
 
-    F, I = math.modf(jd)
-    I = int(I)
+    frac, integ = math.modf(jd)
+    integ = int(integ)
 
-    A = math.trunc((I - 1867216.25) / 36524.25)
+    A = math.trunc((integ - 1867216.25) / 36524.25)
 
-    if I > 2299160:
-        B = I + 1 + A - math.trunc(A / 4.)
+    if integ > 2299160:
+        B = integ + 1 + A - math.trunc(A / 4.)
     else:
-        B = I
+        B = integ
 
     C = B + 1524
 
@@ -894,7 +802,7 @@ def jd_to_date(jd):
 
     G = math.trunc((C - E) / 30.6001)
 
-    day = C - E + F - math.trunc(30.6001 * G)
+    day = C - E + frac - math.trunc(30.6001 * G)
 
     if G < 13.5:
         month = G - 1
@@ -913,26 +821,18 @@ def hmsm_to_days(hour=0, min=0, sec=0, micro=0):
     """
     Convert hours, minutes, seconds, and microseconds to fractional days.
 
-    Parameters
-    ----------
-    hour : int, optional
-        Hour number. Defaults to 0.
-    min : int, optional
-        Minute number. Defaults to 0.
-    sec : int, optional
-        Second number. Defaults to 0.
-    micro : int, optional
-        Microsecond number. Defaults to 0.
+    Args:
+        hour (int, optional): Hour number. Defaults to 0.
+        min (int, optional): Minute number. Defaults to 0.
+        sec (int, optional): Second number. Defaults to 0.
+        micro (int, optional): Microsecond number. Defaults to 0.
 
-    Returns
-    -------
-    days : float
-        Fractional days.
+    Returns:
+        days (float): Fractional days
 
-    Examples
-    --------
-    >>> hmsm_to_days(hour=6)
-    0.25
+    Examples:
+        >>> hmsm_to_days(hour=6)
+        0.25
     """
     days = sec + (micro / 1.e6)
 
@@ -944,34 +844,25 @@ def hmsm_to_days(hour=0, min=0, sec=0, micro=0):
 
 
 def days_to_hmsm(days):
-    """ Convert fractional days to hours, minutes, seconds, and microseconds.
+    """
+    Convert fractional days to hours, minutes, seconds, and microseconds.
     Precision beyond microseconds is rounded to the nearest microsecond.
 
-    Parameters
-    ----------
-    days : float
-        A fractional number of days. Must be less than 1.
+    Args:
+        days (float): A fractional number of days. Must be less than 1.
 
-    Returns
-    -------
-    hour : int
-        Hour number.
-    min : int
-        Minute number.
-    sec : int
-        Second number.
-    micro : int
-        Microsecond number.
+    Returns:
+        hour (int): Hour number
+        min (int): Minute number
+        sec (int): Second number
+        micro (int): Microsecond number
 
-    Raises
-    ------
-    ValueError
-        If `days` is >= 1.
+    Raises:
+        ValueError: If `days` is >= 1.
 
-    Examples
-    --------
-    >>> days_to_hmsm(0.1)
-    (2, 24, 0, 0)
+    Examples:
+        >>> days_to_hmsm(0.1)
+        (2, 24, 0, 0)
     """
     hours = days * 24.
     hours, hour = math.modf(hours)
@@ -987,25 +878,21 @@ def days_to_hmsm(days):
     return int(hour), int(min), int(sec), int(micro)
 
 
-def datetime_to_jd(date):
-    """ Convert a `datetime.datetime` object to Julian Day.
+def datetime_to_jd(date: datetime):
+    """ Convert a `datetime.datetime` object to Julian day.
 
-    Parameters
-    ----------
-    date : datetime.datetime instance
+    Args:
+        date (datetime): the date to be converted to Julian day
 
-    Returns
-    -------
-    jd : float
-        Julian day.
+    Returns:
+        jd (float): Julian day
 
-    Examples
-    --------
-    >>> d = datetime.datetime(1985, 2, 17, 6)
-    >>> d
-    datetime.datetime(1985, 2, 17, 6, 0)
-    >>> jdutil.datetime_to_jd(d)
-    2446113.75
+    Examples:
+        >>> d = datetime.datetime(1985, 2, 17, 6)
+        >>> d
+        datetime.datetime(1985, 2, 17, 6, 0)
+        >>> jdutil.datetime_to_jd(d)
+        2446113.75
     """
     days = date.day + hmsm_to_days(date.hour, date.minute, date.second,
                                    date.microsecond)

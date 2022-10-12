@@ -1,6 +1,6 @@
 #include "kima.h"
 
-RVmodel::RVmodel():fix(true),npmax(0)
+RVmodel::RVmodel():fix(true),npmax(1)
 {
     
 }
