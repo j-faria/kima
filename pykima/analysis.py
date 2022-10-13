@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .results import KimaResults
 
+import warnings
 from collections import namedtuple
 from typing import Tuple, Union
 
@@ -33,15 +34,33 @@ def np_bayes_factor_threshold(results: KimaResults, threshold: float = 150):
         results (KimaResults): A results instance
         threshold (float): Posterior ratio threshold.
     """
-    ratios = results.ratios
+    bins = np.arange(results.max_components + 2)
+    n, _ = np.histogram(results.Np, bins=bins)
+
+    def Np_calc(T):
+        Np = 0
+        for i in range(bins[-2]):
+            num, den = n[i + 1], n[i]
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                if num / den > T:
+                    Np = i + 1
+        return Np
 
     if isinstance(threshold, (int, float)):
-        above = ratios > threshold
-        return np.where(above, np.arange(results.npmax), -1).max() + 1
+        Np = Np_calc(threshold)
     elif isinstance(threshold, (list, np.ndarray)):
-        threshold = np.atleast_2d(threshold).T
-        above = ratios > threshold
-        return np.where(above, np.arange(results.npmax), -1).max(axis=1) + 1
+        Np = np.apply_along_axis(Np_calc, 0, threshold)
+
+    return Np
+    # ratios = results.ratios
+    # if isinstance(threshold, (int, float)):
+    #     above = ratios > threshold
+    #     return np.where(above, np.arange(results.npmax), -1).max() + 1
+    # elif isinstance(threshold, (list, np.ndarray)):
+    #     threshold = np.atleast_2d(threshold).T
+    #     above = ratios > threshold
+    #     return np.where(above, np.arange(results.npmax), -1).max(axis=1) + 1
 
 
 def np_posterior_threshold(results: KimaResults, threshold: float = 0.9):
