@@ -871,12 +871,10 @@ def datetime_to_jd(date: datetime):
     return date_to_jd(date.year, date.month, days)
 
 
-def styleit(func):
-    from matplotlib.pyplot import style
-    here = os.path.dirname(__file__)
-
-    def wrapper(*args, **kwargs):
-        with style.context([os.path.join(here, 'simple.mplstyle')]):
-            return func(*args, **kwargs)
-
-    return wrapper
+# def styleit(func):
+#     from matplotlib.pyplot import style
+#     here = os.path.dirname(__file__)
+#     def wrapper(*args, **kwargs):
+#         with style.context([os.path.join(here, 'simple.mplstyle')]):
+#             return func(*args, **kwargs)
+#     return wrapper

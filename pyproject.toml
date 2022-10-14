@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kima"
-version = "0.1.27"
+version = "0.1.30"
 description = "A data analysis framework for exoplanet detection"
 authors = [
     {name = "João Faria", email="joao.faria@astro.up.pt"},
@@ -62,12 +62,13 @@ kima = [
     # examples
     # 14Her
     "examples/14Her/kima_setup.cpp", "examples/14Her/14her.rdb",
-    "examples/14Her/Makefile", "examples/14Her/OPTIONS",
+    "examples/14Her/OPTIONS",
     # 51Peg
     "examples/51Peg/kima_setup.cpp", "examples/51Peg/51Peg.rv",
-    "examples/51Peg/Makefile", "examples/51Peg/OPTIONS",
+    "examples/51Peg/OPTIONS",
 ]
-# "kima.examples" = ["examples/*"]
+
+pykima = ["template/*"]
 
 
 [tool.setuptools.exclude-package-data]

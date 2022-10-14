@@ -11,7 +11,7 @@ from astropy.timeseries.periodograms.lombscargle.core import LombScargle
 
 from .analysis import np_bayes_factor_threshold, find_outliers
 from .utils import (get_prior, hyperprior_samples, percentile68_ranges_latex,
-                    wrms, lighten_color, get_instrument_name, styleit)
+                    wrms, get_instrument_name)
 
 try:
     from tqdm import tqdm
@@ -1263,7 +1263,6 @@ def hist_nu(res, show_prior=False, **kwargs):
             print(str(e))
 
 
-@styleit
 def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
               ignore_y2=False, time_offset=0.0, legend=True, show_rms=False,
               outliers=None, **kwargs):
@@ -1939,7 +1938,6 @@ def phase_plot(res,
     return residuals
 
 
-@styleit
 def plot_random_samples(res, ncurves=50, samples=None, over=0.1,
                         show_vsys=False, ntt=5000, isolate_known_object=True,
                         full_plot=False, ignore_outliers=False, **kwargs):
