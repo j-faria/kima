@@ -392,15 +392,20 @@ class RVmodel(metaclass=ModelContext):
         return output
 
 
-    def run(self, threads: int = 4, thinning: int = 50,
+    def run(self, threads: int = 4, thinning: int = 50, just_compile=False,
             verbose: bool = True) -> None:
 
         if hash(frozenset(self.OPTIONS.items())) != self._OPTIONS_hash:
             self._save_OPTIONS()
 
-        cmd = f'kima-run {self.directory} -t {threads} '
+        if just_compile:
+            cmd = f'kima-run {self.directory} -c'
+        else:
+            cmd = f'kima-run {self.directory} -t {threads} '
+
         if not verbose:
             cmd += ' -q'
+
         _ = subprocess.check_call(cmd.split())
 
 
