@@ -171,7 +171,7 @@ def make_plot2(res,
         ax.axvline(x=year, color='r', label='1 year', **kwline)
 
     if show_timespan:  # mark the timespan of the data
-        ax.axvline(x=res.t.ptp(), color='k', label='time span', **kwline)
+        ax.axvline(x=res.data.t.ptp(), color='k', label='time span', **kwline)
 
     if kde:
         T = res.T
@@ -1075,18 +1075,18 @@ def hist_jitter(res, show_prior=False, show_stats=False, **kwargs):
 
             if RVFWHM and i >= res.n_instruments:
                 j = i - res.n_instruments
-                m = res.e2[res.obs == j + 1].mean()
+                m = res.data.e2[res.data.obs == j + 1].mean()
                 ax.axvline(m, 0, 0.2, color='r')
                 ax.text(m, 0.1, r'$\overline{\sigma}_{FWHM}$', color='r', **kw)
-                s = res.y2[res.obs == j + 1].std()
+                s = res.data.y2[res.data.obs == j + 1].std()
                 ax.axvline(s, 0, 0.2, color='g')
                 ax.text(s, 0.2, r'SD FWHM', color='g', **kw)
 
             else:
-                m = res.e[res.obs == i + 1].mean()
+                m = res.data.e[res.data.obs == i + 1].mean()
                 ax.axvline(m, 0, 0.2, color='r')
                 ax.text(m, 0.1, r'$\overline{\sigma}_{RV}$', color='r', **kw)
-                s = res.y[res.obs == i + 1].std()
+                s = res.data.y[res.data.obs == i + 1].std()
                 ax.axvline(s, 0, 0.2, color='g')
                 ax.text(s, 0.2, r'SD RV', color='g', **kw)
 
@@ -1302,7 +1302,7 @@ def plot_data(res, ax=None, axf=None, y=None, y2=None, extract_offset=True,
     if res.multi:
         for j in range(res.n_instruments):
             inst = res.instruments[j]
-            m = res.obs == j + 1
+            m = res.data.obs == j + 1
             kw.update(label=inst)
             if outliers is None:
                 ax.errorbar(t[m] - time_offset, y[m] - y_offset, e[m], **kw)
@@ -1391,18 +1391,18 @@ def gls_data(res, sample=None, ax=None):
         else:
             fig, (axw, ax) = plt.subplots(2, 1, **kw)
 
-    window_function = GLS(res.t, np.ones_like(res.t), res.e, fit_mean=False,
-                          center_data=False)
+    window_function = GLS(res.data.t, np.ones_like(res.data.t), res.data.e,
+                          fit_mean=False, center_data=False)
     freq, power = window_function.autopower()
     axw.semilogx(1 / freq, power)
 
     if res.multi:
         model = LombScargleMultiband(Nterms_base=1, Nterms_band=0)
-        model.fit(res.t, res.y, res.e, filts=res.obs)
+        model.fit(res.data.t, res.data.y, res.data.e, filts=res.data.obs)
         # power = model.periodogram(period)
     else:
         model = LombScargle()
-        model.fit(res.t, res.y, res.e)
+        model.fit(res.data.t, res.data.y, res.data.e)
 
     period, power = model.periodogram_auto(oversampling=30)
     ax.semilogx(period, power)
@@ -1410,11 +1410,11 @@ def gls_data(res, sample=None, ax=None):
     if fwhm_model:
         if res.multi:
             model = LombScargleMultiband(Nterms_base=1, Nterms_band=0)
-            model.fit(res.t, res.y2, res.e2, filts=res.obs)
+            model.fit(res.data.t, res.data.y2, res.data.e2, filts=res.data.obs)
             # power = model.periodogram(period)
         else:
             model = LombScargle()
-            model.fit(res.t, res.y2, res.e2)
+            model.fit(res.data.t, res.data.y2, res.data.e2)
 
         period, power = model.periodogram_auto(oversampling=30)
         axf.semilogx(period, power)
@@ -1427,9 +1427,9 @@ def plot_transit_data(res, ax=None, y=None, extract_offset=False,
         fig, ax = plt.subplots(1, 1)
 
     if y is None:
-        y = res.y.copy()
+        y = res.data.y.copy()
 
-    assert y.size == res.t.size, 'wrong dimensions!'
+    assert y.size == res.data.t.size, 'wrong dimensions!'
 
     if extract_offset:
         y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
@@ -1442,14 +1442,14 @@ def plot_transit_data(res, ax=None, y=None, extract_offset=False,
     if res.multi:
         for j in range(res.n_instruments):
             inst = res.instruments[j]
-            m = res.obs == j + 1
+            m = res.data.obs == j + 1
             kw.update(label=inst)
-            ax.errorbar(res.t[m] - time_offset, y[m] - y_offset, res.e[m],
-                        **kw)
+            ax.errorbar(res.data.t[m] - time_offset, y[m] - y_offset,
+                        res.data.e[m], **kw)
     else:
         kw.update(label=res.instruments)
 
-        ax.errorbar(res.t - time_offset, y - y_offset, res.e, **kw)
+        ax.errorbar(res.data.t - time_offset, y - y_offset, res.data.e, **kw)
 
     if legend:
         ax.legend(loc='upper left')
@@ -1469,7 +1469,7 @@ def plot_transit_data(res, ax=None, y=None, extract_offset=False,
         #     rms2 = wrms(y[~outliers], 1 / res.e[~outliers]**2)
         #     ax.set_title(f'rms: {rms2:.2f} ({rms1:.2f}) m/s', loc='right')
         # else:
-        rms = wrms(y, 1 / res.e**2)
+        rms = wrms(y, 1 / res.data.e**2)
         ax.set_title(f'rms: {rms:.2f} m/s', loc='right', fontsize=10)
 
     if y_offset != 0:
@@ -1553,7 +1553,7 @@ def phase_plot(res,
         return
 
     # make copies to not change attributes
-    t, y, e = res.t.copy(), res.y.copy(), res.e.copy()
+    t, y, e = res.data.t.copy(), res.data.y.copy(), res.data.e.copy()
     M0_epoch = res.M0_epoch
     if t[0] > 24e5:
         time_offset = 24e5
@@ -1765,7 +1765,7 @@ def phase_plot(res,
 
         if res.multi:
             for k in range(1, res.n_instruments + 1):
-                m = res.obs == k
+                m = res.data.obs == k
                 phase = ((t[m] - t0) / p) % 1.0
 
                 yy = (y - vv)[m]
@@ -1881,8 +1881,8 @@ def phase_plot(res,
     outliers = None
     if res.studentT:
         outliers = find_outliers(res, sample)
-        ax.errorbar(res.t[outliers] - time_offset, residuals[outliers],
-                    res.e[outliers], fmt='xk', ms=7, lw=3)
+        ax.errorbar(res.data.t[outliers] - time_offset, residuals[outliers],
+                    res.data.e[outliers], fmt='xk', ms=7, lw=3)
 
     plot_data(res, ax=ax, y=residuals, ignore_y2=True, legend=True,
               show_rms=True, outliers=outliers, time_offset=time_offset,
@@ -1907,19 +1907,19 @@ def phase_plot(res,
     if show_gls_residuals:
         axp = fig.add_subplot(gs[:, -1])
         from astropy.timeseries import LombScargle
-        gls = LombScargle(res.t, residuals, res.e)
+        gls = LombScargle(res.data.t, residuals, res.data.e)
         freq, power = gls.autopower()
-        axp.semilogy(power, 1/freq, 'k', alpha=0.6)
+        axp.semilogy(power, 1 / freq, 'k', alpha=0.6)
 
         kwl = dict(color='k', alpha=0.2, ls='--')
         kwt = dict(color='k', alpha=0.3, rotation=90, ha='left', va='top', fontsize=9)
         fap001 = gls.false_alarm_level(0.01)
         axp.axvline(fap001, **kwl)
-        axp.text(0.98*fap001, 1/freq.min(), '1%', **kwt)
+        axp.text(0.98 * fap001, 1 / freq.min(), '1%', **kwt)
 
         fap01 = gls.false_alarm_level(0.1)
         axp.axvline(fap01, **kwl)
-        axp.text(0.98*fap01, 1/freq.min(), '10%', **kwt)
+        axp.text(0.98 * fap01, 1 / freq.min(), '10%', **kwt)
 
         axp.set(xlabel='residual power', ylabel='Period [days]')
         axp.invert_xaxis()
@@ -1938,9 +1938,10 @@ def phase_plot(res,
     return residuals
 
 
-def plot_random_samples(res, ncurves=50, samples=None, over=0.1,
-                        show_vsys=False, ntt=5000, isolate_known_object=True,
-                        full_plot=False, ignore_outliers=False, **kwargs):
+def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
+                        pmin=None, pmax=None, show_vsys=False,
+                        isolate_known_object=True, full_plot=False,
+                        ignore_outliers=False, **kwargs):
 
     # dispatch
     if res.model == 'RVFWHMmodel':
@@ -1948,7 +1949,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1,
         return plot_random_samples_rvfwhm(*args, **kwargs)
 
     if samples is None:
-        samples = res.posterior_sample
+        samples = res._apply_cuts_period(pmin, pmax)
+        # samples = res.posterior_sample
         samples_provided = False
     else:
         samples = np.atleast_2d(samples)
@@ -2010,8 +2012,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1,
             outliers = find_outliers(
                 res, res.maximum_likelihood_sample(printit=False))
             if outliers.any():
-                mi = res.y[~outliers].min() - res.e.max()
-                ma = res.y[~outliers].max() + res.e.max()
+                mi = res.data.y[~outliers].min() - res.data.e.max()
+                ma = res.data.y[~outliers].max() + res.data.e.max()
                 yclip = np.clip(res.data.y, mi, ma)
                 ax.plot(res.data.t[outliers], yclip[outliers], 'rs')
                 ax.set_ylim(mi, ma)
@@ -2051,7 +2053,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1,
             kw = dict(alpha=alpha, color='r', ls='--')
             if res.multi:
                 for j in range(res.n_instruments):
-                    instrument_mask = res.obs == j + 1
+                    instrument_mask = res.data.obs == j + 1
                     start = t[instrument_mask].min()
                     end = t[instrument_mask].max()
                     m = np.where((tt > start) & (tt < end))
@@ -2069,7 +2071,7 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1,
         r = res.residuals(sample, full=True)
         plot_data(res, ax=axs['b'], y=r, legend=False, show_rms=True)
         axs['b'].axhline(y=0, ls='--', color='k', alpha=0.5)
-        gls = LombScargle(res.t, r, res.e)
+        gls = LombScargle(res.data.t, r, res.data.e)
         f, p = gls.autopower(samples_per_peak=15)
         axs['c'].semilogy(p, 1 / f, color='k', alpha=0.8)
         axs['c'].invert_xaxis()
@@ -2109,7 +2111,7 @@ def plot_random_samples_rvfwhm(res,
         mask = np.ones(samples.shape[0], dtype=bool)
     else:
         samples = np.atleast_2d(samples)
-    t = res.t.copy()
+    t = res.data.t.copy()
     M0_epoch = res.M0_epoch
     if t[0] > 24e5:
         t -= 24e5
@@ -2133,11 +2135,11 @@ def plot_random_samples_rvfwhm(res,
         # if t.size > 100:
         #     ncurves = min(10, ncurves)
 
-    y = res.y.copy()
-    yerr = res.e.copy()
+    y = res.data.y.copy()
+    yerr = res.data.e.copy()
 
-    y2 = res.y2.copy()
-    y2err = res.e2.copy()
+    y2 = res.data.y2.copy()
+    y2err = res.data.e2.copy()
 
     # y_offset = round(y.mean(), 0) if abs(y.mean()) > 100 else 0
     # y2_offset = round(y2.mean(), 0) if abs(y2.mean()) > 100 else 0
@@ -2218,8 +2220,10 @@ def plot_random_samples_rvfwhm(res,
 
         if res.KO:
             for iko in range(res.nKO):
-                KOpl = res.eval_model(samples[i], tt, single_planet=-iko-1)[0]
-                ax1.plot(tt, KOpl - y_offset + (iko+1)*res.y.ptp(), color='g', alpha=alpha)
+                KOpl = res.eval_model(samples[i], tt,
+                                      single_planet=-iko - 1)[0]
+                ax1.plot(tt, KOpl - y_offset + (iko + 1) * res.data.y.ptp(),
+                         color='g', alpha=alpha)
 
         if res.GPmodel:
             kw = dict(color='plum', alpha=alpha, zorder=1)
@@ -2236,7 +2240,7 @@ def plot_random_samples_rvfwhm(res,
             kw = dict(alpha=0.1, color='r', ls='--')
             if res.multi:
                 for j in range(res.n_instruments):
-                    instrument_mask = res.obs == j + 1
+                    instrument_mask = res.data.obs == j + 1
                     start = t[instrument_mask].min()
                     end = t[instrument_mask].max()
                     m = np.where( (tt > start) & (tt < end) )
@@ -2250,20 +2254,22 @@ def plot_random_samples_rvfwhm(res,
             from gatspy.periodic import LombScargleMultiband
             from astropy.timeseries import LombScargle
             r = res.residuals(samples[i], full=True)
-            freq = LombScargle(res.t, r[0], res.e).autofrequency()
+            freq = LombScargle(res.data.t, r[0], res.data.e).autofrequency()
 
             kwl = dict(color='k', alpha=0.2, ls='--')
             for i, ax in enumerate((ax1r, ax2r)):
                 # option 1
-                # gls = LombScargle(res.t, r[i], res.e)
+                # gls = LombScargle(res.t, r[i], res.data.e)
                 # freq, power = gls.autopower()
                 # option 2
                 gls = LombScargleMultiband(Nterms_base=1, Nterms_band=0)
-                gls.fit(res.t, r[i], (res.e, res.e2)[i], filts=res.obs)
+                gls.fit(res.data.t, r[i], (res.data.e, res.data.e2)[i],
+                        filts=res.data.obs)
                 power = gls.periodogram(1 / freq)
                 ax.semilogy(power, 1 / freq, 'k', alpha=alpha)
 
-                gls = LombScargle(res.t, r[i] - gls.ymean_, (res.e, res.e2)[i])
+                gls = LombScargle(res.data.t, r[i] - gls.ymean_,
+                                  (res.data.e, res.data.e2)[i])
                 fap001 = gls.false_alarm_level(0.01)
                 ax.axvline(fap001, **kwl)
                 # kwt = dict(color='k', alpha=0.3, rotation=90, ha='left', va='top', fontsize=8)
@@ -2284,7 +2290,7 @@ def plot_random_samples_rvfwhm(res,
     # if res.multi:
     #     for j in range(res.inst_offsets.shape[1] // 2 + 1):
     #         inst = res.instruments[j]
-    #         m = res.obs == j + 1
+    #         m = res.data.obs == j + 1
 
     #         kw = dict(fmt='o', ms=3, color=colors[j], label=inst)
     #         kw.update(**kwargs)
@@ -2300,20 +2306,20 @@ def plot_random_samples_rvfwhm(res,
     if full_plot:
         kwl = dict(color='k', alpha=0.2, ls='--')
         gls = LombScargleMultiband(Nterms_base=1, Nterms_band=0)
-        gls.fit(res.t, res.y, res.e, filts=res.obs)
+        gls.fit(res.data.t, res.data.y, res.data.e, filts=res.data.obs)
         power = gls.periodogram(1 / freq)
         ax1p.semilogy(power, 1 / freq, 'r', alpha=1)
-        gls = LombScargle(res.t, res.y - gls.ymean_, res.e)
+        gls = LombScargle(res.data.t, res.data.y - gls.ymean_, res.data.e)
         # kwt = dict(color='k', alpha=0.3, rotation=90, ha='left', va='top', fontsize=8)
         fap001 = gls.false_alarm_level(0.01)
         ax1p.axvline(fap001, **kwl)
         # ax.text(0.98*fap001, 1/freq.min(), '1%', **kwt)
 
         gls = LombScargleMultiband(Nterms_base=1, Nterms_band=0)
-        gls.fit(res.t, res.y2, res.e2, filts=res.obs)
+        gls.fit(res.data.t, res.data.y2, res.data.e2, filts=res.data.obs)
         power = gls.periodogram(1 / freq)
         ax2p.semilogy(power, 1 / freq, 'r', alpha=1)
-        gls = LombScargle(res.t, res.y2 - gls.ymean_, res.e2)
+        gls = LombScargle(res.data.t, res.data.y2 - gls.ymean_, res.data.e2)
         fap001 = gls.false_alarm_level(0.01)
         ax2p.axvline(fap001, **kwl)
 
@@ -2325,7 +2331,7 @@ def plot_random_samples_rvfwhm(res,
 
     ax1.set(ylabel=ylabel, xlabel='Time [days]')
     # ax1r.set(ylabel='', xlabel='Time [days]')
-    ax2.set(ylabel=f'FWHM [m/s]', xlabel='Time [days]')
+    ax2.set(ylabel='FWHM [m/s]', xlabel='Time [days]')
     # ax2r.set(ylabel='', xlabel='Time [days]')
     # if full_plot:
     # ax2.set(xlabel='Time [days]', ylabel=f'FWHM [m/s]')
@@ -2369,7 +2375,7 @@ def plot_random_samples_transit(res, ncurves=50, samples=None, over=0.1,
         samples = np.atleast_2d(samples)
     mask = np.ones(samples.shape[0], dtype=bool)
 
-    t = res.t.copy()
+    t = res.data.t.copy()
     M0_epoch = res.M0_epoch
     if t[0] > 24e5:
         t -= 24e5
@@ -2450,7 +2456,7 @@ def plot_random_samples_transit(res, ncurves=50, samples=None, over=0.1,
         #         kw = dict(alpha=alpha, color='r', ls='--')
         #         if res.multi:
         #             for j in range(res.n_instruments):
-        #                 instrument_mask = res.obs == j + 1
+        #                 instrument_mask = res.data.obs == j + 1
         #                 start = t[instrument_mask].min()
         #                 end = t[instrument_mask].max()
         #                 m = np.where((tt > start) & (tt < end))

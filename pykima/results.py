@@ -2049,9 +2049,31 @@ class KimaResults:
 
         return sorted_samples
 
-    def apply_cuts_period(self, samples, pmin=None, pmax=None,
-                          return_mask=False):
+    def _apply_cuts_period(self, pmin=None, pmax=None, return_mask=False):
         """ apply cuts in orbital period """
+        if pmin is None and pmax is None:
+            if return_mask:
+                return np.ones(self.ESS, dtype=bool)
+            else:
+                return self.posterior_sample
+
+        periods = self.posterior_sample[:, self.indices['planets.P']]
+
+        if pmin is None:
+            mask_min = np.ones(self.ESS, dtype=bool)
+        else:
+            mask_min = np.logical_and.reduce((periods > pmin).T)
+        if pmax is None:
+            mask_max = np.ones(self.ESS, dtype=bool)
+        else:
+            mask_max = np.logical_and.reduce((periods < pmax).T)
+
+        if return_mask:
+            return mask_min & mask_max
+        else:
+            return self.posterior_sample[mask_min & mask_max]
+
+        np.logical_and(*(res.posterior_sample[:, res.indices['planets.P']] > 10).T)
         too_low_periods = np.zeros_like(samples[:, 0], dtype=bool)
         too_high_periods = np.zeros_like(samples[:, 0], dtype=bool)
 
