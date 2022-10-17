@@ -32,7 +32,9 @@ SRCS = \
 	$(SRCDIR)/AMDstability.cpp                \
 	$(SRCDIR)/Data.cpp                        \
 	$(SRCDIR)/ConditionalPrior.cpp            \
-	$(SRCDIR)/RVmodel.cpp
+	$(SRCDIR)/RVmodel.cpp                     \
+	$(SRCDIR)/GPmodel.cpp                     \
+	$(SRCDIR)/RVFWHMmodel.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 
