@@ -70,7 +70,7 @@ def write_makefile(directory):
     \t@$(CXX) -o $@ $< $(CXXFLAGS) $(KIMA_DIR)/{kima_lib} $(INCLUDES) $(LIBS)
 
     clean:
-    \trm -f kima kima_setup.o
+    \t@rm -f kima kima_setup.o
     """
     with open(join(directory, 'Makefile'), 'w') as f:
         print(dedent(make), file=f)
