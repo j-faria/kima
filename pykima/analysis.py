@@ -43,7 +43,7 @@ def np_bayes_factor_threshold(results: KimaResults, threshold: float = 150):
             num, den = n[i + 1], n[i]
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                if num / den > T:
+                if num / den >= T:
                     Np = i + 1
         return Np
 
