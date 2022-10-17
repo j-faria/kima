@@ -103,7 +103,7 @@ class Prior:
             ModifiedLogUniform: f'<ModifiedLogUniform>({args[0]}, {args[1]})',
             kumaraswamy: f'<Kumaraswamy>({args[0]}, {args[1]})',
             _c.norm_gen: f'<Gaussian>({args[0]}, {args[1]})',
-            _c.rayleigh_gen: f'<Rayleigh>({args[0]}, {args[1]})',
+            _c.rayleigh_gen: f'<Rayleigh>({args[1]})',
         }
         return f'make_prior{reprs[dist]}'
 
@@ -116,7 +116,7 @@ class Prior:
             ModifiedLogUniform: f'ModifiedLogUniform({args[0]}, {args[1]})',
             kumaraswamy: f'Kumaraswamy({args[0]}, {args[1]})',
             _c.norm_gen: f'Gaussian({args[0]}, {args[1]})',
-            _c.rayleigh_gen: f'Rayleigh({args[0]}, {args[1]})',
+            _c.rayleigh_gen: f'Rayleigh({args[1]})',
         }
         return reprs[dist]
 

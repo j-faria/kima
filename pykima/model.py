@@ -27,6 +27,11 @@ class objdict(dict):
             raise AttributeError("No such attribute: " + name)
 
 
+class data_from_arguments:
+    def __repr__(self):
+        return 'argv[1]'
+
+
 class ModelContext(type):
     def __new__(cls, name, bases, attrs, **kwargs):
         def __enter__(self):
@@ -122,11 +127,16 @@ class RVmodel(metaclass=ModelContext):
 
     @data.setter
     def data(self, value: Any):
-        if isinstance(value, str):
+        if isinstance(value, data_from_arguments):
+            self._data = value
+            self._data_arrays = False
+
+        elif isinstance(value, str):
             self._filename = value
             assert os.path.exists(self._filename)
             self._data_arrays = False
             self._data = value
+
         elif isinstance(value, (tuple, list)):
             if all(isinstance(d, str) for d in value):
                 self._filename = value
@@ -319,7 +329,12 @@ class RVmodel(metaclass=ModelContext):
                 load = f'{T}load(datafile, "{self.units}", {self.skip});'
                 file.write(load + '\n')
             else:
-                load = f'{T}load("{self.data}", "{self.units}", {self.skip});'
+                if isinstance(self.data, str):
+                    D = f'"{self.data}"'
+                else:
+                    D = self.data
+
+                load = f'{T}load({D}, "{self.units}", {self.skip});'
                 file.write(load + '\n')
 
     def _start_main(self, file):
