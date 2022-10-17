@@ -218,14 +218,10 @@ def run_local(args=None, return_time=False):
         # compile
         if not args.no_compile:
 
-            # if there is no Makefile, create one with the right path
+            # if there is no Makefile, create one with the right paths
             if not os.path.exists('Makefile'):
-                from .utils import get_kima_dir
-                d = get_kima_dir()
-                print('no Makefile found, creating one...')
-                with open('Makefile', 'w') as f:
-                    f.write(f'KIMA_DIR = {d}\n')
-                    f.write('include $(KIMA_DIR)/examples.mk')
+                from .make_template import write_makefile
+                write_makefile('.')
 
             try:
                 if not args.quiet:
