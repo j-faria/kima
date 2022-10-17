@@ -36,7 +36,8 @@ def wrong_npar(dist, expected, got):
 
 
 class Fixed:
-    pass
+    def __init__(self, val):
+        self.args = (val, )
 
 
 class Prior:
@@ -51,12 +52,13 @@ class Prior:
             args = dist.args
             if args == ():
                 args = (dist.kwds.get('loc', 0.0), dist.kwds.get('scale', 1.0))
-            print(dist, args)
             self.prior = (dist.dist.__class__, args)
 
         elif isinstance(dist, ModifiedLogUniform):
             self.prior = (ModifiedLogUniform, (dist.knee, dist.b))
 
+        elif isinstance(dist, Fixed):
+            self.prior = (Fixed, (dist.args[0], None))
 
         elif dist.lower() in ('uniform', 'u'):
             assert len(args) == 2, wrong_npar('Uniform', 2, len(args))
