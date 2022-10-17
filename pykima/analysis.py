@@ -50,7 +50,8 @@ def np_bayes_factor_threshold(results: KimaResults, threshold: float = 150):
     if isinstance(threshold, (int, float)):
         Np = Np_calc(threshold)
     elif isinstance(threshold, (list, np.ndarray)):
-        Np = np.apply_along_axis(Np_calc, 0, threshold)
+        threshold = np.atleast_2d(threshold).T
+        Np = np.apply_along_axis(Np_calc, 1, threshold)
 
     return Np
     # ratios = results.ratios

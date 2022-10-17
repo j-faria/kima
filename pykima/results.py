@@ -781,8 +781,9 @@ class KimaResults:
                 zf = zipfile.ZipFile(filename, 'r')
                 names = zf.namelist()
                 needs = ('sample.txt', 'levels.txt', 'sample_info.txt',
-                         'posterior_sample.txt', 'posterior_sample_info.txt',
                          'kima_model_setup.txt')
+                wants = ('posterior_sample.txt', 'posterior_sample_info.txt')
+
                 for need in needs:
                     if need not in names:
                         raise ValueError('%s does not contain a "%s" file' %
@@ -791,6 +792,12 @@ class KimaResults:
                 with tempfile.TemporaryDirectory() as dirpath:
                     for need in needs:
                         zf.extract(need, path=dirpath)
+
+                    for want in wants:
+                        try:
+                            zf.extract(need, path=dirpath)
+                        except FileNotFoundError:
+                            pass
 
                     try:
                         zf.extract('evidence', path=dirpath)
@@ -811,20 +818,24 @@ class KimaResults:
                             datafiles = setup[section]['files'].split(',')
                             datafiles = list(filter(None, datafiles))
                         else:
-                            datafiles = np.atleast_1d(setup['kima']['file'])
+                            datafiles = np.atleast_1d(setup['data']['file'])
 
                         datafiles = list(map(os.path.basename, datafiles))
                         for df in datafiles:
                             zf.extract(df)
 
-                        if diagnostic:
-                            from .classic import postprocess
-                            postprocess()
+                        if os.path.exists(wants[0]):
+                            res = cls('')
+                            res.evidence = float(open('evidence').read())
+                            res.information = float(open('information').read())
+                            res.ESS = res.posterior_sample.shape[0]
+                        else:
+                            from .showresults import showresults
+                            res = showresults(verbose=False)
 
-                        res = cls('')
-                        res.evidence = float(open('evidence').read())
-                        res.information = float(open('information').read())
-                        res.ESS = res.posterior_sample.shape[0]
+                        # from .classic import postprocess
+                        # postprocess()
+
 
                 return res
 
