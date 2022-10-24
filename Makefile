@@ -34,7 +34,8 @@ SRCS = \
 	$(SRCDIR)/ConditionalPrior.cpp            \
 	$(SRCDIR)/RVmodel.cpp                     \
 	$(SRCDIR)/GPmodel.cpp                     \
-	$(SRCDIR)/RVFWHMmodel.cpp
+	$(SRCDIR)/RVFWHMmodel.cpp                 \
+	$(SRCDIR)/BDmodel.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 

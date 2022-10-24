@@ -8,6 +8,7 @@
 #include "RVmodel.h"
 #include "GPmodel.h"
 #include "RVFWHMmodel.h"
+#include "BDmodel.h"
 
 
 using namespace DNest4;

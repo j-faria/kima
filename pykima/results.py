@@ -118,12 +118,15 @@ class KimaResults:
     """
 
     data: data_holder
+    posteriors: posterior_holder
+
     model: str
     priors: dict
     GPmodel: bool
 
     evidence: float
     information: float
+    ESS: int
 
     _debug = False
 
@@ -149,10 +152,9 @@ class KimaResults:
 
         try:
             self.fix = setup['kima']['fix'] == 'true'
-            self.npmax = int(setup['kima']['npmax'])
         except KeyError:
             self.fix = True
-            self.npmax = 0
+        self.npmax = int(setup['kima']['npmax'])
 
         # read the priors
         self.priors = _read_priors(setup)
@@ -200,6 +202,7 @@ class KimaResults:
             print('finished reading sample file', end=' ')
             print(f'(took {t2 - t1:.1f} seconds)')
 
+        self.posteriors = posterior_holder()
         self.indices = {}
         self.total_parameters = 0
 
@@ -342,6 +345,7 @@ class KimaResults:
 
     def _read_jitters(self):
         i1, i2 = self._current_column, self._current_column + self.n_jitters
+        self.posteriors.jitter = self.posterior_sample[:, i1:i2]
         self.jitter = self.posterior_sample[:, i1:i2]
         self._current_column += self.n_jitters
         self.indices['jitter_start'] = i1
@@ -442,6 +446,12 @@ class KimaResults:
             iend = istart + n_dist_print
             self._current_column += n_dist_print
             self.indices['hyperpriors'] = slice(istart, iend)
+        elif self.model == 'BDmodel':
+            n_dist_print = 2
+            istart = self._current_column
+            iend = istart + n_dist_print
+            self._current_column += n_dist_print
+            self.indices['hyperpriors'] = slice(istart, iend)
         else:
             n_dist_print = 0
 
@@ -468,7 +478,8 @@ class KimaResults:
         iend = istart + n_planet_pars
         self._current_column += n_planet_pars
         self.indices['planets'] = slice(istart, iend)
-        for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'ω')):
+        for j, p in zip(range(self.n_dimensions),
+                        ('P', 'K', 'φ', 'e', 'ω', 'λ')):
             iend = istart + self.max_components
             self.indices[f'planets.{p}'] = slice(istart, iend)
             istart += self.max_components
@@ -906,8 +917,6 @@ class KimaResults:
         Get the marginal posteriors from the posterior_sample matrix.
         They go into self.T, self.A, self.E, etc
         """
-
-        self.posteriors = posterior_holder()
         max_components = self.max_components
         index_component = self.index_component
 
@@ -945,6 +954,15 @@ class KimaResults:
         s = np.s_[i1:i2]
         self.posteriors.ω = self.posterior_sample[:, s]
         self.Omega = self.posterior_sample[:, s]
+
+        if self.model == 'BDmodel':
+            i1 = 5 * max_components + index_component + 1
+            i2 = 5 * max_components + index_component + max_components + 1
+            s = np.s_[i1:i2]
+            self.posteriors.λ = self.posterior_sample[:, s]
+            self.Lambda = self.posterior_sample[:, s]
+
+
 
         # times of periastron
         self.posteriors.Tp = (self.T * self.phi) / (2 * np.pi) + self.M0_epoch
@@ -1332,7 +1350,7 @@ class KimaResults:
         ttGP.sort()  # in-place
         return ttGP
 
-    def eval_model(self, sample: np.ndarray, t: np.ndarray = None,
+    def eval_model(self, sample, t = None,
                    include_planets=True, include_known_object=True,
                    include_trend=True, single_planet: int = None,
                    except_planet: Union[int, List] = None):
@@ -1346,8 +1364,8 @@ class KimaResults:
         Note: this function does *not* evaluate the GP component of the model.
 
         Arguments:
-            sample (ndarray): One posterior sample, with shape (npar,)
-            t (ndarray):
+            sample (array): One posterior sample, with shape (npar,)
+            t (array):
                 Times at which to evaluate the model, or None to use observed
                 times
             include_planets (bool):
@@ -1455,7 +1473,7 @@ class KimaResults:
         # otherwise, don't
         if self.multi and data_t:  # and len(self.data_file) > 1:
             offsets = sample[self.indices['inst_offsets']]
-            ii = self.obs.astype(int) - 1
+            ii = self.data.obs.astype(int) - 1
 
             if self.model == 'RVFWHMmodel':
                 ni = self.n_instruments
@@ -1759,7 +1777,7 @@ class KimaResults:
             ii = np.digitize(t, time_bins) - 1
 
             #! HACK!
-            obs_is_sorted = np.all(np.diff(self.obs) >= 0)
+            obs_is_sorted = np.all(np.diff(self.data.obs) >= 0)
             if not obs_is_sorted:
                 ii = -ii.max() * (ii - ii.max())
             #! end HACK!
@@ -1794,9 +1812,9 @@ class KimaResults:
         vals.append(val)
 
         if self.multi:
-            for inst, o in zip(self.instruments, np.unique(self.obs)):
-                val = wrms(r[self.obs == o],
-                           weights=1 / self.e[self.obs == o]**2)
+            for inst, o in zip(self.instruments, np.unique(self.data.obs)):
+                val = wrms(r[self.data.obs == o],
+                           weights=1 / self.e[self.data.obs == o]**2)
                 if printit:
                     print(f'{inst}: {val:.3f} m/s')
                 vals.append(val)
@@ -1873,7 +1891,7 @@ class KimaResults:
     def instruments(self):
         if self.multi:
             if self.multi_onefile:
-                return ['inst %d' % i for i in np.unique(self.obs)]
+                return ['inst %d' % i for i in np.unique(self.data.obs)]
             else:
                 return list(map(get_instrument_name, self.data_file))
         else:
@@ -1915,12 +1933,13 @@ class KimaResults:
             return x.min(), x.max()
 
         # are the instrument identifiers all sorted?
-        # st = np.lexsort(np.vstack([self.t, self.obs]))
-        obs_is_sorted = np.all(np.diff(self.obs) >= 0)
+        # st = np.lexsort(np.vstack([self.t, self.data.obs]))
+        obs_is_sorted = np.all(np.diff(self.data.obs) >= 0)
 
         # if not, which ones are not sorted?
         if not obs_is_sorted:
-            which_not_sorted = np.unique(self.obs[1:][np.diff(self.obs) < 0])
+            which_not_sorted = np.unique(
+                self.data.obs[1:][np.diff(self.data.obs) < 0])
 
         overlap = []
         for i in range(1, self.n_instruments):
@@ -2083,25 +2102,6 @@ class KimaResults:
             return mask_min & mask_max
         else:
             return self.posterior_sample[mask_min & mask_max]
-
-        np.logical_and(*(res.posterior_sample[:, res.indices['planets.P']] > 10).T)
-        too_low_periods = np.zeros_like(samples[:, 0], dtype=bool)
-        too_high_periods = np.zeros_like(samples[:, 0], dtype=bool)
-
-        if pmin is not None:
-            too_low_periods = samples[:, 0] < pmin
-            samples = samples[~too_low_periods, :]
-
-        if pmax is not None:
-            too_high_periods = samples[:, 1] > pmax
-            samples = samples[~too_high_periods, :]
-
-        if return_mask:
-            mask = ~too_low_periods & ~too_high_periods
-            return samples, mask
-        else:
-            return samples
-
 
     #
     plot_random_samples = display.plot_random_samples

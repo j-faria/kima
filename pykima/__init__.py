@@ -12,5 +12,5 @@ from .pykepler import keplerian as keplerian_list
 keplerian = lambda *args, **kwargs: array(keplerian_list(*args, **kwargs))
 
 
-__all__ = [__version__, showresults, load, keplerian]
+__all__ = ['__version__', 'showresults', 'load', 'keplerian']
 
