@@ -331,18 +331,18 @@ def make_plot3(res,
             return
 
     if mask is None:
-        ip = res.indices['planets']
-        mc = res.max_components
-        T = res.posterior_sample[:, ip][:, 0 * mc:1 * mc]
-        A = res.posterior_sample[:, ip][:, 1 * mc:2 * mc]
-        E = res.posterior_sample[:, ip][:, 3 * mc:4 * mc]
+        # ip = res.indices['planets']
+        # mc = res.max_components
+        T = res.posteriors.P # res.posterior_sample[:, ip][:, 0 * mc:1 * mc]
+        A = res.posteriors.K # res.posterior_sample[:, ip][:, 1 * mc:2 * mc]
+        E = res.posteriors.e # res.posterior_sample[:, ip][:, 3 * mc:4 * mc]
         # T = res.T
         # A, E = res.A, res.E
     else:
-        pars = res.posterior_sample[mask, res.indices['planets']]
-        T = np.hstack(pars[:, 0 * res.max_components:1 * res.max_components])
-        A = np.hstack(pars[:, 1 * res.max_components:2 * res.max_components])
-        E = np.hstack(pars[:, 3 * res.max_components:4 * res.max_components])
+        # pars = res.posterior_sample[mask, res.indices['planets']]
+        T = res.posteriors.P[mask, :] # np.hstack(pars[:, 0 * res.max_components:1 * res.max_components])
+        A = res.posteriors.K[mask, :] # np.hstack(pars[:, 1 * res.max_components:2 * res.max_components])
+        E = res.posteriors.e[mask, :] # np.hstack(pars[:, 3 * res.max_components:4 * res.max_components])
 
     include_known_object = include_known_object and res.KO
 
@@ -358,11 +358,20 @@ def make_plot3(res,
     if res.log_period:
         T = np.exp(res.T)
 
-    if 'ax1' in kwargs and 'ax2' in kwargs:
-        ax1, ax2 = kwargs.pop('ax1'), kwargs.pop('ax2')
-        fig = ax1.figure
+    E0 = np.all(E == 0.0)
+
+    if E0:
+        if 'ax1' in kwargs:
+            ax1 = kwargs.pop('ax1')
+            fig = ax1.figure
+        else:
+            fig, ax1 = plt.subplots(1, 1)
     else:
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+        if 'ax1' in kwargs and 'ax2' in kwargs:
+            ax1, ax2 = kwargs.pop('ax1'), kwargs.pop('ax2')
+            fig = ax1.figure
+        else:
+            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
     # the y scale in loglog looks bad if the semi-amplitude doesn't have
     # high dynamic range; the threshold of 30 is arbitrary
@@ -378,11 +387,13 @@ def make_plot3(res,
         else:
             ax1.semilogx(T, A, '.', **kw)
 
-        ax2.semilogx(T, E, '.', **kw)
+        if not E0:
+            ax2.semilogx(T, E, '.', **kw)
 
         if include_known_object:
             ax1.semilogx(T_KO, A_KO, '.', markersize=2, zorder=2)
-            ax2.semilogx(T_KO, E_KO, '.', markersize=2, zorder=2)
+            if not E0:
+                ax2.semilogx(T_KO, E_KO, '.', markersize=2, zorder=2)
 
     else:
         if A.size > 1 and A.ptp() > 30:
@@ -392,8 +403,9 @@ def make_plot3(res,
             ax1.hexbin(T, A, gridsize=gridsize, bins='log', xscale='log',
                        yscale='linear', cmap=plt.get_cmap('afmhot_r'))
 
-        ax2.hexbin(T, E, gridsize=gridsize, bins='log', xscale='log',
-                   cmap=plt.get_cmap('afmhot_r'))
+        if not E0:
+            ax2.hexbin(T, E, gridsize=gridsize, bins='log', xscale='log',
+                       cmap=plt.get_cmap('afmhot_r'))
 
     if res.removed_crossing:
         if points:
@@ -417,18 +429,21 @@ def make_plot3(res,
                 ax1.semilogx(T, A, '.', markersize=1, alpha=0.05, color='r',
                              zorder=1)
 
-            ax2.semilogx(T, E, '.', markersize=1, alpha=0.05, color='r',
-                         zorder=1)
+            if not E0:
+                ax2.semilogx(T, E, '.', markersize=1, alpha=0.05, color='r',
+                             zorder=1)
 
     ax1.set(ylabel='Semi-amplitude [m/s]',
             title='Joint posterior semi-amplitude $-$ orbital period')
-    ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
-            title='Joint posterior eccentricity $-$ orbital period',
-            ylim=[0, 1], xlim=[0.1, 1e7])
+
+    if not E0:
+        ax2.set(ylabel='Eccentricity', xlabel='Period [days]',
+                title='Joint posterior eccentricity $-$ orbital period',
+                ylim=[0, 1], xlim=[0.1, 1e7])
 
     try:
         ax2.set(xlim=res.priors['Pprior'].support())
-    except (AttributeError, KeyError, ValueError):
+    except (AttributeError, KeyError, ValueError, NameError):
         pass
 
     if res.save_plots:
