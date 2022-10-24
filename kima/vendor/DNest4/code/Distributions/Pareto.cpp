@@ -14,6 +14,15 @@ Pareto::Pareto(double _min, double _alpha)
         throw std::domain_error("Invalid Pareto distribution.");
 }
 
+void Pareto::setpars(double m, double a)
+{
+    if (m <= 0.0 || a <= 0.0)
+        throw std::domain_error("Invalid Pareto distribution.");
+    
+    min = m;
+    alpha = a;
+}
+
 double Pareto::cdf(double x) const
 {
     if(x <= min)

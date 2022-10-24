@@ -16,6 +16,7 @@ class Fixed:public ContinuousDistribution
 
     public:
         Fixed(double val=0.0);
+        void setpars(double v) { val = v; };
 
         double cdf(double x) const;
         double cdf_inverse(double p) const;

@@ -20,6 +20,7 @@ class Pareto:public ContinuousDistribution
 
     public:
         Pareto(double _min=1.0, double _alpha=1.0);
+        void setpars(double min, double alpha);
 
         double cdf(double x) const;
         double cdf_inverse(double x) const;

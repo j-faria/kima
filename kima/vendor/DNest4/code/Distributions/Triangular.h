@@ -17,6 +17,7 @@ class Triangular:public ContinuousDistribution
 
     public:
         Triangular(double lower=0.0, double centre=0.0, double upper=1.0);
+        void setpars(double lower, double centre, double upper);
 
         double cdf(double x) const;
         double cdf_inverse(double x) const;

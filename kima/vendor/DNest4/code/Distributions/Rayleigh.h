@@ -17,6 +17,7 @@ class Rayleigh:public ContinuousDistribution
 
     public:
         Rayleigh(double scale=1.0);
+        void setpars(double scale);
 
         double cdf(double x) const;
         double cdf_inverse(double x) const;

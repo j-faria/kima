@@ -8,58 +8,59 @@
 namespace DNest4
 {
 
-/*
-* Cauchy distributions
-*/
-class Cauchy:public ContinuousDistribution
-{
+    /*
+     * Cauchy distributions
+     */
+    class Cauchy : public ContinuousDistribution
+    {
     private:
         // Location and scale parameter
         double center, width;
 
     public:
-        Cauchy(double center=0.0, double width=1.0);
+        Cauchy(double center = 0.0, double width = 1.0);
+        void setpars(double center, double width);
 
         double cdf(double x) const;
         double cdf_inverse(double x) const;
         double log_pdf(double x) const;
         // ostream representation of Cauchy class
-        virtual std::ostream& print(std::ostream& out) const override
+        virtual std::ostream &print(std::ostream &out) const override
         {
             out << "Cauchy(" << center << "; " << width << ")";
             return out;
         }
-};
+    };
 
-class TruncatedCauchy:public ContinuousDistribution
-{
+    class TruncatedCauchy : public ContinuousDistribution
+    {
     private:
         double center, width; // Location and scale parameter
-        double lower, upper; // truncation bounds
-        Cauchy unC; // the original, untruncated, Cauchy distribution
+        double lower, upper;  // truncation bounds
+        Cauchy unC;           // the original, untruncated, Cauchy distribution
         double c;
 
     public:
-        TruncatedCauchy(double center=0.0, double width=1.0,
-                        double lower=-std::numeric_limits<double>::infinity(),
-                        double upper=std::numeric_limits<double>::infinity());
+        TruncatedCauchy(double center = 0.0, double width = 1.0,
+                        double lower = -std::numeric_limits<double>::infinity(),
+                        double upper = std::numeric_limits<double>::infinity());
+        void setpars(double center, double width, double lower, double upper);
+        void setpars(double center, double width);
 
         double cdf(double x) const;
         double cdf_inverse(double p) const;
         double pdf(double x) const;
         double log_pdf(double x) const;
-        double rvs(RNG& rng) const;
+        double rvs(RNG &rng) const;
 
         // ostream representation of TruncatedCauchy class
-        virtual std::ostream& print(std::ostream& out) const override
+        virtual std::ostream &print(std::ostream &out) const override
         {
             out << "TruncatedCauchy(" << center << "; " << width << "; [" << lower << " , " << upper << "])";
             return out;
         }
-};
-
+    };
 
 } // namespace DNest4
 
 #endif
-
