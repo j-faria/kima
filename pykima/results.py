@@ -888,14 +888,12 @@ class KimaResults(object):
         self.Omegaall = np.copy(self.Omega)
         
         # omegadots
-        try:
+        if self.model == 'RV_binaries_model':
             i1 = 5 * max_components + index_component + 1
             i2 = 5 * max_components + index_component + max_components + 1
             s = np.s_[i1:i2]
             self.Omegadot = self.posterior_sample[:, s]
             self.Omegadotall = np.copy(self.Omegadot)
-        except:
-            pass
 
         # times of periastron
         self.T0 = self.M0_epoch - (self.T * self.phi) / (2. * np.pi)
@@ -907,10 +905,8 @@ class KimaResults(object):
         self.E = self.E[which].flatten()
         self.phi = self.phi[which].flatten()
         self.Omega = self.Omega[which].flatten()
-        try:
+        if self.model == 'RV_binaries_model':
             self.Omegadot = self.Omegadot[which].flatten()
-        except:
-            pass
         self.T0 = self.T0[which].flatten()
 
     def get_medians(self):
