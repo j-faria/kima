@@ -282,6 +282,57 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     return mass, a
 
 
+def order_posterior_by(results: KimaResults, parameter: str = 'K'):
+    res = results
+
+    assert len(parameter) in (1, 2), 'can only order by 1 or 2 parameters'
+
+    poss = ('P', 'K', 'a', 'M')
+
+    if len(parameter) == 1:
+        assert parameter in poss, f'parameter should be one of {poss}'
+        if parameter in ('P', 'K'):
+            index = np.argsort(getattr(res.posteriors, parameter), axis=1)
+        elif parameter == 'a':
+            a = get_planet_semimajor_axis(res.posteriors.P, res.posteriors.K,
+                                          full_output=True)[-1]
+            index = np.argsort(a, axis=1)
+        elif parameter == 'M':
+            m = get_planet_mass(res.posteriors.P, res.posteriors.K,
+                                res.posteriors.e, full_output=True)[-1]
+            index = np.argsort(m, axis=1)
+
+    elif len(parameter) == 2:
+        from itertools import permutations
+        poss = [''.join(c) for c in permutations(poss, 2)]
+        assert parameter in poss, f'parameter should be one of {poss}'
+        out = get_planet_mass_and_semimajor_axis(res.posteriors.P,
+                                                 res.posteriors.K,
+                                                 res.posteriors.e,
+                                                 full_output=True)
+        (_, _, m), (_, _, a) = out
+        arrays = {
+            'P': res.posteriors.P,
+            'K': res.posteriors.K,
+            'a': a,
+            'M': m,
+        }
+        sort_by = [arrays[p] for p in parameter]
+        index = np.lexsort(sort_by, axis=1)
+
+    args = dict(indices=index, axis=1)
+    allpars = ('P', 'K', 'e', 'φ', 'ω')
+    # for par in set(allpars).difference(parameter):
+    for par in allpars:
+        p = getattr(res.posteriors, par)
+        new = np.take_along_axis(p, **args)
+        setattr(res.posteriors, par, new)
+    if res.model == 'BDmodel':
+        res.posteriors.λ = np.take_along_axis(res.posteriors.λ, **args)
+
+    return res.posteriors
+
+
 def FIP(results, oversampling=5, plot=True, adjust_oversampling=True):
     Tobs = results.t.ptp()
     Dw = 2 * np.pi / Tobs
