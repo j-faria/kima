@@ -9,14 +9,19 @@ from kumaraswamy import kumaraswamy
 
 
 VARIABLE_NAMES = {
+    # for all models?
     'C': 'Cprior',
     'J': 'Jprior',
-    #
+    # for RVmodel, GPmodel, etc
     'P': 'Pprior',
     'K': 'Kprior',
     'e': 'eprior',
     'w': 'wprior',
     'phi': 'phiprior',
+    # for BD model
+    'L': 'Lprior',
+    'tau1': 'tau1_prior',
+    'tau2': 'tau2_prior',
     #
     'slope': 'slope_prior',
     'quadr': 'quadr_prior',
