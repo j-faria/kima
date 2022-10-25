@@ -6,11 +6,14 @@ from glob import glob
 # Build kima shared library
 kima_srcs = glob("kima/distributions/*.cpp")
 kima_srcs += [
-    "kima/Data.cpp",
-    "kima/ConditionalPrior.cpp",
     "kima/kepler.cpp",
     "kima/AMDstability.cpp",
+    "kima/Data.cpp",
+    "kima/ConditionalPrior.cpp",
     "kima/RVmodel.cpp",
+    "kima/GPmodel.cpp",
+    "kima/RVFWHMmodel.cpp",
+    "kima/BDmodel.cpp",
 ]
 
 kima_ext = Library(
