@@ -239,6 +239,9 @@ class RVmodel(metaclass=ModelContext):
         else:
             kima_setup_f = os.path.join(self.directory, 'test.cpp')
 
+        if self._data is None:
+            raise ValueError('this model has no data and cannot be saved')
+
         with open(kima_setup_f, 'w') as f:
             f.write('#include "kima.h"\n\n')
             self._write_constructor(f)
@@ -255,7 +258,8 @@ class RVmodel(metaclass=ModelContext):
 
     def _write_constructor(self, file):
         """ fill in the beginning of the constructor """
-        cons = 'RVmodel::RVmodel()'
+        name = self.__class__.__name__
+        cons = f'{name}::{name}()'
         cons += f':fix({self._bool(self.fix)}),npmax({self.npmax})\n'
         file.write(cons)
 
@@ -301,7 +305,7 @@ class RVmodel(metaclass=ModelContext):
         file.write('\n')
 
     def _write_sampler(self, file):
-        mt = 'RVmodel'
+        mt = f'{self.__class__.__name__}'
         file.write(f'    Sampler<{mt}> sampler = setup<{mt}>(argc, argv);\n')
         file.write(f'    sampler.run({self.thinning});\n')
 
@@ -411,3 +415,34 @@ class RVmodel(metaclass=ModelContext):
 
 RVmodel.fix = property(RVmodel._get_fix, RVmodel._set_fix)
 RVmodel.npmax = property(RVmodel._get_npmax, RVmodel._set_npmax)
+
+
+
+@dataclass
+class BDmodel(RVmodel):
+    def _set_npmax(self, value: int):
+        self._npmax = value
+        if value > 0:
+            self.priors.setdefault('P', Prior('lu', 1, 1e5, conditional=True))
+            self.priors.setdefault('K', Prior('mlu', 1, 1e3, conditional=True))
+            self.priors.setdefault('e', Prior('u', 0, 1, conditional=True))
+            self.priors.setdefault('w', Prior('u', 0, '2*PI', conditional=True))
+            self.priors.setdefault('phi', Prior('u', 0, '2*PI', conditional=True))
+            self.priors.setdefault('L', Prior('kuma', 0.5, 0.5, conditional=True))
+            #
+            self.priors.setdefault('tau1', Prior('u', 0, 1, conditional=True))
+            self.priors.setdefault('tau2', Prior('u', 0, 20, conditional=True))
+        else:
+            self.priors.pop('P', None)
+            self.priors.pop('K', None)
+            self.priors.pop('e', None)
+            self.priors.pop('w', None)
+            self.priors.pop('phi', None)
+            self.priors.pop('L', None)
+            #
+            self.priors.pop('tau1', None)
+            self.priors.pop('tau2', None)
+
+
+BDmodel.fix = property(BDmodel._get_fix, BDmodel._set_fix)
+BDmodel.npmax = property(BDmodel._get_npmax, BDmodel._set_npmax)
