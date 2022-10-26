@@ -61,6 +61,9 @@ class Prior:
 
         elif isinstance(dist, ModifiedLogUniform):
             self.prior = (ModifiedLogUniform, (dist.knee, dist.b))
+        
+        elif isinstance(dist, kumaraswamy):
+            self.prior = (kumaraswamy, (dist.a, dist.b))
 
         elif isinstance(dist, Fixed):
             self.prior = (Fixed, (dist.args[0], None))
@@ -109,6 +112,7 @@ class Prior:
             kumaraswamy: f'<Kumaraswamy>({args[0]}, {args[1]})',
             _c.norm_gen: f'<Gaussian>({args[0]}, {args[1]})',
             _c.rayleigh_gen: f'<Rayleigh>({args[1]})',
+            _c.beta_gen: f'<Beta>({args[0]}, {args[1]})',
         }
         return f'make_prior{reprs[dist]}'
 
@@ -122,6 +126,7 @@ class Prior:
             kumaraswamy: f'Kumaraswamy({args[0]}, {args[1]})',
             _c.norm_gen: f'Gaussian({args[0]}, {args[1]})',
             _c.rayleigh_gen: f'Rayleigh({args[1]})',
+            _c.beta_gen: f'Beta({args[0]}, {args[1]})',
         }
         return reprs[dist]
 
