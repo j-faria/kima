@@ -443,6 +443,13 @@ class BDmodel(RVmodel):
             self.priors.pop('tau1', None)
             self.priors.pop('tau2', None)
 
+    def _write_constructor(self, file):
+        """ fill in the beginning of the constructor """
+        name = self.__class__.__name__
+        cons = f'{name}::{name}()'
+        cons += f':npmax({self.npmax})\n'
+        file.write(cons)
+
 
 BDmodel.fix = property(BDmodel._get_fix, BDmodel._set_fix)
 BDmodel.npmax = property(BDmodel._get_npmax, BDmodel._set_npmax)
