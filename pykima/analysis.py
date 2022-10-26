@@ -282,8 +282,13 @@ def get_planet_mass_and_semimajor_axis(P, K, e, star_mass=1.0,
     return mass, a
 
 
-def order_posterior_by(results: KimaResults, parameter: str = 'K'):
+def order_posterior_by(results: KimaResults, parameter: str = 'K',
+                       increasing=False):
     res = results
+
+    if res.npmax <= 1:
+        # no planets, or just one, can't do anything
+        return
 
     assert len(parameter) in (1, 2), 'can only order by 1 or 2 parameters'
 
@@ -319,6 +324,11 @@ def order_posterior_by(results: KimaResults, parameter: str = 'K'):
         }
         sort_by = [arrays[p] for p in parameter]
         index = np.lexsort(sort_by, axis=1)
+
+    assert index.ndim == 2, 'wrong dimensions of sorting indices...'
+
+    if not increasing:
+        index = index[:, ::-1]
 
     args = dict(indices=index, axis=1)
     allpars = ('P', 'K', 'e', 'φ', 'ω')
