@@ -2506,6 +2506,32 @@ def plot_random_samples_transit(res, ncurves=50, samples=None, over=0.1,
         return fig
 
 
+def plot_mixture_probabilities(res, show_percentiles=False):
+    if res.model != 'BDmodel':
+        print('Model is not a mixture! '
+              'plot_mixture_probabilities() doing nothing...')
+        return
+
+    x = np.arange(res.npmax) + 1
+    fig, ax = plt.subplots(constrained_layout=True)
+    ax.violinplot(res.posteriors.λ, showextrema=False)
+
+    if show_percentiles:
+        perc = np.r_[np.arange(10, 91, 10), 95, 99]
+        colorx = np.linspace(0, 1, perc.size)
+        for p, c in zip(perc, colorx):
+            prob = np.percentile(res.posteriors.λ, p, axis=0)
+            line, *_ = ax.plot(x, prob, 'o-', ms=2, color=plt.cm.Reds_r(c))
+            ax.text(res.npmax + 0.5, prob[-1], f'p={p}%', color=plt.cm.Reds_r(c),
+                    fontsize=10, ha='left')
+
+    ax.axhline(y=0.5, color='k', ls=':')
+    ax.set_xlim(0, res.npmax + (2 if show_percentiles else 1) )
+    ax.set(xlabel='component', ylabel='λ', xticks=x)
+
+
+
+
 def orbit(res, sample=None, n=10, star_mass=1.0, sortP=False):
     from .analysis import get_planet_mass
     from .utils import mjup2msun
