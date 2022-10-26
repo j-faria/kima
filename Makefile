@@ -87,7 +87,7 @@ TEST_INC = -I$(SRCDIR) $(INCLUDES)
 test: main $(TEST_SRCS)
 	@echo "Compiling tests"
 	@+for test_src in $(TEST_SRCS) ; do \
-		$(CXX) -pthread $$test_src $(SRCDIR)/libkima.a $(TEST_LIBS) $(TEST_INC) -o $(TEST_DIR)/run ; \
+		$(CXX) $(CXXFLAGS) $$test_src $(SRCDIR)/libkima.a $(TEST_LIBS) $(TEST_INC) -o $(TEST_DIR)/run ; \
 		cd $(TEST_DIR) && ./run && cd $(THIS_DIR) ; \
 	done
 
@@ -103,10 +103,13 @@ cleandnest4:
 	@echo "Cleaning DNest4"
 	@$(MAKE) clean -s -C $(DNEST4_PATH)
 
+cleantest:
+	@rm -f $(TEST_DIR)/run
+
 cleanexamples:
 	@+for example in $(EXAMPLES) ; do \
 		echo "Cleaning example $$example"; \
 		$(MAKE) clean -s -C kima/examples/$$example; \
 	done
 
-clean: cleankima cleandnest4 cleanexamples
+clean: cleankima cleandnest4 cleantest cleanexamples
