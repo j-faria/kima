@@ -23,7 +23,7 @@ kima_ext = Library(
         "kima/vendor/cpp-loadtxt/src", "kima/vendor/DNest4/code",
         "kima/vendor/eigen"
     ],
-    extra_compile_args=['-w', "-pthread", "-std=c++11", "-O3"],
+    extra_compile_args=['-w', "-pthread", "-std=c++17", "-O3"],
     libraries=["dnest4"],  # see below
 )
 
@@ -33,7 +33,7 @@ dnest4_srcs += glob("kima/vendor/DNest4/code/Distributions/*.cpp")
 dnest4_srcs += glob("kima/vendor/DNest4/code/RJObject/ConditionalPriors/*.cpp")
 
 dnest4_cflags = [
-    '-std=c++11', '-O3', '-march=native', '-Wall', '-Wextra', '-pedantic',
+    '-std=c++17', '-O3', '-march=native', '-Wall', '-Wextra', '-pedantic',
     '-DNDEBUG'
 ]
 
