@@ -17,7 +17,6 @@ __init__.py
 *.rdb
 scripts
 paper
-kima
 main
 
 
