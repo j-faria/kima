@@ -1,7 +1,6 @@
 #pragma once
 
-#include "../src/Data.h"
-// DNest4/code
+#include "../Data.h"
 #include "Distributions/ContinuousDistribution.h"
 #include "Distributions/Gaussian.h"
 #include "RNG.h"
