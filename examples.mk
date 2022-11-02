@@ -24,6 +24,8 @@ $(SRC_DIR)/AMDstability.cpp \
 $(SRC_DIR)/ConditionalPrior.cpp \
 $(SRC_DIR)/RVmodel.cpp \
 $(SRC_DIR)/RVFWHMmodel.cpp \
+$(SRC_DIR)/ConditionalPrior_2.cpp \
+$(SRC_DIR)/RV_binaries_model.cpp \
 kima_setup.cpp
 
 KIMA_OBJS = $(subst .cpp,.o,$(KIMA_SRCS))

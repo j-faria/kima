@@ -88,7 +88,7 @@ class KimaModel:
 
     @model_type.setter
     def model_type(self, t):
-        options = ('RVmodel', 'RVFWHMmodel')
+        options = ('RVmodel', 'RVFWHMmodel', 'RV_binaries_model')
         if t not in options:
             raise ValueError(f'Must be one of {options}')
         self._model_type = t
@@ -132,6 +132,8 @@ class KimaModel:
                 self._priors.pop(f'KO_eprior[{i}]')
                 self._priors.pop(f'KO_phiprior[{i}]')
                 self._priors.pop(f'KO_wprior[{i}]')
+                if self._model_type == 'RV_binaries_model':
+                    self._priors.pop(f'KO_wdotprior[{i}]')
             self.n_known_object = 0
         self._known_object = b
 
@@ -148,6 +150,8 @@ class KimaModel:
                 self._priors.update({f'KO_eprior[{i}]': ()})
                 self._priors.update({f'KO_phiprior[{i}]': ()})
                 self._priors.update({f'KO_wprior[{i}]': ()})
+                if self._model_type == 'RV_binaries_model':
+                    self._priors.update({f'KO_wdotprior[{i}]': ()})
                 self._priors.update({f'separator{4+i}': ''})
 
         self._n_known_object = val
@@ -189,6 +193,7 @@ class KimaModel:
             'eprior': (True, 'Uniform', 0.0, 1.0),
             'wprior': (True, 'Uniform', -np.pi, np.pi),
             'phiprior': (True, 'Uniform', 0, np.pi),
+            'wdotprior': (True, 'Gaussian',0,0.000000001)
         })
 
         dp.update({'separator3': ''})

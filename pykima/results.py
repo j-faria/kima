@@ -92,7 +92,8 @@ class KimaResults(object):
         except KeyError:
             self.model = 'RVmodel'
 
-        if self.model not in ('RVmodel', 'RVFWHMmodel'):
+        if self.model not in ('RVmodel', 'RVFWHMmodel', 'RV_binaries_model'):
+            print(self.model)
             raise NotImplementedError(self.model)
         if self._debug:
             print('model:', self.model)
@@ -212,7 +213,7 @@ class KimaResults(object):
         iend = istart + n_planet_pars
         self._current_column += n_planet_pars
         self.indices['planets'] = slice(istart, iend)
-        for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'ω')):
+        for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'ω', 'ωdot')):
             iend = istart + self.max_components
             self.indices[f'planets.{p}'] = slice(istart, iend)
             istart += self.max_components
@@ -363,6 +364,8 @@ class KimaResults(object):
                 n_inst_offsets = 2 * (self.n_instruments - 1)
             elif self.model == 'RVmodel':
                 n_inst_offsets = self.n_instruments - 1
+            elif self.model == 'RV_binaries_model':
+                n_inst_offsets = self.n_instruments - 1
 
             istart = self._current_column
             iend = istart + n_inst_offsets
@@ -439,7 +442,7 @@ class KimaResults(object):
             self.GPmodel = False
 
         if self.GPmodel:
-            if self.model == 'RVmodel':
+            if self.model in ['RVmodel', 'RV_binaries_model']:
                 try:
                     n_hyperparameters = {
                         'standard': 4,
@@ -477,7 +480,7 @@ class KimaResults(object):
             self.indices['GPpars_end'] = iend
             self.indices['GPpars'] = slice(istart, iend)
 
-            if self.model == 'RVmodel':
+            if self.model in ['RVmodel','RV_binaries_model']:
                 GPs = {
                     'standard': GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
                     'qpc': GP(QPCkernel(1, 1, 1, 1, 1), self.t, self.e, white_noise=0),
@@ -586,6 +589,8 @@ class KimaResults(object):
 
         if self.KO:
             n_KOparameters = 5 * self.nKO
+            if self.model == 'RV_binaries_model':
+                n_KOparameters = 6 * self.nKO
             start = self._current_column
             koinds = slice(start, start + n_KOparameters)
             self.KOpars = self.posterior_sample[:, koinds]
@@ -611,6 +616,8 @@ class KimaResults(object):
 
         if self.model == 'RVmodel':
             priors[self.indices['jitter']] = self.priors['Jprior']
+        elif self.model == 'RV_binaries_model':
+            priors[self.indices['jitter']] = self.priors['Jprior']
 
         elif self.model == 'RVFWHMmodel':
             for i in range(self.n_instruments):
@@ -628,6 +635,9 @@ class KimaResults(object):
             if self.model == 'RVmodel':
                 prior = self.priors['offsets_prior']
                 priors[self.indices['inst_offsets']] = np.array(no * [prior])
+            elif self.model == 'RV_binaries_model':
+                prior = self.priors['offsets_prior']
+                priors[self.indices['inst_offsets']] = np.array(no * [prior])
             elif self.model == 'RVFWHMmodel':
                 prior1 = self.priors['offsets_prior']
                 prior2 = self.priors['offsets2_prior']
@@ -636,6 +646,10 @@ class KimaResults(object):
 
         if self.GPmodel:
             if self.model == 'RVmodel':
+                priors[self.indices['GPpars']] = [
+                    self.priors[f'eta{i}_prior'] for i in range(5)
+                ]
+            elif self.model == 'RV_binaries_model':
                 priors[self.indices['GPpars']] = [
                     self.priors[f'eta{i}_prior'] for i in range(5)
                 ]
@@ -690,6 +704,11 @@ class KimaResults(object):
                 planet_priors.append(self.priors['eprior'])
             for i in range(self.max_components):
                 planet_priors.append(self.priors['wprior'])
+            try:
+                for i in range(self.max_components):
+                    planet_priors.append(self.priors['wdotprior'])
+            except KeyError:
+                pass
             priors[self.indices['planets']] = planet_priors
 
         try:
@@ -830,6 +849,8 @@ class KimaResults(object):
 
         max_components = self.max_components
         index_component = self.index_component
+        max_components = 2
+        index_component = 10
 
         # periods
         i1 = 0 * max_components + index_component + 1
@@ -865,6 +886,14 @@ class KimaResults(object):
         s = np.s_[i1:i2]
         self.Omega = self.posterior_sample[:, s]
         self.Omegaall = np.copy(self.Omega)
+        
+        # omegadots
+        if self.model == 'RV_binaries_model':
+            i1 = 5 * max_components + index_component + 1
+            i2 = 5 * max_components + index_component + max_components + 1
+            s = np.s_[i1:i2]
+            self.Omegadot = self.posterior_sample[:, s]
+            self.Omegadotall = np.copy(self.Omegadot)
 
         # times of periastron
         self.T0 = self.M0_epoch - (self.T * self.phi) / (2. * np.pi)
@@ -876,6 +905,8 @@ class KimaResults(object):
         self.E = self.E[which].flatten()
         self.phi = self.phi[which].flatten()
         self.Omega = self.Omega[which].flatten()
+        if self.model == 'RV_binaries_model':
+            self.Omegadot = self.Omegadot[which].flatten()
         self.T0 = self.T0[which].flatten()
 
     def get_medians(self):
@@ -1087,7 +1118,7 @@ class KimaResults(object):
             print('number of planets: ', npl)
             print('orbital parameters: ', end='')
 
-            pars = ['P', 'K', 'M0', 'e', 'ω']
+            pars = ['P', 'K', 'M0', 'e', 'ω', 'ωdot']
             n = self.n_dimensions
             if show_a:
                 pars.append('a')
@@ -1117,7 +1148,10 @@ class KimaResults(object):
                     formatter = {'all': lambda v: f'{v:11.5f}'}
                     with np.printoptions(formatter=formatter, linewidth=1000):
                         planet_pars = p[self.indices['planets']][i::self.max_components]
-                        P, K, M0, ecc, ω = planet_pars
+                        if self.model == 'RV_binaries_model':
+                            P, K, M0, ecc, ω, ωdot = planet_pars
+                        else:
+                            P, K, M0, ecc, ω = planet_pars
 
                         if show_a or show_m:
                             (m, _), a = get_planet_mass_and_semimajor_axis(
@@ -1145,7 +1179,7 @@ class KimaResults(object):
             print('number of known objects: ', self.nKO)
             print('orbital parameters: ', end='')
 
-            pars = ('P', 'K', 'ϕ', 'e', 'M0')
+            pars = ('P', 'K', 'ϕ', 'e', 'M0', 'ωdot')
             print((self.n_dimensions * ' {:>10s} ').format(*pars))
 
             for i in range(0, self.nKO):
@@ -1159,6 +1193,8 @@ class KimaResults(object):
         if self.GPmodel:
             print('GP parameters: ', end='')
             if self.model == 'RVmodel':
+                pars = ('η1', 'η2', 'η3', 'η4')
+            if self.model == 'RV_binaries_model':
                 pars = ('η1', 'η2', 'η3', 'η4')
             elif self.model == 'RVFWHMmodel':
                 pars = ('η1 RV', 'η1 FWHM', 'η2', 'η3', 'η4')
@@ -1298,6 +1334,8 @@ class KimaResults(object):
             v = np.zeros((2, t.size))
         elif self.model == 'RVmodel':
             v = np.zeros_like(t)
+        elif self.model == 'RV_binaries_model':
+            v = np.zeros_like(t)
 
         if include_planets:
             if single_planet and except_planet:
@@ -1326,7 +1364,11 @@ class KimaResults(object):
                     t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                     ecc = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
-                    v += keplerian(t, P, K, ecc, w, t0, 0.)
+                    if self.model == 'RV_binaries_model':
+                        wdot = pars[j + 5 * self.nKO]
+                    else:
+                        wdot = 0
+                    v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
@@ -1354,15 +1396,20 @@ class KimaResults(object):
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
                 if self.model == 'RVFWHMmodel':
-                    v[0, :] += keplerian(t, P, K, ecc, w, t0, 0.)
+                    v[0, :] += keplerian(t, P, K, ecc, w, 0, t0, 0.)
                 elif self.model == 'RVmodel':
-                    v += keplerian(t, P, K, ecc, w, t0, 0.)
+                    v += keplerian(t, P, K, ecc, w, 0, t0, 0.)
+                elif self.model == 'RV_binaries_model':
+                    wdot = pars[j + 5 * self.max_components]
+                    v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
 
         # systemic velocity (and C2) for this sample
         if self.model == 'RVFWHMmodel':
             C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']]]
             v += C.reshape(-1, 1)
         elif self.model == 'RVmodel':
+            v += sample[self.indices['vsys']]
+        elif self.model == 'RV_binaries_model':
             v += sample[self.indices['vsys']]
 
         # if evaluating at the same times as the data, add instrument offsets
@@ -1388,6 +1435,8 @@ class KimaResults(object):
             if self.model == 'RVFWHMmodel':
                 v[0, :] += np.polyval(trend_par, t - self.tmiddle)
             elif self.model == 'RVmodel':
+                v += np.polyval(trend_par, t - self.tmiddle)
+            elif self.model == 'RV_binaries_model':
                 v += np.polyval(trend_par, t - self.tmiddle)
 
         return v
@@ -1438,6 +1487,8 @@ class KimaResults(object):
             v = np.zeros((2, t.size))
         elif self.model == 'RVmodel':
             v = np.zeros_like(t)
+        elif self.model == 'RV_binaries_model':
+            v = np.zeros_like(t)
 
         if single_planet and except_planet:
             raise ValueError("'single_planet' and 'except_planet' "
@@ -1464,7 +1515,11 @@ class KimaResults(object):
                 t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
                 ecc = pars[j + 3 * self.nKO]
                 w = pars[j + 4 * self.nKO]
-                v += keplerian(t, P, K, ecc, w, t0, 0.)
+                if self.model == 'RV_binaries_model':
+                    wdot = pars[j + 5 * self.nKO]
+                else:
+                    wdot = 0
+                v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
 
         # get the planet parameters for this sample
         pars = sample[self.indices['planets']].copy()
@@ -1492,9 +1547,12 @@ class KimaResults(object):
             ecc = pars[j + 3 * self.max_components]
             w = pars[j + 4 * self.max_components]
             if self.model == 'RVFWHMmodel':
-                v[0, :] += keplerian(t, P, K, ecc, w, t0, 0.)
+                v[0, :] += keplerian(t, P, K, ecc, w, 0, t0, 0.)
             elif self.model == 'RVmodel':
-                v += keplerian(t, P, K, ecc, w, t0, 0.)
+                v += keplerian(t, P, K, ecc, w, 0, t0, 0.)
+            elif self.model == 'RV_binaries_model':
+                wdot = pars[j + 5 * self.max_components]
+                v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
 
         return v
 
@@ -1569,6 +1627,11 @@ class KimaResults(object):
                 return np.vstack([out0, out1])
 
         elif self.model == 'RVmodel':
+            r = self.y - self.eval_model(sample)
+            GPpars = sample[self.indices['GPpars']]
+            self.GP.kernel.pars = GPpars
+            return self.GP.predict(r, t, return_std=return_std)
+        elif self.model == 'RV_binaries_model':
             r = self.y - self.eval_model(sample)
             GPpars = sample[self.indices['GPpars']]
             self.GP.kernel.pars = GPpars
@@ -1725,6 +1788,9 @@ class KimaResults(object):
             elif self.model == 'RVmodel':
                 n = np.random.normal(0, self.e.mean(), times.size)
                 y += n
+            elif self.model == 'RV_binaries_model':
+                n = np.random.normal(0, self.e.mean(), times.size)
+                y += n
 
         if errors:
             if self.model == 'RVFWHMmodel':
@@ -1733,6 +1799,9 @@ class KimaResults(object):
                 e += np.c_[er1, er2].T
 
             elif self.model == 'RVmodel':
+                er = np.random.uniform(self.e.min(), self.e.max(), times.size)
+                e += er
+            elif self.model == 'RV_binaries_model':
                 er = np.random.uniform(self.e.min(), self.e.max(), times.size)
                 e += er
 
@@ -1749,6 +1818,9 @@ class KimaResults(object):
                     kw = dict(delimiter='\t', fmt=['%.5f'] + 4*['%.9f'])
                     np.savetxt(out, np.c_[times, y[0], e[0], y[1], e[1]], **kw)
                 elif self.model == 'RVmodel':
+                    kw = dict(delimiter='\t', fmt=['%.5f'] + 2*['%.9f'])
+                    np.savetxt(out, np.c_[times, y, e], **kw)
+                elif self.model == 'RV_binaries_model':
                     kw = dict(delimiter='\t', fmt=['%.5f'] + 2*['%.9f'])
                     np.savetxt(out, np.c_[times, y, e], **kw)
 
@@ -1986,7 +2058,7 @@ class KimaResults(object):
         p = samples[:, self.indices['planets.P']]
         ind_sort_P = np.arange(p.shape[0])[:, np.newaxis], np.argsort(p)
 
-        for par in ('P', 'K', 'φ', 'e', 'ω'):
+        for par in ('P', 'K', 'φ', 'e', 'ω', 'ωdot'):
             sorted_samples[:, self.indices[f'planets.{par}']] = \
                 samples[:, self.indices[f'planets.{par}']][ind_sort_P]
 
@@ -2087,8 +2159,14 @@ class KimaResults(object):
             )
             return
 
-        labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w']
-        for i in range(self.KOpars.shape[1] // 5):
+        
+        if self.model == 'RV_binaries_model':
+            numpar = 6
+            labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w', 'wdot']
+        else:
+            numpar = 5
+            labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w']
+        for i in range(self.KOpars.shape[1] // numpar):
             # if together and i>0:
             #     fig = cfig
             kw = dict(show_titles=True, scale_hist=True, quantiles=[0.5], plot_density=False,
