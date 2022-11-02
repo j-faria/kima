@@ -1,8 +1,0 @@
-bin
-CMakeCache.txt
-CMakeFiles
-Makefile
-cmake_install.cmake
-CTestTestfile.cmake
-Testing
-install_manifest.txt
