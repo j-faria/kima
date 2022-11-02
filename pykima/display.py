@@ -827,7 +827,7 @@ def hist_jitter(res, show_prior=False, **kwargs):
     kw = dict(constrained_layout=True)
     if res.model == 'RVFWHMmodel':
         fig, axs = plt.subplots(2, res.n_instruments, **kw)
-    elif res.model == 'RVmodel':
+    elif res.model in ['RVmodel','RV_binaries_model']:
         fig, axs = plt.subplots(1, res.n_instruments, **kw)
     fig.suptitle('Posterior distribution for extra white noise')
     axs = np.ravel(axs)
@@ -1143,7 +1143,11 @@ def phase_plot(res,
         P = p[0]
         phi = p[2]
         t0 = M0_epoch - (P * phi) / (2. * np.pi)
-        return np.array([P, p[1], p[3], p[4], t0, 0.0])
+        try:
+            return np.array([P, p[1], p[3], p[4], p[5], t0, 0.0])
+        except IndexError:
+            return np.array([P, p[1], p[3], p[4], 0, t0, 0.0])
+
 
     if highlight_points is not None:
         hlkw = dict(fmt='*', ms=6, color='y', zorder=2)
@@ -1381,7 +1385,7 @@ def phase_plot(res,
         no_planets_model = res.eval_model(sample, tt, include_planets=False)
         no_planets_model = res.burst_model(sample, tt, no_planets_model)
 
-        if res.model == 'RVmodel':
+        if res.model in ['RVmodel','RV_binaries_model']:
             pred, std = res.stochastic_model(sample, tt, return_std=True)
         elif res.model == 'RVFWHMmodel':
             (pred, _), (std, _) = res.stochastic_model(sample, tt,
