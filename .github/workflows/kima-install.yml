@@ -1,0 +1,21 @@
+
+name: kima install
+
+on:
+  push:
+    branches: [ "main", "action" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Compile kima
+      run: |
+        make -j 4
+

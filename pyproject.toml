@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools", "pybind11~=2.6.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kima"
+version = "0.1.35"
+description = "A data analysis framework for exoplanet detection"
+authors = [
+    {name = "João Faria", email="joao.faria@astro.up.pt"},
+]
+license = {text = "MIT License"}
+readme = "README.md"
+keywords = ["exoplanets", "bayesian", "gaussian processes", "radial velocity"]
+
+
+requires-python = ">=3.7"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "corner",
+    "loguniform",
+    "kumaraswamy",
+    "urepr",
+    "astropy",
+    "jaxlib", 
+    "jax",
+    "rebound",
+    "psutil",
+    "tinygp",
+]
+
+[project.scripts]
+kima-checkpriors = "pykima.check_priors:main"
+kima-template = "pykima.make_template:main"
+kima-run = "pykima.run:run_local"
+kima-showresults = "pykima.showresults:showresults"
+
+
+
+[tool.setuptools]
+packages = ["kima", "pykima"]
+
+[tool.setuptools.package-data]
+kima = [
+    # 
+    "kima.h",
+    "*.h", "*.cpp", "**/*.h", #"**/*.cpp",
+    # cpp-loadtxt
+    "vendor/cpp-loadtxt/src/*.hpp", 
+    # DNest4
+    "vendor/DNest4/code/*.h", 
+    "vendor/DNest4/code/Distributions/*.h",
+    "vendor/DNest4/code/RJObject/*.h", "vendor/DNest4/code/RJObject/**/*.h",
+    # Eigen (go down many levels)
+    "vendor/eigen/Eigen/*", # all files
+    "vendor/eigen/Eigen/*/*", # all files in all dirs
+    "vendor/eigen/Eigen/*/*/*", # ...
+    "vendor/eigen/Eigen/*/*/*/*", # ...
+    "vendor/eigen/Eigen/*/*/*/*/*", # ...
+    # examples
+    # 14Her
+    "examples/14Her/kima_setup.cpp", "examples/14Her/14her.rdb",
+    "examples/14Her/OPTIONS",
+    # 51Peg
+    "examples/51Peg/kima_setup.cpp", "examples/51Peg/51Peg.rv",
+    "examples/51Peg/OPTIONS",
+]
+
+pykima = ["template/*"]
+
+
+[tool.setuptools.exclude-package-data]
+kima = [
+    "vendor/DNest4/code/Examples/*",
+    "vendor/DNest4/code/Templates/*",
+    "vendor/eigen/bench/*",
+    "vendor/eigen/demos/*",
+    "vendor/eigen/test/*",
+]
+
+
+[project.urls]
+homepage = "https://kima.science"
+documentation = "https://github.com/j-faria/kima"
+repository = "https://github.com/j-faria/kima"

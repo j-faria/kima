@@ -2,40 +2,40 @@
 This module defines the `KimaResults` class to hold results from a run.
 """
 
-import os, sys
+import os
 import pickle
+from typing import List, Union
 import zipfile
+import time
 import tempfile
-from copy import copy, deepcopy
 from string import ascii_lowercase
+from dataclasses import dataclass, field
 
-from .keplerian import keplerian
-from .GP import GP, QPkernel, GP_celerite, QPkernel_celerite, KERNEL
-from .utils import (need_model_setup, get_planet_mass,
-                    get_planet_semimajor_axis, percentile68_ranges,
-                    percentile68_ranges_latex, read_datafile, lighten_color,
-                    wrms, get_prior, hyperprior_samples, get_star_name,
-                    get_instrument_name)
+from .pykepler import keplerian as kepleriancpp
+from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
+                 mixtureGP)
+
+from .analysis import get_planet_mass_and_semimajor_axis
+from .utils import (read_datafile, read_datafile_rvfwhm, read_model_setup,
+                    get_star_name, mjup2mearth, get_prior, get_instrument_name,
+                    _show_kima_setup, read_big_file, wrms)
 
 from . import display
 
-import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import gaussian_kde, uniform, randint as discrete_uniform
+from scipy.interpolate import interp1d
+from scipy.stats import gaussian_kde, randint as discrete_uniform
 try:  # only available in scipy 1.1.0
     from scipy.signal import find_peaks
 except ImportError:
     find_peaks = None
-import corner
-
-try:
-    from astroML.plotting import hist_tools
-    hist_tools_available = True
-except ImportError:
-    hist_tools_available = False
 
 pathjoin = os.path.join
 colors = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
+
+
+def keplerian(*args, **kwargs):
+    return np.array(kepleriancpp(*args, **kwargs))
 
 
 def _read_priors(setup):
@@ -50,9 +50,7 @@ def _read_priors(setup):
                 continue
 
         priors += list(setup['priors.known_object'].values())
-        prior_names += [
-            'KO_' + k for k in setup['priors.known_object'].keys()
-        ]
+        prior_names += ['KO_' + k for k in setup['priors.known_object'].keys()]
     except KeyError:
         pass
 
@@ -64,15 +62,76 @@ def _read_priors(setup):
     return priors
 
 
-class KimaResults(object):
-    """ A class to hold, analyse, and display the results from kima """
+@dataclass
+class data_holder:
+    """ A simple class to hold the datasets used in kima
+
+    Attributes:
+        t (ndarray): The observation times
+        y (ndarray): The observed radial velocities
+        e (ndarray): The radial velocity uncertainties
+        obs (ndarray): Identifier for the instrument of each observation
+        N (int): Total number of observations
+    """
+    t: np.ndarray = field(init=False)
+    y: np.ndarray = field(init=False)
+    e: np.ndarray = field(init=False)
+    obs: np.ndarray = field(init=False)
+    N: int = field(init=False)
+
+
+@dataclass
+class posterior_holder:
+    """ A simple class to hold the posterior samples
+
+    Attributes:
+        P (ndarray): The orbital period(s)
+        K (ndarray): The semi-amplitude(s)
+        e (ndarray): The orbital eccentricities(s)
+        ω (ndarray): The argument(s) of pericenter
+        φ (ndarray): The mean anomaly(ies) at the epoch
+    """
+    P: np.ndarray = field(init=False, repr=False)
+    K: np.ndarray = field(init=False, repr=False)
+    e: np.ndarray = field(init=False, repr=False)
+    ω: np.ndarray = field(init=False, repr=False)
+    φ: np.ndarray = field(init=False, repr=False)
+
+
+class KimaResults:
+    r""" A class to hold, analyse, and display the results from kima
+
+    Attributes:
+        model (str):
+            The type of kima model
+        priors (dict):
+            A dictionary with the priors used in the model
+        ESS (int):
+            Effective sample size
+        evidence (float):
+            The log-evidence ($\ln Z$) of the model
+        information (float):
+            The Kulback-Leibler divergence between prior and posterior
+
+        data (data_holder): The data
+        posteriors (posterior_holder): The marginal posterior samples
+    """
+
+    data: data_holder
+    posteriors: posterior_holder
+
+    model: str
+    priors: dict
+    GPmodel: bool
+
+    evidence: float
+    information: float
+    ESS: int
 
     _debug = False
 
-    def __init__(self, options, data_file=None, save_plots=False,
-                 return_figs=True, verbose=False,
-                 hyperpriors=None, trend=None, GPmodel=None,
-                 posterior_samples_file='posterior_sample.txt'):
+    def __init__(self, options, save_plots=False, return_figs=True,
+                 verbose=False):
 
         self.options = options
         self.save_plots = save_plots
@@ -82,28 +141,20 @@ class KimaResults(object):
         self.removed_crossing = False
         self.removed_roche_crossing = False
 
-        pwd = os.getcwd()
-        path_to_this_file = os.path.abspath(__file__)
-        top_level = os.path.dirname(os.path.dirname(path_to_this_file))
-
         self.setup = setup = read_model_setup()
         try:
             self.model = setup['kima']['model']
         except KeyError:
             self.model = 'RVmodel'
 
-        if self.model not in ('RVmodel', 'RVFWHMmodel', 'RV_binaries_model'):
-            print(self.model)
-            raise NotImplementedError(self.model)
         if self._debug:
             print('model:', self.model)
 
         try:
             self.fix = setup['kima']['fix'] == 'true'
-            self.npmax = int(setup['kima']['npmax'])
         except KeyError:
             self.fix = True
-            self.npmax = 0
+        self.npmax = int(setup['kima']['npmax'])
 
         # read the priors
         self.priors = _read_priors(setup)
@@ -115,26 +166,27 @@ class KimaResults(object):
         if self._debug:
             print('finished reading data')
 
-
         self.posterior_sample = np.atleast_2d(
-            np.loadtxt(posterior_samples_file))
+            read_big_file('posterior_sample.txt'))
 
         try:
             self.posterior_lnlike = np.atleast_2d(
-                np.loadtxt('posterior_sample_info.txt'))
+                read_big_file('posterior_sample_info.txt'))
             self.lnlike_available = True
         except IOError:
             self.lnlike_available = False
-            print('Could not find file "posterior_sample_info.txt", '\
+            print('Could not find file "posterior_sample_info.txt", '
                   'log-likelihoods will not be available.')
 
         try:
-            self.sample = np.atleast_2d(np.loadtxt('sample.txt'))
-            self.sample_info = np.atleast_2d(np.loadtxt('sample_info.txt'))
+            t1 = time.time()
+            self.sample = np.atleast_2d(read_big_file('sample.txt'))
+            t2 = time.time()
+            self.sample_info = np.atleast_2d(read_big_file('sample_info.txt'))
             with open('sample.txt', 'r') as fs:
                 header = fs.readline()
                 header = header.replace('#', '').replace('  ', ' ').strip()
-                self.parameters = header.split(' ')
+                self.parameters = [p for p in header.split(' ') if p != '']
 
             # different sizes can happen when running the model and sample_info
             # was updated while reading sample.txt
@@ -146,15 +198,20 @@ class KimaResults(object):
             self.sample = None
             self.sample_info = None
 
+        if self._debug:
+            print('finished reading sample file', end=' ')
+            print(f'(took {t2 - t1:.1f} seconds)')
+
+        self.posteriors = posterior_holder()
         self.indices = {}
         self.total_parameters = 0
-
-        # if model == 'RVFWHMmodel':
-        #     self._read_parameters()
 
         self._current_column = 0
         # read jitters
         self._read_jitters()
+        # read limb-darkening coefficients
+        if self.model == 'TRANSITmodel':
+            self._read_limb_dark()
         # find trend in the compiled model and read it
         self._read_trend()
         # multiple instruments? read offsets
@@ -168,65 +225,12 @@ class KimaResults(object):
         # find KO in the compiled model
         self._read_KO()
 
-        # how many parameters per component
-        self.n_dimensions = int(self.posterior_sample[0, self._current_column])
-        self._current_column += 1
-
-        # maximum number of components
-        self.max_components = int(self.posterior_sample[0,
-                                                        self._current_column])
-        self._current_column += 1
-
-        # find hyperpriors in the compiled model
-        self.hyperpriors = setup['kima']['hyperpriors'] == 'true'
-
-        # number of hyperparameters (muP, wP, muK)
-        if self.hyperpriors:
-            n_dist_print = 3
-            istart = self._current_column
-            iend = istart + n_dist_print
-            self._current_column += n_dist_print
-            self.indices['hyperpriors'] = slice(istart, iend)
-        else:
-            n_dist_print = 0
-
-        # if hyperpriors, then the period is sampled in log
-        self.log_period = self.hyperpriors
-
-        # the column with the number of planets in each sample
-        self.index_component = self._current_column
-        # # try to correct fix and npmax
-        uni = np.unique(self.posterior_sample[:, self.index_component])
-        if uni.size > 1:
-            self.fix = False
-        self.npmax = int(uni.max())
-
-        if not self.fix:
-            self.priors['np_prior'] = discrete_uniform(0, self.npmax+1)
-
-        self.indices['np'] = self.index_component
-        self._current_column += 1
-
-        # indices of the planet parameters
-        n_planet_pars = self.max_components * self.n_dimensions
-        istart = self._current_column
-        iend = istart + n_planet_pars
-        self._current_column += n_planet_pars
-        self.indices['planets'] = slice(istart, iend)
-        for j, p in zip(range(self.n_dimensions), ('P', 'K', 'φ', 'e', 'ω', 'ωdot')):
-            iend = istart + self.max_components
-            self.indices[f'planets.{p}'] = slice(istart, iend)
-            istart += self.max_components
+        self._read_components()
 
         # staleness (ignored)
         self._current_column += 1
 
-        # student-t likelihood?
-        self.studentT = self.setup['kima']['studentt'] == 'true'
-        if self.studentT:
-            self.nu = self.posterior_sample[:, self._current_column]
-            self.indices['nu'] = self._current_column
-            self._current_column += 1
+        self._read_studentt()
 
         if self.model == 'RVFWHMmodel':
             self.C2 = self.posterior_sample[:, self._current_column]
@@ -242,7 +246,6 @@ class KimaResults(object):
         # make the plots, if requested
         self.make_plots(options, self.save_plots)
 
-
     def __repr__(self):
         return f'KimaResults(lnZ={self.evidence:.1f}, ESS={self.ESS})'
 
@@ -254,6 +257,9 @@ class KimaResults(object):
             self.multi = setup[section]['multi'] == 'true'
         except KeyError:
             self.multi = False
+
+        if self.model == 'HierarchicalRVmodel':
+            self.multi = True
 
         if self.multi:
             if setup[section]['files'] == '':
@@ -277,18 +283,22 @@ class KimaResults(object):
 
         if self.multi:
             if self.model == 'RVFWHMmodel':
-                self.data, self.obs = read_datafile_rvfwhm(
-                    self.data_file, self.data_skip)
+                data, obs = read_datafile_rvfwhm(self.data_file,
+                                                 self.data_skip)
             else:
-                self.data, self.obs = read_datafile(self.data_file,
-                                                    self.data_skip)
-            # make sure the times are sorted when coming from multiple instruments
-            ind = self.data[:, 0].argsort()
-            self.data = self.data[ind]
-            self.obs = self.obs[ind]
-            self.n_instruments = np.unique(self.obs).size
+                data, obs = read_datafile(self.data_file, self.data_skip)
+
+            # make sure the times are sorted when coming from multiple
+            # instruments
+            ind = data[:, 0].argsort()
+            data = data[ind]
+            obs = obs[ind]
+            self.n_instruments = np.unique(obs).size
             if self.model == 'RVFWHMmodel':
                 self.n_jitters = 2 * self.n_instruments
+            elif self.model == 'HierarchicalRVmodel':
+                self.n_instruments = 1
+                self.n_jitters = 1
             else:
                 self.n_jitters = self.n_instruments
 
@@ -301,23 +311,19 @@ class KimaResults(object):
                 self.n_jitters = 1
             self.n_instruments = 1
 
-            self.data = np.loadtxt(self.data_file,
-                                   skiprows=self.data_skip,
-                                   usecols=cols)
+            data = np.loadtxt(self.data_file, skiprows=self.data_skip,
+                              usecols=cols)
+            obs = np.ones_like(data[:, 0], dtype=int)
+            self._extra_data = np.loadtxt(self.data_file,
+                                          skiprows=self.data_skip)
 
         # to m/s
         if self.units == 'kms':
-            self.data[:, 1] *= 1e3
-            self.data[:, 2] *= 1e3
+            data[:, 1] *= 1e3
+            data[:, 2] *= 1e3
             if self.model == 'RVFWHMmodel':
-                self.data[:, 3] *= 1e3
-                self.data[:, 4] *= 1e3
-
-        try:
-            self.M0_epoch = float(setup['kima']['M0_epoch'])
-        except KeyError:
-            self.M0_epoch = self.data[0, 0]
-
+                data[:, 3] *= 1e3
+                data[:, 4] *= 1e3
 
         # arbitrary units?
         if 'arb' in self.units:
@@ -325,22 +331,38 @@ class KimaResults(object):
         else:
             self.arbitrary_units = False
 
-        self.t = self.data[:, 0].copy()
-        self.y = self.data[:, 1].copy()
-        self.e = self.data[:, 2].copy()
-        if self.model == 'RVFWHMmodel':
-            self.y2 = self.data[:, 3].copy()
-            self.e2 = self.data[:, 4].copy()
+        self.data = data_holder()
+        self.data.t = data[:, 0].copy()
+        self.data.y = data[:, 1].copy()
+        self.data.e = data[:, 2].copy()
+        self.data.N = self.data.t.size
 
-        self.tmiddle = self.data[:, 0].min() + 0.5 * self.data[:, 0].ptp()
+        if self.model == 'RVFWHMmodel':
+            self.data.y2 = data[:, 3].copy()
+            self.data.e2 = data[:, 4].copy()
+
+        self.tmiddle = self.data.t.min() + 0.5 * self.data.t.ptp()
 
     def _read_jitters(self):
         i1, i2 = self._current_column, self._current_column + self.n_jitters
+        self.posteriors.jitter = self.posterior_sample[:, i1:i2]
         self.jitter = self.posterior_sample[:, i1:i2]
         self._current_column += self.n_jitters
         self.indices['jitter_start'] = i1
         self.indices['jitter_end'] = i2
         self.indices['jitter'] = slice(i1, i2)
+        if self._debug:
+            print('finished reading jitters')
+
+    def _read_limb_dark(self):
+        i1, i2 = self._current_column, self._current_column + 2
+        self.u = self.posterior_sample[:, i1:i2]
+        self._current_column += 2
+        self.indices['u_start'] = i1
+        self.indices['u_end'] = i2
+        self.indices['u'] = slice(i1, i2)
+        if self._debug:
+            print('finished reading limb darkening')
 
     def _read_trend(self):
         self.trend = self.setup['kima']['trend'] == 'true'
@@ -357,14 +379,15 @@ class KimaResults(object):
             n_trend = 0
         self.total_parameters += n_trend
 
+        if self._debug:
+            print('finished reading trend, trend =', self.trend)
+
     def _read_multiple_instruments(self):
         if self.multi:
             # there are n instruments and n-1 offsets per output
             if self.model == 'RVFWHMmodel':
                 n_inst_offsets = 2 * (self.n_instruments - 1)
-            elif self.model == 'RVmodel':
-                n_inst_offsets = self.n_instruments - 1
-            elif self.model == 'RV_binaries_model':
+            else:
                 n_inst_offsets = self.n_instruments - 1
 
             istart = self._current_column
@@ -378,6 +401,9 @@ class KimaResults(object):
         else:
             n_inst_offsets = 0
         self.total_parameters += n_inst_offsets
+
+        if self._debug:
+            print('finished reading multiple instruments')
 
     def _read_actind_correlations(self):
         setup = self.setup
@@ -401,6 +427,76 @@ class KimaResults(object):
             n_act_ind = 0
         self.total_parameters += n_act_ind
 
+    def _read_components(self):
+        # how many parameters per component
+        self.n_dimensions = int(self.posterior_sample[0, self._current_column])
+        self._current_column += 1
+
+        # maximum number of components
+        self.max_components = self.npmax
+        self._current_column += 1
+
+        # find hyperpriors in the compiled model
+        self.hyperpriors = self.setup['kima']['hyperpriors'] == 'true'
+
+        # number of hyperparameters (muP, wP, muK)
+        if self.hyperpriors:
+            n_dist_print = 3
+            istart = self._current_column
+            iend = istart + n_dist_print
+            self._current_column += n_dist_print
+            self.indices['hyperpriors'] = slice(istart, iend)
+        elif self.model == 'BDmodel':
+            n_dist_print = 2
+            istart = self._current_column
+            iend = istart + n_dist_print
+            self._current_column += n_dist_print
+            self.indices['hyperpriors'] = slice(istart, iend)
+        else:
+            n_dist_print = 0
+
+        # if hyperpriors, then the period is sampled in log
+        self.log_period = self.hyperpriors
+
+        # the column with the number of planets in each sample
+        self.index_component = self._current_column
+        # # try to correct fix and npmax
+        uni = np.unique(self.posterior_sample[:, self.index_component])
+        if uni.size > 1:
+            self.fix = False
+        self.npmax = int(uni.max())
+
+        if not self.fix:
+            self.priors['np_prior'] = discrete_uniform(0, self.npmax + 1)
+
+        self.indices['np'] = self.index_component
+        self._current_column += 1
+
+        # indices of the planet parameters
+        n_planet_pars = self.max_components * self.n_dimensions
+        istart = self._current_column
+        iend = istart + n_planet_pars
+        self._current_column += n_planet_pars
+        self.indices['planets'] = slice(istart, iend)
+        for j, p in zip(range(self.n_dimensions),
+                        ('P', 'K', 'φ', 'e', 'ω', 'λ')):
+            iend = istart + self.max_components
+            self.indices[f'planets.{p}'] = slice(istart, iend)
+            istart += self.max_components
+
+    def _read_studentt(self):
+        # student-t likelihood?
+        try:
+            self.studentT = self.setup['kima']['studentt'] == 'true'
+        except KeyError:
+            self.studentT = False
+
+        if self.studentT:
+            self.nu = self.posterior_sample[:, self._current_column]
+            self.indices['nu'] = self._current_column
+            self._current_column += 1
+            self.total_parameters += 1
+
     @property
     def _GP_par_indices(self):
         """
@@ -409,153 +505,108 @@ class KimaResults(object):
         """
         if self.model == 'RVFWHMmodel':
             i = [0, 1]
-            _i = 1
-            if self.share_eta2:
-                _i += 1
-                i += [_i, _i]
-            else:
-                _i += 2
-                i += [_i - 1, _i]
-            if self.share_eta3:
-                _i += 1
-                i += [_i, _i]
-            else:
-                _i += 2
-                i += [_i - 1, _i]
-            if self.share_eta4:
-                _i += 1
-                i += [_i, _i]
-            else:
-                _i += 2
-                i += [_i - 1, _i]
+            _i = 2
+            num = self.n_hyperparameters - self._n_shared_hyperparameters
+            for j in range(2, num + 1):
+                eta = f'share_eta{j}'
+                if getattr(self, eta):
+                    i += [_i, _i]
+                    _i += 1
+                else:
+                    i += [_i, _i + 1]
+                    _i += 1
         else:
             i = [0, 1, 2, 3]
 
         return i
 
-
     def _read_GP(self):
         try:
             self.GPmodel = self.setup['kima']['GP'] == 'true'
-            self.GPkernel = self.setup['kima']['GP_kernel']
+            if self.GPmodel:
+                if 'kernel' in self.setup['kima']:
+                    self.GPkernel = self.setup['kima']['kernel']
+                else:
+                    self.GPkernel = self.setup['kima']['GP_kernel']
         except KeyError:
             self.GPmodel = False
 
         if self.GPmodel:
-            if self.GPkernel is KERNEL.standard:
-                n_hyperparameters = 4
-            elif self.GPkernel is KERNEL.celerite:
-                n_hyperparameters = 3
-
-            if self.model in ['RVmodel', 'RV_binaries_model']:
+            if self.model in ('GPmodel', 'GPmodel_systematics'):
                 try:
                     n_hyperparameters = {
                         'standard': 4,
+                        'periodic': 3,
                         'qpc': 5,
-                        'celerite': 3}
+                        'RBF': 2,
+                    }
                     n_hyperparameters = n_hyperparameters[self.GPkernel]
                 except KeyError:
                     raise ValueError(
                         f'GP kernel = {self.GPkernel} not recognized')
 
-            # Changed by ACC 1/12/21 (add n_act_ind)
-            start_hyperpars = start_parameters + n_trend + n_inst_offsets + n_act_ind + 1
-            i1, i2 = start_hyperpars, start_hyperpars + n_hyperparameters
-            self.etas = self.posterior_sample[:, i1:i2]
+                if self.model == 'GPmodel_systematics':
+                    n_hyperparameters += 2
+
+                self.n_hyperparameters = n_hyperparameters
+
+            elif self.model == 'RVFWHMmodel':
+                _n_shared = 0
+                for i in range(2, 7):
+                    setattr(self, f'share_eta{i}',
+                            self.setup['kima'][f'share_eta{i}'] == 'true')
+                    if getattr(self, f'share_eta{i}'):
+                        _n_shared += 1
+
+                n_hyperparameters = 2  # at least 2 x eta1
+                n_hyperparameters += 1 if self.share_eta2 else 2
+                n_hyperparameters += 1 if self.share_eta3 else 2
+                n_hyperparameters += 1 if self.share_eta4 else 2
+                if self.GPkernel == 'qpc':
+                    n_hyperparameters += 1 if self.share_eta5 else 2
+                if self.GPkernel == 'qp_plus_cos':
+                    n_hyperparameters += 1 if self.share_eta5 else 2
+                    n_hyperparameters += 1 if self.share_eta6 else 2
+                self.n_hyperparameters = n_hyperparameters
+                self._n_shared_hyperparameters = _n_shared
 
             istart = self._current_column
             iend = istart + n_hyperparameters
             self.etas = self.posterior_sample[:, istart:iend]
+
+            # if self.model == 'RVmodel':
+            #     for i in range(n_hyperparameters):
+            #         name = 'eta' + str(i + 1)
+            #         ind = istart + i
+            #         setattr(self, name, self.posterior_sample[:, ind])
 
             self._current_column += n_hyperparameters
             self.indices['GPpars_start'] = istart
             self.indices['GPpars_end'] = iend
             self.indices['GPpars'] = slice(istart, iend)
 
-            if self.model in ['RVmodel','RV_binaries_model']:
-                GPs = {
-                    'standard': GP(QPkernel(1, 1, 1, 1), self.t, self.e, white_noise=0),
-                    'qpc': GP(QPCkernel(1, 1, 1, 1, 1), self.t, self.e, white_noise=0),
-                    'celerite': GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
-                }
-                self.GP = GPs[self.GPkernel]
+            t, e = self.data.t, self.data.e
+            kernels = {
+                'standard': QPkernel(1, 1, 1, 1),
+                'periodic': PERkernel(1, 1, 1),
+                'qpc': QPCkernel(1, 1, 1, 1, 1),
+                'RBF': RBFkernel(1, 1),
+                'qp_plus_cos': QPpCkernel(1, 1, 1, 1, 1, 1),
+            }
 
-            elif self.model == 'RVFWHMmodel':
-                t, e = self.t, self.e
-                GPs = {
-                    'standard': GP(QPkernel(1, 1, 1, 1), t, e, white_noise=0),
-                    'qpc': GP(QPCkernel(1, 1, 1, 1, 1), t, e, white_noise=0),
-                    'celerite': GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1), self.t, self.e, white_noise=0),
-                }
-                self.GP1 = GPs[self.GPkernel]
-                self.GP2 = deepcopy(GPs[self.GPkernel])
+            if self.model == 'RVFWHMmodel':
+                self.GP1 = GP(kernels[self.GPkernel], t, e, white_noise=0.0)
+                self.GP2 = GP(kernels[self.GPkernel], t, self.data.e2,
+                              white_noise=0.0)
+            elif self.model == 'GPmodel_systematics':
+                X = np.c_[self.data.t, self._extra_data[:, 3]]
+                self.GP = mixtureGP([], X, None, e)
+            else:
+                self.GP = GP(kernels[self.GPkernel], t, e, white_noise=0.0)
 
-            self.indices['GPpars_start'] = start_hyperpars
-            self.indices['GPpars_end'] = start_hyperpars + n_hyperparameters
-            self.indices['GPpars'] = slice(start_hyperpars, start_hyperpars + n_hyperparameters)
+
         else:
             n_hyperparameters = 0
-
-        #     k = ('standard', 'permatern32', 'permatern52')
-        #     if available_kernels[self.GPkernel] in k:
-        #         n_hyperparameters = 4
-
-        #     elif available_kernels[self.GPkernel] == 'celerite':
-        #         n_hyperparameters = 3
-
-        #     elif available_kernels[self.GPkernel] == 'perrq':
-        #         n_hyperparameters = 5
-
-        #     elif available_kernels[self.GPkernel] == 'sqexp':
-        #         n_hyperparameters = 2
-
-        #     start_hyperpars = start_parameters + n_trend + n_inst_offsets + 1
-        #     self.etas = self.posterior_sample[:, start_hyperpars:
-        #                                       start_hyperpars +
-        #                                       n_hyperparameters]
-
-        #     for i in range(n_hyperparameters):
-        #         name = 'eta' + str(i + 1)
-        #         ind = start_hyperpars + i
-        #         setattr(self, name, self.posterior_sample[:, ind])
-
-        #     if self.GPkernel == 0:
-        #         self.GP = GP(QPkernel(1, 1, 1, 1),
-        #                      self.t,
-        #                      self.e,
-        #                      white_noise=0.)
-
-        #     elif self.GPkernel == 1:
-        #         self.GP = GP_celerite(QPkernel_celerite(η1=1, η2=1, η3=1),
-        #                               self.t,
-        #                               self.e,
-        #                               white_noise=0.)
-
-        #     elif self.GPkernel == 2:
-        #         self.GP = GP(QPMatern32kernel(1, 1, 1, 1),
-        #                      self.t, self.e, white_noise=0.)
-
-        #     elif self.GPkernel == 3:
-        #         self.GP = GP(QPMatern52kernel(1, 1, 1, 1),
-        #                      self.t, self.e, white_noise=0.)
-
-        #     elif self.GPkernel == 4:
-        #         self.GP = GP(QPRQkernel(1, 1, 1, 1, 1),
-        #                      self.t, self.e, white_noise=0.)
-
-        #     elif self.GPkernel == 5:
-        #         self.GP = GP(SqExpkernel(1, 1),
-        #                      self.t, self.e, white_noise=0.)
-
-        #     self.indices['GPpars_start'] = start_hyperpars
-        #     self.indices['GPpars_end'] = start_hyperpars + n_hyperparameters
-        #     self.indices['GPpars'] = slice(start_hyperpars,
-        #                                    start_hyperpars + n_hyperparameters)
-        # else:
-        #     n_hyperparameters = 0
-
-        # self.n_hyperparameters = n_hyperparameters
-        # self.total_parameters += n_hyperparameters
 
     def _read_MA(self):
         # find MA in the compiled model
@@ -583,9 +634,10 @@ class KimaResults(object):
             self.nKO = 0
 
         if self.KO:
-            n_KOparameters = 5 * self.nKO
-            if self.model == 'RV_binaries_model':
+            if self.model == 'TRANSITmodel':
                 n_KOparameters = 6 * self.nKO
+            else:
+                n_KOparameters = 5 * self.nKO
             start = self._current_column
             koinds = slice(start, start + n_KOparameters)
             self.KOpars = self.posterior_sample[:, koinds]
@@ -597,10 +649,12 @@ class KimaResults(object):
 
     @property
     def _mc(self):
+        """ Maximum number of Keplerians in the model """
         return self.max_components
 
     @property
     def _nd(self):
+        """ Number of parameters per Keplerian """
         return self.n_dimensions
 
     @property
@@ -610,8 +664,6 @@ class KimaResults(object):
         priors = np.full(n, None)
 
         if self.model == 'RVmodel':
-            priors[self.indices['jitter']] = self.priors['Jprior']
-        elif self.model == 'RV_binaries_model':
             priors[self.indices['jitter']] = self.priors['Jprior']
 
         elif self.model == 'RVFWHMmodel':
@@ -630,9 +682,6 @@ class KimaResults(object):
             if self.model == 'RVmodel':
                 prior = self.priors['offsets_prior']
                 priors[self.indices['inst_offsets']] = np.array(no * [prior])
-            elif self.model == 'RV_binaries_model':
-                prior = self.priors['offsets_prior']
-                priors[self.indices['inst_offsets']] = np.array(no * [prior])
             elif self.model == 'RVFWHMmodel':
                 prior1 = self.priors['offsets_prior']
                 prior2 = self.priors['offsets2_prior']
@@ -641,10 +690,6 @@ class KimaResults(object):
 
         if self.GPmodel:
             if self.model == 'RVmodel':
-                priors[self.indices['GPpars']] = [
-                    self.priors[f'eta{i}_prior'] for i in range(5)
-                ]
-            elif self.model == 'RV_binaries_model':
                 priors[self.indices['GPpars']] = [
                     self.priors[f'eta{i}_prior'] for i in range(5)
                 ]
@@ -685,7 +730,8 @@ class KimaResults(object):
             try:
                 priors[self.indices['np']] = self.priors['np_prior']
             except KeyError:
-                priors[self.indices['np']] = discrete_uniform(0, self.npmax + 1)
+                priors[self.indices['np']] = discrete_uniform(
+                    0, self.npmax + 1)
 
         if self.max_components > 0:
             planet_priors = []
@@ -699,11 +745,6 @@ class KimaResults(object):
                 planet_priors.append(self.priors['eprior'])
             for i in range(self.max_components):
                 planet_priors.append(self.priors['wprior'])
-            try:
-                for i in range(self.max_components):
-                    planet_priors.append(self.priors['wdotprior'])
-            except KeyError:
-                pass
             priors[self.indices['planets']] = planet_priors
 
         try:
@@ -713,7 +754,6 @@ class KimaResults(object):
             priors[self.indices['C2']] = self.priors['C2prior']
 
         return priors
-
 
     @property
     def _parameter_priors_full(self):
@@ -725,22 +765,36 @@ class KimaResults(object):
         return parameter_priors
 
     @classmethod
-    def load(cls, filename=None, diagnostic=False):
+    def load(cls, filename: str = None, diagnostic: bool = False, **kwargs):
         """
         Load a KimaResults object from the current directory, a pickle file, or
         a zip file.
+
+        Args:
+            filename (str, optional):
+                If given, load the model from this file. Can be a zip or pickle
+                file. Defaults to None.
+            diagnostic (bool, optional):
+                Whether to plot the DNest4 diagnotics. Defaults to False.
+            **kwargs: Extra keyword arguments passed to `showresults`
+
+        Returns:
+            res (KimaResults): An object holding the results
         """
+        from .utils import chdir
+
         if filename is None:
-            from .showresults import showresults2
-            return showresults2(force_return=True)
+            from .showresults import showresults
+            return showresults(force_return=True, **kwargs)
 
         try:
             if filename.endswith('.zip'):
                 zf = zipfile.ZipFile(filename, 'r')
                 names = zf.namelist()
                 needs = ('sample.txt', 'levels.txt', 'sample_info.txt',
-                         'posterior_sample.txt', 'posterior_sample_info.txt',
                          'kima_model_setup.txt')
+                wants = ('posterior_sample.txt', 'posterior_sample_info.txt')
+
                 for need in needs:
                     if need not in names:
                         raise ValueError('%s does not contain a "%s" file' %
@@ -749,38 +803,50 @@ class KimaResults(object):
                 with tempfile.TemporaryDirectory() as dirpath:
                     for need in needs:
                         zf.extract(need, path=dirpath)
+
+                    for want in wants:
+                        try:
+                            zf.extract(need, path=dirpath)
+                        except FileNotFoundError:
+                            pass
+
                     try:
                         zf.extract('evidence', path=dirpath)
                         zf.extract('information', path=dirpath)
                     except Exception:
                         pass
 
-                    pwd = os.getcwd()
-                    os.chdir(dirpath)
+                    with chdir(dirpath):
+                        setup = read_model_setup()
 
-                    setup = configparser.ConfigParser()
-                    setup.optionxform = str
-                    setup.read('kima_model_setup.txt')
+                        section = 'data' if 'data' in setup else 'kima'
+                        try:
+                            multi = setup[section]['multi'] == 'true'
+                        except KeyError:
+                            multi = False
 
-                    if setup['kima']['multi'] == 'true':
-                        datafiles = setup['kima']['files'].split(',')
-                        datafiles = list(filter(None, datafiles))  # remove ''
-                    else:
-                        datafiles = np.atleast_1d(setup['kima']['file'])
+                        if multi:
+                            datafiles = setup[section]['files'].split(',')
+                            datafiles = list(filter(None, datafiles))
+                        else:
+                            datafiles = np.atleast_1d(setup['data']['file'])
 
-                    datafiles = list(map(os.path.basename, datafiles))
-                    for df in datafiles:
-                        zf.extract(df)
+                        datafiles = list(map(os.path.basename, datafiles))
+                        for df in datafiles:
+                            zf.extract(df)
 
-                    if diagnostic:
-                        from .classic import postprocess
-                        postprocess()
+                        if os.path.exists(wants[0]):
+                            res = cls('')
+                            res.evidence = float(open('evidence').read())
+                            res.information = float(open('information').read())
+                            res.ESS = res.posterior_sample.shape[0]
+                        else:
+                            from .showresults import showresults
+                            res = showresults(verbose=False)
 
-                    res = cls('')
-                    res.evidence = float(open('evidence').read())
-                    res.information = float(open('information').read())
+                        # from .classic import postprocess
+                        # postprocess()
 
-                    os.chdir(pwd)
 
                 return res
 
@@ -796,15 +862,28 @@ class KimaResults(object):
             # print('Unable to load data from ', filename, ':', e)
             raise
 
-    def save_pickle(self, filename, verbose=True):
-        """Pickle this KimaResults object into a file."""
+    def show_kima_setup(self):
+        return _show_kima_setup()
+
+    def save_pickle(self, filename: str, verbose=True):
+        """ Pickle this KimaResults object into a file.
+
+        Args:
+            filename (str): The name of the file where to save the model
+            verbose (bool, optional): Print a message. Defaults to True.
+        """
         with open(filename, 'wb') as f:
             pickle.dump(self, f, protocol=2)
         if verbose:
             print('Wrote to file "%s"' % f.name)
 
-    def save_zip(self, filename, verbose=True):
-        """Save this KimaResults object and the text files into a zip."""
+    def save_zip(self, filename: str, verbose=True):
+        """ Save this KimaResults object and the text files into a zip.
+
+        Args:
+            filename (str): The name of the file where to save the model
+            verbose (bool, optional): Print a message. Defaults to True.
+        """
         if not filename.endswith('.zip'):
             filename = filename + '.zip'
 
@@ -834,62 +913,67 @@ class KimaResults(object):
             print('Wrote to file "%s"' % zf.filename)
 
     def get_marginals(self):
-        """ 
+        """
         Get the marginal posteriors from the posterior_sample matrix.
         They go into self.T, self.A, self.E, etc
         """
-
         max_components = self.max_components
         index_component = self.index_component
-        max_components = 2
-        index_component = 10
 
         # periods
         i1 = 0 * max_components + index_component + 1
         i2 = 0 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
-        self.T = self.posterior_sample[:, s]
-        self.Tall = np.copy(self.T)
+        self.posteriors.P = self.posterior_sample[:, s]
+        self.T = self.posteriors.P
 
         # amplitudes
         i1 = 1 * max_components + index_component + 1
         i2 = 1 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
+        self.posteriors.K = self.posterior_sample[:, s]
         self.A = self.posterior_sample[:, s]
-        self.Aall = np.copy(self.A)
 
         # phases
         i1 = 2 * max_components + index_component + 1
         i2 = 2 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
+        self.posteriors.φ = self.posterior_sample[:, s]
         self.phi = self.posterior_sample[:, s]
-        self.phiall = np.copy(self.phi)
 
         # eccentricities
         i1 = 3 * max_components + index_component + 1
         i2 = 3 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
+        self.posteriors.e = self.posterior_sample[:, s]
         self.E = self.posterior_sample[:, s]
-        self.Eall = np.copy(self.E)
 
         # omegas
         i1 = 4 * max_components + index_component + 1
         i2 = 4 * max_components + index_component + max_components + 1
         s = np.s_[i1:i2]
+        self.posteriors.ω = self.posterior_sample[:, s]
         self.Omega = self.posterior_sample[:, s]
-        self.Omegaall = np.copy(self.Omega)
-        
-        # omegadots
-        if self.model == 'RV_binaries_model':
+
+        if self.model == 'BDmodel':
             i1 = 5 * max_components + index_component + 1
             i2 = 5 * max_components + index_component + max_components + 1
             s = np.s_[i1:i2]
-            self.Omegadot = self.posterior_sample[:, s]
-            self.Omegadotall = np.copy(self.Omegadot)
+            self.posteriors.λ = self.posterior_sample[:, s]
+            self.Lambda = self.posterior_sample[:, s]
+
+
 
         # times of periastron
-        self.T0 = self.M0_epoch - (self.T * self.phi) / (2. * np.pi)
-        self.T0all = np.copy(self.T0)
+        self.posteriors.Tp = (self.T * self.phi) / (2 * np.pi) + self.M0_epoch
+        self.Tp = (self.T * self.phi) / (2. * np.pi) + self.M0_epoch
+
+        # times of inferior conjunction (transit, if the planet transits)
+        f = np.pi / 2 - self.Omega
+        ee = 2 * np.arctan(
+            np.tan(f / 2) * np.sqrt((1 - self.E) / (1 + self.E)))
+        Tc = self.Tp + self.T / (2 * np.pi) * (ee - self.E * np.sin(ee))
+        self.posteriors.Tc = Tc
 
         which = self.T != 0
         self.T = self.T[which].flatten()
@@ -897,9 +981,7 @@ class KimaResults(object):
         self.E = self.E[which].flatten()
         self.phi = self.phi[which].flatten()
         self.Omega = self.Omega[which].flatten()
-        if self.model == 'RV_binaries_model':
-            self.Omegadot = self.Omegadot[which].flatten()
-        self.T0 = self.T0[which].flatten()
+        self.Tp = self.Tp[which].flatten()
 
     def get_medians(self):
         """ return the median values of all the parameters """
@@ -965,8 +1047,8 @@ class KimaResults(object):
             ind = logpost.argmax()
             self._map_sample = map_sample = samples[ind]
 
-        logpost, loglike, logprior = self.log_posterior(map_sample,
-                                                        separate=True)
+        logpost, loglike, logprior = self.log_posterior(
+            map_sample, separate=True)
 
         if printit:
             print('Sample with the highest posterior value')
@@ -985,7 +1067,6 @@ class KimaResults(object):
 
         return map_sample
 
-
     def maximum_likelihood_sample(self, from_posterior=False, Np=None,
                                   printit=True, mask=None):
         """
@@ -1000,7 +1081,6 @@ class KimaResults(object):
             print('log-likelihoods are not available! '
                   'maximum_likelihood_sample() doing nothing...')
             return
-
 
         if from_posterior:
             if mask is None:
@@ -1074,7 +1154,7 @@ class KimaResults(object):
         return pars
 
     def print_sample(self, p, star_mass=1.0, show_a=False, show_m=False,
-                     mass_units='mjup', squeeze=False):
+                     mass_units='mjup', show_Tp=False, squeeze=False):
 
         if show_a or show_m:
             print('considering stellar mass:', star_mass)
@@ -1090,8 +1170,10 @@ class KimaResults(object):
         if squeeze:
             if self.model == 'RVFWHMmodel':
                 inst = instruments + instruments
-                data = self.n_instruments * ['RV'] + self.n_instruments * ['FWHM']
+                data = self.n_instruments * ['RV'
+                                             ] + self.n_instruments * ['FWHM']
             else:
+                inst = instruments
                 data = self.n_instruments * ['']
 
             for i, jit in enumerate(p[self.indices['jitter']]):
@@ -1110,14 +1192,8 @@ class KimaResults(object):
             print('number of planets: ', npl)
             print('orbital parameters: ', end='')
 
-            pars = ['P', 'K', 'M0', 'e', 'ω', 'ωdot']
+            pars = ['P', 'K', 'M0', 'e', 'ω']
             n = self.n_dimensions
-            if show_a:
-                pars.append('a')
-                n += 1
-            if show_m:
-                pars.append('Mp')
-                n += 1
 
             if squeeze:
                 print('\n' + 10 * ' ', end='')
@@ -1128,27 +1204,33 @@ class KimaResults(object):
                     par = 'φ' if par == 'M0' else par
                     print(f'  {par:2s}', ':    ', end='')
                     try:
-                        for v in p[self.indices[f'planets.{par}']][::-1]:
+                        sample_pars = p[self.indices[f'planets.{par}']]
+                        for v in sample_pars:
                             print('%-10f' % v, end='')
                     except KeyError:
                         pass
                     print()
             else:
+                if show_a:
+                    pars.append('a')
+                    n += 1
+                if show_m:
+                    pars.append('Mp')
+                    n += 1
+
                 print((n * ' {:>10s} ').format(*pars))
 
                 for i in range(0, npl):
                     formatter = {'all': lambda v: f'{v:11.5f}'}
                     with np.printoptions(formatter=formatter, linewidth=1000):
-                        planet_pars = p[self.indices['planets']][i::self.max_components]
-                        if self.model == 'RV_binaries_model':
-                            P, K, M0, ecc, ω, ωdot = planet_pars
-                        else:
-                            P, K, M0, ecc, ω = planet_pars
+                        planet_pars = p[
+                            self.indices['planets']][i::self.max_components]
+                        P, K, M0, ecc, ω = planet_pars
 
                         if show_a or show_m:
                             (m, _), a = get_planet_mass_and_semimajor_axis(
                                 P, K, ecc, star_mass)
-                            
+
                             if uncertainty_star_mass:
                                 m = m[0]
                                 a = a[0]
@@ -1166,12 +1248,11 @@ class KimaResults(object):
                     s = s.rjust(20 + len(s))
                     print(s)
 
-
         if self.KO:
             print('number of known objects: ', self.nKO)
             print('orbital parameters: ', end='')
 
-            pars = ('P', 'K', 'ϕ', 'e', 'M0', 'ωdot')
+            pars = ('P', 'K', 'ϕ', 'e', 'M0')
             print((self.n_dimensions * ' {:>10s} ').format(*pars))
 
             for i in range(0, self.nKO):
@@ -1185,8 +1266,6 @@ class KimaResults(object):
         if self.GPmodel:
             print('GP parameters: ', end='')
             if self.model == 'RVmodel':
-                pars = ('η1', 'η2', 'η3', 'η4')
-            if self.model == 'RV_binaries_model':
                 pars = ('η1', 'η2', 'η3', 'η4')
             elif self.model == 'RVFWHMmodel':
                 pars = ('η1 RV', 'η1 FWHM', 'η2', 'η3', 'η4')
@@ -1251,35 +1330,30 @@ class KimaResults(object):
             pars[i * mc:(i + 1) * mc] = pars[i * mc:(i + 1) * mc][ind]
         return new_sample
 
-
     def _get_tt(self, N=1000, over=0.1):
         """
         Create array for model prediction plots. This simply returns N
         linearly-spaced times from t[0]-over*Tspan to t[-1]+over*Tspan.
         """
-        start = self.t.min() - over * self.t.ptp()
-        end = self.t.max() + over * self.t.ptp()
+        start = self.data.t.min() - over * self.data.t.ptp()
+        end = self.data.t.max() + over * self.data.t.ptp()
         return np.linspace(start, end, N)
 
     def _get_ttGP(self, N=1000, over=0.1):
         """ Create array of times for GP prediction plots. """
-        kde = gaussian_kde(self.t)
-        ttGP = kde.resample(N - self.t.size).reshape(-1)
+        kde = gaussian_kde(self.data.t)
+        ttGP = kde.resample(N - self.data.N).reshape(-1)
         # constrain ttGP within observed times, to not waste
-        ttGP = (ttGP + self.t[0]) % self.t.ptp() + self.t[0]
+        ttGP = (ttGP + self.data.t[0]) % self.data.t.ptp() + self.data.t[0]
         # add the observed times as well
-        ttGP = np.r_[ttGP, self.t]
+        ttGP = np.r_[ttGP, self.data.t]
         ttGP.sort()  # in-place
         return ttGP
 
-    def eval_model(self,
-                   sample,
-                   t=None,
-                   include_planets=True,
-                   include_known_object=True,
-                   include_trend=True,
-                   single_planet=None,
-                   except_planet=None):
+    def eval_model(self, sample, t = None,
+                   include_planets=True, include_known_object=True,
+                   include_trend=True, single_planet: int = None,
+                   except_planet: Union[int, List] = None):
         """
         Evaluate the deterministic part of the model at one posterior `sample`.
         If `t` is None, use the observed times. Instrument offsets are only
@@ -1289,44 +1363,43 @@ class KimaResults(object):
 
         Note: this function does *not* evaluate the GP component of the model.
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray
-            Times at which to evaluate the model, or None to use observed times
-        include_planets : bool, default True
-            Whether to include the contribution from the planets
-        include_known_object : bool, default True
-            Whether to include the contribution from the known object planets
-        include_trend : bool, default True
-            Whether to include the contribution from the trend
-        single_planet : int
-            Index of a single planet to *include* in the model, starting at 1.
-            Use positive values (1, 2, ...) for the Np planets and negative
-            values (-1, -2, ...) for the known object planets.
-        except_planet : int or list
-            Index (or list of indices) of a single planet to *exclude* from
-            the model, starting at 1. Use positive values (1, 2, ...) for the
-            Np planets and negative
-            values (-1, -2, ...) for the known object planets.
+        Arguments:
+            sample (array): One posterior sample, with shape (npar,)
+            t (array):
+                Times at which to evaluate the model, or None to use observed
+                times
+            include_planets (bool):
+                Whether to include the contribution from the planets
+            include_known_object (bool):
+                Whether to include the contribution from the known object
+                planets
+            include_trend (bool):
+                Whether to include the contribution from the trend
+            single_planet (int):
+                Index of a single planet to *include* in the model, starting at
+                1. Use positive values (1, 2, ...) for the Np planets and
+                negative values (-1, -2, ...) for the known object planets.
+            except_planet (Union[int, List]):
+                Index (or list of indices) of a single planet to *exclude* from
+                the model, starting at 1. Use positive values (1, 2, ...) for
+                the Np planets and negative values (-1, -2, ...) for the known
+                object planets.
         """
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
             n2 = self.posterior_sample.shape[1]
-            msg = '`sample` has wrong dimensions, expected %d got %d' % (n2, n1)
+            msg = '`sample` has wrong dimensions, expected %d got %d' % (n2,
+                                                                         n1)
             raise ValueError(msg)
 
         data_t = False
-        if t is None or t is self.t:
-            t = self.t.copy()
+        if t is None or t is self.data.t:
+            t = self.data.t.copy()
             data_t = True
 
         if self.model == 'RVFWHMmodel':
             v = np.zeros((2, t.size))
-        elif self.model == 'RVmodel':
-            v = np.zeros_like(t)
-        elif self.model == 'RV_binaries_model':
+        else:
             v = np.zeros_like(t)
 
         if include_planets:
@@ -1353,14 +1426,10 @@ class KimaResults(object):
                     P = pars[j + 0 * self.nKO]
                     K = pars[j + 1 * self.nKO]
                     phi = pars[j + 2 * self.nKO]
-                    t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
+                    # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                     ecc = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
-                    if self.model == 'RV_binaries_model':
-                        wdot = pars[j + 5 * self.nKO]
-                    else:
-                        wdot = 0
-                    v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
+                    v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
@@ -1384,31 +1453,27 @@ class KimaResults(object):
                     continue
                 K = pars[j + 1 * self.max_components]
                 phi = pars[j + 2 * self.max_components]
-                t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
+                # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                 ecc = pars[j + 3 * self.max_components]
                 w = pars[j + 4 * self.max_components]
+                # print(P, K, ecc, w, phi, self.M0_epoch)
                 if self.model == 'RVFWHMmodel':
-                    v[0, :] += keplerian(t, P, K, ecc, w, 0, t0, 0.)
-                elif self.model == 'RVmodel':
-                    v += keplerian(t, P, K, ecc, w, 0, t0, 0.)
-                elif self.model == 'RV_binaries_model':
-                    wdot = pars[j + 5 * self.max_components]
-                    v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
+                    v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                else:
+                    v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
         # systemic velocity (and C2) for this sample
         if self.model == 'RVFWHMmodel':
             C = np.c_[sample[self.indices['vsys']], sample[self.indices['C2']]]
             v += C.reshape(-1, 1)
-        elif self.model == 'RVmodel':
-            v += sample[self.indices['vsys']]
-        elif self.model == 'RV_binaries_model':
+        else:
             v += sample[self.indices['vsys']]
 
         # if evaluating at the same times as the data, add instrument offsets
         # otherwise, don't
         if self.multi and data_t:  # and len(self.data_file) > 1:
             offsets = sample[self.indices['inst_offsets']]
-            ii = self.obs.astype(int) - 1
+            ii = self.data.obs.astype(int) - 1
 
             if self.model == 'RVFWHMmodel':
                 ni = self.n_instruments
@@ -1426,60 +1491,57 @@ class KimaResults(object):
             trend_par = np.r_[trend_par[::-1], 0.0]
             if self.model == 'RVFWHMmodel':
                 v[0, :] += np.polyval(trend_par, t - self.tmiddle)
-            elif self.model == 'RVmodel':
-                v += np.polyval(trend_par, t - self.tmiddle)
-            elif self.model == 'RV_binaries_model':
+            else:
                 v += np.polyval(trend_par, t - self.tmiddle)
 
         return v
 
-    def planet_model(self,
-                     sample,
-                     t=None,
-                     include_known_object=True,
-                     single_planet=None,
-                     except_planet=None):
+    def planet_model(self, sample: np.ndarray, t: np.ndarray = None,
+                     include_known_object=True, single_planet: int = None,
+                     except_planet: Union[int, List] = None):
         """
         Evaluate the planet part of the model at one posterior `sample`. If `t`
-        is None, use the observed times.
-        To evaluate at all posterior samples, consider using
+        is None, use the observed times. To evaluate at all posterior samples,
+        consider using
+
             np.apply_along_axis(self.planet_model, 1, self.posterior_sample)
 
-        Note: this function does *not* evaluate the GP component of the model
-              nor the systemic velocity and instrument offsets.
+        Note:
+            this function does *not* evaluate the GP component of the model
+            nor the systemic velocity and instrument offsets.
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray
-            Times at which to evaluate the model, or None to use observed times
-        include_known_object : bool, default True
-            Whether to include the contribution from the known object planets
-        single_planet : int
-            Index of a single planet to *include* in the model, starting at 1.
-            Use positive values (1, 2, ...) for the Np planets and negative
-            values (-1, -2, ...) for the known object planets.
-        except_planet : int or list
-            Index (or list of indices) of a single planet to *exclude* from
-            the model, starting at 1. Use positive values (1, 2, ...) for the
-            Np planets and negative
-            values (-1, -2, ...) for the known object planets.
+        Arguments:
+            sample (ndarray):
+                One posterior sample, with shape (npar,)
+            t (ndarray):
+                Times at which to evaluate the model, or None to use observed
+                times
+            include_known_object (bool):
+                Whether to include the contribution from the known object
+                planets
+            single_planet (int):
+                Index of a single planet to *include* in the model, starting at
+                1. Use positive values (1, 2, ...) for the Np planets and
+                negative values (-1, -2, ...) for the known object planets.
+            except_planet (Union[int, List]):
+                Index (or list of indices) of a single planet to *exclude* from
+                the model, starting at 1. Use positive values (1, 2, ...) for
+                the Np planets and negative values (-1, -2, ...) for the known
+                object planets.
         """
         if sample.shape[0] != self.posterior_sample.shape[1]:
             n1 = sample.shape[0]
             n2 = self.posterior_sample.shape[1]
-            msg = '`sample` has wrong dimensions, expected %d got %d' % (n2, n1)
+            msg = '`sample` has wrong dimensions, expected %d got %d' % (n2,
+                                                                         n1)
             raise ValueError(msg)
 
-        if t is None or t is self.t:
-            t = self.t.copy()
+        if t is None or t is self.data.t:
+            t = self.data.t.copy()
 
         if self.model == 'RVFWHMmodel':
             v = np.zeros((2, t.size))
-        elif self.model == 'RVmodel':
-            v = np.zeros_like(t)
-        elif self.model == 'RV_binaries_model':
+        else:
             v = np.zeros_like(t)
 
         if single_planet and except_planet:
@@ -1504,14 +1566,10 @@ class KimaResults(object):
                 P = pars[j + 0 * self.nKO]
                 K = pars[j + 1 * self.nKO]
                 phi = pars[j + 2 * self.nKO]
-                t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
+                # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                 ecc = pars[j + 3 * self.nKO]
                 w = pars[j + 4 * self.nKO]
-                if self.model == 'RV_binaries_model':
-                    wdot = pars[j + 5 * self.nKO]
-                else:
-                    wdot = 0
-                v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
+                v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
         # get the planet parameters for this sample
         pars = sample[self.indices['planets']].copy()
@@ -1535,42 +1593,37 @@ class KimaResults(object):
                 continue
             K = pars[j + 1 * self.max_components]
             phi = pars[j + 2 * self.max_components]
-            t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
+            # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
             ecc = pars[j + 3 * self.max_components]
             w = pars[j + 4 * self.max_components]
             if self.model == 'RVFWHMmodel':
-                v[0, :] += keplerian(t, P, K, ecc, w, 0, t0, 0.)
-            elif self.model == 'RVmodel':
-                v += keplerian(t, P, K, ecc, w, 0, t0, 0.)
-            elif self.model == 'RV_binaries_model':
-                wdot = pars[j + 5 * self.max_components]
-                v += keplerian(t, P, K, ecc, w, wdot, t0, 0.)
+                v[0, :] += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+            else:
+                v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
         return v
 
-    def stochastic_model(self,
-                         sample,
-                         t=None,
-                         return_std=False,
-                         derivative=False,
-                         **kwargs):
+    def stochastic_model(self, sample, t=None, return_std=False,
+                         derivative=False, **kwargs):
         """
         Evaluate the stochastic part of the model (GP) at one posterior sample.
         If `t` is None, use the observed times. Instrument offsets are only
         added if `t` is None, but the systemic velocity is always added.
         To evaluate at all posterior samples, consider using
+
             np.apply_along_axis(self.stochastic_model, 1, self.posterior_sample)
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray (optional)
-            Times at which to evaluate the model, or None to use observed times
-        return_std : bool (optional, default False)
-            Whether to return the st.d. of the predictive
-        derivative : bool (optional, default False)
-            Return the first time derivative of the GP prediction instead
+        Arguments:
+            sample (ndarray):
+                One posterior sample, with shape (npar,)
+            t (ndarray, optional):
+                Times at which to evaluate the model, or None to use observed
+                times
+            return_std (bool, optional):
+                Whether to return the standard deviation of the predictive.
+                Default is False.
+            derivative (bool, optional):
+                Return the first time derivative of the GP prediction instead
         """
 
         if sample.shape[0] != self.posterior_sample.shape[1]:
@@ -1580,8 +1633,8 @@ class KimaResults(object):
                   'should be %d got %d' % (n2, n1)
             raise ValueError(msg)
 
-        if t is None or t is self.t:
-            t = self.t.copy()
+        if t is None or t is self.data.t:
+            t = self.data.t.copy()
 
         if not self.GPmodel:
             return np.zeros_like(t)
@@ -1591,19 +1644,30 @@ class KimaResults(object):
             r = D - self.eval_model(sample)
             GPpars = sample[self.indices['GPpars']]
 
-            η1RV, η1FWHM, η2RV, η2FWHM, η3RV, η3FWHM, η4RV, η4FWHM = \
-                                                GPpars[self._GP_par_indices]
-
             if self.GPkernel == 'standard':
+                (η1RV, η1FWHM, η2RV, η2FWHM, η3RV, η3FWHM, η4RV,
+                 η4FWHM) = GPpars[self._GP_par_indices]
                 self.GP1.kernel.pars = np.array([η1RV, η2RV, η3RV, η4RV])
                 self.GP2.kernel.pars = np.array(
                     [η1FWHM, η2FWHM, η3FWHM, η4FWHM])
 
             elif self.GPkernel == 'qpc':
-                η5RV, η5FWHM = GPpars[-2:]
+                (η1RV, η1FWHM, η2RV, η2FWHM, η3RV, η3FWHM, η4RV, η4FWHM, η5RV,
+                 η5FWHM) = GPpars[self._GP_par_indices]
+
                 self.GP1.kernel.pars = np.array([η1RV, η2RV, η3RV, η4RV, η5RV])
                 self.GP2.kernel.pars = np.array(
                     [η1FWHM, η2FWHM, η3FWHM, η4FWHM, η5FWHM])
+
+            elif self.GPkernel == 'qp_plus_cos':
+                (η1RV, η1FWHM, η2RV, η2FWHM, η3RV, η3FWHM, η4RV, η4FWHM, η5RV,
+                 η5FWHM, η6RV, η6FWHM) = GPpars[self._GP_par_indices]
+
+                self.GP1.kernel.pars = np.array(
+                    [η1RV, η2RV, η3RV, η4RV, η5RV, η6RV])
+                self.GP2.kernel.pars = np.array(
+                    [η1FWHM, η2FWHM, η3FWHM, η4FWHM, η5FWHM, η6FWHM])
+
 
             if derivative:
                 out0 = self.GP1.derivative(r[0], t, return_std=return_std)
@@ -1613,60 +1677,63 @@ class KimaResults(object):
                 out1 = self.GP2.predict(r[1], t, return_std=return_std)
 
             if return_std:
-                return np.vstack([out0[0], out1[0]]), \
-                       np.vstack([out0[1], out1[1]])
+                return (
+                    np.vstack([out0[0], out1[0]]),
+                    np.vstack([out0[1], out1[1]])
+                )
             else:
                 return np.vstack([out0, out1])
 
-        elif self.model == 'RVmodel':
+        else:
             r = self.y - self.eval_model(sample)
-            GPpars = sample[self.indices['GPpars']]
-            self.GP.kernel.pars = GPpars
-            return self.GP.predict(r, t, return_std=return_std)
-        elif self.model == 'RV_binaries_model':
-            r = self.y - self.eval_model(sample)
-            GPpars = sample[self.indices['GPpars']]
-            self.GP.kernel.pars = GPpars
-            return self.GP.predict(r, t, return_std=return_std)
+            if self.model == 'GPmodel_systematics':
+                x = self._extra_data[:, 3]
+                X = np.c_[t, interp1d(self.data.t, x, bounds_error=False)(t)]
+                GPpars = sample[self.indices['GPpars']]
+                mu = self.GP.predict(r, X, GPpars)
+                # print(GPpars)
+                # self.GP.kernel.pars = GPpars
+                return mu
+            else:
+                GPpars = sample[self.indices['GPpars']]
+                self.GP.kernel.pars = GPpars
+                return self.GP.predict(r, t, return_std=return_std)
 
-    def full_model(self, sample, t=None, **kwargs):
+    def full_model(self, sample: np.ndarray, t: np.ndarray = None, **kwargs):
         """
-        Evaluate the full model at one posterior sample, including the GP. 
-        If `t` is None, use the observed times. Instrument offsets are only
-        added if `t` is None, but the systemic velocity is always added.
-        To evaluate at all posterior samples, consider using
+        Evaluate the full model at one posterior sample, including the GP. If
+        `t` is `None`, use the observed times. Instrument offsets are only added
+        if `t` is `None`, but the systemic velocity is always added. To evaluate
+        at all posterior samples, consider using
+        
             np.apply_along_axis(self.full_model, 1, self.posterior_sample)
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray (optional)
-            Times at which to evaluate the model, or None to use observed times
-        **kwargs
-            Keyword arguments passed directly to `eval_model`
+        Arguments:
+            sample (ndarray): One posterior sample, with shape (npar,)
+            t (ndarray, optional):
+                Times at which to evaluate the model, or `None` to use observed
+                times
+            **kwargs: Keyword arguments passed directly to `eval_model`
         """
         deterministic = self.eval_model(sample, t, **kwargs)
         stochastic = self.stochastic_model(sample, t)
         return deterministic + stochastic
 
-    def burst_model(self, sample, t, v=None):
+    def burst_model(self, sample, t=None, v=None):
         """
         For models with multiple instruments, this function "bursts" the
         computed RV into `n_instruments` individual arrays. This is mostly
         useful for plotting the RV model together with the original data.
 
-        Arguments
-        ---------
-        sample : ndarray
-            One posterior sample, with shape (npar,)
-        t : ndarray
-            Times at which to evaluate the model
-        v : ndarray
-            Pre-computed RVs, if None we call `self.eval_model`
+        Arguments:
+            sample (ndarray): One posterior sample, with shape (npar,)
+            t (ndarray): Times at which to evaluate the model
+            v (ndarray): Pre-computed RVs. If `None`, calls `self.eval_model`
         """
         if v is None:
             v = self.eval_model(sample, t)
+        if t is None:
+            t = self.data.t.copy()
 
         if not self.multi:
             # print('not multi_instrument, burst_model adds nothing')
@@ -1688,7 +1755,7 @@ class KimaResults(object):
                 v = (v.T + offsets).T
                 # this constrains the RV to the times of each instrument
                 for i in range(self.n_instruments):
-                    obst = self.t[self.obs == i + 1]
+                    obst = self.data.t[self.data.obs == i + 1]
                     # RV
                     v[2 * i, t < obst.min()] = np.nan
                     v[2 * i, t > obst.max()] = np.nan
@@ -1699,7 +1766,7 @@ class KimaResults(object):
                 v = (v.T + offsets).T
                 # this constrains the RV to the times of each instrument
                 for i in range(self.n_instruments):
-                    obst = self.t[self.obs == i + 1]
+                    obst = self.data.t[self.data.obs == i + 1]
                 if i == 0:
                     v[i, t < obst.min()] = np.nan
                 if i < self.n_instruments - 1:
@@ -1710,7 +1777,7 @@ class KimaResults(object):
             ii = np.digitize(t, time_bins) - 1
 
             #! HACK!
-            obs_is_sorted = np.all(np.diff(self.obs) >= 0)
+            obs_is_sorted = np.all(np.diff(self.data.obs) >= 0)
             if not obs_is_sorted:
                 ii = -ii.max() * (ii - ii.max())
             #! end HACK!
@@ -1745,9 +1812,9 @@ class KimaResults(object):
         vals.append(val)
 
         if self.multi:
-            for inst, o in zip(self.instruments, np.unique(self.obs)):
-                val = wrms(r[self.obs == o],
-                           weights=1 / self.e[self.obs == o]**2)
+            for inst, o in zip(self.instruments, np.unique(self.data.obs)):
+                val = wrms(r[self.data.obs == o],
+                           weights=1 / self.e[self.data.obs == o]**2)
                 if printit:
                     print(f'{inst}: {val:.3f} m/s')
                 vals.append(val)
@@ -1780,20 +1847,15 @@ class KimaResults(object):
             elif self.model == 'RVmodel':
                 n = np.random.normal(0, self.e.mean(), times.size)
                 y += n
-            elif self.model == 'RV_binaries_model':
-                n = np.random.normal(0, self.e.mean(), times.size)
-                y += n
 
         if errors:
             if self.model == 'RVFWHMmodel':
                 er1 = np.random.uniform(self.e.min(), self.e.max(), times.size)
-                er2 = np.random.uniform(self.e2.min(), self.e2.max(), times.size)
+                er2 = np.random.uniform(self.e2.min(), self.e2.max(),
+                                        times.size)
                 e += np.c_[er1, er2].T
 
             elif self.model == 'RVmodel':
-                er = np.random.uniform(self.e.min(), self.e.max(), times.size)
-                e += er
-            elif self.model == 'RV_binaries_model':
                 er = np.random.uniform(self.e.min(), self.e.max(), times.size)
                 e += er
 
@@ -1807,13 +1869,10 @@ class KimaResults(object):
             with open(file, 'w') as out:
                 out.writelines(open(last_file).readlines())
                 if self.model == 'RVFWHMmodel':
-                    kw = dict(delimiter='\t', fmt=['%.5f'] + 4*['%.9f'])
+                    kw = dict(delimiter='\t', fmt=['%.5f'] + 4 * ['%.9f'])
                     np.savetxt(out, np.c_[times, y[0], e[0], y[1], e[1]], **kw)
                 elif self.model == 'RVmodel':
-                    kw = dict(delimiter='\t', fmt=['%.5f'] + 2*['%.9f'])
-                    np.savetxt(out, np.c_[times, y, e], **kw)
-                elif self.model == 'RV_binaries_model':
-                    kw = dict(delimiter='\t', fmt=['%.5f'] + 2*['%.9f'])
+                    kw = dict(delimiter='\t', fmt=['%.5f'] + 2 * ['%.9f'])
                     np.savetxt(out, np.c_[times, y, e], **kw)
 
         if errors:
@@ -1823,26 +1882,29 @@ class KimaResults(object):
 
     @property
     def star(self):
-        return get_star_name(self.data_file[0])
+        if self.multi:
+            return get_star_name(self.data_file[0])
+        else:
+            return get_star_name(self.data_file)
 
     @property
     def instruments(self):
         if self.multi:
             if self.multi_onefile:
-                return ['inst %d' % i for i in np.unique(self.obs)]
+                return ['inst %d' % i for i in np.unique(self.data.obs)]
             else:
                 return list(map(get_instrument_name, self.data_file))
         else:
             return get_instrument_name(self.data_file)
 
     @property
-    def _NP(self):
+    def Np(self):
         return self.posterior_sample[:, self.index_component]
 
     @property
     def ratios(self):
         bins = np.arange(self.max_components + 2)
-        n, _ = np.histogram(self._NP, bins=bins)
+        n, _ = np.histogram(self.Np, bins=bins)
         n = n.astype(np.float)
         n[n == 0] = np.nan
         r = n.flat[1:] / n.flat[:-1]
@@ -1854,7 +1916,7 @@ class KimaResults(object):
         # self if a KimaResults instance
         from scipy.stats import multinomial
         bins = np.arange(self.max_components + 2)
-        n, _ = np.histogram(self._NP, bins=bins)
+        n, _ = np.histogram(self.Np, bins=bins)
         prob = n / self.ESS
         r = multinomial(self.ESS, prob).rvs(10000)
         r = r.astype(np.float)
@@ -1871,17 +1933,18 @@ class KimaResults(object):
             return x.min(), x.max()
 
         # are the instrument identifiers all sorted?
-        # st = np.lexsort(np.vstack([self.t, self.obs]))
-        obs_is_sorted = np.all(np.diff(self.obs) >= 0)
+        # st = np.lexsort(np.vstack([self.t, self.data.obs]))
+        obs_is_sorted = np.all(np.diff(self.data.obs) >= 0)
 
         # if not, which ones are not sorted?
         if not obs_is_sorted:
-            which_not_sorted = np.unique(self.obs[1:][np.diff(self.obs) < 0])
+            which_not_sorted = np.unique(
+                self.data.obs[1:][np.diff(self.data.obs) < 0])
 
         overlap = []
         for i in range(1, self.n_instruments):
-            t1min, t1max = minmax(self.t[self.obs == i])
-            t2min, t2max = minmax(self.t[self.obs == i + 1])
+            t1min, t1max = minmax(self.data.t[self.data.obs == i])
+            t2min, t2max = minmax(self.data.t[self.data.obs == i + 1])
             # if the instrument IDs are sorted or these two instruments
             # (i and i+1) are not the ones not-sorted
             if obs_is_sorted or i not in which_not_sorted:
@@ -1903,37 +1966,37 @@ class KimaResults(object):
         has_overlaps, overlap = self._time_overlaps
         if has_overlaps:
             _o = []
-            m = np.full_like(self.obs, True, dtype=bool)
+            m = np.full_like(self.data.obs, True, dtype=bool)
             for ov in overlap:
-                _o.append(self.t[self.obs == ov[0]].max())
-                _o.append(self.t[self.obs == ov[1]].min())
-                m &= self.obs != ov[0]
+                _o.append(self.data.t[self.data.obs == ov[0]].max())
+                _o.append(self.data.t[self.data.obs == ov[1]].min())
+                m &= self.data.obs != ov[0]
 
-            _1 = self.t[m][np.ediff1d(self.obs[m], 0, None) != 0]
-            _2 = self.t[m][np.ediff1d(self.obs[m], None, 0) != 0]
+            _1 = self.data.t[m][np.ediff1d(self.data.obs[m], 0, None) != 0]
+            _2 = self.data.t[m][np.ediff1d(self.data.obs[m], None, 0) != 0]
             return np.sort(np.r_[_o, np.mean((_1, _2), axis=0)])
 
         # otherwise it's much easier
         else:
-            _1 = self.t[np.ediff1d(self.obs, 0, None) != 0]
-            _2 = self.t[np.ediff1d(self.obs, None, 0) != 0]
+            _1 = self.data.t[np.ediff1d(self.data.obs, 0, None) != 0]
+            _2 = self.data.t[np.ediff1d(self.data.obs, None, 0) != 0]
             return np.mean((_1, _2), axis=0)
 
     @property
     def data_properties(self):
+        t = self.data.t
         prop = {
-            'time span': (self.t.ptp(), 'days', True),
-            'mean time gap': (np.ediff1d(self.t).mean(), 'days', True),
-            'median time gap': (np.median(np.ediff1d(self.t)), 'days', True),
-            'shortest time gap': (np.ediff1d(self.t).min(), 'days', True),
-            'longest time gap': (np.ediff1d(self.t).max(), 'days', True),
+            'time span': (t.ptp(), 'days', True),
+            'mean time gap': (np.ediff1d(t).mean(), 'days', True),
+            'median time gap': (np.median(np.ediff1d(t)), 'days', True),
+            'shortest time gap': (np.ediff1d(t).min(), 'days', True),
+            'longest time gap': (np.ediff1d(t).max(), 'days', True),
         }
         width = max(list(map(len, prop.keys()))) + 2
         for k, v in prop.items():
             print(f'{k:{width}s}: {v[0]:10.6f}  {v[1]}', end=' ')
             if v[2]:
                 print(f'({1/v[0]:10.6f} {v[1]}⁻¹)')
-
 
     @property
     def eta1(self):
@@ -1962,72 +2025,32 @@ class KimaResults(object):
             return self.posterior_sample[:, self.indices['GPpars']][:, i]
         return None
 
-
-
     # most of the following methods just dispatch to display
+    make_plots = display.make_plots
 
+    #
+    phase_plot = display.phase_plot
 
-    def phase_plot(self, sample, highlight=None, **kwargs):
-        """ Plot the phase curves given the solution in `sample` """
-        return display.phase_plot(self, sample, highlight, **kwargs)
+    #
+    make_plot1 = display.make_plot1
+    plot1 = display.make_plot1
+    plot_posterior_np = display.make_plot1
 
-    def make_plots(self, options, save_plots=False):
-        display.make_plots(self, options, save_plots)
+    #
+    make_plot2 = display.make_plot2
+    plot2 = display.make_plot2
 
-    def make_plot1(self, **kwargs):
-        """ Plot the histogram of the posterior for Np """
-        return display.make_plot1(self, **kwargs)
+    #
+    make_plot3 = display.make_plot3
+    plot3 = display.make_plot3
 
-    plot1 = make_plot1
-    plot_posterior_np = make_plot1
+    #
+    make_plot4 = display.make_plot4
+    plot4 = display.make_plot4
 
-    def make_plot2(self, nbins=100, bins=None, plims=None, logx=True,
-                   density=False, kde=False, kde_bw=None, show_peaks=False,
-                   show_prior=False, show_year=True, show_timespan=True,
-                   separate_colors=False, **kwargs):
-        """
-        Plot the histogram (or the kde) of the posterior for the orbital period(s).
-        Optionally provide the number of histogram bins, the bins themselves, the
-        limits in orbital period, or the kde bandwidth. If both `kde` and
-        `show_peaks` are true, the routine attempts to plot the most prominent
-        peaks in the posterior.
-        """
-        args = locals().copy()
-        args.pop('self')
-        return display.make_plot2(self, **args, **kwargs)
-
-    plot2 = make_plot2
-
-    def make_plot3(self,
-                   points=True,
-                   gridsize=50,
-                   **kwargs):
-        """
-        Plot the 2d histograms of the posteriors for semi-amplitude and orbital
-        period and eccentricity and orbital period. If `points` is True, plot
-        each posterior sample, else plot hexbins
-        """
-        return display.make_plot3(self, points, gridsize, **kwargs)
-
-    plot3 = make_plot3
-
-    def make_plot4(self, *args, **kwargs):
-        """
-        Plot histograms for the GP hyperparameters. If Np is not None,
-        highlight the samples with Np Keplerians.
-        """
-        if self.model == 'RVFWHMmodel':
-            return display.make_plot4_rvfwhm(self, *args, **kwargs)
-        else:
-            return display.make_plot4(self, *args, **kwargs)
-
-    plot4 = make_plot4
-
-    def make_plot5(self, include_jitters=False, show=True, ranges=None):
-        """ Corner plot for the GP hyperparameters """
-        return display.make_plot5(self, include_jitters, show, ranges)
-
-    plot5 = make_plot5
+    #
+    make_plot5 = display.make_plot5
+    plot5 = display.make_plot5
 
     def get_sorted_planet_samples(self, full=True):
         # all posterior samples for the planet parameters
@@ -2050,464 +2073,44 @@ class KimaResults(object):
         p = samples[:, self.indices['planets.P']]
         ind_sort_P = np.arange(p.shape[0])[:, np.newaxis], np.argsort(p)
 
-        for par in ('P', 'K', 'φ', 'e', 'ω', 'ωdot'):
+        for par in ('P', 'K', 'φ', 'e', 'ω'):
             sorted_samples[:, self.indices[f'planets.{par}']] = \
                 samples[:, self.indices[f'planets.{par}']][ind_sort_P]
 
         return sorted_samples
 
-    def apply_cuts_period(self, samples, pmin=None, pmax=None,
-                          return_mask=False):
+    def _apply_cuts_period(self, pmin=None, pmax=None, return_mask=False):
         """ apply cuts in orbital period """
-        too_low_periods = np.zeros_like(samples[:, 0], dtype=bool)
-        too_high_periods = np.zeros_like(samples[:, 0], dtype=bool)
+        if pmin is None and pmax is None:
+            if return_mask:
+                return np.ones(self.ESS, dtype=bool)
+            else:
+                return self.posterior_sample
 
-        if pmin is not None:
-            too_low_periods = samples[:, 0] < pmin
-            samples = samples[~too_low_periods, :]
+        periods = self.posterior_sample[:, self.indices['planets.P']]
 
-        if pmax is not None:
-            too_high_periods = samples[:, 1] > pmax
-            samples = samples[~too_high_periods, :]
+        if pmin is None:
+            mask_min = np.ones(self.ESS, dtype=bool)
+        else:
+            mask_min = np.logical_and.reduce((periods > pmin).T)
+        if pmax is None:
+            mask_max = np.ones(self.ESS, dtype=bool)
+        else:
+            mask_max = np.logical_and.reduce((periods < pmax).T)
 
         if return_mask:
-            mask = ~too_low_periods & ~too_high_periods
-            return samples, mask
+            return mask_min & mask_max
         else:
-            return samples
+            return self.posterior_sample[mask_min & mask_max]
 
-    def corner_planet_parameters(self, fig=None, pmin=None, pmax=None):
-        """ Corner plot of the posterior samples for the planet parameters """
+    #
+    plot_random_samples = display.plot_random_samples
+    plot6 = display.plot_random_samples
 
-        labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'va']
-
-        samples = self.get_sorted_planet_samples()
-        samples = self.apply_cuts_period(samples, pmin, pmax)
-
-        # samples is still nsamples x (n_dimensions*max_components)
-        # let's separate each planets' parameters
-        data = []
-        for i in range(self.max_components):
-            data.append(samples[:, i::self.max_components])
-
-        # separate bins for each parameter
-        bins = []
-        for planetp in data:
-            if hist_tools_available:
-                bw = hist_tools.freedman_bin_width
-                # bw = hist_tools.knuth_bin_width
-                this_planet_bins = []
-                for sample in planetp.T:
-                    this_planet_bins.append(
-                        bw(sample, return_bins=True)[1].size)
-                bins.append(this_planet_bins)
-            else:
-                bins.append(None)
-
-        # set the parameter ranges to include everythinh
-        def r(x, over=0.2):
-            return x.min() - over * x.ptp(), x.max() + over * x.ptp()
-
-        ranges = []
-        for i in range(self.n_dimensions):
-            i1, i2 = self.max_components * i, self.max_components * (i + 1)
-            ranges.append(r(samples[:, i1:i2]))
-
-        #
-        c = corner.corner
-        colors = plt.rcParams["axes.prop_cycle"]
-
-        for i, (datum, colorcycle) in enumerate(zip(data, colors)):
-            fig = c(
-                datum,
-                fig=fig,
-                labels=labels,
-                show_titles=len(data) == 1,
-                plot_contours=False,
-                plot_datapoints=True,
-                plot_density=False,
-                bins=bins[i],
-                range=ranges,
-                color=colorcycle['color'],
-                # fill_contours=True, smooth=True,
-                # contourf_kwargs={'cmap':plt.get_cmap('afmhot'), 'colors':None},
-                #hexbin_kwargs={'cmap':plt.get_cmap('afmhot_r'), 'bins':'log'},
-                hist_kwargs={'normed': True},
-                # range=[1., 1., (0, 2*np.pi), (0., 1.), (0, 2*np.pi)],
-                data_kwargs={
-                    'alpha': 1,
-                    'ms': 3,
-                    'color': colorcycle['color']
-                },
-            )
-
-        plt.show()
-
-    def corner_known_object(self, fig=None):  # ,together=False):
-        """ Corner plot of the posterior samples for the known object parameters """
-        if not self.KO:
-            print(
-                'Model has no known object! corner_known_object() doing nothing...'
-            )
-            return
-
-        
-        if self.model == 'RV_binaries_model':
-            numpar = 6
-            labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w', 'wdot']
-        else:
-            numpar = 5
-            labels = [r'$P$', r'$K$', r'$\phi$', 'ecc', 'w']
-        for i in range(self.KOpars.shape[1] // numpar):
-            # if together and i>0:
-            #     fig = cfig
-            kw = dict(show_titles=True, scale_hist=True, quantiles=[0.5], plot_density=False,
-                      plot_contours=False, plot_datapoints=True)
-            cfig = corner.corner(self.KOpars[:, i::self.nKO], fig=fig,
-                                 labels=labels, hist_kwars={'normed': True}, **kw)
-            cfig.set_figwidth(10)
-            cfig.set_figheight(8)
-
-    def plot_random_planets(self,
-                            ncurves=50,
-                            samples=None,
-                            over=0.1,
-                            pmin=None,
-                            pmax=None,
-                            show_vsys=False,
-                            Np=None,
-                            ntt=10000,
-                            full_plot=False,
-                            **kwargs):
-        """
-        Display the RV data together with curves from the posterior predictive.
-        A total of `ncurves` random samples are chosen, and the Keplerian 
-        curves are calculated covering 100 + `over`% of the data timespan.
-        If the model has a GP component, the prediction is calculated using the
-        GP hyperparameters for each of the random samples.
-        """
-        if self.model == 'RVFWHMmodel':
-            return display.plot_random_samples_rvfwhm(self, **kwargs)
-        else:
-            return display.plot_random_samples(self, **kwargs)
-
-    plot6 = plot_random_planets
-
-    """
-    This is probably a bad idea...
-    def plot_random_planets_pyqt(self, ncurves=50, over=0.2, pmin=None,
-                                 pmax=None, show_vsys=False, show_trend=False,
-                                 Np=None):
-        #Same as plot_random_planets but using pyqtgraph.
-
-        import pyqtgraph as pg
-        pg.setConfigOption('background', 'w')
-        pg.setConfigOption('foreground', 'k')
-
-        def color(s, alpha):
-            brush = list(pg.colorTuple(pg.mkColor(s)))
-            brush[-1] = alpha * 255
-            return brush
-
-        # colors = [cc['color'] for cc in plt.rcParams["axes.prop_cycle"]]
-
-        samples = self.get_sorted_planet_samples()
-        if self.max_components > 0:
-            samples, mask = \
-                self.apply_cuts_period(samples, pmin, pmax, return_mask=True)
-        else:
-            mask = np.ones(samples.shape[0], dtype=bool)
-
-        t = self.data[:, 0].copy()
-        if t[0] > 24e5:
-            t -= 24e5
-
-        tt = np.linspace(t.min() - over * t.ptp(),
-                         t.max() + over * t.ptp(), 10000 + int(100 * over))
-
-        if self.GPmodel:
-            # let's be more reasonable for the number of GP prediction points
-            ## OLD: linearly spaced points (lots of useless points within gaps)
-            # ttGP = np.linspace(t[0], t[-1], 1000 + t.size*3)
-            ## NEW: have more points near where there is data
-            kde = gaussian_kde(t)
-            ttGP = kde.resample(25000 + t.size * 3).reshape(-1)
-            # constrain ttGP within observed times, to not waste (this could go...)
-            ttGP = (ttGP + t[0]) % t.ptp() + t[0]
-            ttGP = np.r_[ttGP, t]
-            ttGP.sort()  # in-place
-
-            if t.size > 100:
-                ncurves = 10
-
-        y = self.data[:, 1].copy()
-        yerr = self.data[:, 2].copy()
-
-        ncurves = min(ncurves, samples.shape[0])
-
-        # select random `ncurves` indices
-        # from the (sorted, period-cut) posterior samples
-        ii = np.random.randint(samples.shape[0], size=ncurves)
-
-        if self.KO:
-            # title = 'Keplerian curve from known object removed'
-            title = 'Posterior samples in RV data space'
-            plt = pg.plot(title=title)
-            # fig, (ax, ax1) = plt.subplots(1, 2, figsize=[2 * 6.4, 4.8],
-            #                               constrained_layout=True)
-        else:
-            plt = pg.plot()
-            # fig, ax = plt.subplots(1, 1)
-
-        # ax.set_title('Posterior samples in RV data space')
-        # ax.autoscale(False)
-        # ax.use_sticky_edges = False
-
-        ## plot the Keplerian curves
-        v_KO = np.zeros((ncurves, tt.size))
-        v_KO_at_t = np.zeros((ncurves, t.size))
-        for icurve, i in enumerate(ii):
-            v = np.zeros_like(tt)
-            v_at_t = np.zeros_like(t)
-
-            if self.GPmodel:
-                v_at_ttGP = np.zeros_like(ttGP)
-
-            # known object, if set
-            if self.KO:
-                pars = self.KOpars[i]
-                P = pars[0]
-                K = pars[1]
-                phi = pars[2]
-                t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
-                ecc = pars[3]
-                w = pars[4]
-
-                v += keplerian(tt, P, K, ecc, w, t0, 0.)
-                v_KO[icurve] = v
-
-                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
-                v_KO_at_t[icurve] = v_at_t
-                # ax.plot(tt, v_KO[icurve], alpha=0.4, color='g', ls='-')
-                # ax.add_line(plt.Line2D(tt, v_KO[icurve]))
-
-                plt.plot(tt, v_KO[icurve], pen=color('g', 0.2), symbol=None)
-
-            # get the planet parameters for the current (ith) sample
-            pars = samples[i, :].copy()
-            # how many planets in this sample?
-            nplanets = pars.size / self.n_dimensions
-            if Np is not None and nplanets != Np:
-                continue
-            # add the Keplerians for each of the planets
-            for j in range(int(nplanets)):
-                P = pars[j + 0 * self.max_components]
-                if P == 0.0 or np.isnan(P):
-                    continue
-                K = pars[j + 1 * self.max_components]
-                phi = pars[j + 2 * self.max_components]
-                t0 = self.M0_epoch - (P * phi) / (2. * np.pi)
-                ecc = pars[j + 3 * self.max_components]
-                w = pars[j + 4 * self.max_components]
-                v += keplerian(tt, P, K, ecc, w, t0, 0.)
-                v_at_t += keplerian(t, P, K, ecc, w, t0, 0.)
-                if self.GPmodel:
-                    v_at_ttGP += keplerian(ttGP, P, K, ecc, w, t0, 0.)
-
-            # systemic velocity for the current (ith) sample
-            vsys = self.posterior_sample[mask][i, -1]
-            v += vsys
-            v_at_t += vsys
-            if self.GPmodel:
-                v_at_ttGP += vsys
-
-            # add the trend, if present
-            if self.trend:
-                v += self.trendpars[i] * (tt - self.tmiddle)
-                v_at_t += self.trendpars[i] * (t - self.tmiddle)
-                if self.GPmodel:
-                    v_at_ttGP += self.trendpars[i] * (ttGP - self.tmiddle)
-                if show_trend:
-                    plt.plot(tt,
-                             vsys + self.trendpars[i] * (tt - self.tmiddle),
-                             pen=color('m', 0.2), symbol=None)
-                    # ax.plot(tt, vsys + self.trendpars[i] * (tt - self.tmiddle),
-                    #         alpha=0.2, color='m', ls=':')
-                    # if self.KO:
-                    #     ax1.plot(
-                    #         tt, vsys + self.trendpars[i] * (tt - self.tmiddle),
-                    #         alpha=0.2, color='m', ls=':')
-
-            # plot the MA "prediction"
-            # if self.MAmodel:
-            #     vMA = v_at_t.copy()
-            #     dt = np.ediff1d(self.t)
-            #     sigmaMA, tauMA = self.MA.mean(axis=0)
-            #     vMA[1:] += sigmaMA * np.exp(np.abs(dt) / tauMA) * (self.y[:-1] - v_at_t[:-1])
-            #     vMA[np.abs(vMA) > 1e6] = np.nan
-            #     ax.plot(t, vMA, 'o-', alpha=1, color='m')
-
-            # v only has the Keplerian components, not the GP predictions
-            plt.plot(tt, v, pen=color('k', 0.2), symbol=None)
-            # ax.plot(tt, v, alpha=0.2, color='k')
-
-            # add the instrument offsets, if present
-            if self.multi and len(self.data_file) > 1:
-                number_offsets = self.inst_offsets.shape[1]
-                for j in range(number_offsets + 1):
-                    if j == number_offsets:
-                        # the last dataset defines the systemic velocity,
-                        # so the offset is zero
-                        of = 0.
-                    else:
-                        of = self.inst_offsets[i, j]
-
-                    instrument_mask = self.obs == j + 1
-                    start = t[instrument_mask].min()
-                    end = t[instrument_mask].max()
-                    ptp = t[instrument_mask].ptp()
-                    time_mask = (tt > start - over * ptp) & (tt <
-                                                             end + over * ptp)
-
-                    v_i = v.copy()
-                    v_i[time_mask] += of
-                    # ax.plot(tt[time_mask], v_i[time_mask], alpha=0.1,
-                    #         color=lighten_color(colors[j], 1.5))
-
-                    time_mask = (t >= start) & (t <= end)
-                    v_at_t[time_mask] += of
-                    if self.GPmodel:
-                        time_mask = (ttGP >= start) & (ttGP <= end)
-                        v_at_ttGP[time_mask] += of
-            else:
-                pass
-                # if not self.GPmodel:
-                # ax.plot(tt, v, alpha=0.1, color='k')
-                # if self.KO:
-                #     ax1.plot(tt, v - v_KO[icurve], alpha=0.1, color='k')
-
-            # plot the GP prediction
-            if self.GPmodel:
-                self.GP.kernel.setpars(self.eta1[i], self.eta2[i],
-                                       self.eta3[i], self.eta4[i])
-                mu = self.GP.predict(y - v_at_t, ttGP, return_std=False)
-                # ax.plot(ttGP, mu + v_at_ttGP, alpha=0.2, color='plum')
-
-            if show_vsys:
-                pass
-                # ax.plot(t, vsys * np.ones_like(t), alpha=0.1, color='r',
-                #         ls='--')
-                # if self.KO:
-                #     ax1.plot(t, vsys * np.ones_like(t), alpha=0.1, color='r',
-                #              ls='--')
-
-                if self.multi:
-                    for j in range(self.inst_offsets.shape[1]):
-                        instrument_mask = self.obs == j + 1
-                        start = t[instrument_mask].min()
-                        end = t[instrument_mask].max()
-
-                        of = self.inst_offsets[i, j]
-
-                        # ax.hlines(vsys + of, xmin=start, xmax=end, alpha=0.2,
-                        #           color=colors[j])
-
-        ## we could also choose to plot the GP prediction using the median of
-        ## the hyperparameters posterior distributions
-        # if self.GPmodel:
-        #     # set the GP parameters to the median (or mean?) of their posteriors
-        #     eta1, eta2, eta3, eta4 = np.median(self.etas, axis=0)
-        #     # eta1, eta2, eta3, eta4 = np.mean(self.etas, axis=0)
-        #     self.GP.kernel.setpars(eta1, eta2, eta3, eta4)
-        #
-        #     # set the orbital parameters to the median of their posteriors
-        #     P,K,phi,ecc,w = np.median(samples, axis=0)
-        #     t0 = t[0] - (P*phi)/(2.*np.pi)
-        #     mu_orbital = keplerian(t, P, K, ecc, w, t0, 0.)
-        #
-        #     # calculate the mean and std prediction from the GP model
-        #     mu, std = self.GP.predict(y - mu_orbital, ttGP, return_std=True)
-        #     mu_orbital = keplerian(ttGP, P, K, ecc, w, t0, 0.)
-        #
-        #     # 2-sigma region around the predictive mean
-        #     ax.fill_between(ttGP, y1=mu+mu_orbital-2*std, y2=mu+mu_orbital+2*std,
-        #                     alpha=0.3, color='m')
-
-        # ax.use_sticky_edges = True
-        # ax.autoscale(True)
-
-        ## plot the data
-        if self.multi:
-            for j in range(self.inst_offsets.shape[1] + 1):
-                m = self.obs == j + 1
-                err = pg.ErrorBarItem(x=t[m], y=y[m], height=yerr[m],
-                                        beam=0, pen={'color':
-                                                    'r'})  #, 'width':0})
-                plt.addItem(err)
-                plt.plot(t[m], y[m], pen=None, symbol='o')
-                # ax.errorbar(t[m], y[m], yerr[m], fmt='o', color=colors[j],
-                #             label=self.data_file[j])
-                # if self.KO:
-                #     ax1.errorbar(t[m], y[m] - v_KO_at_t.mean(axis=0)[m],
-                #                  yerr[m], fmt='o', color=colors[j],
-                #                  label=self.data_file[j])
-            # ax.legend()
-        else:
-            ax.errorbar(t, y, yerr, fmt='o')
-            if self.KO:
-                ax1.errorbar(t, y - v_KO_at_t.mean(axis=0), yerr, fmt='o')
-
-        return
-        ax.set(xlabel='Time [days]', ylabel='RV [m/s]')
-        if self.KO:
-            ax1.set(xlabel='Time [days]', ylabel='RV [m/s]')
-        # plt.tight_layout()
-
-        if self.save_plots:
-            filename = 'kima-showresults-fig6.png'
-            print('saving in', filename)
-            fig.savefig(filename)
-    """
-
-    def hist_vsys(self, show_offsets=True, specific=None, show_prior=False,
-                  **kwargs):
-        """ 
-        Plot the histogram of the posterior for the systemic velocity and for
-        the between-instrument offsets (if `show_offsets` is True and the model
-        has multiple instruments). If `specific` is not None, it should be a
-        tuple with the name of the datafiles for two instruments (matching
-        `self.data_file`). In that case, this function works out the RV offset
-        between the `specific[0]` and `specific[1]` instruments.
-        """
-        args = locals().copy()
-        args.pop('self')
-        args.pop('kwargs')
-        return display.hist_vsys(self, **args, **kwargs)
-
-    def hist_jitter(self, show_prior=False, **kwargs):
-        """ 
-        Plot the histogram of the posterior for the additional white noise 
-        """
-        return display.hist_jitter(self, show_prior, **kwargs)
-
-    def hist_correlations(self):
-        """ 
-        Plot the histogram of the posterior for the activity correlations
-        """
-        return display.hist_correlations(self)
-
-    def hist_trend(self, per_year=True, show_prior=False, ax=None):
-        """ 
-        Plot the histogram of the posterior for the coefficients of the trend
-        """
-        return display.hist_trend(self, per_year, show_prior, ax)
-
-    def hist_MA(self):
-        """ Plot the histogram of the posterior for the MA parameters """
-        return display.hist_MA(self)
-
-    def hist_nu(self, show_prior=False, **kwargs):
-        """
-        Plot the histogram of the posterior for the Student-t degrees of freedom
-        """
-        return display.hist_nu(self, show_prior, **kwargs)
+    #
+    hist_vsys = display.hist_vsys
+    hist_jitter = display.hist_jitter
+    hist_correlations = display.hist_correlations
+    hist_trend = display.hist_trend
+    hist_MA = display.hist_MA
+    hist_nu = display.hist_nu

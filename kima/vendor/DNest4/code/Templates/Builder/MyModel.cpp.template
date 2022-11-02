@@ -1,0 +1,46 @@
+#include "MyModel.h"
+#include "DNest4/code/DNest4.h"
+#include <boost/math/distributions/normal.hpp>
+#include <boost/math/distributions/gamma.hpp>
+#include <boost/math/distributions/students_t.hpp>
+#include <boost/math/special_functions/gamma.hpp>
+#include <iomanip>
+
+boost::math::normal __boost_dist(0.0, 1.0);
+
+using namespace std;
+using namespace DNest4;
+
+{STATICS}
+
+MyModel::MyModel()
+{
+
+}
+
+void MyModel::from_prior(RNG& rng)
+{
+{FROM_PRIOR}
+}
+
+double MyModel::perturb(RNG& rng)
+{
+{PERTURB}
+}
+
+double MyModel::log_likelihood() const
+{
+{LOG_LIKELIHOOD}
+}
+
+void MyModel::print(std::ostream& out) const
+{
+out<<setprecision(12);
+{PRINT}
+}
+
+string MyModel::description() const
+{
+{DESCRIPTION}
+}
+

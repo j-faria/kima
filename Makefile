@@ -1,86 +1,115 @@
-DNEST4_PATH = DNest4/code
-EIGEN_PATH = eigen
-CELERITE_PATH = celerite/cpp/include
-STATS_PATH = vendor/stats/include
-GCEM_PATH = vendor/gcem/include
+################################################################################
+# paths to libraries
+################################################################################
+DNEST4_PATH = kima/vendor/DNest4/code
+EIGEN_PATH = kima/vendor/eigen
+LOADTXT_PATH = kima/vendor/cpp-loadtxt/src
+INCLUDES = -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(LOADTXT_PATH)
 
-#export CXX = g++
-
-CXXFLAGS = -pthread -std=c++11 -O3 -DNDEBUG -w -DEIGEN_MPL2_ONLY
-
-default_pie := $(shell $(CXX) -v 2>&1 >/dev/null | grep enable-default-pie)
-ifneq ($(default_pie),)
-  CXXFLAGS += -no-pie
+################################################################################
+# C++ compiler, linker, and compilation flags
+################################################################################
+CXXFLAGS = -pthread -fPIC -std=c++17 -O3
+LIBTOOL = ar rcs
+ifeq ($(shell uname), Darwin)
+	LIBTOOL = libtool -static -o
 endif
 
-LIBS = -L$(DNEST4_PATH) -ldnest4 -L/usr/local/lib
-includes = -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(CELERITE_PATH) -I$(STATS_PATH) -I$(GCEM_PATH)
 
-SRCDIR = ./src
-SRCS =\
-$(wildcard $(SRCDIR)/distributions/*.cpp) \
-$(SRCDIR)/Data.cpp \
-$(SRCDIR)/kepler.cpp \
-$(SRCDIR)/AMDstability.cpp \
-$(SRCDIR)/ConditionalPrior.cpp \
-$(SRCDIR)/RVmodel.cpp \
-$(SRCDIR)/RVFWHMmodel.cpp \
-$(SRCDIR)/ConditionalPrior_2.cpp \
-$(SRCDIR)/RV_binaries_model.cpp \
-$(SRCDIR)/main.cpp
+################################################################################
+# libraries to link
+################################################################################
+LIBS = -L$(DNEST4_PATH) -ldnest4
 
-OBJS=$(subst .cpp,.o,$(SRCS))
-HEADERS=$(subst .cpp,.h,$(SRCS))
 
-EXAMPLES = 51Peg BL2009 CoRoT7 many_planets multi_instrument trends \
-           activity_correlations default_priors studentT arbitrary_units K2-24
+################################################################################
+# files
+################################################################################
+SRCDIR = kima
+SRCS = \
+	$(wildcard $(SRCDIR)/distributions/*.cpp) \
+	$(SRCDIR)/kepler.cpp                      \
+	$(SRCDIR)/AMDstability.cpp                \
+	$(SRCDIR)/Data.cpp                        \
+	$(SRCDIR)/ConditionalPrior.cpp            \
+	$(SRCDIR)/RVmodel.cpp                     \
+	$(SRCDIR)/GPmodel.cpp                     \
+	$(SRCDIR)/RVFWHMmodel.cpp                 \
+	$(SRCDIR)/BDmodel.cpp
 
-all: main ${EXAMPLES}
+OBJS = $(SRCS:.cpp=.o)
+
+
+.PHONY: dnest4 main
+all: main
 
 %.o: %.cpp
 	@echo "Compiling:" $<
-	@$(CXX) -c $(includes) -o $@ $< $(CXXFLAGS)
+	@$(CXX) -c $(INCLUDES) -o $@ $< $(CXXFLAGS)
 
-
-main: $(DNEST4_PATH)/libdnest4.a $(OBJS)
-	@echo "Linking"
-	@$(CXX) -o kima $(OBJS) $(LIBS) $(CXXFLAGS)
-
-
-.PHONY: ${EXAMPLES}
-# old way, does not respect make -j flag
-# examples: $(DNEST4_PATH)/libdnest4.a $(OBJS)
-# 	@+for example in $(EXAMPLES) ; do \
-# 		echo "Compiling example $$example" & $(MAKE) -s -C examples/$$example; \
-# 	done
-
-${EXAMPLES}: $(DNEST4_PATH)/libdnest4.a $(OBJS)
-	@echo "Compiling example $@"
-	@$(MAKE) -s -C examples/$@;
-
-$(DNEST4_PATH)/libdnest4.a:
+dnest4:
 	@echo "Compiling DNest4"
 	@+$(MAKE) -s -C $(DNEST4_PATH) libdnest4.a
 
+main: dnest4 $(OBJS)
+	@echo "Linking"
+	@$(LIBTOOL) $(SRCDIR)/libkima.a $(OBJS)
 
-clean:
-	@rm -f kima $(OBJS)
 
-cleanexamples:
+EXAMPLES = 14Her
+
+${EXAMPLES}: main
+	@echo "Compiling example $@"
+	@$(MAKE) -s -C kima/examples/$@;
+
+examples: $(EXAMPLES)
+
+################################################################################
+# run examples
+################################################################################
+run_examples: ${EXAMPLES}
+	@echo "Running examples"
 	@+for example in $(EXAMPLES) ; do \
-		echo "Cleaning example $$example"; \
-		$(MAKE) clean -s -C examples/$$example; \
+		echo "Running $$example"; \
+		cd kima/examples/$$example && ./kima && cd ../../.. ; \
 	done
+
+################################################################################
+# tests
+################################################################################
+THIS_DIR = $(shell pwd)
+TEST_DIR = tests
+# TEST_SRCS = $(wildcard $(TEST_DIR)/*.cpp)
+TEST_SRCS = $(TEST_DIR)/test_Data.cpp
+TEST_LIBS = -lgtest -lgtest_main $(LIBS) #-L$(SRCDIR) -lkima
+TEST_INC = -I$(SRCDIR) $(INCLUDES)
+
+test: main $(TEST_SRCS)
+	@echo "Compiling tests"
+	@+for test_src in $(TEST_SRCS) ; do \
+		$(CXX) $(CXXFLAGS) $$test_src $(SRCDIR)/libkima.a $(TEST_LIBS) $(TEST_INC) -o $(TEST_DIR)/run ; \
+		cd $(TEST_DIR) && ./run && cd $(THIS_DIR) ; \
+	done
+
+
+################################################################################
+# clean-up rules
+################################################################################
+cleankima:
+	@echo "Cleaning kima"
+	@rm -f $(OBJS) $(SRCDIR)/libkima.a
 
 cleandnest4:
 	@echo "Cleaning DNest4"
 	@$(MAKE) clean -s -C $(DNEST4_PATH)
 
-cleanout:
-	@echo "Cleaning kima outputs  "
-	@rm -f sample.txt sample_info.txt levels.txt \
-			kima_model_setup.txt \
-			weights.txt posterior_sample.txt sampler_state.txt \
-			posterior_sample_info.txt
+cleantest:
+	@rm -f $(TEST_DIR)/run
 
-cleanall: cleanout clean cleanexamples cleandnest4
+cleanexamples:
+	@+for example in $(EXAMPLES) ; do \
+		echo "Cleaning example $$example"; \
+		$(MAKE) clean -s -C kima/examples/$$example; \
+	done
+
+clean: cleankima cleandnest4 cleantest cleanexamples
