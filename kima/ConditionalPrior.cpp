@@ -160,6 +160,80 @@ void RVConditionalPrior::print(std::ostream& out) const
 
 /*****************************************************************************/
 
+BinariesConditionalPrior::BinariesConditionalPrior()
+{
+    if (!Pprior)
+        Pprior = make_shared<LogUniform>(1., 1e5);
+    if (!Kprior)
+        Kprior = make_shared<ModifiedLogUniform>(1., 1e3);
+
+    if (!eprior)
+        eprior = make_shared<Uniform>(0, 1);
+    if (!phiprior)
+        phiprior = make_shared<Uniform>(0, 2*M_PI);
+    if (!wprior)
+        wprior = make_shared<Uniform>(0, 2*M_PI);
+    if (!wdotprior)
+        wdotprior = make_shared<Gaussian>(0, 100);
+}
+
+void BinariesConditionalPrior::from_prior(RNG& rng) {}
+
+double BinariesConditionalPrior::perturb_hyperparameters(RNG& rng)
+{
+    return 0.0;
+}
+
+// vec[0] = period
+// vec[1] = amplitude
+// vec[2] = phase
+// vec[3] = ecc
+// vec[4] = viewing angle
+// vec[5] = rate of change of pericentre angle
+
+double BinariesConditionalPrior::log_pdf(const std::vector<double>& vec) const
+{
+
+    if(vec[0] < 1. || vec[0] > 1E4 ||
+        vec[1] < 0. ||
+        vec[2] < 0. || vec[2] > 2.*M_PI ||
+        vec[3] < 0. || vec[3] >= 1.0 ||
+        vec[4] < 0. || vec[4] > 2.*M_PI)
+            return -1E300;
+
+    return Pprior->log_pdf(vec[0]) + 
+           Kprior->log_pdf(vec[1]) + 
+           phiprior->log_pdf(vec[2]) + 
+           eprior->log_pdf(vec[3]) + 
+           wprior->log_pdf(vec[4]) + 
+           wdotprior->log_pdf(vec[5]);
+}
+
+void BinariesConditionalPrior::from_uniform(std::vector<double>& vec) const
+{
+    vec[0] = Pprior->cdf_inverse(vec[0]);
+    vec[1] = Kprior->cdf_inverse(vec[1]);
+    vec[2] = phiprior->cdf_inverse(vec[2]);
+    vec[3] = eprior->cdf_inverse(vec[3]);
+    vec[4] = wprior->cdf_inverse(vec[4]);
+    vec[5] = wdotprior->cdf_inverse(vec[5]);
+}
+
+void BinariesConditionalPrior::to_uniform(std::vector<double>& vec) const
+{
+    vec[0] = Pprior->cdf(vec[0]);
+    vec[1] = Kprior->cdf(vec[1]);
+    vec[2] = phiprior->cdf(vec[2]);
+    vec[3] = eprior->cdf(vec[3]);
+    vec[4] = wprior->cdf(vec[4]);
+    vec[5] = wdotprior->cdf(vec[5]);
+}
+
+void BinariesConditionalPrior::print(std::ostream& out) const {}
+
+
+/*****************************************************************************/
+
 RVMixtureConditionalPrior::RVMixtureConditionalPrior()
 {
     if (!tau1_prior)

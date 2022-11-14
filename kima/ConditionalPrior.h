@@ -62,6 +62,43 @@ class RVConditionalPrior:public DNest4::ConditionalPrior
 };
 
 
+class BinariesConditionalPrior:public DNest4::ConditionalPrior
+{
+	private:
+		double perturb_hyperparameters(DNest4::RNG& rng);
+
+	public:
+		BinariesConditionalPrior();
+
+		// priors for all planet parameters
+		
+		/// Prior for the orbital periods.
+		std::shared_ptr<DNest4::ContinuousDistribution> Pprior;
+		/// Prior for the semi-amplitudes (in m/s).
+		std::shared_ptr<DNest4::ContinuousDistribution> Kprior;
+		/// Prior for the eccentricities.
+		std::shared_ptr<DNest4::ContinuousDistribution> eprior;
+		/// Prior for the phases.
+		std::shared_ptr<DNest4::ContinuousDistribution> phiprior;
+		/// Prior for the .
+		std::shared_ptr<DNest4::ContinuousDistribution> wprior;
+		/// Prior for the linear rate of change of w
+		std::shared_ptr<DNest4::ContinuousDistribution> wdotprior;
+
+
+		/// Generate a point from the prior.
+		void from_prior(DNest4::RNG& rng);
+
+		double log_pdf(const std::vector<double>& vec) const;
+		/// Get parameter sample from a uniform sample (CDF)
+		void from_uniform(std::vector<double>& vec) const;
+		/// Get uniform sample from a parameter sample (inverse CDF)
+		void to_uniform(std::vector<double>& vec) const;
+
+		void print(std::ostream& out) const;
+		static const int weight_parameter = 1;
+};
+
 
 
 class RVMixtureConditionalPrior:public DNest4::ConditionalPrior

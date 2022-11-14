@@ -9,6 +9,7 @@
 #include "GPmodel.h"
 #include "RVFWHMmodel.h"
 #include "BDmodel.h"
+#include "BINARIESmodel.h"
 
 
 using namespace DNest4;

@@ -47,6 +47,7 @@ class RVData {
   friend class GPmodel;
   friend class RVFWHMmodel;
   friend class BDmodel;
+  friend class BINARIESmodel;
 
   private:
     vector<double> t, y, sig;

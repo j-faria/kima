@@ -35,7 +35,8 @@ SRCS = \
 	$(SRCDIR)/RVmodel.cpp                     \
 	$(SRCDIR)/GPmodel.cpp                     \
 	$(SRCDIR)/RVFWHMmodel.cpp                 \
-	$(SRCDIR)/BDmodel.cpp
+	$(SRCDIR)/BDmodel.cpp                     \
+	$(SRCDIR)/BINARIESmodel.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 
