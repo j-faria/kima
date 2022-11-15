@@ -9,6 +9,8 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 
 void RVmodel::setPriors()  // BUG: should be done by only one thread!
 {
+    hyperpriors = planets.get_conditional_prior()->get_hyperpriors();
+
     betaprior = make_prior<Gaussian>(0, 1);
 
     if (!Cprior)
@@ -189,7 +191,7 @@ void RVmodel::calculate_mu()
     double P, K, phi, ecc, omega, Tp;
     for(size_t j=0; j<components.size(); j++)
     {
-        if(false) //hyperpriors
+        if (hyperpriors)
             P = exp(components[j][0]);
         else
             P = components[j][0];
@@ -568,8 +570,8 @@ string RVmodel::description() const
     }
 
     desc += "ndim" + sep + "maxNp" + sep;
-    if(false) // hyperpriors
-        desc += "muP" + sep + "wP" + sep + "muK";
+    if (hyperpriors)
+        desc += "muP" + sep + "wP" + sep + "muK" + sep;
 
     desc += "Np" + sep;
 
@@ -609,7 +611,7 @@ void RVmodel::save_setup() {
     fout << "fix: " << fix << endl;
     fout << "npmax: " << npmax << endl << endl;
 
-    fout << "hyperpriors: " << false << endl;
+    fout << "hyperpriors: " << hyperpriors << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
     fout << "multi_instrument: " << data.datamulti << endl;
@@ -653,7 +655,7 @@ void RVmodel::save_setup() {
     if (planets.get_max_num_components()>0){
         auto conditional = planets.get_conditional_prior();
 
-        if (false){
+        if (hyperpriors){
             fout << endl << "[prior.hyperpriors]" << endl;
             fout << "log_muP_prior: " << *conditional->log_muP_prior << endl;
             fout << "wP_prior: " << *conditional->wP_prior << endl;

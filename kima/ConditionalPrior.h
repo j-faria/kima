@@ -38,6 +38,8 @@ class RVConditionalPrior:public DNest4::ConditionalPrior
 
 		// turn on hyperpriors
 		void use_hyperpriors();
+		// get the value of hyperpriors
+		bool get_hyperpriors() { return hyperpriors; }
 
 		/// Prior for the log of the median orbital period
 		std::shared_ptr<DNest4::ContinuousDistribution> log_muP_prior;

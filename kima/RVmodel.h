@@ -75,6 +75,8 @@ class RVmodel
         int is_stable() const;
         bool enforce_stability = false;
 
+        bool hyperpriors {false}; // defined by the conditional
+
         unsigned int staleness;
 
 
