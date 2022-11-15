@@ -352,6 +352,8 @@ def _prior_to_dist():
         'Cauchy': stats.cauchy,
         'InvGamma': lambda shape, scale: stats.invgamma(shape, scale=scale),
         'Fixed': Fixed,
+        'Triangular': lambda lo, ce, up: stats.triang(c=(ce-lo)/(up-lo),
+                                                      loc=lo, scale=up-lo),
     }
     return d
 
@@ -415,10 +417,13 @@ def find_prior_parameters(prior):
         name = name.replace('Truncated', '')
         truncated = True
 
-    twopars = ('LogUniform', 'ModifiedLogUniform', 'Gaussian', 'Kumaraswamy',
-               'Cauchy', 'InvGamma')
+    threepars = ['Triangular']
+    twopars = [
+        'LogUniform', 'ModifiedLogUniform', 'Gaussian', 'Kumaraswamy',
+        'Cauchy', 'InvGamma'
+    ]
 
-    if name in twopars:
+    if name in threepars + twopars:
         r = [float(v) for v in inparens.split(';')]
     elif name == 'Uniform':
         v1, v2 = inparens.split(';')
@@ -445,9 +450,10 @@ def get_prior(prior):
         a, b = find_prior_limits(prior)
         loc, scale, _ = pars
         a, b = (a - loc) / scale, (b - loc) / scale
-
+    
     try:
         d = _prior_to_dist()
+
         if 'T' in pars:
             return d[name](a=a, b=b, loc=loc, scale=scale)
         else:
@@ -648,7 +654,7 @@ def read_big_file(filename):
             data = np.genfromtxt(filename)
         return data
 
-    except ImportError:  # no pandas, use np.genfromtxt
+    except (ImportError, Exception):  # no pandas, use np.genfromtxt
         return np.genfromtxt(filename)
 
 
