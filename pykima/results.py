@@ -634,7 +634,7 @@ class KimaResults:
             self.nKO = 0
 
         if self.KO:
-            if self.model == 'TRANSITmodel':
+            if self.model in ('BINARIESmodel', 'TRANSITmodel'):
                 n_KOparameters = 6 * self.nKO
             else:
                 n_KOparameters = 5 * self.nKO

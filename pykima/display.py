@@ -1507,6 +1507,10 @@ def corner_known_object(res, star_mass=1.0, adda=False, **kwargs):
     import pygtc
 
     labels = [r'$P$', r'$K$', r'$M_0$', 'ecc', r'$\omega$']
+    
+    if res.model == 'BINARIESmodel':
+        labels.append('$\dot\omega$')
+    
     for i in range(1):
         data = res.KOpars[:, i::res.nKO]
         fig = pygtc.plotGTC(
