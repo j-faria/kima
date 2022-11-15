@@ -41,8 +41,8 @@ class BINARIESmodel
         bool studentt {false};
 
         /// include (better) known extra Keplerian curve(s)? (KO mode!)
-        bool known_object {false};
-        int n_known_object {0};
+        bool known_object {true};
+        int n_known_object {1};
 
         /// whether to include relativistic corrections
         bool relativistic_correction {false};

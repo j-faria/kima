@@ -9,7 +9,6 @@ const double halflog2pi = 0.5*log(2.*M_PI);
 void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
 {
     betaprior = make_prior<Gaussian>(0, 1);
-    
     if (!Cprior)
         Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
 
@@ -630,8 +629,7 @@ double BINARIESmodel::log_likelihood() const
     auto y = data.get_y();
     auto sig = data.get_sig();
     auto obsi = data.get_obsi();
-    auto y_2 = data.actind[0];
-    auto sig_2 = data.actind[1];
+
 
     double logL = 0.;
 
@@ -646,66 +644,110 @@ double BINARIESmodel::log_likelihood() const
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    if (studentt){
-        // The following code calculates the log likelihood 
-        // in the case of a t-Student model
-        double var, var_2, jit, jit2;
-        for(size_t i=0; i<N; i++)
-        {
-            if(data.datamulti)
-            {
-                jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit;
-                if (double_lined){
-                    jit2 = jitters_2[obsi[i]-1];
-                    var_2 = sig_2[i]*sig_2[i] + jit2*jit2;
+    if (double_lined) {
+        auto y_2 = data.actind[0];
+        auto sig_2 = data.actind[1];
+
+        if (studentt){
+            // The following code calculates the log likelihood 
+            // in the case of a t-Student model
+            double var, var_2, jit, jit2;
+            for (size_t i = 0; i < N; i++) {
+                if (data.datamulti) {
+                    jit = jitters[obsi[i]-1];
+                    var = sig[i]*sig[i] + jit*jit;
+                    if (double_lined) {
+                        jit2 = jitters_2[obsi[i]-1];
+                        var_2 = sig_2[i] * sig_2[i] + jit2 * jit2;
+                    }
+                }
+                else
+                    var = sig[i] * sig[i] + extra_sigma * extra_sigma;
+
+                if (double_lined)
+                    var_2 = sig_2[i] * sig_2[i] + extra_sigma_2 * extra_sigma_2;
+
+                logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
+                        - 0.5*log(M_PI*nu) - 0.5*log(var)
+                        - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
+
+                if (double_lined) {
+                    logL += std::lgamma(0.5 * (nu + 1.)) -
+                            std::lgamma(0.5 * nu) - 0.5 * log(M_PI * nu) -
+                            0.5 * log(var_2) -
+                            0.5 * (nu + 1.) *
+                                log(1. + pow(y_2[i] - mu_2[i], 2) / var_2 / nu);
                 }
             }
-            else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
-                if (double_lined)
-                    var_2 = sig_2[i]*sig_2[i] + extra_sigma_2*extra_sigma_2;
+        }
 
-            logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
-                    - 0.5*log(M_PI*nu) - 0.5*log(var)
-                    - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
-            if (double_lined)
+        else{
+            // The following code calculates the log likelihood
+            // in the case of a Gaussian likelihood
+            double var, var_2, jit, jit2;
+            for(size_t i=0; i<N; i++)
             {
-                logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
-                        - 0.5*log(M_PI*nu) - 0.5*log(var_2)
-                        - 0.5*(nu + 1.)*log(1. + pow(y_2[i] - mu_2[i], 2)/var_2/nu);
+                if(data.datamulti)
+                {
+                    jit = jitters[obsi[i]-1];
+                    var = sig[i]*sig[i] + jit*jit;
+                    if (double_lined){
+                        jit2 = jitters_2[obsi[i]-1];
+                        var_2 = sig_2[i]*sig_2[i] + jit2*jit2;
+                    }
+                }
+                else
+                    var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                    if (double_lined)
+                        var_2 = sig_2[i]*sig_2[i] + extra_sigma_2*extra_sigma_2;
+
+                logL += - halflog2pi - 0.5*log(var)
+                        - 0.5*(pow(y[i] - mu[i], 2)/var);
+
+                if (double_lined)
+                {
+                    logL += - halflog2pi - 0.5*log(var_2)
+                            - 0.5*(pow(y_2[i]-mu_2[i],2)/var_2);
+                }
             }
         }
 
     }
-
-    else{
-        // The following code calculates the log likelihood
-        // in the case of a Gaussian likelihood
-        double var, var_2, jit, jit2;
-        for(size_t i=0; i<N; i++)
-        {
-            if(data.datamulti)
-            {
-                jit = jitters[obsi[i]-1];
-                var = sig[i]*sig[i] + jit*jit;
-                if (double_lined){
-                    jit2 = jitters_2[obsi[i]-1];
-                    var_2 = sig_2[i]*sig_2[i] + jit2*jit2;
+    else {
+        if (studentt){
+            // The following code calculates the log likelihood 
+            // in the case of a t-Student model
+            double var, var_2, jit, jit2;
+            for (size_t i = 0; i < N; i++) {
+                if (data.datamulti) {
+                    jit = jitters[obsi[i] - 1];
+                    var = sig[i] * sig[i] + jit * jit;
                 }
+                else
+                    var = sig[i] * sig[i] + extra_sigma * extra_sigma;
+
+                logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
+                        - 0.5*log(M_PI*nu) - 0.5*log(var)
+                        - 0.5*(nu + 1.)*log(1. + pow(y[i] - mu[i], 2)/var/nu);
             }
-            else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
-                if (double_lined)
-                    var_2 = sig_2[i]*sig_2[i] + extra_sigma_2*extra_sigma_2;
+        }
 
-            logL += - halflog2pi - 0.5*log(var)
-                    - 0.5*(pow(y[i] - mu[i], 2)/var);
-
-            if (double_lined)
+        else{
+            // The following code calculates the log likelihood
+            // in the case of a Gaussian likelihood
+            double var, var_2, jit, jit2;
+            for(size_t i=0; i<N; i++)
             {
-                logL += - halflog2pi - 0.5*log(var_2)
-                        - 0.5*(pow(y_2[i]-mu_2[i],2)/var_2);
+                if(data.datamulti)
+                {
+                    jit = jitters[obsi[i] - 1];
+                    var = sig[i] * sig[i] + jit * jit;
+                }
+                else
+                    var = sig[i] * sig[i] + extra_sigma * extra_sigma;
+
+                logL += -halflog2pi - 0.5 * log(var) -
+                        0.5 * (pow(y[i] - mu[i], 2) / var);
             }
         }
     }
@@ -900,6 +942,7 @@ void BINARIESmodel::save_setup() {
     fout << "fix: " << fix << endl;
     fout << "npmax: " << npmax << endl << endl;
 
+    fout << "hyperpriors: " << false << endl;
     fout << "trend: " << trend << endl;
     fout << "degree: " << degree << endl;
     fout << "multi_instrument: " << data.datamulti << endl;
