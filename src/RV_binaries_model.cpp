@@ -764,7 +764,7 @@ void RV_binaries_model::remove_known_object_secondary()
             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
             K2 = KO_K[j]/KO_q[j];
             v = K2 * (cos(f+w_t) + KO_e[j]*cos(w_t));
-            delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,star_radius);
+            delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,binary_radius);
             v += delta_v;
             mu_2[i] -= v;
         }
@@ -809,7 +809,7 @@ void RV_binaries_model::add_known_object_secondary()
             f = nijenhuis::true_anomaly(ti, P_anom, KO_e[j], Tp);
             K2 = KO_K[j]/KO_q[j];
             v = K2 * (cos(f+w_t) + KO_e[j]*cos(w_t));
-            delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,star_radius);
+            delta_v = postKep::post_Newtonian(K2,f,KO_e[j],w_t,P_anom,binary_mass,star_mass,binary_radius);
             v += delta_v;
             mu_2[i] += v;
         }

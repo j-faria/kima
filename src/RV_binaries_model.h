@@ -116,6 +116,7 @@ class RV_binaries_model
         double star_mass = 1.0;  // [Msun]
         double star_radius = 0.0; //if not specified set to zero
         double binary_mass = 0.0; //if not specified set to zero
+        double binary_radius = 0.0; //if not specified set to zero
 
         // The covariance matrix for the data
         Eigen::MatrixXd C {get_data().N(), get_data().N()};
