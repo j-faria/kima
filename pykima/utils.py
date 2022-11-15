@@ -350,6 +350,7 @@ def _prior_to_dist():
         'Kumaraswamy': kumaraswamy,
         'Laplace': stats.laplace,
         'Cauchy': stats.cauchy,
+        'Rayleigh': lambda scale: stats.rayleigh(scale=scale),
         'InvGamma': lambda shape, scale: stats.invgamma(shape, scale=scale),
         'Fixed': Fixed,
         'Triangular': lambda lo, ce, up: stats.triang(c=(ce-lo)/(up-lo),
@@ -420,7 +421,7 @@ def find_prior_parameters(prior):
     threepars = ['Triangular']
     twopars = [
         'LogUniform', 'ModifiedLogUniform', 'Gaussian', 'Kumaraswamy',
-        'Cauchy', 'InvGamma'
+        'Cauchy', 'Rayleigh', 'InvGamma'
     ]
 
     if name in threepars + twopars:
