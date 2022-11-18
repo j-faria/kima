@@ -59,6 +59,7 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
 void BINARIESmodel::from_prior(RNG& rng)
 {
     // preliminaries
+    data.M0_epoch = data.get_t_middle();
     setPriors();
     save_setup();
 
@@ -218,7 +219,6 @@ void BINARIESmodel::calculate_mu()
             Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
             omega_t = postKep::change_omega(omega, omegadot, ti, Tp);
             f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
-            // f = brandt::true_anomaly(ti, P, ecc, Tp);
             v = K * (cos(f + omega_t) + ecc * cos(omega_t));
             mu[i] += v;
         }
@@ -317,7 +317,6 @@ void BINARIESmodel::calculate_mu_2()
             Tp = data.M0_epoch - (P_anom * phi) / (2. * M_PI);
             omega_t = postKep::change_omega(omega, omegadot, ti, Tp);
             f = nijenhuis::true_anomaly(ti, P_anom, ecc, Tp);
-            // f = brandt::true_anomaly(ti, P, ecc, Tp);
             v = K * (cos(f + omega_t) + ecc * cos(omega_t));
             mu_2[i] += v;
         }
@@ -334,7 +333,6 @@ void BINARIESmodel::calculate_mu_2()
 
 void BINARIESmodel::remove_known_object()
 {
-    auto data = get_data();
     auto t = data.get_t();
     double f, v, delta_v, ti, Tp, w_t, P_anom;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
@@ -357,7 +355,6 @@ void BINARIESmodel::remove_known_object()
 
 void BINARIESmodel::remove_known_object_secondary()
 {
-    auto data = get_data();
     auto t = data.get_t();
     double f, v, delta_v, ti, Tp, w_t, P_anom, K2;
     // cout << "in remove_known_obj: " << KO_P[1] << endl;
@@ -381,7 +378,6 @@ void BINARIESmodel::remove_known_object_secondary()
 
 void BINARIESmodel::add_known_object()
 {
-    auto data = get_data();
     auto t = data.get_t();
     double f, v, delta_v, ti, Tp, w_t, P_anom;
     for (int j = 0; j < n_known_object; j++) {
@@ -403,7 +399,6 @@ void BINARIESmodel::add_known_object()
 
 void BINARIESmodel::add_known_object_secondary()
 {
-    auto data = get_data();
     auto t = data.get_t();
     double f, v, delta_v, ti, Tp, w_t, P_anom, K2;
     for (int j = 0; j < n_known_object; j++) {
@@ -439,7 +434,6 @@ double BINARIESmodel::perturb(RNG& rng)
     auto begin = std::chrono::high_resolution_clock::now();  // start timing
     #endif
 
-    auto data = get_data();
     const vector<double>& t = data.get_t();
     const vector<int>& obsi = data.get_obsi();
     auto actind = data.get_actind();
@@ -806,7 +800,6 @@ void BINARIESmodel::print(std::ostream& out) const
         }
     }
 
-    auto data = get_data();
     if(data.indicator_correlations){
         for(int j=0; j<data.number_indicators; j++){
             out<<betas[j]<<'\t';
@@ -871,7 +864,6 @@ string BINARIESmodel::description() const
         }
     }
 
-    auto data = get_data();
     if(data.indicator_correlations){
         for(int j=0; j<data.number_indicators; j++){
             desc += "beta" + std::to_string(j+1) + sep;
@@ -928,7 +920,6 @@ string BINARIESmodel::description() const
  * 
 */
 void BINARIESmodel::save_setup() {
-    auto data = get_data();
     std::fstream fout("kima_model_setup.txt", std::ios::out);
     fout << std::boolalpha;
 
