@@ -1640,7 +1640,7 @@ class KimaResults:
             return np.zeros_like(t)
 
         if self.model == 'RVFWHMmodel':
-            D = np.vstack((self.y, self.y2))
+            D = np.vstack((self.data.y, self.data.y2))
             r = D - self.eval_model(sample)
             GPpars = sample[self.indices['GPpars']]
 
@@ -1685,7 +1685,7 @@ class KimaResults:
                 return np.vstack([out0, out1])
 
         else:
-            r = self.y - self.eval_model(sample)
+            r = self.data.y - self.eval_model(sample)
             if self.model == 'GPmodel_systematics':
                 x = self._extra_data[:, 3]
                 X = np.c_[t, interp1d(self.data.t, x, bounds_error=False)(t)]
@@ -1791,9 +1791,9 @@ class KimaResults:
 
     def residuals(self, sample, full=False):
         if self.model == 'RVFWHMmodel':
-            D = np.vstack([self.y, self.y2])
+            D = np.vstack([self.data.y, self.data.y2])
         else:
-            D = self.y
+            D = self.data.y
 
         if full:
             return D - self.full_model(sample)
