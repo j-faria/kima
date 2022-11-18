@@ -12,6 +12,7 @@ from string import ascii_lowercase
 from dataclasses import dataclass, field
 
 from .pykepler import keplerian as kepleriancpp
+from .keplerian import keplerian as keplerianpy
 from .GP import (GP, RBFkernel, QPkernel, QPCkernel, PERkernel, QPpCkernel,
                  mixtureGP)
 
@@ -1193,6 +1194,9 @@ class KimaResults:
             print('orbital parameters: ', end='')
 
             pars = ['P', 'K', 'M0', 'e', 'ω']
+            if self.model == 'BINARIESmodel':
+                pars.append('ŵ')
+
             n = self.n_dimensions
 
             if squeeze:
@@ -1225,7 +1229,7 @@ class KimaResults:
                     with np.printoptions(formatter=formatter, linewidth=1000):
                         planet_pars = p[
                             self.indices['planets']][i::self.max_components]
-                        P, K, M0, ecc, ω = planet_pars
+                        P, K, M0, ecc, *ω = planet_pars
 
                         if show_a or show_m:
                             (m, _), a = get_planet_mass_and_semimajor_axis(
@@ -1252,7 +1256,10 @@ class KimaResults:
             print('number of known objects: ', self.nKO)
             print('orbital parameters: ', end='')
 
-            pars = ('P', 'K', 'ϕ', 'e', 'M0')
+            pars = ['P', 'K', 'M0', 'e', 'ω']
+            if self.model == 'BINARIESmodel':
+                pars.append('ŵ')
+
             print((self.n_dimensions * ' {:>10s} ').format(*pars))
 
             for i in range(0, self.nKO):
@@ -1429,7 +1436,12 @@ class KimaResults:
                     # t0 = (P * phi) / (2. * np.pi) + self.M0_epoch
                     ecc = pars[j + 3 * self.nKO]
                     w = pars[j + 4 * self.nKO]
-                    v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
+                    if self.model == 'BINARIESmodel':
+                        wdot = pars[j + 5 * self.nKO]
+                        tp = self.M0_epoch - (P * phi) / (2 * np.pi)
+                        v += keplerianpy(t, P, K, ecc, w, wdot, tp, 0.0)
+                    else:
+                        v += keplerian(t, P, K, ecc, w, phi, self.M0_epoch)
 
             # get the planet parameters for this sample
             pars = sample[self.indices['planets']].copy()
