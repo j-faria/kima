@@ -96,7 +96,7 @@ def main(args=None, stopIfNoReplace=True):
     else:
         thisdir = os.path.dirname(os.path.realpath(__file__))
         src = os.path.join(thisdir, 'template')
-        templatefiles = ['kima_setup.cpp', 'OPTIONS']
+        templatefiles = os.listdir(src)
 
     # by default, replace directory
     replace = True
