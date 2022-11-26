@@ -1,14 +1,23 @@
 #include "GPmodel.h"
 
 using namespace Eigen;
-#define TIMING false
+#define TIMING true
 
 const double halflog2pi = 0.5*log(2.*M_PI);
+
+#if TIMING
+#include <fstream>
+std::ofstream timing_file_GPmodel;
+#endif
 
 
 /// set default priors if the user didn't change them
 void GPmodel::setPriors()  // BUG: should be done by only one thread!
 {
+    #if TIMING
+    timing_file_GPmodel.open("T_GPmodel.txt");
+    #endif
+
     hyperpriors = planets.get_conditional_prior()->get_hyperpriors();
 
     betaprior = make_prior<Gaussian>(0, 1);
@@ -235,7 +244,9 @@ void GPmodel::calculate_mu()
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
-    cout << "Model eval took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
+    auto took = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    // cout << "Model eval took " << took << " ns" << std::endl;
+    timing_file_GPmodel << "model_eval: " << took << endl;
     #endif
 
 }
@@ -282,7 +293,6 @@ void GPmodel::calculate_C()
                     }
                 }
             }
-
             break;
         }
 
@@ -513,9 +523,11 @@ void GPmodel::calculate_C()
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
-    cout << "GP build matrix: ";
-    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
-    cout << " ns" << "\t"; // << std::endl;
+    auto took = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    // cout << "GP build matrix: ";
+    // cout << took;
+    // cout << " ns" << "\t"; // << std::endl;
+    timing_file_GPmodel << "GP: " << took << endl;
     #endif
 }
 
@@ -739,9 +751,8 @@ double GPmodel::perturb(RNG& rng)
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
-    cout << "Perturb took ";
-    cout << std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count();
-    cout << " μs" << std::endl;
+    auto took = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    timing_file_GPmodel << "perturb: " << took << endl;
     #endif
 
     return logH;
@@ -795,7 +806,8 @@ double GPmodel::log_likelihood() const
 
     #if TIMING
     auto end = std::chrono::high_resolution_clock::now();
-    cout << "Likelihood took " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()*1E-6 << " ms" << std::endl;
+    auto took = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    timing_file_GPmodel << "like: " << took << endl;
     #endif
 
     if(std::isnan(logL) || std::isinf(logL))
