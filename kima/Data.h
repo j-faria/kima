@@ -45,6 +45,7 @@ class RVData {
 
   friend class RVmodel;
   friend class GPmodel;
+  friend class GPmodel2;
   friend class RVFWHMmodel;
   friend class BDmodel;
   friend class BINARIESmodel;

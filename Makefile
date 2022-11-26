@@ -9,7 +9,7 @@ INCLUDES = -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(LOADTXT_PATH)
 ################################################################################
 # C++ compiler, linker, and compilation flags
 ################################################################################
-CXXFLAGS = -pthread -fPIC -std=c++17 -O3
+CXXFLAGS = -pthread -std=c++17 -O3
 LIBTOOL = ar rcs
 ifeq ($(shell uname), Darwin)
 	LIBTOOL = libtool -static -o
@@ -32,8 +32,10 @@ SRCS = \
 	$(SRCDIR)/AMDstability.cpp                \
 	$(SRCDIR)/Data.cpp                        \
 	$(SRCDIR)/ConditionalPrior.cpp            \
+	$(SRCDIR)/GP.cpp                          \
 	$(SRCDIR)/RVmodel.cpp                     \
 	$(SRCDIR)/GPmodel.cpp                     \
+	$(SRCDIR)/GPmodel2.cpp                    \
 	$(SRCDIR)/RVFWHMmodel.cpp                 \
 	$(SRCDIR)/BDmodel.cpp                     \
 	$(SRCDIR)/BINARIESmodel.cpp
