@@ -1,0 +1,12 @@
+name: spleaf
+channels:
+   - conda-forge
+dependencies:
+   - python>=3.6
+   - numpy>=1.16
+   - pytest
+   - sphinx
+   - numpydoc
+   - matplotlib
+   - scipy
+   - twine
