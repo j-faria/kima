@@ -1,0 +1,118 @@
+variables:
+  DACECALC1: "10.194.66.55"
+
+image: docker-registry.obsuks2.unige.ch/condaforge/mambaforge:latest
+
+stages:
+  - build
+  - test
+  - documentation
+  - staging
+  - production
+
+.setup_env:
+  before_script:
+    - apt-get update -y
+    ##
+    ## Install ssh-agent if not already installed, it is required by Docker.
+    ## (change apt-get to yum if you use an RPM-based image)
+    ##
+    - 'command -v ssh-agent >/dev/null || ( apt-get install openssh-client -y )'
+    ## Run ssh-agent (inside the build environment)
+    ##
+    - eval $(ssh-agent -s)
+    ##
+    ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
+    ## We're using tr to fix line endings which makes ed25519 keys work
+    ## without extra base64 encoding.
+    ## https://gitlab.com/gitlab-examples/ssh-private-key/issues/1#note_48526556
+    ##
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    ##
+    ## Create the SSH directory and give it the right permissions
+    ##
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS_DACECALC1" >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    ## Install necessary packages
+    - apt-get install build-essential rsync curl -y
+    ## Conda env
+    - source /opt/conda/etc/profile.d/conda.sh
+    - mamba env create -f spleaf_env.yml
+    - conda activate spleaf
+
+Build distribution:
+  extends: .setup_env
+  stage: build
+  script:
+    - python setup.py sdist
+  artifacts:
+    paths:
+      - dist/*.tar.gz
+    expire_in: 1 day
+
+Run test:
+  extends: .setup_env
+  stage: test
+  script:
+    - pip install dist/*.tar.gz
+    - cd test
+    - python -m pytest
+
+Generate documentation:
+  extends: .setup_env
+  stage: documentation
+  script:
+    - pip install dist/*.tar.gz
+    - cd doc
+    - make html
+  artifacts:
+    paths:
+      - doc/build/html
+    expire_in: 1 day
+
+Deploy on Staging:
+  extends: .setup_env
+  stage: staging
+  script:
+    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/staging/spleaf/
+    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/staging/spleaf/doc
+
+Release and deploy on Production:
+  extends: .setup_env
+  stage: production
+  script:
+    # According to documentation, gitlab uses detached HEAD and we need to go back to master to release.
+    # See https://gitlab.com/gitlab-org/gitlab-ce/issues/19421
+    - git checkout -B master origin/master
+    - git config --global user.name 'Gitlab CI'
+    - git config --global user.email ''
+    - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/jean-baptiste.delisle/spleaf.git"
+    # Tag
+    - VERSION=`grep __version__ spleaf/__info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
+    - TAG_VERSION="v$VERSION"
+    - git tag -a "$TAG_VERSION" -m "Release spleaf $TAG_VERSION"
+    - git push origin "$TAG_VERSION" --quiet
+    - CHANGES=`cat CHANGES.txt`
+    # Add release on gitlab (via gitlab API)
+    - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release spleaf $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" -F "description=Changes:$CHANGES" 'https://gitlab.unige.ch/api/v4/projects/1383/releases'
+    # Deploy on https://obswww.unige.ch/~delisle/
+    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/spleaf/
+    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/spleaf/doc
+    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/spleaf/doc_hist/${TAG_VERSION}
+    # Deploy on Pypi
+    - python -m twine upload dist/*.tar.gz
+    # Upgrade to next version
+    - MAJOR_DIGIT=`echo $VERSION | awk -F. '{print $1}'`
+    - MINOR_DIGIT=`echo $VERSION | awk -F. '{print $2}'`
+    - PATCH_DIGIT=`echo $VERSION | awk -F. '{print $3}'`
+    - PATCH_DIGIT=$((PATCH_DIGIT + 1))
+    - NEW_VERSION="$MAJOR_DIGIT.$MINOR_DIGIT.$PATCH_DIGIT"
+    - echo $NEW_VERSION
+    # Need to hack sed to work on both mac and unix. See details here : https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
+    - sed -i.bak s"/version__ = \"$VERSION\"/version__ = \"$NEW_VERSION\"/g" spleaf/__info__.py
+    - git add spleaf/__info__.py
+    - git commit -m "Upgrade project to next version $NEW_VERSION"
+    - git push origin master --quiet
+  when: manual
