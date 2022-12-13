@@ -153,11 +153,6 @@ def make_plot2(res,
         print('Model has no planets! make_plot2() doing nothing...')
         return
 
-    # if res.log_period:
-    #     T = np.exp(res.T)
-    # else:
-    #     T = res.T
-
     if 'ax' in kwargs:
         ax = kwargs.pop('ax')
         fig = ax.figure
@@ -218,36 +213,50 @@ def make_plot2(res,
     else:
         if bins is None:
             if plims is None:
-                # get bin limits from prior support
-                prior_support = res.priors['Pprior'].support()
-                if not np.isinf(prior_support).any():
-                    start, end = prior_support
-                else:  # or default to these
+                if res.hyperpriors:
                     start, end = 1e-1, 1e7
+                else:
+                    # get bin limits from prior support
+                    prior_support = res.priors['Pprior'].support()
+                    if not np.isinf(prior_support).any():
+                        start, end = prior_support
+                    else:  # or default to these
+                        start, end = 1e-1, 1e7
             else:
                 start, end = plims
 
             bins = 10**np.linspace(np.log10(start), np.log10(end), nbins)
 
-        bottoms = np.zeros_like(bins)
-        for i in range(res.max_components):
-            m = res.posterior_sample[:, res.indices['np']] == i + 1
-            T = res.posterior_sample[m, res.indices['planets.P']]
-            T = T[:, :i + 1].ravel()
+        if separate_colors:
+            bottoms = np.zeros_like(bins)
+            for i in range(res.max_components):
+                m = res.posterior_sample[:, res.indices['np']] == i + 1
+                T = res.posterior_sample[m, res.indices['planets.P']]
+                T = T[:, :i + 1].ravel()
+                print(T)
+
+                counts, bin_edges = np.histogram(T, bins=bins)
+
+                color = None
+
+                ax.bar(x=bin_edges[:-1],
+                    height=counts / res.ESS,
+                    width=np.ediff1d(bin_edges),
+                    bottom=bottoms[:-1],
+                    align='edge',
+                    alpha=0.8,
+                    color=color)
+
+                bottoms += np.append(counts / res.ESS, 0)
+        else:
+            T = res.posteriors.P.ravel()
+
+            if res.log_period:
+                T = np.exp(T)
 
             counts, bin_edges = np.histogram(T, bins=bins)
-
-            color = None
-
-            ax.bar(x=bin_edges[:-1],
-                   height=counts / res.ESS,
-                   width=np.ediff1d(bin_edges),
-                   bottom=bottoms[:-1],
-                   align='edge',
-                   alpha=0.8,
-                   color=color)
-
-            bottoms += np.append(counts / res.ESS, 0)
+            ax.bar(x=bin_edges[:-1], height=counts / res.ESS,
+                   width=np.ediff1d(bin_edges), align='edge', alpha=0.8)
 
         # ax.hist(T, bins=bins, alpha=0.8, density=density)
 
@@ -1507,10 +1516,10 @@ def corner_known_object(res, star_mass=1.0, adda=False, **kwargs):
     import pygtc
 
     labels = [r'$P$', r'$K$', r'$M_0$', 'ecc', r'$\omega$']
-    
+
     if res.model == 'BINARIESmodel':
         labels.append('$\dot\omega$')
-    
+
     for i in range(1):
         data = res.KOpars[:, i::res.nKO]
         fig = pygtc.plotGTC(
@@ -1618,8 +1627,8 @@ def phase_plot(res,
             if pars.size == 0:
                 pars = KOpars
             else:
-                pars = np.insert(pars, range(1 + k, (1 + k) * 6, 1 + k),
-                                 KOpars)
+                r = range(1 + k, (1 + k) * res.n_dimensions + 1, 1 + k)
+                pars = np.insert(pars, r, KOpars)
                 k += 1
             nplanets += 1
             planetis.append(i)
@@ -1872,16 +1881,16 @@ def phase_plot(res,
         no_planets_model = res.eval_model(sample, tt, include_planets=False)
         no_planets_model = res.burst_model(sample, tt, no_planets_model)
 
-        if res.model == 'RVmodel':
-            pred, std = res.stochastic_model(sample, tt, return_std=True)
 
-        elif res.model == 'RVFWHMmodel':
+        if res.model == 'RVFWHMmodel':
             (pred, _), (std, _) = res.stochastic_model(sample, tt,
                                                        return_std=True)
             if overlap:
                 no_planets_model = no_planets_model[::2]
             else:
                 no_planets_model = no_planets_model[0]
+        else:
+            pred, std = res.stochastic_model(sample, tt, return_std=True)
 
         pred = pred + no_planets_model - y_offset
         pred = np.atleast_2d(pred)
@@ -1961,11 +1970,6 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
                         pmin=None, pmax=None, show_vsys=False,
                         isolate_known_object=True, full_plot=False,
                         ignore_outliers=False, **kwargs):
-
-    # dispatch
-    if res.model == 'RVFWHMmodel':
-        args = locals().copy()
-        return plot_random_samples_rvfwhm(*args, **kwargs)
 
     if samples is None:
         samples = res._apply_cuts_period(pmin, pmax)
@@ -2106,14 +2110,8 @@ def plot_random_samples(res, ncurves=50, samples=None, over=0.1, ntt=5000,
         return fig
 
 
-def plot_random_samples_rvfwhm(res,
-                               ncurves=50,
-                               samples=None,
-                               over=0.1,
-                               show_vsys=False,
-                               show_only_GP=False,
-                               Np=None,
-                               ntt=10000,
+def plot_random_samples_rvfwhm(res, ncurves=50, samples=None, over=0.1,
+                               ntt=5000, pmin=None, pmax=None, show_vsys=False,
                                **kwargs):
     """
     Display the RV data together with curves from the posterior predictive.
@@ -2223,14 +2221,14 @@ def plot_random_samples_rvfwhm(res,
         # burst the model if there are multiple instruments
         model = res.burst_model(samples[i], tt, model)
 
-        if not show_only_GP:
-            kw = dict(color='k', alpha=alpha, zorder=-2)
-            if overlap:
-                v = stoc_model[0] + model[::2] - y_offset
-                ax1.plot(tt, v.T, **kw)
-            else:
-                ax1.plot(tt, stoc_model[0] + model[0] - y_offset, **kw)
-                # ax2.plot(tt, stoc_model[1] + model[1], 'k', alpha=alpha)
+        # if not show_only_GP:
+        kw = dict(color='k', alpha=alpha, zorder=-2)
+        if overlap:
+            v = stoc_model[0] + model[::2] - y_offset
+            ax1.plot(tt, v.T, **kw)
+        else:
+            ax1.plot(tt, stoc_model[0] + model[0] - y_offset, **kw)
+            # ax2.plot(tt, stoc_model[1] + model[1], 'k', alpha=alpha)
 
         # the model without planets, just systemic RV/FWHM and offsets
         offset_model = res.eval_model(samples[i], tt, include_planets=False)
@@ -2244,16 +2242,16 @@ def plot_random_samples_rvfwhm(res,
                 ax1.plot(tt, KOpl - y_offset + (iko + 1) * res.data.y.ptp(),
                          color='g', alpha=alpha)
 
-        if res.GPmodel:
-            kw = dict(color='plum', alpha=alpha, zorder=1)
-            if overlap:
-                v = stoc_model[0] + offset_model[::2] - y_offset
-                ax1.plot(tt, v.T, **kw)
-                f = stoc_model[1] + offset_model[1::2] - y2_offset
-                ax2.plot(tt, f.T, **kw)
-            else:
-                ax1.plot(tt, stoc_model[0] + offset_model[0] - y_offset, **kw)
-                ax2.plot(tt, stoc_model[1] + offset_model[1] - y2_offset, **kw)
+        # if res.GPmodel:
+        kw = dict(color='plum', alpha=alpha, zorder=1)
+        if overlap:
+            v = stoc_model[0] + offset_model[::2] - y_offset
+            ax1.plot(tt, v.T, **kw)
+            f = stoc_model[1] + offset_model[1::2] - y2_offset
+            ax2.plot(tt, f.T, **kw)
+        else:
+            ax1.plot(tt, stoc_model[0] + offset_model[0] - y_offset, **kw)
+            ax2.plot(tt, stoc_model[1] + offset_model[1] - y2_offset, **kw)
 
         if show_vsys:
             kw = dict(alpha=0.1, color='r', ls='--')

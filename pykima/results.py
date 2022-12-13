@@ -8,6 +8,7 @@ from typing import List, Union
 import zipfile
 import time
 import tempfile
+import inspect
 from string import ascii_lowercase
 from dataclasses import dataclass, field
 
@@ -336,6 +337,7 @@ class KimaResults:
         self.data.t = data[:, 0].copy()
         self.data.y = data[:, 1].copy()
         self.data.e = data[:, 2].copy()
+        self.data.obs = obs.copy()
         self.data.N = self.data.t.size
 
         if self.model == 'RVFWHMmodel':
@@ -508,7 +510,7 @@ class KimaResults:
             i = [0, 1]
             _i = 2
             num = self.n_hyperparameters - self._n_shared_hyperparameters
-            for j in range(2, num + 1):
+            for j in range(2, 2 + num + 1):
                 eta = f'share_eta{j}'
                 if getattr(self, eta):
                     i += [_i, _i]
@@ -964,7 +966,6 @@ class KimaResults:
             self.Lambda = self.posterior_sample[:, s]
 
 
-
         # times of periastron
         self.posteriors.Tp = (self.T * self.phi) / (2 * np.pi) + self.M0_epoch
         self.Tp = (self.T * self.phi) / (2. * np.pi) + self.M0_epoch
@@ -976,13 +977,14 @@ class KimaResults:
         Tc = self.Tp + self.T / (2 * np.pi) * (ee - self.E * np.sin(ee))
         self.posteriors.Tc = Tc
 
-        which = self.T != 0
-        self.T = self.T[which].flatten()
-        self.A = self.A[which].flatten()
-        self.E = self.E[which].flatten()
-        self.phi = self.phi[which].flatten()
-        self.Omega = self.Omega[which].flatten()
-        self.Tp = self.Tp[which].flatten()
+
+        # which = self.T != 0
+        # self.T = self.T[which].flatten()
+        # self.A = self.A[which].flatten()
+        # self.E = self.E[which].flatten()
+        # self.phi = self.phi[which].flatten()
+        # self.Omega = self.Omega[which].flatten()
+        # self.Tp = self.Tp[which].flatten()
 
     def get_medians(self):
         """ return the median values of all the parameters """
@@ -1272,10 +1274,10 @@ class KimaResults:
 
         if self.GPmodel:
             print('GP parameters: ', end='')
-            if self.model == 'RVmodel':
-                pars = ('η1', 'η2', 'η3', 'η4')
-            elif self.model == 'RVFWHMmodel':
+            if self.model == 'RVFWHMmodel':
                 pars = ('η1 RV', 'η1 FWHM', 'η2', 'η3', 'η4')
+            else:
+                pars = ('η1', 'η2', 'η3', 'η4')
 
             if squeeze:
                 print()
@@ -2116,8 +2118,20 @@ class KimaResults:
             return self.posterior_sample[mask_min & mask_max]
 
     #
-    plot_random_samples = display.plot_random_samples
-    plot6 = display.plot_random_samples
+    def plot_random_samples(self, ncurves=50, samples=None, over=0.1,
+                            ntt=5000, pmin=None, pmax=None, show_vsys=False,
+                            isolate_known_object=True, full_plot=False,
+                            ignore_outliers=False, **kwargs):
+        import inspect
+        args = inspect.getcallargs(self.plot_random_samples)
+        args['res'] = args['self']
+        if self.model == 'RVFWHMmodel':
+            return display.plot_random_samples_rvfwhm(**args)
+        else:
+            return display.plot_random_samples(**args)
+        # print(locals)
+        # plot_random_samples = _fun[model]
+    # plot6 = display.plot_random_samples
 
     #
     hist_vsys = display.hist_vsys
