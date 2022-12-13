@@ -344,7 +344,7 @@ def order_posterior_by(results: KimaResults, parameter: str = 'K',
 
 
 def FIP(results, oversampling=5, plot=True, adjust_oversampling=True):
-    Tobs = results.t.ptp()
+    Tobs = results.data.t.ptp()
     Dw = 2 * np.pi / Tobs
     a, b = results.priors['Pprior'].support()
 
@@ -353,7 +353,7 @@ def FIP(results, oversampling=5, plot=True, adjust_oversampling=True):
         wstep = Dw / oversampling
         bins = 1 / np.arange(1 / b, 1 / a - wstep, wstep)
         bins = bins[::-1]
-        n, _ = np.histogram(results.T, bins=bins)
+        n, _ = np.histogram(results.posteriors.P, bins=bins)
 
         bins = bins[1:]
         tip = n / results.ESS
@@ -370,9 +370,9 @@ def FIP(results, oversampling=5, plot=True, adjust_oversampling=True):
         import matplotlib.pyplot as plt
         fig, axs = plt.subplots(nrows=2, sharex=True, constrained_layout=True)
         axs[0].semilogx(bins, tip)
-        axs[0].set(xlabel='Period [days]', ylabel='TIP')
+        axs[0].set(ylim=(0, 1), xlabel='Period [days]', ylabel='TIP')
         axs[1].semilogx(bins, fip)
-        axs[1].set(xlabel='Period [days]', ylabel='FIP')
+        axs[1].set(ylim=(0, 1), xlabel='Period [days]', ylabel='FIP')
         return bins, fip, fig, axs
 
     return bins, fip
@@ -383,7 +383,7 @@ def FIP_count_detections(results, alpha=0.05, Ptrue=None):
         from interval import Interval
         bins, fip = FIP(results, plot=False)
         ftrue = 1 / Ptrue
-        Tobs = results.t.ptp()
+        Tobs = results.data.t.ptp()
         ffip = 1 / bins[fip.argmin()]
         return ftrue in Interval(ffip - 1 / Tobs, ffip + 1 / Tobs)
 
