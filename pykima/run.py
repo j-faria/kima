@@ -72,6 +72,9 @@ def _parse_args1(argstring=None):
     parser.add_argument('-c', '--compile', action='store_true', default=False,
                         help="just compile, don't run")
 
+    parser.add_argument('--force-compile', action='store_true', default=False,
+                        help="force (re)compilation")
+
     parser.add_argument('--no-compile', action='store_true', default=False,
                         help="don't compile, just run")
 
@@ -227,7 +230,7 @@ def run_local(args=None, return_time=False):
                 if not args.quiet:
                     print('compiling...', end=' ', flush=True)
 
-                if args.compile:  # "re"-compile
+                if args.compile or args.force_compile:  # "re"-compile
                     subprocess.check_call('make clean'.split())
 
                 makecmd = 'make -j %d' % args.threads
@@ -294,7 +297,8 @@ def run_local(args=None, return_time=False):
                 asyncio.run(launch_kima(cmd, args, stdout,
                                         raise_exceptions=False))
 
-        # except asyncio.CancelledError:
+        except asyncio.CancelledError as e:
+            pass
 
         except KeyboardInterrupt:
             end = time.time()
@@ -409,7 +413,7 @@ async def launch_kima(cmd, args, stdout=None, raise_exceptions=True):
         if kima.returncode != 0:
             # the process finished but with an abnormal return code
             print(kimastr, f'terminated with error code {kima.returncode}')
-            raise asyncio.CancelledError(kima.returncode)
+            raise asyncio.CancelledError(kima.returncode) from None
 
         end = time.time()
         took = end - start
