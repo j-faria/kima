@@ -61,18 +61,18 @@ class RVData {
 
     // to read data from one file, one instrument
     void load(const string filename, const string units, int skip = 2, 
-              const string delimiter = " ",
-              const vector<string> &indicators = vector<string>());
+              const vector<string> &indicators = vector<string>(),
+              const string delimiter = " ");
 
     // to read data from one file, more than one instrument
     void load_multi(const string filename, const string units, int skip = 2,
-                    const string delimiter = " ",
-                    const vector<string> &indicators = vector<string>());
+                    const vector<string> &indicators = vector<string>(),
+                    const string delimiter = " ");
 
     // to read data from more than one file, more than one instrument
     void load_multi(vector<string> filenames, const string units, int skip = 2,
-                    const string delimiter = " ",
-                    const vector<string>& indicators = vector<string>());
+                    const vector<string>& indicators = vector<string>(),
+                    const string delimiter = " ");
 
     bool indicator_correlations;
     int number_indicators;

@@ -24,7 +24,7 @@ namespace kima {
      * @param indicators
      */
     void RVData::load(const string filename, const string units, int skip,
-                      const string delimiter, const vector<string>& indicators)
+                      const vector<string>& indicators, const string delimiter)
     {
         auto data = loadtxt(filename)
                         .skiprows(skip)
@@ -113,7 +113,7 @@ namespace kima {
      * @param skip       number of lines to skip in the beginning of the file (default = 2)
      */
     void RVData::load_multi(const string filename, const string units, int skip,
-                            const string delimiter, const vector<string> &indicators)
+                            const vector<string> &indicators, const string delimiter)
     {
 
         auto data = loadtxt(filename)
@@ -227,7 +227,7 @@ namespace kima {
      * @param indicators
      */
     void RVData::load_multi(vector<string> filenames, const string units, int skip,
-                            const string delimiter, const vector<string>& indicators)
+                            const vector<string>& indicators, const string delimiter)
     {
         t.clear();
         y.clear();
