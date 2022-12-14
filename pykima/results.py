@@ -508,16 +508,21 @@ class KimaResults:
         """
         if self.model == 'RVFWHMmodel':
             i = [0, 1]
-            _i = 2
-            num = self.n_hyperparameters - self._n_shared_hyperparameters
-            for j in range(2, 2 + num + 1):
-                eta = f'share_eta{j}'
-                if getattr(self, eta):
-                    i += [_i, _i]
-                    _i += 1
-                else:
-                    i += [_i, _i + 1]
-                    _i += 1
+            last = i[-1]
+            if self.share_eta2:
+                i += [last + 1, last + 1]
+            else:
+                i += [last + 1, last + 2]
+            last = i[-1]
+            if self.share_eta3:
+                i += [last + 1, last + 1]
+            else:
+                i += [last + 1, last + 2]
+            last = i[-1]
+            if self.share_eta4:
+                i += [last + 1, last + 1]
+            else:
+                i += [last + 1, last + 2]
         else:
             i = [0, 1, 2, 3]
 
