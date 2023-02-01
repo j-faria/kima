@@ -322,9 +322,15 @@ namespace kima {
         if (number_instruments > 1) {
             // We need to sort t because it comes from different instruments
             size_t N = t.size();
+            vector<int> order(N);
+            // for copies
             vector<double> tt(N), yy(N);
             vector<double> sigsig(N), obsiobsi(N);
-            vector<int> order(N);
+            vector<vector<double>> actindactind;
+            actindactind.clear();
+            actindactind.resize(number_indicators);
+            for (int n = 0; n < number_indicators; n++)
+                actindactind[n].resize(t.size());
 
             // order = argsort(t)
             int x = 0;
@@ -332,18 +338,22 @@ namespace kima {
             sort(order.begin(), order.end(),
                 [&](int i, int j) { return t[i] < t[j]; });
 
-            for (unsigned i = 0; i < N; i++) {
+            for (size_t i = 0; i < N; i++) {
                 tt[i] = t[order[i]];
                 yy[i] = y[order[i]];
                 sigsig[i] = sig[order[i]];
                 obsiobsi[i] = obsi[order[i]];
+                for (size_t j = 0; j < number_indicators; j++)
+                    actindactind[j][i] = actind[j][order[i]];
             }
 
-            for (unsigned i = 0; i < N; i++) {
+            for (size_t i = 0; i < N; i++) {
                 t[i] = tt[i];
                 y[i] = yy[i];
                 sig[i] = sigsig[i];
                 obsi[i] = obsiobsi[i];
+                for (size_t j = 0; j < number_indicators; j++)
+                    actind[j][i] = actindactind[j][i];
             }
         }
 
