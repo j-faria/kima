@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 
 from .showresults import showresults as pkshowresults
-from .priors import Prior, PriorSet
+from .priors import Prior, PriorSet, Default
 from .utils import chdir
 
 
@@ -48,6 +48,7 @@ class ModelContext(type):
         super().__init__(name, bases, nmspc)
 
 
+###
 @dataclass
 class RVmodel(metaclass=ModelContext):
     directory: str = field(default=os.getcwd(), init=False)
@@ -144,6 +145,7 @@ class RVmodel(metaclass=ModelContext):
                 _exist_in_dir = all([os.path.exists(os.path.join(self.directory, f)) for f in self._filename])
                 assert _exist or _exist_in_dir, f"Files {value} don't exist"
 
+                self._data = value
                 self.multi_instrument = True
                 self._data_arrays = False
             else:
@@ -284,10 +286,10 @@ class RVmodel(metaclass=ModelContext):
             file.write(f'{indent}studentt = true;\n')
 
         if self.star_mass != 1.0:
-            file.write('\t' + f'star_mass = {self.star_mass};\n')
+            file.write(f'{indent}star_mass = {self.star_mass};\n')
 
         if self.enforce_stability:
-            file.write('\t' + 'enforce_stability = true;\n')
+            file.write(f'{indent}enforce_stability = true;\n')
 
         # if self.GP and self.kernel is not None:
         #     file.write('\n\t' + f'kernel = {self.kernel};\n\n')
@@ -311,15 +313,6 @@ class RVmodel(metaclass=ModelContext):
 
     def _set_data(self, file):
         T = '    '
-        # if self.filename_from_argv:
-        #     file.write(f'{T}datafile = argv[1];\n')
-        #     file.write(f'{T}load(datafile, "{self.units}", {self.skip});\n')
-        #     return
-        # elif self.filename is None:
-        #     file.write(f'{T}datafile = "";\n')
-        #     file.write(f'{T}load(datafile, "{self.units}", {self.skip});\n')
-        #     return
-
         if self.multi_instrument:
             files = [f'{T}{T}"{file}"' for file in self._filename]
             files = ',\n'.join(files)
@@ -397,7 +390,7 @@ class RVmodel(metaclass=ModelContext):
 
 
     def run(self, threads: int = 4, thinning: int = 50, just_compile=False,
-            verbose: bool = True) -> None:
+            verbose: bool = True, block=True) -> None:
 
         if hash(frozenset(self.OPTIONS.items())) != self._OPTIONS_hash:
             self._save_OPTIONS()
@@ -407,14 +400,144 @@ class RVmodel(metaclass=ModelContext):
         else:
             cmd = f'kima-run {self.directory} -t {threads} '
 
-        if not verbose:
+        if not verbose or not block:
             cmd += ' -q'
 
-        _ = subprocess.check_call(cmd.split())
+        if block:
+            _ = subprocess.check_call(cmd.split())
+        else:
+            _ = subprocess.Popen(cmd.split())
 
 
 RVmodel.fix = property(RVmodel._get_fix, RVmodel._set_fix)
 RVmodel.npmax = property(RVmodel._get_npmax, RVmodel._set_npmax)
+
+###
+@dataclass
+class GPmodel(RVmodel):
+
+    def __post_init__(self):
+        super().__post_init__()
+        # for sure there is a GP!
+        self.priors.setdefault('eta1', Prior('mlu', 1, 'data.get_RV_span()'))
+        self.priors.setdefault('eta2', Prior('lu', 1, 'data.get_timespan()'))
+        self.priors.setdefault('eta3', Prior('u', 10, 40))
+        self.priors.setdefault('eta4', Prior('lu', 0.1, 10))
+
+    # setter and getter for GP ################################################
+
+    @property
+    def GP(self):
+        return self._GP
+
+    @GP.setter
+    def GP(self, value: bool):
+        self._GP = value
+
+    def _inside_constructor(self, file):
+        self.GP = False
+        super()._inside_constructor(file)
+        self.GP = True
+
+
+GPmodel.fix = property(GPmodel._get_fix, GPmodel._set_fix)
+GPmodel.npmax = property(GPmodel._get_npmax, GPmodel._set_npmax)
+
+
+###
+@dataclass
+class RVFWHMmodel(GPmodel):
+    indicators = ('fwhm', 'efwhm')
+    share_eta2 = True
+    share_eta3 = True
+    share_eta4 = True
+
+    def __post_init__(self):
+        super().__post_init__()
+        #
+        self.priors.setdefault('C2', Default())
+        self.priors.setdefault('J2', Default())
+        #
+        self.priors.setdefault('eta1_fwhm', Prior('mlu', 1, 'data.get_RV_span()'))
+        self.priors.setdefault('eta2_fwhm', Prior('lu', 1, 'data.get_timespan()'))
+        self.priors.setdefault('eta3_fwhm', Prior('u', 10, 40))
+        self.priors.setdefault('eta4_fwhm', Prior('lu', 0.1, 10))
+
+    def _set_data(self, file):
+        T = '    '
+        indicators = ', '.join([f'"{i}"' for i in self.indicators])
+        indicators = '{' + indicators + '}'
+
+        if self.multi_instrument:
+            files = [f'{T}{T}"{file}"' for file in self._filename]
+            files = ',\n'.join(files)
+            file.write(f'{T}datafiles = {{\n{files}\n{T}}};\n')
+            file.write(f'{T}indicators = {indicators};\n')
+            file.write(
+                f'{T}load_multi(datafiles, "{self.units}", {self.skip}, indicators);\n')
+        else:
+            if self._data_arrays:
+                self.define_data()
+                file.write(f'{T}datafile = "_data.txt";\n')
+                file.write(f'{T}indicators = {indicators};\n')
+                load = f'{T}load(datafile, "{self.units}", {self.skip}, indicators);'
+                file.write(load + '\n')
+            else:
+                if isinstance(self.data, str):
+                    D = f'"{self.data}"'
+                else:
+                    D = self.data
+
+                load = f'{T}load({D}, "{self.units}", {self.skip});'
+                file.write(load + '\n')
+
+    def _inside_constructor(self, file):
+        """ fill in inside the constructor """
+        file.write('{\n')
+
+        indent = 4 * ' '
+
+        #
+        if self.trend:
+            file.write(f'{indent}trend = true;\n')
+            file.write(f'{indent}degree = {self.degree};\n')
+        #
+        if self.known_object:
+            file.write(f'{indent}known_object = true;\n')
+            file.write(f'{indent}n_known_object = {self.n_known_object};\n')
+        #
+        if self.studentt:
+            file.write(f'{indent}studentt = true;\n')
+
+        if self.star_mass != 1.0:
+            file.write(f'{indent}star_mass = {self.star_mass};\n')
+
+        if self.enforce_stability:
+            file.write(f'{indent}enforce_stability = true;\n')
+
+
+        cond = any([prior.conditional for prior in self.priors.values()])
+        all_default = all([prior.default for prior in self.priors.values()])
+
+        if cond and not all_default:
+            file.write('    ')
+            file.write('auto conditional = planets.get_conditional_prior();\n')
+
+        self.priors.to_kima(file=file, prefix='    ')
+
+        if not self.share_eta2:
+            file.write(f'{indent}share_eta2 = false;\n')
+        if not self.share_eta3:
+            file.write(f'{indent}share_eta3 = false;\n')
+        if not self.share_eta4:
+            file.write(f'{indent}share_eta4 = false;\n')
+
+        file.write('}\n')
+        file.write('\n')
+
+
+RVFWHMmodel.fix = property(RVFWHMmodel._get_fix, RVFWHMmodel._set_fix)
+RVFWHMmodel.npmax = property(RVFWHMmodel._get_npmax, RVFWHMmodel._set_npmax)
 
 
 

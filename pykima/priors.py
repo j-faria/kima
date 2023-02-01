@@ -31,6 +31,13 @@ VARIABLE_NAMES = {
     'eta2': 'eta2_prior',
     'eta3': 'eta3_prior',
     'eta4': 'eta4_prior',
+    # for RVFWHMmodel
+    'C2': 'C2prior',
+    'J2': 'J2prior',
+    'eta1_fwhm': 'eta1_fwhm_prior',
+    'eta2_fwhm': 'eta2_fwhm_prior',
+    'eta3_fwhm': 'eta3_fwhm_prior',
+    'eta4_fwhm': 'eta4_fwhm_prior',
 }
 
 
@@ -38,6 +45,11 @@ def wrong_npar(dist, expected, got):
     msg = f'Wrong number of parameters for {dist} distribution. '
     msg += f'Expected {expected}, got {got}'
     return msg
+
+
+class Default:
+    default = True
+    conditional = False
 
 
 class Fixed:
@@ -164,5 +176,9 @@ class PriorSet(dict):
             if prior.default:
                 continue
             cond = 'conditional->' if prior.conditional else ''
-            print(f'{prefix}{cond}{VARIABLE_NAMES[name]} = {prior.to_kima()};',
-                  file=file)
+            p = f'{prefix}{cond}{VARIABLE_NAMES[name]} = {prior.to_kima()};'
+            if file is None:
+                print(p)
+            else:
+                print(p, file=file)
+
