@@ -78,17 +78,17 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 
     if (!eta2_prior)
         eta2_prior = make_prior<LogUniform>(1, 100);
-    if (!eta2_fwhm_prior && !share_eta2)
+    if (!eta2_fwhm_prior)
         eta2_fwhm_prior = make_prior<LogUniform>(1, 100);
 
     if (!eta3_prior)
         eta3_prior = make_prior<Uniform>(10, 40);
-    if (!eta3_fwhm_prior && !share_eta3)
+    if (!eta3_fwhm_prior)
         eta3_fwhm_prior = make_prior<Uniform>(10, 40);
 
     if (!eta4_prior)
         eta4_prior = make_prior<Uniform>(0.2, 5);
-    if (!eta4_fwhm_prior && !share_eta4)
+    if (!eta4_fwhm_prior)
         eta4_fwhm_prior = make_prior<Uniform>(0.2, 5);
 
     if (!alpha_prior && kernel == perrq)
@@ -185,7 +185,7 @@ void RVFWHMmodel::from_prior(RNG& rng)
         eta4 = exp(eta4_prior->generate(rng));
         if (!share_eta4)
             eta4_fw = eta4_fwhm_prior->generate(rng);
-        
+
         if (kernel == perrq)
             alpha = alpha_prior->generate(rng);
             //! missing FWHM
@@ -613,12 +613,12 @@ void RVFWHMmodel::calculate_C_fwhm()
                     {
                         if (data.datamulti)
                         {
-                            double jit = jitters[data.obsi[i] - 1];
+                            double jit = jitters[data.number_instruments + data.obsi[i] - 1];
                             C_fwhm(i, j) += sig[i] * sig[i] + jit * jit;
                         }
                         else
                         {
-                            C_fwhm(i, j) += sig[i] * sig[i] + jitter * jitter;
+                            C_fwhm(i, j) += sig[i] * sig[i] + jitter_fwhm * jitter_fwhm;
                         }
                     }
                     else
@@ -1034,7 +1034,7 @@ double RVFWHMmodel::perturb(RNG& rng)
 
             add_known_object();
         }
-    
+
     }
     else
     {
@@ -1380,14 +1380,38 @@ void RVFWHMmodel::save_setup() {
 
     fout << "[priors.general]" << endl;
     fout << "Cprior: " << *Cprior << endl;
+    fout << "C2prior: " << *C2prior << endl;
     fout << "Jprior: " << *Jprior << endl;
+    fout << "J2prior: " << *J2prior << endl;
+
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
         if (degree == 3) fout << "cubic_prior: " << *cubic_prior << endl;
     }
-    if (data.datamulti)
+
+    if (data.datamulti) {
         fout << "offsets_prior: " << *offsets_prior << endl;
+        fout << "offsets_fwhm_prior: " << *offsets_fwhm_prior << endl;
+    }
+
+    fout << "eta1_prior: " << *eta1_prior << endl;
+    fout << "eta2_prior: " << *eta2_prior << endl;
+    fout << "eta3_prior: " << *eta3_prior << endl;
+    fout << "eta4_prior: " << *eta4_prior << endl;
+    fout << "eta1_fwhm_prior: " << *eta1_fwhm_prior << endl;
+    if (share_eta2)
+        fout << "eta2_fwhm_prior: " << *eta2_prior << endl;
+    else
+        fout << "eta2_fwhm_prior: " << *eta2_fwhm_prior << endl;
+    if (share_eta3)
+        fout << "eta3_fwhm_prior: " << *eta3_prior << endl;
+    else
+        fout << "eta3_fwhm_prior: " << *eta3_fwhm_prior << endl;
+    if (share_eta4)
+        fout << "eta4_fwhm_prior: " << *eta4_prior << endl;
+    else
+        fout << "eta4_fwhm_prior: " << *eta4_fwhm_prior << endl;
 
     if (planets.get_max_num_components()>0){
         auto conditional = planets.get_conditional_prior();
