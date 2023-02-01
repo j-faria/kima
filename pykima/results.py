@@ -440,7 +440,10 @@ class KimaResults:
         self._current_column += 1
 
         # find hyperpriors in the compiled model
-        self.hyperpriors = self.setup['kima']['hyperpriors'] == 'true'
+        try:
+            self.hyperpriors = self.setup['kima']['hyperpriors'] == 'true'
+        except KeyError:
+            self.hyperpriors = False
 
         # number of hyperparameters (muP, wP, muK)
         if self.hyperpriors:
@@ -692,7 +695,7 @@ class KimaResults:
                 priors[self.indices['inst_offsets']] = np.array(no * [prior])
             elif self.model == 'RVFWHMmodel':
                 prior1 = self.priors['offsets_prior']
-                prior2 = self.priors['offsets2_prior']
+                prior2 = self.priors['offsets_fwhm_prior']
                 offset_priors = no * [prior1] + no * [prior2]
                 priors[self.indices['inst_offsets']] = np.array(offset_priors)
 
@@ -703,33 +706,31 @@ class KimaResults:
                 ]
             elif self.model == 'RVFWHMmodel':
                 i = self.indices['GPpars_start']
-                priors[i] = self.priors['eta1_1_prior']
-                i += 1
-                priors[i] = self.priors['eta1_2_prior']
-                i += 1
-                if self.share_eta2:
-                    priors[i] = self.priors['eta2_1_prior']
-                    i += 1
-                else:
-                    priors[i] = self.priors['eta2_1_prior']
-                    priors[i + 1] = self.priors['eta2_1_prior']
-                    i += 2
+
                 #
-                if self.share_eta3:
-                    priors[i] = self.priors['eta3_1_prior']
-                    i += 1
-                else:
-                    priors[i] = self.priors['eta3_1_prior']
-                    priors[i + 1] = self.priors['eta3_1_prior']
-                    i += 2
+                priors[i] = self.priors['eta1_prior']
+                i += 1
                 #
-                if self.share_eta4:
-                    priors[i] = self.priors['eta4_1_prior']
+                priors[i] = self.priors['eta1_fwhm_prior']
+                i += 1
+                #
+                priors[i] = self.priors['eta2_prior']
+                i += 1
+                if not self.share_eta2:
+                    priors[i] = self.priors['eta2_fwhm_prior']
                     i += 1
-                else:
-                    priors[i] = self.priors['eta4_1_prior']
-                    priors[i + 1] = self.priors['eta4_1_prior']
-                    i += 2
+                #
+                priors[i] = self.priors['eta3_prior']
+                i += 1
+                if not self.share_eta3:
+                    priors[i] = self.priors['eta3_fwhm_prior']
+                    i += 1
+                #
+                priors[i] = self.priors['eta4_prior']
+                i += 1
+                if not self.share_eta4:
+                    priors[i] = self.priors['eta4_fwhm_prior']
+                    i += 1
 
         if self.fix:
             from .utils import Fixed
@@ -1825,7 +1826,7 @@ class KimaResults:
             r = r[0]
 
         vals = []
-        val = wrms(r, weights=1 / self.e**2)
+        val = wrms(r, weights=1 / self.data.e**2)
         if printit:
             print(f'full: {val:.3f} m/s')
         vals.append(val)
@@ -1833,7 +1834,7 @@ class KimaResults:
         if self.multi:
             for inst, o in zip(self.instruments, np.unique(self.data.obs)):
                 val = wrms(r[self.data.obs == o],
-                           weights=1 / self.e[self.data.obs == o]**2)
+                           weights=1 / self.data.e[self.data.obs == o]**2)
                 if printit:
                     print(f'{inst}: {val:.3f} m/s')
                 vals.append(val)
@@ -2129,10 +2130,15 @@ class KimaResults:
                             ignore_outliers=False, **kwargs):
         import inspect
         args = inspect.getcallargs(self.plot_random_samples)
-        args['res'] = args['self']
+        args['res'] = args.pop('self')
+        for k, v in locals().items():
+            if k in args:
+                args[k] = v
+        print(args)
         if self.model == 'RVFWHMmodel':
             return display.plot_random_samples_rvfwhm(**args)
         else:
+            args.pop('kwargs')
             return display.plot_random_samples(**args)
         # print(locals)
         # plot_random_samples = _fun[model]
