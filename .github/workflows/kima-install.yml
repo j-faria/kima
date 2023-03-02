@@ -3,7 +3,7 @@ name: kima install
 
 on:
   push:
-    branches: [ "main", "action" ]
+    # branches: [ "main", "action" ]
   pull_request:
     branches: [ "main" ]
 
