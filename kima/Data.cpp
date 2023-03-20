@@ -361,13 +361,13 @@ namespace kima {
         M0_epoch = t[0];
     }
 
-    double RVData::get_RV_mean() const
+    double RVData::get_rv_mean() const
     {
         double sum = accumulate(begin(y), end(y), 0.0);
         return sum / y.size();
     }
 
-    double RVData::get_RV_var() const
+    double RVData::get_rv_var() const
     {
         double sum = accumulate(begin(y), end(y), 0.0);
         double mean = sum / y.size();
@@ -409,17 +409,17 @@ namespace kima {
         }
 
         else {
-            return get_RV_span() / get_timespan();
+            return get_rv_span() / get_timespan();
         }
     }
 
     /**
      * @brief Calculate the maximum span (peak to peak) of the radial velocities
      *
-     * This is different from get_RV_span only in the case of multiple instruments:
+     * This is different from get_rv_span only in the case of multiple instruments:
      * it returns the maximum of the spans of each instrument's RVs.
      */
-    double RVData::get_max_RV_span() const
+    double RVData::get_max_rv_span() const
     {
         // for multiple instruments, calculate individual RV spans and return
         // the largest one
@@ -442,11 +442,11 @@ namespace kima {
 
         // for one instrument only, this is easy
         else {
-            return get_RV_span();
+            return get_rv_span();
         }
     }
 
-    double RVData::get_adjusted_RV_var() const
+    double RVData::get_adjusted_rv_var() const
     {
         int ni;
         double sum, mean;
@@ -477,13 +477,20 @@ namespace kima {
     /**
      * @brief Order of magnitude of trend coefficient (of degree) given the data
      *
-     * Returns the expected order of magnitude of the trend coefficient of degree
-     * `degree` supported by the data. It calculates the order of magnitude of
-     *    RVspan / timespan^degree
+     * Returns the expected order of magnitude of the trend coefficient of
+     * degree `degree` supported by the data. It calculates the order of
+     * magnitude of RVspan / timespan^degree
      */
     int RVData::get_trend_magnitude(int degree) const
     {
-        return (int)round(log10(get_RV_span() / pow(get_timespan(), degree)));
+        return (int)round(log10(get_rv_span() / pow(get_timespan(), degree)));
+    }
+
+
+    double RVData::get_sig_mean() const
+    {
+        double sum = accumulate(begin(sig), end(sig), 0.0);
+        return sum / sig.size();
     }
 
 

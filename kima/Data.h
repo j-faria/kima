@@ -113,24 +113,27 @@ class RVData {
     double get_t_middle() const { return get_t_min() + 0.5 * get_timespan(); }
 
     /// Get the mininum RV
-    double get_RV_min() const { return *min_element(y.begin(), y.end()); }
+    double get_rv_min() const { return *min_element(y.begin(), y.end()); }
     /// Get the maximum RV
-    double get_RV_max() const { return *max_element(y.begin(), y.end()); }
+    double get_rv_max() const { return *max_element(y.begin(), y.end()); }
     /// Get the RV span (peak-to-peak)
-    double get_RV_span() const { return get_RV_max() - get_RV_min(); };
+    double get_rv_span() const { return get_rv_max() - get_rv_min(); };
     /// Get the maximum RV span
-    double get_max_RV_span() const;
+    double get_max_rv_span() const;
     /// Get the mean of the RVs
-    double get_RV_mean() const;
+    double get_rv_mean() const;
     /// Get the variance of the RVs
-    double get_RV_var() const;
+    double get_rv_var() const;
     /// Get the standard deviation of the RVs
-    double get_RV_std() const { return sqrt(get_RV_var()); }
+    double get_rv_std() const { return sqrt(get_rv_var()); }
 
     /// Get the RV variance, adjusted for multiple instruments
-    double get_adjusted_RV_var() const;
+    double get_adjusted_rv_var() const;
     /// Get the RV standard deviation, adjusted for multiple instruments
-    double get_adjusted_RV_std() const { return sqrt(get_adjusted_RV_var()); }
+    double get_adjusted_rv_std() const { return sqrt(get_adjusted_rv_var()); }
+
+    /// Get the average RV uncertainty
+    double get_sig_mean() const;
 
     /// Get the maximum slope allowed by the data
     double topslope() const;
