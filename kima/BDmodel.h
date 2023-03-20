@@ -5,6 +5,7 @@
 #include "DNest4.h"
 #include "Data.h"
 #include "ConditionalPrior.h"
+#include "distributions/distributions.h"
 #include "utils.h"
 #include "kepler.h"
 #include "AMDstability.h"
@@ -49,7 +50,8 @@ namespace kima
             std::vector<double>(data.number_indicators);
 
         double slope, quadr = 0.0, cubic = 0.0;
-        double extra_sigma;
+        // jitter, transition jitter, and maximum jitter [m/s]
+        double jitter, jitter_t, jitter_max;
         double nu;
 
         // Parameters for the known object, if set
@@ -81,6 +83,7 @@ namespace kima
         std::shared_ptr<DNest4::ContinuousDistribution> Cprior;
         /// Prior for the extra white noise (jitter).
         std::shared_ptr<DNest4::ContinuousDistribution> Jprior;
+        std::shared_ptr<DNest4::ContinuousDistribution> Jt_prior, Jmax_prior;
         /// Prior for the slope
         std::shared_ptr<DNest4::ContinuousDistribution> slope_prior;
         /// Prior for the quadratic coefficient of the trend

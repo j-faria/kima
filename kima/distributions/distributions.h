@@ -1,2 +1,5 @@
 #include "Fixed.h"
+#include "Gaussian_from_Tc.h"
 #include "Beta.h"
+#include "LogNormal.h"
+#include "BetaBinom.h"

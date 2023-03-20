@@ -12,13 +12,15 @@ void BDmodel::setPriors()  // BUG: should be done by only one thread!
     betaprior = make_prior<Gaussian>(0, 1);
 
     if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+        Cprior = make_prior<Gaussian>(data.get_rv_mean(), 400);
 
-    if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(
-            min(1.0, 0.1*data.get_max_RV_span()), 
-            data.get_max_RV_span()
-        );
+    // LN(σRV / √N, 2) truncated to (0, 5)
+    Jt_prior = make_prior<TruncatedLogNormal>(data.get_sig_mean() / sqrt(data.N()), 2.0, 0.0, 5.0);
+    // will be reset later
+    Jmax_prior = make_prior<LogUniform>(1.0, 5.0);
+    // will be reset later
+    Jprior = make_prior<ModifiedLogUniform>(1.0, 5.0);
+
 
     if (trend){
         if (degree == 0)
@@ -35,7 +37,7 @@ void BDmodel::setPriors()  // BUG: should be done by only one thread!
 
     // if offsets_prior is not (re)defined, assume a default
     if (data.datamulti && !offsets_prior)
-        offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+        offsets_prior = make_prior<Uniform>( -data.get_rv_span(), data.get_rv_span() );
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
     {
@@ -63,8 +65,10 @@ void BDmodel::from_prior(RNG& rng)
     // preliminaries
     setPriors();
 
-    planets.from_prior(rng);
-    planets.consolidate_diff();
+    if (npmax > 0) {
+        planets.from_prior(rng);
+        planets.consolidate_diff();
+    }
 
     background = Cprior->generate(rng);
 
@@ -77,7 +81,16 @@ void BDmodel::from_prior(RNG& rng)
     }
     else
     {
-        extra_sigma = Jprior->generate(rng);
+        // sample Jt
+        jitter_t = Jt_prior->generate(rng);
+        // reset prior for Jmax
+        Jmax_prior->setpars(jitter_t, 5.0);
+        // sample Jmax
+        jitter_max = Jmax_prior->generate(rng);
+        // reset prior for J
+        Jprior->setpars(jitter_t, jitter_max);
+        // sample J
+        jitter = Jprior->generate(rng);
     }
 
 
@@ -267,14 +280,20 @@ double BDmodel::perturb(RNG& rng)
     double logH = 0.;
     double tmid = data.get_t_middle();
 
-
-    if(rng.rand() <= 0.75) // perturb planet parameters
+    if(npmax > 0)// && rng.rand() <= 0.75) // perturb planet parameters
     {
         logH += planets.perturb(rng);
         planets.consolidate_diff();
         calculate_mu();
     }
-    else if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
+
+    // make sure priors are correct
+    // ? this is to guarantee that after a failed proposal (which
+    // ? updates the priors) they are reset to the correct values
+    Jmax_prior->setpars(jitter_t, 5.0);
+    Jprior->setpars(jitter_t, jitter_max);
+
+    if(rng.rand() <= 0.5) // perturb jitter(s) + known_object
     {
         if(data.datamulti)
         {
@@ -283,7 +302,22 @@ double BDmodel::perturb(RNG& rng)
         }
         else
         {
-            Jprior->perturb(extra_sigma, rng);
+            // sample Jt
+            Jt_prior->perturb(jitter_t, rng);
+
+            do {
+                // unwrap the perturb method to update the Jmax prior in between
+                jitter_max = Jmax_prior->cdf(jitter_max);           // perturb
+                jitter_max += rng.randh();                          // |
+                wrap(jitter_max, 0.0, 1.0);                         // |
+                Jmax_prior->setpars(jitter_t, 5.0);                 // reset prior
+                jitter_max = Jmax_prior->cdf_inverse(jitter_max);   // |
+            } while (jitter_max <= jitter_t);
+
+            // reset prior for J
+            Jprior->setpars(jitter_t, jitter_max);
+            // sample J
+            Jprior->perturb(jitter, rng);
         }
 
         if (studentt)
@@ -423,7 +457,7 @@ double BDmodel::log_likelihood() const
                 var = sig[i]*sig[i] + jit*jit;
             }
             else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                var = sig[i]*sig[i] + jitter*jitter;
 
             logL += std::lgamma(0.5*(nu + 1.)) - std::lgamma(0.5*nu)
                     - 0.5*log(M_PI*nu) - 0.5*log(var)
@@ -444,7 +478,7 @@ double BDmodel::log_likelihood() const
                 var = sig[i]*sig[i] + jit*jit;
             }
             else
-                var = sig[i]*sig[i] + extra_sigma*extra_sigma;
+                var = sig[i]*sig[i] + jitter*jitter;
 
             logL += - halflog2pi - 0.5*log(var)
                     - 0.5*(pow(y[i] - mu[i], 2)/var);
@@ -472,11 +506,16 @@ void BDmodel::print(std::ostream& out) const
 
     if (data.datamulti)
     {
-        for(int j=0; j<jitters.size(); j++)
-            out<<jitters[j]<<'\t';
+        for (int j = 0; j < jitters.size(); j++) {
+            out << jitters[j] << '\t';
+        }
     }
     else
-        out<<extra_sigma<<'\t';
+    {
+        out << jitter << '\t';
+        out << jitter_t << '\t';
+        out << jitter_max << '\t';
+    }
 
     if(trend)
     {
@@ -529,7 +568,11 @@ string BDmodel::description() const
            desc += "jitter" + std::to_string(j+1) + sep;
     }
     else
-        desc += "extra_sigma" + sep;
+    {
+        desc += "jitter" + sep;
+        desc += "jitter_t" + sep;
+        desc += "jitter_max" + sep;
+    }
 
     if(trend)
     {
@@ -565,7 +608,7 @@ string BDmodel::description() const
 
     desc += "ndim" + sep + "maxNp" + sep;
 
-    desc += "tau1" + sep + "tau2" + sep;
+    desc += "Kt" + sep + "Kmax" + sep;
 
     desc += "Np" + sep;
 
@@ -635,7 +678,11 @@ void BDmodel::save_setup() {
 
     fout << "[priors.general]" << endl;
     fout << "Cprior: " << *Cprior << endl;
+
     fout << "Jprior: " << *Jprior << endl;
+        fout << "Jt_prior: " << *Jt_prior << endl;
+        fout << "Jmax_prior: " << *Jmax_prior << endl;
+
     if (trend){
         if (degree >= 1) fout << "slope_prior: " << *slope_prior << endl;
         if (degree >= 2) fout << "quadr_prior: " << *quadr_prior << endl;
@@ -650,8 +697,8 @@ void BDmodel::save_setup() {
         auto conditional = planets.get_conditional_prior();
 
         fout << endl << "[prior.hyperpriors]" << endl;
-        fout << "tau1_prior: " << *conditional->tau1_prior << endl;
-        fout << "tau2_prior: " << *conditional->tau2_prior << endl;
+        fout << "Kt_prior: " << *conditional->Kt_prior << endl;
+        fout << "Kmax_prior: " << *conditional->Kmax_prior << endl;
 
         fout << endl << "[priors.planets]" << endl;
         fout << "Pprior: " << *conditional->Pprior << endl;

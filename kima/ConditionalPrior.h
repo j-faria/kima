@@ -4,6 +4,7 @@
 #include <cmath>
 #include <typeinfo>
 #include "DNest4.h"
+#include "distributions/distributions.h"
 
 
 class RVConditionalPrior:public DNest4::ConditionalPrior
@@ -106,7 +107,7 @@ class BinariesConditionalPrior:public DNest4::ConditionalPrior
 class RVMixtureConditionalPrior:public DNest4::ConditionalPrior
 {
 	private:
-		double tau1, tau2;
+		double Kt, Kmax;
 		double perturb_hyperparameters(DNest4::RNG& rng);
 
 	public:
@@ -130,8 +131,8 @@ class RVMixtureConditionalPrior:public DNest4::ConditionalPrior
 
 		/// Priors for the hyperparameters
 		// std::shared_ptr<DNest4::ContinuousDistribution> gamma_prior;
-		std::shared_ptr<DNest4::ContinuousDistribution> tau1_prior;
-		std::shared_ptr<DNest4::ContinuousDistribution> tau2_prior;
+		std::shared_ptr<DNest4::ContinuousDistribution> Kt_prior;
+		std::shared_ptr<DNest4::ContinuousDistribution> Kmax_prior;
 
 
 		/// Generate a point from the prior

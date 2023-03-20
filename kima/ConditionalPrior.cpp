@@ -236,69 +236,108 @@ void BinariesConditionalPrior::print(std::ostream& out) const {}
 
 RVMixtureConditionalPrior::RVMixtureConditionalPrior()
 {
-    if (!tau1_prior)
-        tau1_prior = make_shared<Uniform>(0.0, 1.0);
-    if (!tau2_prior)
-        tau2_prior = make_shared<Uniform>(0.0, 20.0);
+    // if (!Kt_prior)
+    // LN(12 √2 σRV, 2) truncated to (0, 2 km/s)
+    // Kt_prior = make_shared<TruncatedLogNormal>(2*2*3*sqrt(2)*0.36/sqrt(240), 2.0, 0.0, 20);
+    Kt_prior = make_shared<TruncatedGaussian>(0, 2*2*3*sqrt(2)*0.36/sqrt(240), 0.0, 20.0);
+    // Kt_prior = make_shared<Fixed>(1);
+
+    // if (!Kmax_prior)
+    Kmax_prior = make_shared<LogUniform>(1.0, 20); // will be reset later
+    // Kmax_prior = make_shared<Fixed>(2e3);
 
     if (!Pprior)
         Pprior = make_shared<LogUniform>(1.0, 1000.0);
 
 
     if (!K1prior)
-        K1prior = make_shared<TruncatedGaussian>(0.0, 1.0, 0.0, 1.0 / 0.0);
-        //                                            tau1
+        K1prior = make_shared<Uniform>(0.0, 1.0);
+        //                                  Kt
     if (!K2prior)
-        K2prior = make_shared<TruncatedGaussian>(0.0, 1.0, 0.0, 1.0 / 0.0);
-        //                                            tau2
+        K2prior = make_shared<LogUniform>(1.0, 20);
+        //                                Kt   Kmax
 
     if (!eprior)
-        eprior = make_shared<Uniform>(0, 1);
+        eprior = make_shared<Kumaraswamy>(0.867, 3.03);
+        // eprior = make_shared<Uniform>(0, 1);
+
     if (!phiprior)
         phiprior = make_shared<Uniform>(0, 2*M_PI);
     if (!wprior)
         wprior = make_shared<Uniform>(0, 2*M_PI);
 
     if (!Lprior)
-        Lprior = make_shared<Kumaraswamy>(0.5, 0.5);
+        Lprior = make_shared<BetaBinom>(1, 1.0, 1.0);
+        // Lprior = make_shared<Uniform>(0.0, 1.0);
+        // Lprior = make_shared<Beta>(1.0, 1.0);
 }
 
 void RVMixtureConditionalPrior::from_prior(RNG& rng)
 {
-    tau1 = tau1_prior->generate(rng);
-    tau2 = tau2_prior->generate(rng);
-    K1prior->setpars(0.0, tau1);
-    K2prior->setpars(0.0, tau2);
+    // sample Kt
+    Kt = Kt_prior->generate(rng);
+    // reset prior for Kmax
+    Kmax_prior->setpars(Kt, 20);
+    // sample Kmax
+    Kmax = Kmax_prior->generate(rng);
+    // reset priors for K1 and K2
+    K1prior->setpars(0.0, Kt);
+    K2prior->setpars(Kt, Kmax);
 }
 
 double RVMixtureConditionalPrior::perturb_hyperparameters(RNG& rng)
 {
+    // make sure priors are correct
+    // ? this is to guarantee that after a failed proposal (which updates the
+    // ? priors) they are reset to the correct values
+    Kmax_prior->setpars(Kt, 20);
+    K1prior->setpars(0.0, Kt);
+    K2prior->setpars(Kt, Kmax);
+
     double logH = 0.;
 
-    int which = rng.rand_int(2);
+    // perturb Kt
+    Kt_prior->perturb(Kt, rng);
 
-    if (which == 0)
-        tau1_prior->perturb(tau1, rng);
-    else if (which == 1)
-        tau2_prior->perturb(tau2, rng);
+    do {
+        // unwrap the perturb method to update the Kmax prior in between
+        Kmax = Kmax_prior->cdf(Kmax);           // perturb
+        Kmax += rng.randh();                    // |
+        wrap(Kmax, 0.0, 1.0);                   // |
+        Kmax_prior->setpars(Kt, 20);            // reset prior
+        Kmax = Kmax_prior->cdf_inverse(Kmax);   // |
+    } while (Kmax <= Kt);
+
+    // reset prior for K1 and K2
+    K1prior->setpars(0.0, Kt);
+    K2prior->setpars(Kt, Kmax);
 
     return logH;
 }
 
 double RVMixtureConditionalPrior::log_pdf(const std::vector<double>& vec) const
 {
-    K1prior->setpars(0.0, tau1);
-    K2prior->setpars(0.0, tau2);
+    // P, K, φ, e, w, λ = vec
+    // 0  1  2  3  4  5
 
-    double x1 = exp(K1prior->log_pdf(vec[1]));
-    double x2 = exp(K2prior->log_pdf(vec[1]));
-    double k = log(vec[5] * x1 + (1 - vec[5]) * x2);
+    // K1prior->setpars(0.0, Kt);
+    // K2prior->setpars(Kt, Kmax);
+
+    // double x1 = exp(K1prior->log_pdf(vec[1]));
+    // double x2 = exp(K2prior->log_pdf(vec[1]));
+    // double k = log(vec[5] * x1 + (1 - vec[5]) * x2);
+    double k;
+    if (vec[5] == 0.0)
+        k = K2prior->log_pdf(vec[1]);
+    else if (vec[5] == 1.0)
+        k = K1prior->log_pdf(vec[1]);
 
     return Pprior->log_pdf(vec[0]) + 
            k +
            phiprior->log_pdf(vec[2]) + 
            eprior->log_pdf(vec[3]) + 
-           wprior->log_pdf(vec[4]);
+           wprior->log_pdf(vec[4]) +
+           Lprior->log_pdf(vec[5]);
 }
 
 double RVMixtureConditionalPrior::bisect_mixture_cdf(double p, double L) const
@@ -323,28 +362,32 @@ double RVMixtureConditionalPrior::bisect_mixture_cdf(double p, double L) const
 }
 
 void RVMixtureConditionalPrior::from_uniform(std::vector<double>& vec) const {
+    // P, K, φ, e, w, λ = vec
+    // 0  1  2  3  4  5
 
-// void RVMixtureConditionalPrior::from_uniform(DNest4::RNG &rng, std::vector<double>& vec) const
-// {
-    K1prior->setpars(0.0, tau1);
-    K2prior->setpars(0.0, tau2);
+    // K1prior->setpars(0.0, Kt);
+    // K2prior->setpars(Kt, Kmax);
 
+    // period, use inverse of cdf
     vec[0] = Pprior->cdf_inverse(vec[0]);
 
     vec[5] = Lprior->cdf_inverse(vec[5]);
-    double a = bisect_mixture_cdf(vec[1], vec[5]);
-    vec[1] = a;
+    // double a = bisect_mixture_cdf(vec[1], vec[5]);
+    // vec[1] = a;
+    if (vec[5] == 0.0)
+        vec[1] = K2prior->cdf_inverse(vec[1]);
+    else if (vec[5] == 1.0)
+        vec[1] = K1prior->cdf_inverse(vec[1]);
 
-    vec[2] = phiprior->cdf_inverse(vec[2]);
-    vec[3] = eprior->cdf_inverse(vec[3]);
-    vec[4] = wprior->cdf_inverse(vec[4]);
+    vec[2] = phiprior->cdf_inverse(vec[2]); // φ
+    vec[3] = eprior->cdf_inverse(vec[3]);   // e
+    vec[4] = wprior->cdf_inverse(vec[4]);   // w
 
 }
 
 void RVMixtureConditionalPrior::to_uniform(std::vector<double> &vec) const {
-
-    K1prior->setpars(0.0, tau1);
-    K2prior->setpars(0.0, tau2);
+    // K1prior->setpars(0.0, Kt);
+    // K2prior->setpars(Kt, Kmax);
 
     vec[0] = Pprior->cdf(vec[0]);
 
@@ -358,7 +401,7 @@ void RVMixtureConditionalPrior::to_uniform(std::vector<double> &vec) const {
 
 void RVMixtureConditionalPrior::print(std::ostream& out) const
 {
-    out << tau1 << ' ' << tau2 << ' ';
+    out << Kt << ' ' << Kmax << ' ';
 }
 
 
