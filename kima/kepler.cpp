@@ -153,7 +153,7 @@ namespace murison
       double sinw, cosw;
       sincos(w, &sinw, &cosw);
       // ecentricity factor for g, once per orbit
-      double g_e = sqrt((1 + ecc) / (1 - ecc));
+      //double g_e = sqrt((1 + ecc) / (1 - ecc));
 
       for (size_t i = 0; i < t.size(); i++) {
         double E, cosE;
@@ -252,9 +252,8 @@ namespace postKep
             }
             eps = semiamp(M,b,P,ecc) - semiamp(M,a,P,ecc);
         }
-        double M2 = c;
+        // double M2 = c;
         double K2 =K1*M/M_est;
-        
         return K2;
     }
     
@@ -841,7 +840,8 @@ namespace brandt
 
         // Solve Kepler's equation
         double sinE, cosE;
-        double E = solver(M, ecc, &sinE, &cosE);
+        // double E = solver(M, ecc, &sinE, &cosE);
+        solver(M, ecc, &sinE, &cosE);
         // std::cout << "brandt E:" << E << std::endl;
 
         // Calculate true anomaly
@@ -937,7 +937,7 @@ namespace contour
                             const double &M, const double &ecc) {
 
         double E;
-        double ft_gx2, ft_gx1, this_ell, freq, zR, zI, cosC, sinC, center;
+        double ft_gx2, ft_gx1, zR, zI, cosC, sinC, center;
         double fxR, fxI, ftmp, tmpcosh, tmpsinh, tmpcos, tmpsin;
 
         // Define sampling points (actually use one more than this)
@@ -1026,7 +1026,7 @@ namespace contour
     double solver(double M, double ecc)
     {
         double E;
-        double ft_gx2, ft_gx1, this_ell, freq, zR, zI, cosC, sinC, esinRadius, ecosRadius, center;
+        double ft_gx2, ft_gx1, freq, zR, zI, cosC, sinC, esinRadius, ecosRadius, center;
         double fxR, fxI, ftmp, tmpcosh, tmpsinh, tmpcos, tmpsin;
 
         // Define sampling points (actually use one more than this)
