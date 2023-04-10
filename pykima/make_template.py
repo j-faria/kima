@@ -28,6 +28,8 @@ def _parse_args():
                              "the 'kima' folder")
     parser.add_argument('--dace', type=str, metavar='STAR',
                         help='download .rdb files for STAR from DACE')
+    parser.add_argument('-y', '--yes', action='store_true',
+                        help='Answer yes to confirmation prompt')
     parser.add_argument('--version', action='store_true',
                         help='show version and exit')
     parser.add_argument('--debug', action='store_true',
@@ -148,10 +150,15 @@ def main(args=None, stopIfNoReplace=True):
                     sys.exit(0)
                 replace = True
 
-        if replace:
-            print(f'Populating directory "{dst}"')
-            print('with kima template files:', end=' ')
-            print(', '.join([os.path.basename(f) for f in templatefiles]))
+        print(f'Populating directory "{dst}"')
+        print('with kima template files:', end=' ')
+        print(', '.join([os.path.basename(f) for f in templatefiles]))
+
+        if not args.yes:
+            answer = input('Continue? (Y/n) ').lower()
+            if answer == 'n':
+                print('Doing nothing')
+                sys.exit(0)
 
     if server:
         pass
