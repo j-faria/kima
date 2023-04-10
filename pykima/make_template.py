@@ -23,6 +23,9 @@ def _parse_args():
     parser.add_argument('DIRECTORY', nargs='?', default=os.getcwd())
     parser.add_argument('-e', '--example', type=str, choices=['14Her'],
                         help='Start from an example')
+    parser.add_argument('--dev', action='store_true',
+                        help="Development mode: will link to libraries inside "
+                             "the 'kima' folder")
     parser.add_argument('--dace', type=str, metavar='STAR',
                         help='download .rdb files for STAR from DACE')
     parser.add_argument('--version', action='store_true',
@@ -44,15 +47,19 @@ def mkdir_remote(host, path, verbose=False):
     subprocess.check_call(['ssh', host, 'mkdir ' + pipes.quote(path)])
 
 
-def write_makefile(directory):
+def write_makefile(directory, dev=False):
     from os.path import join
     import sysconfig
     from textwrap import dedent
 
     lib = sysconfig.get_config_vars('EXT_SUFFIX')[0].replace('.so', '.a')
-    kima_lib = f'libkima{lib}'
-    dnest4_lib = f'libdnest4{lib}'
-    # print(dnest4_lib, kima_lib)
+
+    if dev:
+        kima_lib = f'libkima.a'
+        dnest4_lib = '-L$(DNEST4_PATH) -ldnest4'
+    else:
+        kima_lib = f'libkima{lib}'
+        dnest4_lib = f'-L$(KIMA_DIR) -l:libdnest4{lib}'
 
     make = f"""
     KIMA_DIR = {kima_dir}
@@ -62,7 +69,7 @@ def write_makefile(directory):
     LOADTXT_PATH = $(KIMA_DIR)/vendor/cpp-loadtxt/src
     INCLUDES = -I$(KIMA_DIR) -I$(DNEST4_PATH) -I$(EIGEN_PATH) -I$(LOADTXT_PATH)
 
-    LIBS = -L$(KIMA_DIR) -l:{dnest4_lib}
+    LIBS = {dnest4_lib}
 
     CXXFLAGS = -pthread -std=c++17 -O3 -DNDEBUG -DEIGEN_MPL2_ONLY
 
@@ -158,7 +165,8 @@ def main(args=None, stopIfNoReplace=True):
     else:
         if replace:
             copy_tree(src, dst)
-        write_makefile(dst)
+
+        write_makefile(dst, args.dev)
 
     # if server:
     #     with open(os.path.join(src, 'Makefile')) as f:
