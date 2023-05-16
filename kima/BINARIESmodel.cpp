@@ -10,10 +10,10 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
 {
     betaprior = make_prior<Gaussian>(0, 1);
     if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+        Cprior = make_prior<Uniform>(data.get_rv_min(), data.get_rv_max());
 
     if (!Jprior)
-        Jprior = make_prior<ModifiedLogUniform>(min(1.0, 0.1*data.get_max_RV_span()), data.get_max_RV_span());
+        Jprior = make_prior<ModifiedLogUniform>(min(1.0, 0.1*data.get_max_rv_span()), data.get_max_rv_span());
 
 
     if (trend){
@@ -31,7 +31,7 @@ void BINARIESmodel::setPriors()  // BUG: should be done by only one thread!
 
     // if offsets_prior is not (re)defined, assume a default
     if (data.datamulti && !offsets_prior)
-        offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+        offsets_prior = make_prior<Uniform>( -data.get_rv_span(), data.get_rv_span() );
 
     for (size_t j = 0; j < data.number_instruments - 1; j++)
     {
