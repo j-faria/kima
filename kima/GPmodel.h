@@ -185,6 +185,8 @@ class GPmodel
         // Return string with column information
         std::string description() const;
 
+        void known_object_mode(int n);
+
 };
 
 
