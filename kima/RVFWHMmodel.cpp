@@ -15,7 +15,7 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
 
     // systemic velocity
     if (!Cprior)
-        Cprior = make_prior<Uniform>(data.get_RV_min(), data.get_RV_max());
+        Cprior = make_prior<Uniform>(data.get_rv_min(), data.get_rv_max());
     
     // "systemic FWHM"
     if (!C2prior)
@@ -24,7 +24,7 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
     // jitter for the RVs
     if (!Jprior)
         Jprior = make_prior<ModifiedLogUniform>(
-            min(1.0, 0.1 * data.get_max_RV_span()), data.get_max_RV_span());
+            min(1.0, 0.1 * data.get_max_rv_span()), data.get_max_rv_span());
 
     // jitter for the FWHM
     if (!J2prior)
@@ -47,7 +47,7 @@ void RVFWHMmodel::setPriors()  // BUG: should be done by only one thread!
     if (data.datamulti)
     {
         if (!offsets_prior)
-            offsets_prior = make_prior<Uniform>( -data.get_RV_span(), data.get_RV_span() );
+            offsets_prior = make_prior<Uniform>( -data.get_rv_span(), data.get_rv_span() );
         if (!offsets_fwhm_prior) {
             offsets_fwhm_prior = make_prior<Uniform>( -spanFWHM, spanFWHM );
         }
@@ -1047,7 +1047,7 @@ double RVFWHMmodel::perturb(RNG& rng)
                             cubic * pow(data.t[i] - tmid, 3);
             }
             if(data.datamulti) {
-                for(size_t j=0; j<offsets.size(); j++){
+                for(size_t j=0; j<offsets.size() / 2; j++){
                     if (data.obsi[i] == j+1) { mu[i] -= offsets[j]; }
                 }
             }
@@ -1083,7 +1083,7 @@ double RVFWHMmodel::perturb(RNG& rng)
                             cubic * pow(data.t[i] - tmid, 3);
             }
             if(data.datamulti) {
-                for(size_t j=0; j<offsets.size(); j++){
+                for(size_t j=0; j<offsets.size() / 2; j++){
                     if (data.obsi[i] == j+1) { mu[i] += offsets[j]; }
                 }
             }
