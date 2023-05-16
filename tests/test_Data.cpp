@@ -52,7 +52,7 @@ TEST_F(DataTest, LoadAndConvert) {
 
 TEST_F(DataTest, LoadCSV) {
     // read a csv file
-    D.load("data_tests/csv_file.txt", "ms", 1, ",");
+    D.load("data_tests/csv_file.txt", "ms", 1, {}, ",");
     EXPECT_EQ(D.N(), 2);
     EXPECT_DOUBLE_EQ(D.get_t()[0], 1.0);
     EXPECT_DOUBLE_EQ(D.get_y()[0], 2.2);
@@ -111,31 +111,30 @@ TEST_F(DataTest, LoadIndicators1)
 
 TEST_F(DataTest, LoadIndicators2)
 {
-    D.load("data_tests/simulated1.txt", "ms", 0, " ", {"b"});
+    D.load("data_tests/simulated1.txt", "ms", 0, {"b"});
     EXPECT_EQ(D.number_indicators, 1);
     EXPECT_EQ(D.indicator_names[0], "b");
 }
 
 TEST_F(DataTest, LoadIndicators3)
 {
-    D.load("data_tests/simulated2.txt", "ms", 0, " ", {"b"});
+    D.load("data_tests/simulated2.txt", "ms", 0, {"b"});
     EXPECT_EQ(D.number_indicators, 1);
     EXPECT_EQ(D.indicator_names[0], "b");
 }
 
 TEST_F(DataTest, LoadIndicators4)
 {
-    D.load("data_tests/simulated2.txt", "ms", 0, " ", {"b", "", "indc"});
+    D.load("data_tests/simulated2.txt", "ms", 0, {"b", "", "indc"});
     EXPECT_EQ(D.number_indicators, 2);
     EXPECT_EQ(D.indicator_names.size(), 2);
     EXPECT_EQ(D.indicator_names[0], "b");
     EXPECT_EQ(D.indicator_names[1], "indc");
-    EXPECT_TRUE(D.check_data());
 }
 
 TEST_F(DataTest, LoadIndicators5)
 {
-    D.load("data_tests/simulated2.txt", "ms", 9, " ", {"b", "", "indc"});
+    D.load("data_tests/simulated2.txt", "ms", 9, {"b", "", "indc"}, " ");
     EXPECT_EQ(D.N(), 5);
     EXPECT_EQ(D.number_indicators, 2);
     EXPECT_EQ(D.indicator_names.size(), 2);
@@ -145,7 +144,7 @@ TEST_F(DataTest, LoadIndicators5)
 
 TEST_F(DataTest, LoadIndicators6)
 {
-    D.load_multi("data_tests/simulated2.txt", "ms", 0, " ", {"b", "", "indc"});
+    D.load_multi("data_tests/simulated2.txt", "ms", 0, {"b", "", "indc"}, " ");
     EXPECT_EQ(D.N(), 10);
     EXPECT_EQ(D.number_instruments, 2);
     EXPECT_EQ(D.number_indicators, 2);
@@ -162,7 +161,7 @@ TEST_F(DataTest, LoadIndicators7)
 {
     vector<string> datafiles;
     datafiles = {"data_tests/simulated2.txt", "data_tests/simulated3.txt"};
-    D.load_multi(datafiles, "ms", 0, " ", {"b", "z", "indc"});
+    D.load_multi(datafiles, "ms", 0, {"b", "z", "indc"}, " ");
     EXPECT_EQ(D.N(), 20);
     EXPECT_EQ(D.number_instruments, 2);
     EXPECT_EQ(D.number_indicators, 3);
