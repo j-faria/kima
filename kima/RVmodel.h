@@ -30,6 +30,7 @@ class RVmodel
 
         DNest4::RJObject<RVConditionalPrior> planets =
             DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior());
+            // DNest4::RJObject<RVConditionalPrior>(5, npmax, fix, RVConditionalPrior(), DNest4::PriorType::log_uniform);
 
         double background;
 
@@ -140,6 +141,8 @@ class RVmodel
 
         // Return string with column information
         std::string description() const;
+
+        void known_object_mode(int n);
 
 };
 
