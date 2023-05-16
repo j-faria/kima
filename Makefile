@@ -35,7 +35,6 @@ SRCS = \
 	$(SRCDIR)/GP.cpp                          \
 	$(SRCDIR)/RVmodel.cpp                     \
 	$(SRCDIR)/GPmodel.cpp                     \
-	$(SRCDIR)/GPmodel2.cpp                    \
 	$(SRCDIR)/RVFWHMmodel.cpp                 \
 	$(SRCDIR)/BDmodel.cpp                     \
 	$(SRCDIR)/BINARIESmodel.cpp
